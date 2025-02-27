@@ -59,7 +59,7 @@ jobs:
       run: cd examples/xcframewrok && ./make-xcframework.sh
     - name: Make podspec
       run: cd examples/xcframewrok && ./make-podspec.sh "${{ env.TAG }}"
-    - name: Zip Frameworks
+    - name: Make Distribution Resources
       run: |
         mkdir dist
         cp CHANGELOG.md dist 
@@ -67,8 +67,10 @@ jobs:
         cp COPYING.LGPLv2.1 dist/LICENSE
         cp -pPR examples/xcframewrok/IJKMediaPlayerKit.xcframework dist
         cd dist
-        zip -ryq IJKMediaPlayerKit.zip ./*  
-    - name: Create Release
+        zip -ryq IJKMediaPlayerKit.zip ./*
+    - name: spm checksum
+      run: swift package compute-checksum dist/IJKMediaPlayerKit.zip
+    - name: Upload Release Asset
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
