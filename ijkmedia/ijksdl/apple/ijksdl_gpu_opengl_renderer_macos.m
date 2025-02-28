@@ -182,7 +182,6 @@ void main()
     glClearColor(0.0,0.0,0.0,0.0);
     glClear(GL_COLOR_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 - (void)bindFBO:(IJKSDLOpenGLFBO *)fbo

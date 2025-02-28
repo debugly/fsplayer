@@ -408,6 +408,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, self.backingWidth, self.backingHeight);
         glClear(GL_COLOR_BUFFER_BIT);
+        // the pixel is not aligment, so must set GL_UNPACK_ALIGNMENT
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         IJK_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
         //for video

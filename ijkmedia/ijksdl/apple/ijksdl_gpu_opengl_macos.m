@@ -140,7 +140,8 @@ static SDL_TextureOverlay *createOpenGLTexture(NSOpenGLContext *context, int w, 
     uint32_t texture;
     // Create a texture object that you apply to the model.
     glGenTextures(1, &texture);
-    
+    // the pixel is not aligment, so must set GL_UNPACK_ALIGNMENT
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     if (fmt == SDL_TEXTURE_FMT_BRGA) {
         glBindTexture(GL_TEXTURE_RECTANGLE, texture);
         glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
