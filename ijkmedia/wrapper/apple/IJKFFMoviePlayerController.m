@@ -29,7 +29,6 @@
 #import "IJKMediaModule.h"
 #import "IJKNotificationManager.h"
 #import "ijkioapplication.h"
-#import "IJKISOTools.h"
 #include "string.h"
 #if TARGET_OS_IOS || TARGET_OS_TV
 #import "IJKAudioKit.h"
@@ -298,18 +297,9 @@ static void (^_logHandler)(IJKLogLevel level, NSString *tag, NSString *msg);
         filePath = [self.contentURL absoluteString];
     }
     
-    //针对 iso 格式特殊处理
+    //如果是 iso 则使用 bluray:// 协议打开
     if ([@"iso" isEqualToString:[[filePath pathExtension] lowercaseString]]) {
-        //如果是蓝光原盘则使用 bluray:// 协议打开
-        if ([IJKISOTools isBlurayVideo:filePath keyFile:nil]) {
-            filePath = [@"bluray://" stringByAppendingString:filePath];
-        } 
-        //如果是dvd则使用 dvd:// 协议打开
-        else if ([IJKISOTools isDVDVideo:filePath]) {
-            filePath = [@"dvd://" stringByAppendingString:filePath];
-        } else {
-            //use origin protocol
-        }
+        filePath = [@"bluray://" stringByAppendingString:filePath];
     }
 
     ijkmp_set_data_source(_mediaPlayer, [filePath UTF8String]);
