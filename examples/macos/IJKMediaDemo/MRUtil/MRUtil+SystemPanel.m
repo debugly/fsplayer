@@ -44,6 +44,23 @@
     return nil;
 }
 
++ (BOOL)isBDMVFloder:(NSString *)folder
+{
+    NSString *bdmv = [folder stringByAppendingPathComponent:@"BDMV"];
+    BOOL isDirectory = NO;
+    BOOL isExist = [[NSFileManager defaultManager] fileExistsAtPath:folder isDirectory:&isDirectory];
+    if (isExist && isDirectory) {
+        NSString *PLAYLIST = [bdmv stringByAppendingPathComponent:@"PLAYLIST"];
+        NSString *STREAM = [bdmv stringByAppendingPathComponent:@"STREAM"];
+        
+        BOOL hasPLAYLIST = [[NSFileManager defaultManager] fileExistsAtPath:PLAYLIST isDirectory:&isDirectory] && isDirectory;
+        BOOL hasSTREAM = [[NSFileManager defaultManager] fileExistsAtPath:STREAM isDirectory:&isDirectory] && isDirectory;
+        
+        return hasPLAYLIST && hasSTREAM;
+    }
+    return NO;
+}
+
 + (NSArray <NSDictionary *>*)scanFolder:(NSURL *)url filter:(NSArray<NSString *>*)types
 {
     NSError *error = nil;
@@ -56,24 +73,34 @@
     if (isExist) {
         if (isDirectory) {
             //扫描文件夹
-            NSString *dir = path;
-            NSArray<NSString *> *contents = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:&error];
-            contents = [contents sortedArrayUsingComparator:^NSComparisonResult(NSString *  _Nonnull obj1, NSString *  _Nonnull obj2) {
-                return (NSComparisonResult)[obj1 compare:obj2 options:NSNumericSearch];
-            }];
-            
-            if (!error && contents) {
-                for (NSString *c in contents) {
-                    if ([c isEqualToString:@".DS_Store"]) {
-                        continue;
+            if ([self isBDMVFloder:path]) {
+                NSDictionary *dic = [MRUtil makeBookmarkWithURL:url];
+                NSURL *url = dic[@"url"];
+                NSString *blurayPath = [@"bluray://" stringByAppendingString:[url path]];
+                NSURL *blurayUrl = [NSURL URLWithString:blurayPath];
+                NSMutableDictionary *muDic = [NSMutableDictionary dictionaryWithDictionary:dic];
+                [muDic setObject:blurayUrl forKey:@"url"];
+                [bookmarkArr addObject:muDic];
+            } else {
+                NSString *dir = path;
+                NSArray<NSString *> *contents = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:&error];
+                contents = [contents sortedArrayUsingComparator:^NSComparisonResult(NSString *  _Nonnull obj1, NSString *  _Nonnull obj2) {
+                    return (NSComparisonResult)[obj1 compare:obj2 options:NSNumericSearch];
+                }];
+                
+                if (!error && contents) {
+                    for (NSString *c in contents) {
+                        if ([c isEqualToString:@".DS_Store"]) {
+                            continue;
+                        }
+                        NSString*fullPath = [dir stringByAppendingPathComponent:c];
+                        NSArray *scaned = [self scanFolder:[NSURL fileURLWithPath:fullPath] filter:types];
+                        if ([scaned count] > 0) {
+                            [bookmarkArr addObjectsFromArray:scaned];
+                        }
                     }
-                    NSString*fullPath = [dir stringByAppendingPathComponent:c];
-                    NSArray *scaned = [self scanFolder:[NSURL fileURLWithPath:fullPath] filter:types];
-                    if ([scaned count] > 0) {
-                        [bookmarkArr addObjectsFromArray:scaned];
-                    }
+                    return [bookmarkArr copy];
                 }
-                return [bookmarkArr copy];
             }
         } else {
             NSString *pathExtension = [[path pathExtension] lowercaseString];
