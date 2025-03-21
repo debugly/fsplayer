@@ -441,7 +441,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
     self.currentAttach = attach;
     
     if (!attach.videoPicture) {
-        ALOGW("IJKSDLGLView: videiPicture is nil\n");
+        ALOGW("IJKSDLGLView: videoPicture is nil\n");
         return NO;
     }
     

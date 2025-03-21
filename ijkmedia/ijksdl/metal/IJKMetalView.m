@@ -632,7 +632,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     self.currentAttach = attach;
     
     if (!attach.videoPicture) {
-        ALOGW("IJKMetalView: videiPicture is nil\n");
+        ALOGW("IJKMetalView: videoPicture is nil\n");
         return NO;
     }
     
