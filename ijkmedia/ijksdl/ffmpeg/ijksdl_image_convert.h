@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__FFMPEG__IJKSDL_IMAGE_CONVERT_H
-#define IJKSDL__FFMPEG__IJKSDL_IMAGE_CONVERT_H
+#ifndef FSSDL__FFMPEG__IJKSDL_IMAGE_CONVERT_H
+#define FSSDL__FFMPEG__IJKSDL_IMAGE_CONVERT_H
 
 #include <stdint.h>
 #include "ijksdl_inc_ffmpeg.h"

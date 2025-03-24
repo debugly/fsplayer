@@ -18,8 +18,8 @@
  * License along with ijkPlayer; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef IJKAVUTIL_IJKSTL_H
-#define IJKAVUTIL_IJKSTL_H
+#ifndef FSAVUTIL_IJKSTL_H
+#define FSAVUTIL_IJKSTL_H
 
 #include <stdint.h>
 
@@ -35,4 +35,4 @@ int64_t ijk_map_get_min_key(void *data);
 void ijk_map_clear(void *data);
 void ijk_map_destroy(void *data);
 
-#endif /* IJKAVUTIL_IJKSTL_H */
+#endif /* FSAVUTIL_IJKSTL_H */

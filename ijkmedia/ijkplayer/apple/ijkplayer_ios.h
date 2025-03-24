@@ -22,9 +22,9 @@
  */
 
 #include "ijkplayer/ijkplayer.h"
-#import "IJKVideoRenderingProtocol.h"
+#import "FSVideoRenderingProtocol.h"
 
 // ref_count is 1 after open
 IjkMediaPlayer *ijkmp_ios_create(int (*msg_loop)(void*));
 
-void            ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<IJKVideoRenderingProtocol>* glView);
+void            ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView);

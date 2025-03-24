@@ -79,7 +79,7 @@ static int ijkio_urlhook_call_inject(IjkURLContext *h)
     int ret = 0;
 
     if (ijkio_cache_check_interrupt(h)) {
-        ret = IJKAVERROR_EXIT;
+        ret = FSAVERROR_EXIT;
         goto fail;
     }
 
@@ -90,7 +90,7 @@ static int ijkio_urlhook_call_inject(IjkURLContext *h)
         c->app_io_ctrl.is_url_changed = 0;
         ret = av_application_on_io_control(c->app_ctx, AVAPP_CTRL_WILL_HTTP_OPEN, &c->app_io_ctrl);
         if (ret || !c->app_io_ctrl.url[0]) {
-            ret = IJKAVERROR_EXIT;
+            ret = FSAVERROR_EXIT;
             goto fail;
         }
 
@@ -108,7 +108,7 @@ static int ijkio_urlhook_call_inject(IjkURLContext *h)
     }
 
     if (ijkio_cache_check_interrupt(h)) {
-        ret = IJKAVERROR_EXIT;
+        ret = FSAVERROR_EXIT;
         av_log(NULL, AV_LOG_ERROR, "%s %s (%s)\n", h->prot->name, c->app_io_ctrl.url, c->app_io_ctrl.is_url_changed ? "changed" : "remain");
         goto fail;
     }
@@ -148,7 +148,7 @@ static int ijkio_urlhook_reconnect(IjkURLContext *h, IjkAVDictionary *extra)
 
     c->inner        = new_url;
     c->logical_pos  = c->inner->prot->url_seek(c->inner, 0, SEEK_CUR);
-    c->logical_size = c->inner->prot->url_seek(c->inner, 0, IJKAVSEEK_SIZE);
+    c->logical_size = c->inner->prot->url_seek(c->inner, 0, FSAVSEEK_SIZE);
     c->io_error     = 0;
     if (inner_options) {
         ijk_av_dict_free(&inner_options);
@@ -194,7 +194,7 @@ static int ijkio_httphook_close(IjkURLContext *h)
     Context *c = h->priv_data;
     int ret = 0;
     if (!c || !c->inner || !c->inner->prot)
-        return IJKAVERROR(ENOSYS);
+        return FSAVERROR(ENOSYS);
 
     ret = c->inner->prot->url_close(c->inner);
     if (c->inner_options) {
@@ -216,8 +216,8 @@ static int ijkio_urlhook_read(IjkURLContext *h, unsigned char *buf, int size)
 
     if (c->test_fail_point_next > 0 && c->logical_pos >= c->test_fail_point_next) {
         av_log(NULL, AV_LOG_ERROR, "test fail point:%"PRId64"\n", c->test_fail_point_next);
-        c->io_error = IJKAVERROR(EIO);
-        return IJKAVERROR(EIO);
+        c->io_error = FSAVERROR(EIO);
+        return FSAVERROR(EIO);
     }
 
     ret = c->inner->prot->url_read(c->inner, buf, size);
@@ -268,7 +268,7 @@ static int ijkio_httphook_open(IjkURLContext *h, const char *arg, int flags, Ijk
     c->ijkio_app_ctx = h->ijkio_app_ctx;
     c->ijkio_interrupt_callback = h->ijkio_app_ctx->ijkio_interrupt_callback;
 
-    t = ijk_av_dict_get(*options, "ijkapplication", NULL, IJK_AV_DICT_MATCH_CASE);
+    t = ijk_av_dict_get(*options, "ijkapplication", NULL, FS_AV_DICT_MATCH_CASE);
     if (t) {
         c->app_ctx_intptr = (int64_t)strtoll(t->value, NULL, 10);
         c->app_ctx = (AVApplicationContext *)(intptr_t)c->app_ctx_intptr;
@@ -276,12 +276,12 @@ static int ijkio_httphook_open(IjkURLContext *h, const char *arg, int flags, Ijk
         goto fail;
     }
 
-    t = ijk_av_dict_get(*options, "ijkinject-segment-index", NULL, IJK_AV_DICT_MATCH_CASE);
+    t = ijk_av_dict_get(*options, "ijkinject-segment-index", NULL, FS_AV_DICT_MATCH_CASE);
     if (t) {
         c->segment_index = (int)strtoll(t->value, NULL, 10);
     }
 
-    t = ijk_av_dict_get(*options, "ijkhttphook-test-fail-point", NULL, IJK_AV_DICT_MATCH_CASE);
+    t = ijk_av_dict_get(*options, "ijkhttphook-test-fail-point", NULL, FS_AV_DICT_MATCH_CASE);
     if (t) {
         c->test_fail_point = (int64_t)strtoll(t->value, NULL, 10);
     }
@@ -300,14 +300,14 @@ static int ijkio_httphook_open(IjkURLContext *h, const char *arg, int flags, Ijk
         int inject_ret = 0;
 
         switch (ret) {
-            case IJKAVERROR_EXIT:
+            case FSAVERROR_EXIT:
                 goto fail;
         }
 
         c->app_io_ctrl.retry_counter++;
         inject_ret = ijkio_urlhook_call_inject(h);
         if (inject_ret) {
-            ret = IJKAVERROR_EXIT;
+            ret = FSAVERROR_EXIT;
             goto fail;
         }
 
@@ -337,7 +337,7 @@ static int ijkio_httphook_read(IjkURLContext *h, unsigned char *buf, int size)
 
     while ((active_reconnect || ret < 0) && c->logical_pos < c->logical_size && c->abort_request == 0) {
         switch (ret) {
-            case IJKAVERROR_EXIT:
+            case FSAVERROR_EXIT:
                 goto fail;
         }
 
@@ -379,9 +379,9 @@ static int64_t ijkio_httphook_reseek_at(IjkURLContext *h, int64_t pos, int whenc
     else if (whence == SEEK_END)
         pos += c->logical_size;
     else if (whence != SEEK_SET)
-        return IJKAVERROR(EINVAL);
+        return FSAVERROR(EINVAL);
     if (pos < 0)
-        return IJKAVERROR(EINVAL);
+        return FSAVERROR(EINVAL);
 
     ret = ijkio_httphook_reconnect_at(h, pos);
     if (ret) {
@@ -399,33 +399,33 @@ static int64_t ijkio_httphook_seek(IjkURLContext *h, int64_t pos, int whence)
     int     ret      = 0;
     int64_t seek_ret = -1;
 
-    if (whence == IJKAVSEEK_SIZE)
+    if (whence == FSAVSEEK_SIZE)
         return c->logical_size;
     else if ((whence == SEEK_CUR && pos == 0) ||
              (whence == SEEK_SET && pos == c->logical_pos))
         return c->logical_pos;
     else if ((c->logical_size < 0 && whence == SEEK_END))
-        return IJKAVERROR(ENOSYS);
+        return FSAVERROR(ENOSYS);
 
     c->app_io_ctrl.retry_counter = 0;
     ret = ijkio_urlhook_call_inject(h);
     if (ret) {
-        ret = IJKAVERROR_EXIT;
+        ret = FSAVERROR_EXIT;
         goto fail;
     }
 
     seek_ret = ijkio_httphook_reseek_at(h, pos, whence, c->app_io_ctrl.is_url_changed);
     while (seek_ret < 0 && c->abort_request == 0) {
         switch (seek_ret) {
-            case IJKAVERROR_EXIT:
-            case IJKAVERROR_EOF:
+            case FSAVERROR_EXIT:
+            case FSAVERROR_EOF:
                 goto fail;
         }
 
         c->app_io_ctrl.retry_counter++;
         ret = ijkio_urlhook_call_inject(h);
         if (ret) {
-            ret = IJKAVERROR_EXIT;
+            ret = FSAVERROR_EXIT;
             goto fail;
         }
 
@@ -452,7 +452,7 @@ static int ijkio_httphook_pause(IjkURLContext *h) {
     Context *c = h->priv_data;
     int             ret  = 0;
     if (!c || !c->inner || !c->inner->prot)
-        return IJKAVERROR(ENOSYS);
+        return FSAVERROR(ENOSYS);
     c->abort_request = 1;
 
     if (c->inner->prot->url_pause) {
@@ -466,7 +466,7 @@ static int ijkio_httphook_resume(IjkURLContext *h) {
     Context *c = h->priv_data;
     int             ret  = 0;
     if (!c || !c->inner || !c->inner->prot)
-        return IJKAVERROR(ENOSYS);
+        return FSAVERROR(ENOSYS);
 
     if (c->inner->prot->url_resume) {
         ret = c->inner->prot->url_resume(c->inner);

@@ -25,9 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-IJKFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size)
+FSFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size)
 {
-    IJKFF_Pipeline *pipeline = (IJKFF_Pipeline*) calloc(1, sizeof(IJKFF_Pipeline));
+    FSFF_Pipeline *pipeline = (FSFF_Pipeline*) calloc(1, sizeof(FSFF_Pipeline));
     if (!pipeline)
         return NULL;
 
@@ -41,7 +41,7 @@ IJKFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size)
     return pipeline;
 }
 
-void ffpipeline_free(IJKFF_Pipeline *pipeline)
+void ffpipeline_free(FSFF_Pipeline *pipeline)
 {
     if (!pipeline)
         return;
@@ -51,11 +51,11 @@ void ffpipeline_free(IJKFF_Pipeline *pipeline)
     }
 
     free(pipeline->opaque);
-    memset(pipeline, 0, sizeof(IJKFF_Pipeline));
+    memset(pipeline, 0, sizeof(FSFF_Pipeline));
     free(pipeline);
 }
 
-void ffpipeline_free_p(IJKFF_Pipeline **pipeline)
+void ffpipeline_free_p(FSFF_Pipeline **pipeline)
 {
     if (!pipeline)
         return;
@@ -63,22 +63,22 @@ void ffpipeline_free_p(IJKFF_Pipeline **pipeline)
     ffpipeline_free(*pipeline);
 }
 
-IJKFF_Pipenode* ffpipeline_open_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+FSFF_Pipenode* ffpipeline_open_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_open_video_decoder(pipeline, ffp);
 }
 
-IJKFF_Pipenode* ffpipeline_init_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+FSFF_Pipenode* ffpipeline_init_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_init_video_decoder(pipeline, ffp);
 }
 
-int ffpipeline_config_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+int ffpipeline_config_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_config_video_decoder(pipeline, ffp);
 }
 
-SDL_Aout *ffpipeline_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+SDL_Aout *ffpipeline_open_audio_output(FSFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_open_audio_output(pipeline, ffp);
 }

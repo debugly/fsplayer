@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKAVUTIL_IJKUTILS_H
-#define IJKAVUTIL_IJKUTILS_H
+#ifndef FSAVUTIL_IJKUTILS_H
+#define FSAVUTIL_IJKUTILS_H
 
 #include "ijktree.h"
 
@@ -51,38 +51,38 @@ typedef struct IjkCacheTreeInfo {
 
 /* error handling */
 #if EDOM > 0
-#define IJKAVERROR(e) (-(e))   ///< Returns a negative error code from a POSIX error code, to return from library functions.
-#define IJKAVUNERROR(e) (-(e)) ///< Returns a POSIX error code from a library function error return value.
+#define FSAVERROR(e) (-(e))   ///< Returns a negative error code from a POSIX error code, to return from library functions.
+#define FSAVUNERROR(e) (-(e)) ///< Returns a POSIX error code from a library function error return value.
 #else
 /* Some platforms have E* and errno already negated. */
-#define IJKAVERROR(e) (e)
-#define IJKAVUNERROR(e) (e)
+#define FSAVERROR(e) (e)
+#define FSAVUNERROR(e) (e)
 #endif
 
 #define FFERRTAG(a, b, c, d) (-(int)MKTAG(a, b, c, d))
-#define IJKAVERROR_BSF_NOT_FOUND      FFERRTAG(0xF8,'B','S','F') ///< Bitstream filter not found
-#define IJKAVERROR_BUG                FFERRTAG( 'B','U','G','!') ///< Internal bug, also see AVERROR_BUG2
-#define IJKAVERROR_BUFFER_TOO_SMALL   FFERRTAG( 'B','U','F','S') ///< Buffer too small
-#define IJKAVERROR_DECODER_NOT_FOUND  FFERRTAG(0xF8,'D','E','C') ///< Decoder not found
-#define IJKAVERROR_DEMUXER_NOT_FOUND  FFERRTAG(0xF8,'D','E','M') ///< Demuxer not found
-#define IJKAVERROR_ENCODER_NOT_FOUND  FFERRTAG(0xF8,'E','N','C') ///< Encoder not found
-#define IJKAVERROR_EOF                FFERRTAG( 'E','O','F',' ') ///< End of file
-#define IJKAVERROR_EXIT               FFERRTAG( 'E','X','I','T') ///< Immediate exit was requested; the called function should not be restarted
-#define IJKAVERROR_EXTERNAL           FFERRTAG( 'E','X','T',' ') ///< Generic error in an external library
-#define IJKAVERROR_FILTER_NOT_FOUND   FFERRTAG(0xF8,'F','I','L') ///< Filter not found
-#define IJKAVERROR_INVALIDDATA        FFERRTAG( 'I','N','D','A') ///< Invalid data found when processing input
-#define IJKAVERROR_MUXER_NOT_FOUND    FFERRTAG(0xF8,'M','U','X') ///< Muxer not found
-#define IJKAVERROR_OPTION_NOT_FOUND   FFERRTAG(0xF8,'O','P','T') ///< Option not found
-#define IJKAVERROR_PATCHWELCOME       FFERRTAG( 'P','A','W','E') ///< Not yet implemented in FFmpeg, patches welcome
-#define IJKAVERROR_PROTOCOL_NOT_FOUND FFERRTAG(0xF8,'P','R','O') ///< Protocol not found
-#define IJKAVERROR_STREAM_NOT_FOUND   FFERRTAG(0xF8,'S','T','R') ///< Stream not found
+#define FSAVERROR_BSF_NOT_FOUND      FFERRTAG(0xF8,'B','S','F') ///< Bitstream filter not found
+#define FSAVERROR_BUG                FFERRTAG( 'B','U','G','!') ///< Internal bug, also see AVERROR_BUG2
+#define FSAVERROR_BUFFER_TOO_SMALL   FFERRTAG( 'B','U','F','S') ///< Buffer too small
+#define FSAVERROR_DECODER_NOT_FOUND  FFERRTAG(0xF8,'D','E','C') ///< Decoder not found
+#define FSAVERROR_DEMUXER_NOT_FOUND  FFERRTAG(0xF8,'D','E','M') ///< Demuxer not found
+#define FSAVERROR_ENCODER_NOT_FOUND  FFERRTAG(0xF8,'E','N','C') ///< Encoder not found
+#define FSAVERROR_EOF                FFERRTAG( 'E','O','F',' ') ///< End of file
+#define FSAVERROR_EXIT               FFERRTAG( 'E','X','I','T') ///< Immediate exit was requested; the called function should not be restarted
+#define FSAVERROR_EXTERNAL           FFERRTAG( 'E','X','T',' ') ///< Generic error in an external library
+#define FSAVERROR_FILTER_NOT_FOUND   FFERRTAG(0xF8,'F','I','L') ///< Filter not found
+#define FSAVERROR_INVALIDDATA        FFERRTAG( 'I','N','D','A') ///< Invalid data found when processing input
+#define FSAVERROR_MUXER_NOT_FOUND    FFERRTAG(0xF8,'M','U','X') ///< Muxer not found
+#define FSAVERROR_OPTION_NOT_FOUND   FFERRTAG(0xF8,'O','P','T') ///< Option not found
+#define FSAVERROR_PATCHWELCOME       FFERRTAG( 'P','A','W','E') ///< Not yet implemented in FFmpeg, patches welcome
+#define FSAVERROR_PROTOCOL_NOT_FOUND FFERRTAG(0xF8,'P','R','O') ///< Protocol not found
+#define FSAVERROR_STREAM_NOT_FOUND   FFERRTAG(0xF8,'S','T','R') ///< Stream not found
 
 /**
  * ORing this as the "whence" parameter to a seek function causes it to
  * return the filesize without seeking anywhere. Supporting this is optional.
  * If it is not supported then the seek function will return <0.
  */
-#define IJKAVSEEK_SIZE 0x10000
+#define FSAVSEEK_SIZE 0x10000
 
 /**
  * Passing this flag as the "whence" parameter to a seek function causes it to
@@ -90,9 +90,9 @@ typedef struct IjkCacheTreeInfo {
  * means that can be extremely slow.
  * This may be ignored by the seek code.
  */
-#define IJKAVSEEK_FORCE 0x20000
+#define FSAVSEEK_FORCE 0x20000
 
 void ijk_av_freep(void *arg);
 
 int ijk_av_strstart(const char *str, const char *pfx, const char **ptr);
-#endif  // IJKAVUTIL_IJKUTILS_H
+#endif  // FSAVUTIL_IJKUTILS_H

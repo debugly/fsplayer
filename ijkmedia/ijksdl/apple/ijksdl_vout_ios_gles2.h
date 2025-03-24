@@ -25,10 +25,10 @@
 #include "ijksdl/ijksdl_vout.h"
 #include "../ijksdl_gpu.h"
 
-#import "IJKVideoRenderingProtocol.h"
+#import "FSVideoRenderingProtocol.h"
 
 #if TARGET_OS_OSX
-@protocol IJKSDLSubtitleTextureWrapper <NSObject>
+@protocol FSSDLSubtitleTextureWrapper <NSObject>
 
 @property(nonatomic) uint32_t texture;
 @property(nonatomic) int w;
@@ -36,10 +36,10 @@
 
 @end
 
-id<IJKSDLSubtitleTextureWrapper> IJKSDL_crate_openglTextureWrapper(uint32_t texture, int w, int h);
+id<FSSDLSubtitleTextureWrapper> FSSDL_crate_openglTextureWrapper(uint32_t texture, int w, int h);
 
 // Normalized Device Coordinates
-static inline CGRect IJKSDL_make_openGL_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
+static inline CGRect FSSDL_make_openGL_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
 {
     float swidth  = frame.w * scale;
     float sheight = frame.h * scale;
@@ -87,7 +87,7 @@ static inline CGRect IJKSDL_make_openGL_NDC(SDL_Rectangle frame, float scale, CG
 #endif
 
 // Normalized Device Coordinates
-static inline CGRect IJKSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
+static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
 {
     float swidth  = frame.w * scale;
     float sheight = frame.h * scale;
@@ -135,6 +135,6 @@ static inline CGRect IJKSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGS
 }
 
 SDL_Vout *SDL_VoutIos_CreateForGLES2(void);
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<IJKVideoRenderingProtocol>* view);
+void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view);
 SDL_GPU *SDL_CreateGPU_WithContext(id context);
 

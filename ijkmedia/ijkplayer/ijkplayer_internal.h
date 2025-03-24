@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKPLAYER_ANDROID__IJKPLAYER_INTERNAL_H
-#define IJKPLAYER_ANDROID__IJKPLAYER_INTERNAL_H
+#ifndef FSPLAYER_ANDROID__IJKPLAYER_INTERNAL_H
+#define FSPLAYER_ANDROID__IJKPLAYER_INTERNAL_H
 
 #include <assert.h>
 #include "ijksdl/ijksdl.h"

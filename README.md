@@ -54,13 +54,13 @@ ijk media player based on [ffplay](http://ffmpeg.org)
 - integration via Swift Package Manger:
 
 ```
-https://github.com/debugly/IJKMediaPlayer-SPM.git
+https://github.com/debugly/FSMediaPlayer-SPM.git
 ```
 
 - integration via Cocoapods:
 
 ```
-pod "IJKMediaPlayerKit", :podspec => 'https://github.com/debugly/ijkplayer/releases/download/k0.12.0/IJKMediaPlayerKit.spec.json'
+pod "FSMediaPlayerKit", :podspec => 'https://github.com/debugly/ijkplayer/releases/download/k0.12.0/FSMediaPlayerKit.spec.json'
 ```
 
 ## Development
@@ -84,14 +84,14 @@ pod install --project-directory=./examples/ios
 pod install --project-directory=./examples/tvos
 
 # run iOS demo
-open ./examples/ios/IJKMediaDemo.xcworkspace
+open ./examples/ios/FSMediaDemo.xcworkspace
 # run macOS demo
-open ./examples/macos/IJKMediaMacDemo.xcworkspace
+open ./examples/macos/FSMediaMacDemo.xcworkspace
 # run tvOS demo
-open ./examples/tvos/IJKMediaTVDemo.xcworkspace
+open ./examples/tvos/FSMediaTVDemo.xcworkspace
 ```
 
-if you want build your IJKMediaPlayerKit.framework, you need enter examples/{plat} folder, then exec `./build-framework.sh`
+if you want build your FSMediaPlayerKit.framework, you need enter examples/{plat} folder, then exec `./build-framework.sh`
 
 ## Support (支持)
 
@@ -131,7 +131,7 @@ android/example is based on or derives from projects below:
 - GPL
   - [android-ndk-profiler](https://github.com/richq/android-ndk-profiler) (not included by default)
 
-ios/IJKMediaDemo is based on or derives from projects below:
+ios/FSMediaDemo is based on or derives from projects below:
 
 - Unknown license
   - [iOS7-BarcodeScanner](https://github.com/jpwiddy/iOS7-BarcodeScanner)

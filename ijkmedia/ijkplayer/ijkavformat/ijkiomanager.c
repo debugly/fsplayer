@@ -148,7 +148,7 @@ void ijkio_manager_destroy(IjkIOManagerContext *h)
         h->ijkio_app_ctx->cache_info_map = NULL;
 
         if (h->ijkio_app_ctx->threadpool_ctx) {
-            ijk_threadpool_destroy(h->ijkio_app_ctx->threadpool_ctx, IJK_IMMEDIATE_SHUTDOWN);
+            ijk_threadpool_destroy(h->ijkio_app_ctx->threadpool_ctx, FS_IMMEDIATE_SHUTDOWN);
         }
 
         if (0 != strlen(h->ijkio_app_ctx->cache_file_path)) {
@@ -198,7 +198,7 @@ static void ijkio_manager_set_all_ctx_pause(IjkIOManagerContext *h) {
 
         if (url_ctx->prot->url_pause)
             url_ctx->prot->url_pause(url_ctx);
-        url_ctx->state = IJKURL_PAUSED;
+        url_ctx->state = FSURL_PAUSED;
     }
 }
 
@@ -394,22 +394,22 @@ int ijkio_manager_io_open(IjkIOManagerContext *h, const char *url, int flags, Ij
     }
 
     IjkAVDictionaryEntry *t = NULL;
-    t = ijk_av_dict_get(*options, "cache_file_path", NULL, IJK_AV_DICT_MATCH_CASE);
+    t = ijk_av_dict_get(*options, "cache_file_path", NULL, FS_AV_DICT_MATCH_CASE);
     if (t) {
         strcpy(h->ijkio_app_ctx->cache_file_path, t->value);
     }
 
-    t = ijk_av_dict_get(*options, "cache_map_path", NULL, IJK_AV_DICT_MATCH_CASE);
+    t = ijk_av_dict_get(*options, "cache_map_path", NULL, FS_AV_DICT_MATCH_CASE);
     if (t) {
         strcpy(h->cache_map_path, t->value);
 
-        t = ijk_av_dict_get(*options, "auto_save_map", NULL, IJK_AV_DICT_MATCH_CASE);
+        t = ijk_av_dict_get(*options, "auto_save_map", NULL, FS_AV_DICT_MATCH_CASE);
         if (t) {
             h->auto_save_map = (int)strtol(t->value, NULL, 10);
         }
 
         if (h->ijkio_app_ctx->cache_info_map && !ijk_map_size(h->ijkio_app_ctx->cache_info_map)) {
-            t = ijk_av_dict_get(*options, "parse_cache_map", NULL, IJK_AV_DICT_MATCH_CASE);
+            t = ijk_av_dict_get(*options, "parse_cache_map", NULL, FS_AV_DICT_MATCH_CASE);
             if (t) {
                 parse_cache_map_file = (int)strtol(t->value, NULL, 10);
                 if (parse_cache_map_file) {
@@ -427,7 +427,7 @@ int ijkio_manager_io_open(IjkIOManagerContext *h, const char *url, int flags, Ij
         inner->ijkio_app_ctx = h->ijkio_app_ctx;
         if (h->ijk_ctx_map) {
             ijkio_manager_set_all_ctx_pause(h);
-            inner->state = IJKURL_STARTED;
+            inner->state = FSURL_STARTED;
             ijk_map_put(h->ijk_ctx_map, (int64_t)(intptr_t)h->cur_ffmpeg_ctx, inner);
         }
         ret = inner->prot->url_open2(inner, url, flags, options);
@@ -458,14 +458,14 @@ int ijkio_manager_io_read(IjkIOManagerContext *h, unsigned char *buf, int size) 
 
     IjkURLContext *inner = ijk_map_get(h->ijk_ctx_map, (int64_t)(intptr_t)h->cur_ffmpeg_ctx);
     if (inner && inner->prot && inner->prot->url_read) {
-        if (inner->state == IJKURL_PAUSED) {
+        if (inner->state == FSURL_PAUSED) {
             if (inner->prot->url_resume) {
                 ret = inner->prot->url_resume(inner);
                 if (ret != 0) {
                     return ret;
                 }
             }
-            inner->state = IJKURL_STARTED;
+            inner->state = FSURL_STARTED;
         }
         ret = inner->prot->url_read(inner, buf, size);
     }
@@ -481,16 +481,16 @@ int64_t ijkio_manager_io_seek(IjkIOManagerContext *h, int64_t offset, int whence
 
     IjkURLContext *inner = ijk_map_get(h->ijk_ctx_map, (int64_t)(intptr_t)h->cur_ffmpeg_ctx);
     if (inner && inner->prot && inner->prot->url_seek) {
-        if (inner->state == IJKURL_PAUSED) {
+        if (inner->state == FSURL_PAUSED) {
             if (inner->prot->url_resume) {
                 ret = (int64_t)inner->prot->url_resume(inner);
                 if (ret < 0) {
                     return ret;
                 }
             }
-            inner->state = IJKURL_STARTED;
+            inner->state = FSURL_STARTED;
         }
-        ret = inner->prot->url_seek(inner, offset, whence & ~IJKAVSEEK_FORCE);
+        ret = inner->prot->url_seek(inner, offset, whence & ~FSAVSEEK_FORCE);
     }
 
     return ret;

@@ -42,8 +42,8 @@ static void *ijk_threadpool_thread(void *pool_ctx)
             pthread_cond_wait(&(ctx->notify), &(ctx->lock));
         }
 
-        if((ctx->shutdown == IJK_IMMEDIATE_SHUTDOWN) ||
-           ((ctx->shutdown == IJK_LEISURELY_SHUTDOWN) &&
+        if((ctx->shutdown == FS_IMMEDIATE_SHUTDOWN) ||
+           ((ctx->shutdown == FS_LEISURELY_SHUTDOWN) &&
             (ctx->pending_count == 0))) {
                break;
            }
@@ -144,16 +144,16 @@ int ijk_threadpool_add(IjkThreadPoolContext *ctx, Runable function,
     int next;
 
     if(ctx == NULL || function == NULL) {
-        return IJK_THREADPOOL_INVALID;
+        return FS_THREADPOOL_INVALID;
     }
 
     if(pthread_mutex_lock(&(ctx->lock)) != 0) {
-        return IJK_THREADPOOL_LOCK_FAILURE;
+        return FS_THREADPOOL_LOCK_FAILURE;
     }
 
     if (ctx->pending_count == MAX_QUEUE || ctx->pending_count == ctx->queue_size) {
         pthread_mutex_unlock(&ctx->lock);
-        return IJK_THREADPOOL_QUEUE_FULL;
+        return FS_THREADPOOL_QUEUE_FULL;
     }
 
     if(ctx->pending_count == ctx->queue_size - 1) {
@@ -169,7 +169,7 @@ int ijk_threadpool_add(IjkThreadPoolContext *ctx, Runable function,
     do {
         /* Are we shutting down ? */
         if(ctx->shutdown) {
-            err = IJK_THREADPOOL_SHUTDOWN;
+            err = FS_THREADPOOL_SHUTDOWN;
             break;
         }
 
@@ -182,13 +182,13 @@ int ijk_threadpool_add(IjkThreadPoolContext *ctx, Runable function,
 
         /* pthread_cond_broadcast */
         if(pthread_cond_signal(&(ctx->notify)) != 0) {
-            err = IJK_THREADPOOL_LOCK_FAILURE;
+            err = FS_THREADPOOL_LOCK_FAILURE;
             break;
         }
     } while(0);
 
     if(pthread_mutex_unlock(&ctx->lock) != 0) {
-        err = IJK_THREADPOOL_LOCK_FAILURE;
+        err = FS_THREADPOOL_LOCK_FAILURE;
     }
 
     return err;
@@ -211,17 +211,17 @@ int ijk_threadpool_destroy(IjkThreadPoolContext *ctx, int flags)
     int i, err = 0;
 
     if(ctx == NULL) {
-        return IJK_THREADPOOL_INVALID;
+        return FS_THREADPOOL_INVALID;
     }
 
     if(pthread_mutex_lock(&(ctx->lock)) != 0) {
-        return IJK_THREADPOOL_LOCK_FAILURE;
+        return FS_THREADPOOL_LOCK_FAILURE;
     }
 
     do {
         /* Already shutting down */
         if(ctx->shutdown) {
-            err = IJK_THREADPOOL_SHUTDOWN;
+            err = FS_THREADPOOL_SHUTDOWN;
             break;
         }
 
@@ -230,14 +230,14 @@ int ijk_threadpool_destroy(IjkThreadPoolContext *ctx, int flags)
         /* Wake up all worker threads */
         if((pthread_cond_broadcast(&(ctx->notify)) != 0) ||
            (pthread_mutex_unlock(&(ctx->lock)) != 0)) {
-            err = IJK_THREADPOOL_LOCK_FAILURE;
+            err = FS_THREADPOOL_LOCK_FAILURE;
             break;
         }
 
         /* Join all worker thread */
         for(i = 0; i < ctx->thread_count; i++) {
             if(pthread_join(ctx->threads[i], NULL) != 0) {
-                err = IJK_THREADPOOL_THREAD_FAILURE;
+                err = FS_THREADPOOL_THREAD_FAILURE;
             }
         }
     } while(0);

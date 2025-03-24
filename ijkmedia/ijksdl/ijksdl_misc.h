@@ -22,25 +22,25 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_MISC_H
-#define IJKSDL__IJKSDL_MISC_H
+#ifndef FSSDL__IJKSDL_MISC_H
+#define FSSDL__IJKSDL_MISC_H
 
 #include <stdlib.h>
 #include <memory.h>
 
-#ifndef IJKMAX
-#define IJKMAX(a, b)    ((a) > (b) ? (a) : (b))
+#ifndef FSMAX
+#define FSMAX(a, b)    ((a) > (b) ? (a) : (b))
 #endif
 
-#ifndef IJKMIN
-#define IJKMIN(a, b)    ((a) < (b) ? (a) : (b))
+#ifndef FSMIN
+#define FSMIN(a, b)    ((a) < (b) ? (a) : (b))
 #endif
 
-#ifndef IJKALIGN
-#define IJKALIGN(x, align) ((( x ) + (align) - 1) / (align) * (align))
+#ifndef FSALIGN
+#define FSALIGN(x, align) ((( x ) + (align) - 1) / (align) * (align))
 #endif
 
-#define IJK_CHECK_RET(condition__, retval__, ...) \
+#define FS_CHECK_RET(condition__, retval__, ...) \
     if (!(condition__)) { \
         ALOGE(__VA_ARGS__); \
         return (retval__); \

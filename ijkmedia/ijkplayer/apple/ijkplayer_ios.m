@@ -52,7 +52,7 @@ fail:
     return NULL;
 }
 
-static void ijkmp_ios_set_glview_l(IjkMediaPlayer *mp, UIView<IJKVideoRenderingProtocol>* glView)
+static void ijkmp_ios_set_glview_l(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView)
 {
     assert(mp);
     assert(mp->ffplayer);
@@ -62,7 +62,7 @@ static void ijkmp_ios_set_glview_l(IjkMediaPlayer *mp, UIView<IJKVideoRenderingP
     mp->ffplayer->gpu = SDL_CreateGPU_WithContext(glView.context);
 }
 
-void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<IJKVideoRenderingProtocol>* glView)
+void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView)
 {
     assert(mp);
     MPTRACE("ijkmp_ios_set_view(glView=%p)\n", (__bridge void*)glView);

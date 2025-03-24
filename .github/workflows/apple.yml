@@ -1,4 +1,4 @@
-name: apple-ijk-framework
+name: apple-xcframework
 
 on:
   # push:
@@ -14,7 +14,7 @@ on:
         required: false
 jobs:
   build:
-    name: build-apple-ijk-framework
+    name: build-apple-xcframework
     runs-on: macos-14
 
     steps:
@@ -65,14 +65,14 @@ jobs:
         cp CHANGELOG.md dist 
         cp README.md dist
         cp COPYING.LGPLv2.1 dist/LICENSE
-        cp -pPR examples/xcframewrok/IJKMediaPlayerKit.xcframework dist
+        cp -pPR examples/xcframewrok/FSPlayer.xcframework dist
         cd dist
-        zip -ryq IJKMediaPlayerKit.zip ./*
+        zip -ryq FSPlayer.zip ./*
     - name: spm checksum
-      run: swift package compute-checksum dist/IJKMediaPlayerKit.zip
+      run: swift package compute-checksum dist/FSPlayer.zip
     - name: Upload Release Asset
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         branch=$(git branch --show-current)
-        gh release create ${{ env.TAG }} --target $branch -t "👏👏 IJKMediaPlayerKit ${{ env.TAG }}" dist/IJKMediaPlayerKit.zip examples/xcframewrok/IJKMediaPlayerKit.spec.json
+        gh release create ${{ env.TAG }} --target $branch -t "👏👏 FSPlayer ${{ env.TAG }}" dist/FSPlayer.zip examples/xcframewrok/FSPlayer.spec.json

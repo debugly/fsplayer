@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKAVFORMAT_IJKIOAPPLICATION_H
-#define IJKAVFORMAT_IJKIOAPPLICATION_H
+#ifndef FSAVFORMAT_IJKIOAPPLICATION_H
+#define FSAVFORMAT_IJKIOAPPLICATION_H
 
 #include "ijkplayer/ijkavutil/ijkutils.h"
 #include "ijkplayer/ijkavutil/ijkthreadpool.h"
@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 #define CACHE_FILE_PATH_MAX_LEN        512
-#define IJKIOAPP_EVENT_CACHE_STATISTIC 0x1003  //IJKIOAppCacheStatistic share with avutil/application.h
+#define FSIOAPP_EVENT_CACHE_STATISTIC 0x1003  //FSIOAppCacheStatistic share with avutil/application.h
 
 typedef struct IjkIOAppCacheStatistic {
     int64_t cache_physical_pos;
@@ -67,4 +67,4 @@ void ijkio_application_closep(IjkIOApplicationContext **ph);
 
 void ijkio_application_on_cache_statistic(IjkIOApplicationContext *h, IjkIOAppCacheStatistic *statistic);
 
-#endif /* IJKAVFORMAT_IJKIOAPPLICATION_H */
+#endif /* FSAVFORMAT_IJKIOAPPLICATION_H */

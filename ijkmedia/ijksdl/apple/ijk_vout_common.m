@@ -1,6 +1,6 @@
 //
 //  ijk_vout_common.m
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2023/7/3.
 //

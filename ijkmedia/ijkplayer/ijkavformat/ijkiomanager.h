@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKAVFORMAT_IJKIOMANAGER_H
-#define IJKAVFORMAT_IJKIOMANAGER_H
+#ifndef FSAVFORMAT_IJKIOMANAGER_H
+#define FSAVFORMAT_IJKIOMANAGER_H
 
 #include "ijkiourl.h"
 #include "ijkioapplication.h"
@@ -52,4 +52,4 @@ int ijkio_manager_io_read(IjkIOManagerContext *h, unsigned char *buf, int size);
 int64_t ijkio_manager_io_seek(IjkIOManagerContext *h, int64_t offset, int whence);
 int ijkio_manager_io_close(IjkIOManagerContext *h);
 
-#endif  // IJKAVFORMAT_IJKIOMANAGER_H
+#endif  // FSAVFORMAT_IJKIOMANAGER_H

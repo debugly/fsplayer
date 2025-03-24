@@ -52,7 +52,7 @@ IjkAVDictionaryEntry *ijk_av_dict_get(const IjkAVDictionary *m, const char *key,
 
     for (; i < m->count; i++) {
         const char *s = m->elems[i].key;
-        if (flags & IJK_AV_DICT_MATCH_CASE)
+        if (flags & FS_AV_DICT_MATCH_CASE)
             for (j = 0; s[j] == key[j] && key[j]; j++)
                 ;
         else
@@ -60,7 +60,7 @@ IjkAVDictionaryEntry *ijk_av_dict_get(const IjkAVDictionary *m, const char *key,
                 ;
         if (key[j])
             continue;
-        if (s[j] && !(flags & IJK_AV_DICT_IGNORE_SUFFIX))
+        if (s[j] && !(flags & FS_AV_DICT_IGNORE_SUFFIX))
             continue;
         return &m->elems[i];
     }
@@ -74,14 +74,14 @@ int ijk_av_dict_set(IjkAVDictionary **pm, const char *key, const char *value,
     IjkAVDictionaryEntry *tag = NULL;
     char *oldval = NULL, *copy_key = NULL, *copy_value = NULL;
 
-    if (!(flags & IJK_AV_DICT_MULTIKEY)) {
+    if (!(flags & FS_AV_DICT_MULTIKEY)) {
         tag = ijk_av_dict_get(m, key, NULL, flags);
     }
-    if (flags & IJK_AV_DICT_DONT_STRDUP_KEY)
+    if (flags & FS_AV_DICT_DONT_STRDUP_KEY)
         copy_key = (void *)key;
     else
         copy_key = strdup(key);
-    if (flags & IJK_AV_DICT_DONT_STRDUP_VAL)
+    if (flags & FS_AV_DICT_DONT_STRDUP_VAL)
         copy_value = (void *)value;
     else if (copy_key)
         copy_value = strdup(value);
@@ -91,12 +91,12 @@ int ijk_av_dict_set(IjkAVDictionary **pm, const char *key, const char *value,
         goto err_out;
 
     if (tag) {
-        if (flags & IJK_AV_DICT_DONT_OVERWRITE) {
+        if (flags & FS_AV_DICT_DONT_OVERWRITE) {
             free(copy_key);
             free(copy_value);
             return 0;
         }
-        if (flags & IJK_AV_DICT_APPEND)
+        if (flags & FS_AV_DICT_APPEND)
             oldval = tag->value;
         else
             free(tag->value);
@@ -112,7 +112,7 @@ int ijk_av_dict_set(IjkAVDictionary **pm, const char *key, const char *value,
     if (copy_value) {
         m->elems[m->count].key = copy_key;
         m->elems[m->count].value = copy_value;
-        if (oldval && flags & IJK_AV_DICT_APPEND) {
+        if (oldval && flags & FS_AV_DICT_APPEND) {
             size_t len = strlen(oldval) + strlen(copy_value) + 1;
             char *newval = (char *)calloc(1, len);
             if (!newval)
@@ -149,7 +149,7 @@ int ijk_av_dict_set_int(IjkAVDictionary **pm, const char *key, int64_t value,
 {
     char valuestr[22];
     snprintf(valuestr, sizeof(valuestr), "%"PRId64, value);
-    flags &= ~IJK_AV_DICT_DONT_STRDUP_VAL;
+    flags &= ~FS_AV_DICT_DONT_STRDUP_VAL;
     return ijk_av_dict_set(pm, key, valuestr, flags);
 }
 
@@ -171,7 +171,7 @@ int ijk_av_dict_copy(IjkAVDictionary **dst, const IjkAVDictionary *src, int flag
 {
     IjkAVDictionaryEntry *t = NULL;
 
-    while ((t = ijk_av_dict_get(src, "", t, IJK_AV_DICT_IGNORE_SUFFIX))) {
+    while ((t = ijk_av_dict_get(src, "", t, FS_AV_DICT_IGNORE_SUFFIX))) {
         int ret = ijk_av_dict_set(dst, t->key, t->value, flags);
         if (ret < 0)
             return ret;

@@ -25,29 +25,29 @@
 #include "../ff_ffpipenode.h"
 #include "../ff_ffplay.h"
 
-struct IJKFF_Pipenode_Opaque {
+struct FSFF_Pipenode_Opaque {
     FFPlayer *ffp;
 };
 
-static void func_destroy(IJKFF_Pipenode *node)
+static void func_destroy(FSFF_Pipenode *node)
 {
     // do nothing
 }
 
-static int func_run_sync(IJKFF_Pipenode *node)
+static int func_run_sync(FSFF_Pipenode *node)
 {
-    IJKFF_Pipenode_Opaque *opaque = node->opaque;
+    FSFF_Pipenode_Opaque *opaque = node->opaque;
 
     return ffp_video_thread(opaque->ffp);
 }
 
-IJKFF_Pipenode *ffpipenode_create_video_decoder_from_ffplay(FFPlayer *ffp)
+FSFF_Pipenode *ffpipenode_create_video_decoder_from_ffplay(FFPlayer *ffp)
 {
-    IJKFF_Pipenode *node = ffpipenode_alloc(sizeof(IJKFF_Pipenode_Opaque));
+    FSFF_Pipenode *node = ffpipenode_alloc(sizeof(FSFF_Pipenode_Opaque));
     if (!node)
         return node;
 
-    IJKFF_Pipenode_Opaque *opaque = node->opaque;
+    FSFF_Pipenode_Opaque *opaque = node->opaque;
     opaque->ffp         = ffp;
 
     node->func_destroy  = func_destroy;

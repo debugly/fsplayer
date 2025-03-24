@@ -1,6 +1,6 @@
 //
 //  ff_subtitle_def.c
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2024/3/5.
 //

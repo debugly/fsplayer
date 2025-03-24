@@ -1,14 +1,14 @@
 //
 //  ijksdl_gpu_metal.m
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2024/4/14.
 //
 
 #import "ijksdl_gpu_metal.h"
 #import <MetalKit/MetalKit.h>
-#import "IJKMetalFBO.h"
-#import "IJKMetalSubtitlePipeline.h"
+#import "FSMetalFBO.h"
+#import "FSMetalSubtitlePipeline.h"
 #import "ijksdl_gpu.h"
 #include <libavutil/mem.h>
 #import "ijksdl_vout_ios_gles2.h"
@@ -25,12 +25,12 @@ typedef struct SDL_TextureOverlay_Opaque_Metal {
 API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 typedef struct API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0)) SDL_FBOOverlay_Opaque_Metal {
     SDL_TextureOverlay *texture;
-    IJKMetalFBO* fbo;
+    FSMetalFBO* fbo;
     id<MTLCommandQueue>commandQueue;
     id<MTLRenderCommandEncoder> renderEncoder;
     id<MTLParallelRenderCommandEncoder> parallelRenderEncoder;
     id<MTLCommandBuffer> commandBuffer;
-    IJKMetalSubtitlePipeline*subPipeline;
+    FSMetalSubtitlePipeline*subPipeline;
 } SDL_FBOOverlay_Opaque_Metal;
 
 static void* getTexture(SDL_TextureOverlay *overlay);
@@ -212,7 +212,7 @@ static SDL_FBOOverlay *createMetalFBO(id<MTLDevice> device, int w, int h)
         }
     }
     if (!opaque->fbo) {
-        opaque->fbo = [[IJKMetalFBO alloc] init:device size:size];
+        opaque->fbo = [[FSMetalFBO alloc] init:device size:size];
     }
     opaque->commandQueue = [device newCommandQueue];
     overlay->opaque = (void *)opaque;
@@ -235,7 +235,7 @@ static void beginDraw_fbo(SDL_GPU *gpu, SDL_FBOOverlay *overlay, int ass)
     } else {
         if (!fop->subPipeline) {
             if (@available(macOS 10.13, *)) {
-                IJKMetalSubtitlePipeline *subPipeline = [[IJKMetalSubtitlePipeline alloc] initWithDevice:gop->device inFormat:IJKMetalSubtitleInFormatA8 outFormat:IJKMetalSubtitleOutFormatDIRECT];
+                FSMetalSubtitlePipeline *subPipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:gop->device inFormat:FSMetalSubtitleInFormatA8 outFormat:FSMetalSubtitleOutFormatDIRECT];
                 if ([subPipeline createRenderPipelineIfNeed]) {
                     fop->subPipeline = subPipeline;
                 }
@@ -267,7 +267,7 @@ static void drawTexture_fbo(SDL_GPU *gpu, SDL_FBOOverlay *foverlay, SDL_TextureO
     
     SDL_FBOOverlay_Opaque_Metal *fop = foverlay->opaque;
     CGSize viewport = [fop->fbo size];
-    CGRect rect = IJKSDL_make_metal_NDC(frame, toverlay->scale, viewport);
+    CGRect rect = FSSDL_make_metal_NDC(frame, toverlay->scale, viewport);
     [fop->subPipeline updateSubtitleVertexIfNeed:rect];
     id<MTLTexture>texture = (__bridge id<MTLTexture>)toverlay->getTexture(toverlay);
     [fop->subPipeline drawTexture:texture encoder:fop->renderEncoder colors:toverlay->palette];

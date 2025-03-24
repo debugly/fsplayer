@@ -1,0 +1,53 @@
+//
+//  FSPlayerKit.h
+//  FSPlayerKit
+//
+//  Created by Justin Qian on 2021/9/30.
+//
+
+#ifndef FSMediaPlayerKit_h
+#define FSMediaPlayerKit_h
+
+
+#if TARGET_OS_IOS || TARGET_OS_TV
+#import <UIKit/UIKit.h>
+#else
+#import <AppKit/AppKit.h>
+#endif
+
+//! Project version number for FSMediaMacFramework.
+FOUNDATION_EXPORT double FSMediaMacFrameworkVersionNumber;
+
+//! Project version string for FSMediaMacFramework.
+FOUNDATION_EXPORT const unsigned char FSMediaMacFrameworkVersionString[];
+
+#import <FSPlayer/FSMediaPlayback.h>
+#import <FSPlayer/FSFFMonitor.h>
+#import <FSPlayer/FSFFOptions.h>
+#import <FSPlayer/FSPlayer.h>
+#import <FSPlayer/FSMediaModule.h>
+#import <FSPlayer/FSNotificationManager.h>
+#import <FSPlayer/FSKVOController.h>
+#import <FSPlayer/FSVideoRenderingProtocol.h>
+#import <FSPlayer/FSInternalRenderView.h>
+
+// backward compatible for old names
+#define FSMediaPlaybackIsPreparedToPlayDidChangeNotification FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification
+#define FSMoviePlayerLoadStateDidChangeNotification FSMPMoviePlayerLoadStateDidChangeNotification
+#define FSMoviePlayerPlaybackDidFinishNotification FSMPMoviePlayerPlaybackDidFinishNotification
+#define FSMoviePlayerPlaybackDidFinishReasonUserInfoKey FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey
+#define FSMoviePlayerPlaybackStateDidChangeNotification FSMPMoviePlayerPlaybackStateDidChangeNotification
+#define FSMoviePlayerIsAirPlayVideoActiveDidChangeNotification FSMPMoviePlayerIsAirPlayVideoActiveDidChangeNotification
+#define FSMoviePlayerVideoDecoderOpenNotification FSMPMoviePlayerVideoDecoderOpenNotification
+#define FSMoviePlayerFirstVideoFrameRenderedNotification FSMPMoviePlayerFirstVideoFrameRenderedNotification
+#define FSMoviePlayerFirstAudioFrameRenderedNotification FSMPMoviePlayerFirstAudioFrameRenderedNotification
+#define FSMoviePlayerFirstAudioFrameDecodedNotification FSMPMoviePlayerFirstAudioFrameDecodedNotification
+#define FSMoviePlayerFirstVideoFrameDecodedNotification FSMPMoviePlayerFirstVideoFrameDecodedNotification
+#define FSMoviePlayerOpenInputNotification FSMPMoviePlayerOpenInputNotification
+#define FSMoviePlayerFindStreamInfoNotification FSMPMoviePlayerFindStreamInfoNotification
+#define FSMoviePlayerComponentOpenNotification FSMPMoviePlayerComponentOpenNotification
+#define FSMPMoviePlayerAccurateSeekCompleteNotification FSMPMoviePlayerAccurateSeekCompleteNotification
+#define FSMoviePlayerSeekAudioStartNotification FSMPMoviePlayerSeekAudioStartNotification
+#define FSMoviePlayerSeekVideoStartNotification FSMPMoviePlayerSeekVideoStartNotification
+#define FSMPMoviePlayerSelectedStreamDidChangeNotification FSMPMoviePlayerSelectedStreamDidChangeNotification
+#endif /* FSMediaPlayerKit_h */

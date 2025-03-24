@@ -111,9 +111,9 @@
 // static const AVOption ffp_context_options[] = ...
 #include "ff_ffplay_options.h"
 
-#define IJKVERSION_GET_MAJOR(x)     ((x >> 16) & 0xFF)
-#define IJKVERSION_GET_MINOR(x)     ((x >>  8) & 0xFF)
-#define IJKVERSION_GET_MICRO(x)     ((x      ) & 0xFF)
+#define FSVERSION_GET_MAJOR(x)     ((x >> 16) & 0xFF)
+#define FSVERSION_GET_MINOR(x)     ((x >>  8) & 0xFF)
+#define FSVERSION_GET_MICRO(x)     ((x      ) & 0xFF)
 
 #if CONFIG_AUDIO_AVFILTER
 static inline
@@ -165,33 +165,33 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
 /*
  fix crash by xql: seek continually beyound duration.
  * thread #36, stop reason = EXC_BAD_ACCESS (code=1, address=0x3948cffd0)
-   * frame #0: 0x000000010650e31c IJKMediaPlayerKit`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
-     frame #1: 0x0000000106335878 IJKMediaPlayerKit`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
-     frame #2: 0x0000000106335a30 IJKMediaPlayerKit`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
-     frame #3: 0x00000001066ec734 IJKMediaPlayerKit`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
-     frame #4: 0x00000001062bf6a0 IJKMediaPlayerKit`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
-     frame #5: 0x0000000106019e5c IJKMediaPlayerKit`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
-     frame #6: 0x0000000105fd47c8 IJKMediaPlayerKit`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
-     frame #7: 0x0000000105fb45e0 IJKMediaPlayerKit`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
-     frame #8: 0x0000000105fbe5e4 IJKMediaPlayerKit`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
-     frame #9: 0x000000010606ab6c IJKMediaPlayerKit`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
-     frame #10: 0x000000010606abac IJKMediaPlayerKit`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
-     frame #11: 0x00000001060381ac IJKMediaPlayerKit`-[IJKFFMoviePlayerController shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at IJKFFMoviePlayerController.m:591:5
+   * frame #0: 0x000000010650e31c FSMediaPlayerKit`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
+     frame #1: 0x0000000106335878 FSMediaPlayerKit`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
+     frame #2: 0x0000000106335a30 FSMediaPlayerKit`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
+     frame #3: 0x00000001066ec734 FSMediaPlayerKit`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
+     frame #4: 0x00000001062bf6a0 FSMediaPlayerKit`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
+     frame #5: 0x0000000106019e5c FSMediaPlayerKit`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
+     frame #6: 0x0000000105fd47c8 FSMediaPlayerKit`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
+     frame #7: 0x0000000105fb45e0 FSMediaPlayerKit`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
+     frame #8: 0x0000000105fbe5e4 FSMediaPlayerKit`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
+     frame #9: 0x000000010606ab6c FSMediaPlayerKit`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
+     frame #10: 0x000000010606abac FSMediaPlayerKit`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
+     frame #11: 0x00000001060381ac FSMediaPlayerKit`-[FSPlayer shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at FSPlayer.m:591:5
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  * thread #36, stop reason = EXC_BAD_ACCESS (code=1, address=0x3948cffd0)
-   * frame #0: 0x000000010650e31c IJKMediaPlayerKit`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
-     frame #1: 0x0000000106335878 IJKMediaPlayerKit`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
-     frame #2: 0x0000000106335a30 IJKMediaPlayerKit`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
-     frame #3: 0x00000001066ec734 IJKMediaPlayerKit`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
-     frame #4: 0x00000001062bf6a0 IJKMediaPlayerKit`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
-     frame #5: 0x0000000106019e5c IJKMediaPlayerKit`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
-     frame #6: 0x0000000105fd47c8 IJKMediaPlayerKit`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
-     frame #7: 0x0000000105fb45e0 IJKMediaPlayerKit`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
-     frame #8: 0x0000000105fbe5e4 IJKMediaPlayerKit`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
-     frame #9: 0x000000010606ab6c IJKMediaPlayerKit`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
-     frame #10: 0x000000010606abac IJKMediaPlayerKit`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
-     frame #11: 0x00000001060381ac IJKMediaPlayerKit`-[IJKFFMoviePlayerController shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at IJKFFMoviePlayerController.m:591:5
+   * frame #0: 0x000000010650e31c FSMediaPlayerKit`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
+     frame #1: 0x0000000106335878 FSMediaPlayerKit`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
+     frame #2: 0x0000000106335a30 FSMediaPlayerKit`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
+     frame #3: 0x00000001066ec734 FSMediaPlayerKit`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
+     frame #4: 0x00000001062bf6a0 FSMediaPlayerKit`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
+     frame #5: 0x0000000106019e5c FSMediaPlayerKit`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
+     frame #6: 0x0000000105fd47c8 FSMediaPlayerKit`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
+     frame #7: 0x0000000105fb45e0 FSMediaPlayerKit`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
+     frame #8: 0x0000000105fbe5e4 FSMediaPlayerKit`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
+     frame #9: 0x000000010606ab6c FSMediaPlayerKit`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
+     frame #10: 0x000000010606abac FSMediaPlayerKit`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
+     frame #11: 0x00000001060381ac FSMediaPlayerKit`-[FSPlayer shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at FSPlayer.m:591:5
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  */
@@ -411,7 +411,7 @@ static int ff_apply_subtitle_stream_change(FFPlayer *ffp)
     if (r > 0) {
         AVCodecContext * avctx = ff_sub_get_avctx(is->ffSub);
         ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
-        ijkmeta_set_int64_l(ffp->meta, IJKM_KEY_TIMEDTEXT_STREAM, update_stream);
+        ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, update_stream);
         ffp_notify_msg1(ffp, FFP_MSG_SELECTED_STREAM_CHANGED);
         
         int type = ff_sub_current_stream_type(is->ffSub);
@@ -424,13 +424,13 @@ static int ff_apply_subtitle_stream_change(FFPlayer *ffp)
         }
     } else if (r == 0) {
         ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, "");
-        ijkmeta_set_int64_l(ffp->meta, IJKM_KEY_TIMEDTEXT_STREAM, -1);
+        ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, -1);
         ffp_notify_msg1(ffp, FFP_MSG_SELECTED_STREAM_CHANGED);
     } else if (r < -1) {
         //when closed pre stream,need send stream changed msg.
         if (pre_stream >= 0) {
             ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, "");
-            ijkmeta_set_int64_l(ffp->meta, IJKM_KEY_TIMEDTEXT_STREAM, -1);
+            ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, -1);
             ffp_notify_msg1(ffp, FFP_MSG_SELECTED_STREAM_CHANGED);
         }
         //send selecting new stream failed msg.
@@ -1640,7 +1640,7 @@ static void update_playable_duration(FFPlayer *ffp)
     }
     
     if (video_cached_duration > 0 && audio_cached_duration > 0) {
-        cached_duration_in_ms = (int)IJKMIN(video_cached_duration, audio_cached_duration);
+        cached_duration_in_ms = (int)FSMIN(video_cached_duration, audio_cached_duration);
     } else if (video_cached_duration > 0) {
         cached_duration_in_ms = (int)video_cached_duration;
     } else if (audio_cached_duration > 0) {
@@ -3010,14 +3010,14 @@ static void _ijkmeta_set_stream(FFPlayer* ffp, int type, int stream)
 {
     switch (type) {
         case AVMEDIA_TYPE_VIDEO:
-            ijkmeta_set_int64_l(ffp->meta, IJKM_KEY_VIDEO_STREAM, stream);
+            ijkmeta_set_int64_l(ffp->meta, FSM_KEY_VIDEO_STREAM, stream);
             break;
         case AVMEDIA_TYPE_AUDIO:
-            ijkmeta_set_int64_l(ffp->meta, IJKM_KEY_AUDIO_STREAM, stream);
+            ijkmeta_set_int64_l(ffp->meta, FSM_KEY_AUDIO_STREAM, stream);
             break;
         case AVMEDIA_TYPE_SUBTITLE:
         case AVMEDIA_TYPE_NB + 1:
-            ijkmeta_set_int64_l(ffp->meta, IJKM_KEY_TIMEDTEXT_STREAM, stream);
+            ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, stream);
             break;
         default:
             break;
@@ -4239,33 +4239,33 @@ static bool g_ffmpeg_global_inited = false;
 
 inline static int log_level_av_to_ijk(int av_level)
 {
-    int ijk_level = IJK_LOG_VERBOSE;
-    if      (av_level <= AV_LOG_PANIC)      ijk_level = IJK_LOG_FATAL;
-    else if (av_level <= AV_LOG_FATAL)      ijk_level = IJK_LOG_FATAL;
-    else if (av_level <= AV_LOG_ERROR)      ijk_level = IJK_LOG_ERROR;
-    else if (av_level <= AV_LOG_WARNING)    ijk_level = IJK_LOG_WARN;
-    else if (av_level <= AV_LOG_INFO)       ijk_level = IJK_LOG_INFO;
+    int ijk_level = FS_LOG_VERBOSE;
+    if      (av_level <= AV_LOG_PANIC)      ijk_level = FS_LOG_FATAL;
+    else if (av_level <= AV_LOG_FATAL)      ijk_level = FS_LOG_FATAL;
+    else if (av_level <= AV_LOG_ERROR)      ijk_level = FS_LOG_ERROR;
+    else if (av_level <= AV_LOG_WARNING)    ijk_level = FS_LOG_WARN;
+    else if (av_level <= AV_LOG_INFO)       ijk_level = FS_LOG_INFO;
     // AV_LOG_VERBOSE means detailed info
-    else if (av_level <= AV_LOG_VERBOSE)    ijk_level = IJK_LOG_INFO;
-    else if (av_level <= AV_LOG_DEBUG)      ijk_level = IJK_LOG_DEBUG;
-    else if (av_level <= AV_LOG_TRACE)      ijk_level = IJK_LOG_VERBOSE;
-    else                                    ijk_level = IJK_LOG_VERBOSE;
+    else if (av_level <= AV_LOG_VERBOSE)    ijk_level = FS_LOG_INFO;
+    else if (av_level <= AV_LOG_DEBUG)      ijk_level = FS_LOG_DEBUG;
+    else if (av_level <= AV_LOG_TRACE)      ijk_level = FS_LOG_VERBOSE;
+    else                                    ijk_level = FS_LOG_VERBOSE;
     return ijk_level;
 }
 
 inline static int log_level_ijk_to_av(int ijk_level)
 {
-    int av_level = IJK_LOG_VERBOSE;
-    if      (ijk_level >= IJK_LOG_SILENT)   av_level = AV_LOG_QUIET;
-    else if (ijk_level >= IJK_LOG_FATAL)    av_level = AV_LOG_FATAL;
-    else if (ijk_level >= IJK_LOG_ERROR)    av_level = AV_LOG_ERROR;
-    else if (ijk_level >= IJK_LOG_WARN)     av_level = AV_LOG_WARNING;
-    else if (ijk_level >= IJK_LOG_INFO)     av_level = AV_LOG_INFO;
+    int av_level = FS_LOG_VERBOSE;
+    if      (ijk_level >= FS_LOG_SILENT)   av_level = AV_LOG_QUIET;
+    else if (ijk_level >= FS_LOG_FATAL)    av_level = AV_LOG_FATAL;
+    else if (ijk_level >= FS_LOG_ERROR)    av_level = AV_LOG_ERROR;
+    else if (ijk_level >= FS_LOG_WARN)     av_level = AV_LOG_WARNING;
+    else if (ijk_level >= FS_LOG_INFO)     av_level = AV_LOG_INFO;
     // AV_LOG_VERBOSE means detailed info
-    else if (ijk_level >= IJK_LOG_DEBUG)    av_level = AV_LOG_DEBUG;
-    else if (ijk_level >= IJK_LOG_VERBOSE)  av_level = AV_LOG_TRACE;
-    else if (ijk_level >= IJK_LOG_DEFAULT)  av_level = AV_LOG_TRACE;
-    else if (ijk_level >= IJK_LOG_UNKNOWN)  av_level = AV_LOG_TRACE;
+    else if (ijk_level >= FS_LOG_DEBUG)    av_level = AV_LOG_DEBUG;
+    else if (ijk_level >= FS_LOG_VERBOSE)  av_level = AV_LOG_TRACE;
+    else if (ijk_level >= FS_LOG_DEFAULT)  av_level = AV_LOG_TRACE;
+    else if (ijk_level >= FS_LOG_UNKNOWN)  av_level = AV_LOG_TRACE;
     else                                    av_level = AV_LOG_TRACE;
     return av_level;
 }
@@ -4276,7 +4276,7 @@ static void ffp_log_callback_brief(void *ptr, int level, const char *fmt, va_lis
         return;
 
     int ffplv __unused = log_level_av_to_ijk(level);
-    VLOG(ffplv, IJK_LOG_TAG, fmt, vl);
+    VLOG(ffplv, FS_LOG_TAG, fmt, vl);
 }
 
 static void ffp_log_callback_report(void *ptr, int level, const char *fmt, va_list vl)
@@ -4295,7 +4295,7 @@ static void ffp_log_callback_report(void *ptr, int level, const char *fmt, va_li
     av_log_format_line(ptr, level, fmt, vl2, line, sizeof(line), &print_prefix);
     va_end(vl2);
 
-    ALOG(ffplv, IJK_LOG_TAG, "%s", line);
+    ALOG(ffplv, FS_LOG_TAG, "%s", line);
 }
 
 int ijkav_register_all(void);
@@ -4394,7 +4394,7 @@ const AVClass ffp_context_class = {
 
 static const char *ijk_version_info(void)
 {
-    return IJKPLAYER_VERSION;
+    return FSPLAYER_VERSION;
 }
 
 FFPlayer *ffp_create(void)
@@ -4506,7 +4506,7 @@ static int ijkio_app_func_event(IjkIOApplicationContext *h, int message ,void *d
     if (!ffp->ijkio_inject_opaque)
         return 0;
 
-    if (message == IJKIOAPP_EVENT_CACHE_STATISTIC && sizeof(IjkIOAppCacheStatistic) == size) {
+    if (message == FSIOAPP_EVENT_CACHE_STATISTIC && sizeof(IjkIOAppCacheStatistic) == size) {
         IjkIOAppCacheStatistic *statistic =  (IjkIOAppCacheStatistic *) (intptr_t)data;
         ffp->stat.cache_physical_pos      = statistic->cache_physical_pos;
         ffp->stat.cache_file_forwards     = statistic->cache_file_forwards;
@@ -4622,9 +4622,9 @@ static void ffp_show_version_int(FFPlayer *ffp, const char *module, unsigned ver
 {
     av_log(ffp, AV_LOG_INFO, "%-*s: %u.%u.%u\n",
            FFP_VERSION_MODULE_NAME_LENGTH, module,
-           (unsigned int)IJKVERSION_GET_MAJOR(version),
-           (unsigned int)IJKVERSION_GET_MINOR(version),
-           (unsigned int)IJKVERSION_GET_MICRO(version));
+           (unsigned int)FSVERSION_GET_MAJOR(version),
+           (unsigned int)FSVERSION_GET_MINOR(version),
+           (unsigned int)FSVERSION_GET_MICRO(version));
 }
 
 #if CONFIG_VIDEO_AVFILTER
@@ -5016,7 +5016,7 @@ void ffp_check_buffering_l(FFPlayer *ffp)
         }
 
         if (video_cached_duration > 0 && audio_cached_duration > 0) {
-            cached_duration_in_ms = (int)IJKMIN(video_cached_duration, audio_cached_duration);
+            cached_duration_in_ms = (int)FSMIN(video_cached_duration, audio_cached_duration);
         } else if (video_cached_duration > 0) {
             cached_duration_in_ms = (int)video_cached_duration;
         } else if (audio_cached_duration > 0) {
@@ -5623,7 +5623,7 @@ int ffp_apply_subtitle_preference(FFPlayer *ffp)
     return ff_update_sub_preference(ffp->is->ffSub, &ffp->sp);
 }
 
-void ffp_set_subtitle_preference(FFPlayer *ffp, IJKSDLSubtitlePreference* sp)
+void ffp_set_subtitle_preference(FFPlayer *ffp, FSSDLSubtitlePreference* sp)
 {
     if (!ffp || !sp) {
         return;

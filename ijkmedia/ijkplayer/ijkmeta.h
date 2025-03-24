@@ -21,78 +21,78 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKPLAYER__IJKMETA_H
-#define IJKPLAYER__IJKMETA_H
+#ifndef FSPLAYER__IJKMETA_H
+#define FSPLAYER__IJKMETA_H
 
 #include <stdint.h>
 #include <stdlib.h>
 
 // media meta
-#define IJKM_KEY_FORMAT             "format"
-#define IJKM_KEY_DURATION_US        "duration_us"
-#define IJKM_KEY_START_US           "start_us"
-#define IJKM_KEY_BITRATE            "bitrate"
-#define IJKM_KEY_VIDEO_STREAM       "video"
-#define IJKM_KEY_AUDIO_STREAM       "audio"
-#define IJKM_KEY_TIMEDTEXT_STREAM   "timedtext"
+#define FSM_KEY_FORMAT             "format"
+#define FSM_KEY_DURATION_US        "duration_us"
+#define FSM_KEY_START_US           "start_us"
+#define FSM_KEY_BITRATE            "bitrate"
+#define FSM_KEY_VIDEO_STREAM       "video"
+#define FSM_KEY_AUDIO_STREAM       "audio"
+#define FSM_KEY_TIMEDTEXT_STREAM   "timedtext"
 
 // stream meta
-#define IJKM_KEY_TYPE               "type"
-#define IJKM_VAL_TYPE__VIDEO        "video"
-#define IJKM_VAL_TYPE__AUDIO        "audio"
-#define IJKM_VAL_TYPE__TIMEDTEXT    "timedtext"
-#define IJKM_VAL_TYPE__CHAPTER      "chapter"
-#define IJKM_VAL_TYPE__UNKNOWN      "unknown"
-#define IJKM_META_KEY_ID            "id"
-#define IJKM_META_KEY_START         "start"
-#define IJKM_META_KEY_END           "end"
-#define IJKM_META_KEY_TITLE         "title"
+#define FSM_KEY_TYPE               "type"
+#define FSM_VAL_TYPE__VIDEO        "video"
+#define FSM_VAL_TYPE__AUDIO        "audio"
+#define FSM_VAL_TYPE__TIMEDTEXT    "timedtext"
+#define FSM_VAL_TYPE__CHAPTER      "chapter"
+#define FSM_VAL_TYPE__UNKNOWN      "unknown"
+#define FSM_META_KEY_ID            "id"
+#define FSM_META_KEY_START         "start"
+#define FSM_META_KEY_END           "end"
+#define FSM_META_KEY_TITLE         "title"
 
-#define IJKM_KEY_LANGUAGE           "language"
-#define IJKM_KEY_TITLE              "title"
-#define IJKM_KEY_STREAM_IDX         "stream_idx"
-#define IJKM_KEY_ARTIST             "artist"
-#define IJKM_KEY_ALBUM              "album"
-#define IJKM_KEY_TYER               "TYER"
-#define IJKM_KEY_ENCODER            "encoder"
-#define IJKM_KEY_MINOR_VER          "minor_version"
-#define IJKM_KEY_COMPATIBLE_BRANDS  "compatible_brands"
-#define IJKM_KEY_MAJOR_BRAND        "major_brand"
-#define IJKM_KEY_LYRICS             "LYRICS"
-#define IJKM_KEY_DESCRIBE           "describe"
-#define IJKM_KEY_CODEC_NAME         "codec_name"
-#define IJKM_KEY_CODEC_PROFILE      "codec_profile"
-#define IJKM_KEY_CODEC_LEVEL        "codec_level"
-#define IJKM_KEY_CODEC_LONG_NAME    "codec_long_name"
-#define IJKM_KEY_CODEC_PIXEL_FORMAT "codec_pixel_format"
-#define IJKM_KEY_CODEC_PROFILE_ID   "codec_profile_id"
+#define FSM_KEY_LANGUAGE           "language"
+#define FSM_KEY_TITLE              "title"
+#define FSM_KEY_STREAM_IDX         "stream_idx"
+#define FSM_KEY_ARTIST             "artist"
+#define FSM_KEY_ALBUM              "album"
+#define FSM_KEY_TYER               "TYER"
+#define FSM_KEY_ENCODER            "encoder"
+#define FSM_KEY_MINOR_VER          "minor_version"
+#define FSM_KEY_COMPATIBLE_BRANDS  "compatible_brands"
+#define FSM_KEY_MAJOR_BRAND        "major_brand"
+#define FSM_KEY_LYRICS             "LYRICS"
+#define FSM_KEY_DESCRIBE           "describe"
+#define FSM_KEY_CODEC_NAME         "codec_name"
+#define FSM_KEY_CODEC_PROFILE      "codec_profile"
+#define FSM_KEY_CODEC_LEVEL        "codec_level"
+#define FSM_KEY_CODEC_LONG_NAME    "codec_long_name"
+#define FSM_KEY_CODEC_PIXEL_FORMAT "codec_pixel_format"
+#define FSM_KEY_CODEC_PROFILE_ID   "codec_profile_id"
 
-#define IJKM_KEY_ICY_BR             "icy-br"
-#define IJKM_KEY_ICY_DESC           "icy-description"
-#define IJKM_KEY_ICY_GENRE          "icy-genre"
-#define IJKM_KEY_ICY_NAME           "icy-name"
-#define IJKM_KEY_ICY_PUB            "icy-pub"
-#define IJKM_KEY_ICY_URL            "icy-url"
-#define IJKM_KEY_ICY_ST             "StreamTitle"
-#define IJKM_KEY_ICY_SU             "StreamUrl"
+#define FSM_KEY_ICY_BR             "icy-br"
+#define FSM_KEY_ICY_DESC           "icy-description"
+#define FSM_KEY_ICY_GENRE          "icy-genre"
+#define FSM_KEY_ICY_NAME           "icy-name"
+#define FSM_KEY_ICY_PUB            "icy-pub"
+#define FSM_KEY_ICY_URL            "icy-url"
+#define FSM_KEY_ICY_ST             "StreamTitle"
+#define FSM_KEY_ICY_SU             "StreamUrl"
 
 // stream: video
-#define IJKM_KEY_WIDTH          "width"
-#define IJKM_KEY_HEIGHT         "height"
-#define IJKM_KEY_FPS_NUM        "fps_num"
-#define IJKM_KEY_FPS_DEN        "fps_den"
-#define IJKM_KEY_TBR_NUM        "tbr_num"
-#define IJKM_KEY_TBR_DEN        "tbr_den"
-#define IJKM_KEY_SAR_NUM        "sar_num"
-#define IJKM_KEY_SAR_DEN        "sar_den"
+#define FSM_KEY_WIDTH          "width"
+#define FSM_KEY_HEIGHT         "height"
+#define FSM_KEY_FPS_NUM        "fps_num"
+#define FSM_KEY_FPS_DEN        "fps_den"
+#define FSM_KEY_TBR_NUM        "tbr_num"
+#define FSM_KEY_TBR_DEN        "tbr_den"
+#define FSM_KEY_SAR_NUM        "sar_num"
+#define FSM_KEY_SAR_DEN        "sar_den"
 
 // stream: audio
-#define IJKM_KEY_SAMPLE_RATE    "sample_rate"
-//#define IJKM_KEY_CHANNEL_LAYOUT "channel_layout"
+#define FSM_KEY_SAMPLE_RATE    "sample_rate"
+//#define FSM_KEY_CHANNEL_LAYOUT "channel_layout"
 
-#define IJKM_KEY_EX_SUBTITLE_URL "ex_subtile_url"
+#define FSM_KEY_EX_SUBTITLE_URL "ex_subtile_url"
 // reserved for user
-#define IJKM_KEY_STREAMS        "streams"
+#define FSM_KEY_STREAMS        "streams"
 
 struct AVFormatContext;
 struct FFPlayer;
@@ -120,4 +120,4 @@ size_t        ijkmeta_get_children_count_l(IjkMediaMeta *meta);
 // do not free
 IjkMediaMeta *ijkmeta_get_child_l(IjkMediaMeta *meta, size_t index);
 
-#endif//IJKPLAYER__IJKMETA_H
+#endif//FSPLAYER__IJKMETA_H

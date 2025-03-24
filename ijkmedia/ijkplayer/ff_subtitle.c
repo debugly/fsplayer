@@ -1,6 +1,6 @@
 //
 //  ff_subtitle.c
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2022/5/23.
 //
@@ -15,12 +15,12 @@
 #include "ijksdl/ijksdl_gpu.h"
 #include "ff_subtitle_def_internal.h"
 
-#define IJK_SUBTITLE_STREAM_UNDEF -2
-#define IJK_SUBTITLE_STREAM_NONE -1
+#define FS_SUBTITLE_STREAM_UNDEF -2
+#define FS_SUBTITLE_STREAM_NONE -1
 
-#define IJK_EX_SUBTITLE_STREAM_MAX_COUNT    512
-#define IJK_EX_SUBTITLE_STREAM_MIN_OFFSET   1000
-#define IJK_EX_SUBTITLE_STREAM_MAX_OFFSET   (IJK_EX_SUBTITLE_STREAM_MIN_OFFSET + IJK_EX_SUBTITLE_STREAM_MAX_COUNT)
+#define FS_EX_SUBTITLE_STREAM_MAX_COUNT    512
+#define FS_EX_SUBTITLE_STREAM_MIN_OFFSET   1000
+#define FS_EX_SUBTITLE_STREAM_MAX_OFFSET   (FS_EX_SUBTITLE_STREAM_MIN_OFFSET + FS_EX_SUBTITLE_STREAM_MAX_COUNT)
 
 static const char * ff_sub_backup_charenc[] = {"GBK","BIG5-2003"};//没有使用GB18030，否则会把BIG5编码显示成乱码
 static const int ff_sub_backup_charenc_len = 2;
@@ -43,11 +43,11 @@ typedef struct FFSubtitle {
     float streamStartTime;//ic start_time (s)
     
     FFExSubtitle* exSub;
-    char* pathArr[IJK_EX_SUBTITLE_STREAM_MAX_COUNT];
+    char* pathArr[FS_EX_SUBTITLE_STREAM_MAX_COUNT];
     int next_idx;
     
     int video_w, video_h;
-    IJKSDLSubtitlePreference sp;
+    FSSDLSubtitlePreference sp;
     SDL_TextureOverlay *assTexture;
     SDL_FBOOverlay *fbo;
     SDL_TextureOverlay *preTexture;
@@ -101,8 +101,8 @@ int ff_sub_init(FFSubtitle **subp, AVDictionary *opts)
     sub->delay = 0.0f;
     sub->current_pts = 0.0f;
     sub->maxStream_internal = -1;
-    sub->need_update_stream = IJK_SUBTITLE_STREAM_UNDEF;
-    sub->last_stream = IJK_SUBTITLE_STREAM_UNDEF;
+    sub->need_update_stream = FS_SUBTITLE_STREAM_UNDEF;
+    sub->last_stream = FS_SUBTITLE_STREAM_UNDEF;
     sub->need_update_preference = 0;
     sub->sp = ijk_subtitle_default_preference();
     av_dict_copy(&sub->opts, opts, 0);
@@ -351,7 +351,7 @@ int ff_sub_is_need_update_stream(FFSubtitle *sub)
 {
     int r;
     SDL_LockMutex(sub->mutex);
-    r = sub->need_update_stream != IJK_SUBTITLE_STREAM_UNDEF;
+    r = sub->need_update_stream != FS_SUBTITLE_STREAM_UNDEF;
     SDL_UnlockMutex(sub->mutex);
     return r;
 }
@@ -383,8 +383,8 @@ int ff_sub_is_need_update_preference(FFSubtitle *sub)
 static int convert_ext_idx_to_fileIdx(int idx)
 {
     int arr_idx = -1;
-    if (idx >= IJK_EX_SUBTITLE_STREAM_MIN_OFFSET && idx < IJK_EX_SUBTITLE_STREAM_MAX_OFFSET) {
-        arr_idx = (idx - IJK_EX_SUBTITLE_STREAM_MIN_OFFSET) % IJK_EX_SUBTITLE_STREAM_MAX_COUNT;
+    if (idx >= FS_EX_SUBTITLE_STREAM_MIN_OFFSET && idx < FS_EX_SUBTITLE_STREAM_MAX_OFFSET) {
+        arr_idx = (idx - FS_EX_SUBTITLE_STREAM_MIN_OFFSET) % FS_EX_SUBTITLE_STREAM_MAX_COUNT;
     }
     return arr_idx;
 }
@@ -507,7 +507,7 @@ static int ff_sub_close_current(FFSubtitle *sub)
     if (!sub) {
         return -1;
     }
-    sub->last_stream = IJK_SUBTITLE_STREAM_UNDEF;
+    sub->last_stream = FS_SUBTITLE_STREAM_UNDEF;
     
     int r = 0;
     
@@ -531,14 +531,14 @@ int ff_sub_update_stream_if_need(FFSubtitle *sub, int *update_stream, int *pre_s
     int r = -1;
     SDL_LockMutex(sub->mutex);
     if (update_stream) {
-        *update_stream = IJK_SUBTITLE_STREAM_NONE;
+        *update_stream = FS_SUBTITLE_STREAM_NONE;
     }
     if (pre_stream) {
-        *pre_stream = IJK_SUBTITLE_STREAM_NONE;
+        *pre_stream = FS_SUBTITLE_STREAM_NONE;
     }
-    if (sub->need_update_stream != IJK_SUBTITLE_STREAM_UNDEF) {
+    if (sub->need_update_stream != FS_SUBTITLE_STREAM_UNDEF) {
         //close current
-        if (sub->last_stream != IJK_SUBTITLE_STREAM_UNDEF) {
+        if (sub->last_stream != FS_SUBTITLE_STREAM_UNDEF) {
             if (pre_stream) {
                 *pre_stream = sub->last_stream;
             }
@@ -548,7 +548,7 @@ int ff_sub_update_stream_if_need(FFSubtitle *sub, int *update_stream, int *pre_s
         }
         
         //open new
-        if (sub->need_update_stream != IJK_SUBTITLE_STREAM_NONE) {
+        if (sub->need_update_stream != FS_SUBTITLE_STREAM_NONE) {
             if (update_stream) {
                 *update_stream = sub->need_update_stream;
             }
@@ -557,13 +557,13 @@ int ff_sub_update_stream_if_need(FFSubtitle *sub, int *update_stream, int *pre_s
             int err = open_any_stream(sub, sub->need_update_stream, NULL);
             if (err) {
                 r = err;
-                sub->last_stream = IJK_SUBTITLE_STREAM_UNDEF;
+                sub->last_stream = FS_SUBTITLE_STREAM_UNDEF;
             } else {
                 sub->last_stream = sub->need_update_stream;
                 r = 1;
             }
         }
-        sub->need_update_stream = IJK_SUBTITLE_STREAM_UNDEF;
+        sub->need_update_stream = FS_SUBTITLE_STREAM_UNDEF;
     }
     SDL_UnlockMutex(sub->mutex);
     return r;
@@ -711,7 +711,7 @@ int ff_sub_packet_queue_flush(FFSubtitle *sub)
     return -1;
 }
 
-int ff_update_sub_preference(FFSubtitle *sub, IJKSDLSubtitlePreference* sp)
+int ff_update_sub_preference(FFSubtitle *sub, FSSDLSubtitlePreference* sp)
 {
     int r = 0;
     if (sub) {
@@ -736,13 +736,13 @@ static void create_meta(IjkMediaMeta **out_meta, int idx, const char *url)
     if (!stream_meta)
         return;
     
-    int stream_idx = idx + IJK_EX_SUBTITLE_STREAM_MIN_OFFSET;
-    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_STREAM_IDX, stream_idx);
-    ijkmeta_set_string_l(stream_meta, IJKM_KEY_TYPE, IJKM_VAL_TYPE__TIMEDTEXT);
-    ijkmeta_set_string_l(stream_meta, IJKM_KEY_EX_SUBTITLE_URL, url);
+    int stream_idx = idx + FS_EX_SUBTITLE_STREAM_MIN_OFFSET;
+    ijkmeta_set_int64_l(stream_meta, FSM_KEY_STREAM_IDX, stream_idx);
+    ijkmeta_set_string_l(stream_meta, FSM_KEY_TYPE, FSM_VAL_TYPE__TIMEDTEXT);
+    ijkmeta_set_string_l(stream_meta, FSM_KEY_EX_SUBTITLE_URL, url);
     char title[16] = {0};
     snprintf(title, 16, "Track%d", idx + 1);
-    ijkmeta_set_string_l(stream_meta, IJKM_KEY_TITLE, title);
+    ijkmeta_set_string_l(stream_meta, FSM_KEY_TITLE, title);
     
     *out_meta = stream_meta;
 }
@@ -774,13 +774,13 @@ int ff_sub_add_ex_subtitle(FFSubtitle *sub, const char *file_name, IjkMediaMeta 
     
     int r;
     SDL_LockMutex(sub->mutex);
-    if (sub->next_idx < IJK_EX_SUBTITLE_STREAM_MAX_COUNT) {
+    if (sub->next_idx < FS_EX_SUBTITLE_STREAM_MAX_COUNT) {
         int idx = sub->next_idx;
         sub->pathArr[idx] = av_strdup(file_name);
         sub->next_idx++;
         create_meta(out_meta, idx, sub->pathArr[idx]);
         if (out_idx) {
-            *out_idx = idx + IJK_EX_SUBTITLE_STREAM_MIN_OFFSET;
+            *out_idx = idx + FS_EX_SUBTITLE_STREAM_MIN_OFFSET;
         }
         r = 0;
     } else {

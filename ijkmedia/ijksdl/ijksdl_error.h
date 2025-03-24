@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_ERROR_H
-#define IJKSDL__IJKSDL_ERROR_H
+#ifndef FSSDL__IJKSDL_ERROR_H
+#define FSSDL__IJKSDL_ERROR_H
 
 const char *SDL_GetError(void);
 

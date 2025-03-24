@@ -57,5 +57,5 @@ void ijkio_application_closep(IjkIOApplicationContext **ph) {
 
 void ijkio_application_on_cache_statistic(IjkIOApplicationContext *h, IjkIOAppCacheStatistic *statistic) {
     if (h && h->func_ijkio_on_app_event)
-        h->func_ijkio_on_app_event(h, IJKIOAPP_EVENT_CACHE_STATISTIC, (void *)statistic, sizeof(IjkIOAppCacheStatistic));
+        h->func_ijkio_on_app_event(h, FSIOAPP_EVENT_CACHE_STATISTIC, (void *)statistic, sizeof(IjkIOAppCacheStatistic));
 }

@@ -1,6 +1,6 @@
 //
 //  ff_frame_queue.c
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2022/5/16.
 //

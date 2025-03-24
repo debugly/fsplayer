@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_EXTRA_LOG_H
-#define IJKSDL__IJKSDL_EXTRA_LOG_H
+#ifndef FSSDL__IJKSDL_EXTRA_LOG_H
+#define FSSDL__IJKSDL_EXTRA_LOG_H
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -38,4 +38,4 @@ void ffp_apple_log_extra_vprint(int level, const char *tag, const char *fmt, va_
 
 #endif
 
-#endif  // IJKSDL__IJKSDL_EXTRA_LOG_H
+#endif  // FSSDL__IJKSDL_EXTRA_LOG_H

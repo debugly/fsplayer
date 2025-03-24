@@ -32,13 +32,13 @@
 #import "ijksdl_gpu_metal.h"
 
 #if TARGET_OS_OSX
-#include "../mac/IJKSDLGLView.h"
+#include "../mac/FSSDLGLView.h"
 #import "ijksdl_gpu_opengl_macos.h"
 #import <OpenGL/gl3.h>
 #endif
 
 
-@implementation IJKOverlayAttach
+@implementation FSOverlayAttach
 
 - (void)dealloc
 {
@@ -66,7 +66,7 @@
 struct SDL_Vout_Opaque {
     void *cvPixelBufferPool;
     int cv_format;
-    __strong UIView<IJKVideoRenderingProtocol> *gl_view;
+    __strong UIView<FSVideoRenderingProtocol> *gl_view;
 };
 
 static SDL_VoutOverlay *vout_create_overlay_l(int width, int height, int src_format, SDL_Vout *vout)
@@ -119,7 +119,7 @@ static CVPixelBufferRef SDL_Overlay_getCVPixelBufferRef(SDL_VoutOverlay *overlay
 static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
     SDL_Vout_Opaque *opaque = vout->opaque;
-    UIView<IJKVideoRenderingProtocol>* gl_view = opaque->gl_view;
+    UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
 
     if (!gl_view) {
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
@@ -127,7 +127,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     }
 
     if (!overlay) {
-        IJKOverlayAttach *attach = [[IJKOverlayAttach alloc] init];
+        FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     }
@@ -144,7 +144,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     
     CVPixelBufferRef videoPic = SDL_Overlay_getCVPixelBufferRef(overlay);
     if (videoPic) {
-        IJKOverlayAttach *attach = [[IJKOverlayAttach alloc] init];
+        FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
         
@@ -188,7 +188,7 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     return vout;
 }
 
-static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<IJKVideoRenderingProtocol>* view)
+static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view)
 {
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque->gl_view != view) {
@@ -196,7 +196,7 @@ static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<IJKVideoRenderingProt
     }
 }
 
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<IJKVideoRenderingProtocol>* view)
+void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view)
 {
     SDL_LockMutex(vout->mutex);
     SDL_VoutIos_SetGLView_l(vout, view);
@@ -204,7 +204,7 @@ void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<IJKVideoRenderingProtocol>* vi
 }
 
 #if TARGET_OS_OSX
-@interface _IJKSDLGLTextureWrapper : NSObject<IJKSDLSubtitleTextureWrapper>
+@interface _IJKSDLGLTextureWrapper : NSObject<FSSDLSubtitleTextureWrapper>
 
 @property(nonatomic) GLuint texture;
 @property(nonatomic) int w;
@@ -240,7 +240,7 @@ void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<IJKVideoRenderingProtocol>* vi
 
 @end
 
-id<IJKSDLSubtitleTextureWrapper> IJKSDL_crate_openglTextureWrapper(uint32_t texture, int w, int h)
+id<FSSDLSubtitleTextureWrapper> FSSDL_crate_openglTextureWrapper(uint32_t texture, int w, int h)
 {
     return [[_IJKSDLGLTextureWrapper alloc] initWith:texture w:w h:h];
 }

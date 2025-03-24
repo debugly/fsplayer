@@ -26,7 +26,7 @@
 #include "ijksdl/ijksdl_misc.h"
 #include "ff_ffplay.h"
 
-#define IJK_META_INIT_CAPACITY 13
+#define FS_META_INIT_CAPACITY 13
 
 struct IjkMediaMeta {
     SDL_mutex *mutex;
@@ -115,11 +115,11 @@ void ijkmeta_append_child_l(IjkMediaMeta *meta, IjkMediaMeta *child)
         return;
 
     if (!meta->children) {
-        meta->children = (IjkMediaMeta **)calloc(IJK_META_INIT_CAPACITY, sizeof(IjkMediaMeta *));
+        meta->children = (IjkMediaMeta **)calloc(FS_META_INIT_CAPACITY, sizeof(IjkMediaMeta *));
         if (!meta->children)
             return;
         meta->children_count    = 0;
-        meta->children_capacity = IJK_META_INIT_CAPACITY;
+        meta->children_capacity = FS_META_INIT_CAPACITY;
     } else if (meta->children_count >= meta->children_capacity) {
         size_t new_capacity = meta->children_capacity * 2;
         IjkMediaMeta **new_children = (IjkMediaMeta **)calloc(new_capacity, sizeof(IjkMediaMeta *));
@@ -219,16 +219,16 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
         return;
 
     if (ic->iformat && ic->iformat->name)
-        ijkmeta_set_string_l(meta, IJKM_KEY_FORMAT, ic->iformat->name);
+        ijkmeta_set_string_l(meta, FSM_KEY_FORMAT, ic->iformat->name);
 
     if (ic->duration != AV_NOPTS_VALUE)
-        ijkmeta_set_int64_l(meta, IJKM_KEY_DURATION_US, ic->duration);
+        ijkmeta_set_int64_l(meta, FSM_KEY_DURATION_US, ic->duration);
 
     if (ic->start_time != AV_NOPTS_VALUE)
-        ijkmeta_set_int64_l(meta, IJKM_KEY_START_US, ic->start_time);
+        ijkmeta_set_int64_l(meta, FSM_KEY_START_US, ic->start_time);
 
     if (ic->bit_rate)
-        ijkmeta_set_int64_l(meta, IJKM_KEY_BITRATE, ic->bit_rate);
+        ijkmeta_set_int64_l(meta, FSM_KEY_BITRATE, ic->bit_rate);
     
     //printf all ic metadata
     AVDictionaryEntry *tag = NULL;
@@ -236,7 +236,7 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
         if (tag->value)
             av_log(NULL, AV_LOG_DEBUG, "ic metadata item:%s=%s\n", tag->key, tag->value);
     
-    char *ic_string_val_keys[] = {IJKM_KEY_ARTIST,IJKM_KEY_ALBUM,IJKM_KEY_TYER,IJKM_KEY_MINOR_VER,IJKM_KEY_COMPATIBLE_BRANDS,IJKM_KEY_MAJOR_BRAND,IJKM_KEY_LYRICS,IJKM_KEY_ICY_BR,IJKM_KEY_ICY_DESC,IJKM_KEY_ICY_GENRE,IJKM_KEY_ICY_NAME,IJKM_KEY_ICY_PUB,IJKM_KEY_ICY_URL,IJKM_KEY_ICY_ST,IJKM_KEY_ICY_SU,NULL};
+    char *ic_string_val_keys[] = {FSM_KEY_ARTIST,FSM_KEY_ALBUM,FSM_KEY_TYER,FSM_KEY_MINOR_VER,FSM_KEY_COMPATIBLE_BRANDS,FSM_KEY_MAJOR_BRAND,FSM_KEY_LYRICS,FSM_KEY_ICY_BR,FSM_KEY_ICY_DESC,FSM_KEY_ICY_GENRE,FSM_KEY_ICY_NAME,FSM_KEY_ICY_PUB,FSM_KEY_ICY_URL,FSM_KEY_ICY_ST,FSM_KEY_ICY_SU,NULL};
     {
         char **ic_key_header = ic_string_val_keys;
         char *ic_key;
@@ -260,9 +260,9 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
             long start = (long)(chapter->start * tb);
             long end = (long)(chapter->end * tb);
             IjkMediaMeta *sub_meta = ijkmeta_create();
-            ijkmeta_set_int64_l(sub_meta, IJKM_META_KEY_START, start);
-            ijkmeta_set_int64_l(sub_meta, IJKM_META_KEY_END, end);
-            ijkmeta_set_int64_l(sub_meta, IJKM_META_KEY_ID, chapter->id);
+            ijkmeta_set_int64_l(sub_meta, FSM_META_KEY_START, start);
+            ijkmeta_set_int64_l(sub_meta, FSM_META_KEY_END, end);
+            ijkmeta_set_int64_l(sub_meta, FSM_META_KEY_ID, chapter->id);
             
             //set all raw meta
             AVDictionaryEntry *tag = NULL;
@@ -272,7 +272,7 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
             ijkmeta_append_child_l(chapter_meta, sub_meta);
         }
         if (chapter_meta) {
-            ijkmeta_set_string_l(chapter_meta, IJKM_KEY_TYPE, IJKM_VAL_TYPE__CHAPTER);
+            ijkmeta_set_string_l(chapter_meta, FSM_KEY_TYPE, FSM_VAL_TYPE__CHAPTER);
             ijkmeta_append_child_l(meta, chapter_meta);
         }
     }
@@ -300,84 +300,84 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
         AVCodecParameters *codecpar = st->codecpar;
         const char *codec_name = avcodec_get_name(codecpar->codec_id);
         if (codec_name)
-            ijkmeta_set_string_l(stream_meta, IJKM_KEY_CODEC_NAME, codec_name);
+            ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_NAME, codec_name);
         if (codecpar->profile != FF_PROFILE_UNKNOWN) {
             const AVCodec *codec = avcodec_find_decoder(codecpar->codec_id);
             if (codec) {
-                ijkmeta_set_int64_l(stream_meta, IJKM_KEY_CODEC_PROFILE_ID, codecpar->profile);
+                ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_PROFILE_ID, codecpar->profile);
                 const char *profile = av_get_profile_name(codec, codecpar->profile);
                 if (profile)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_CODEC_PROFILE, profile);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PROFILE, profile);
                 if (codec->long_name)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_CODEC_LONG_NAME, codec->long_name);
-                ijkmeta_set_int64_l(stream_meta, IJKM_KEY_CODEC_LEVEL, codecpar->level);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_LONG_NAME, codec->long_name);
+                ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_LEVEL, codecpar->level);
                 if (codecpar->format != AV_PIX_FMT_NONE)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_CODEC_PIXEL_FORMAT, av_get_pix_fmt_name(codecpar->format));
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PIXEL_FORMAT, av_get_pix_fmt_name(codecpar->format));
             }
         }
 
         int64_t bitrate = get_bit_rate(codecpar);
         if (bitrate > 0) {
-            ijkmeta_set_int64_l(stream_meta, IJKM_KEY_BITRATE, bitrate);
+            ijkmeta_set_int64_l(stream_meta, FSM_KEY_BITRATE, bitrate);
         }
 
         switch (codecpar->codec_type) {
             case AVMEDIA_TYPE_VIDEO: {
-                ijkmeta_set_string_l(stream_meta, IJKM_KEY_TYPE, IJKM_VAL_TYPE__VIDEO);
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_TYPE, FSM_VAL_TYPE__VIDEO);
 
                 if (codecpar->width > 0)
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_WIDTH, codecpar->width);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_WIDTH, codecpar->width);
                 if (codecpar->height > 0)
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_HEIGHT, codecpar->height);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_HEIGHT, codecpar->height);
                 if (st->sample_aspect_ratio.num > 0 && st->sample_aspect_ratio.den > 0) {
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_SAR_NUM, codecpar->sample_aspect_ratio.num);
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_SAR_DEN, codecpar->sample_aspect_ratio.den);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_SAR_NUM, codecpar->sample_aspect_ratio.num);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_SAR_DEN, codecpar->sample_aspect_ratio.den);
                 }
                 if (st->avg_frame_rate.num > 0 && st->avg_frame_rate.den > 0) {
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_FPS_NUM, st->avg_frame_rate.num);
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_FPS_DEN, st->avg_frame_rate.den);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_FPS_NUM, st->avg_frame_rate.num);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_FPS_DEN, st->avg_frame_rate.den);
                 }
                 if (st->r_frame_rate.num > 0 && st->r_frame_rate.den > 0) {
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_TBR_NUM, st->avg_frame_rate.num);
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_TBR_DEN, st->avg_frame_rate.den);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_TBR_NUM, st->avg_frame_rate.num);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_TBR_DEN, st->avg_frame_rate.den);
                 }
                 break;
             }
             case AVMEDIA_TYPE_AUDIO: {
-                ijkmeta_set_string_l(stream_meta, IJKM_KEY_TYPE, IJKM_VAL_TYPE__AUDIO);
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_TYPE, FSM_VAL_TYPE__AUDIO);
 
                 if (codecpar->sample_rate)
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_SAMPLE_RATE, codecpar->sample_rate);
+                    ijkmeta_set_int64_l(stream_meta, FSM_KEY_SAMPLE_RATE, codecpar->sample_rate);
 
-                AVDictionaryEntry *lang = av_dict_get(st->metadata, IJKM_KEY_LANGUAGE, NULL, AV_DICT_IGNORE_SUFFIX);
+                AVDictionaryEntry *lang = av_dict_get(st->metadata, FSM_KEY_LANGUAGE, NULL, AV_DICT_IGNORE_SUFFIX);
                 if (lang && lang->value)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_LANGUAGE, lang->value);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_LANGUAGE, lang->value);
                 char describe[64];
                 if (av_channel_layout_describe(&codecpar->ch_layout, describe, sizeof(describe)) > 0) {
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_DESCRIBE, describe);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_DESCRIBE, describe);
                 }
-                AVDictionaryEntry *title = av_dict_get(st->metadata, IJKM_KEY_TITLE, NULL, AV_DICT_IGNORE_SUFFIX);
+                AVDictionaryEntry *title = av_dict_get(st->metadata, FSM_KEY_TITLE, NULL, AV_DICT_IGNORE_SUFFIX);
                 if (title && title->value)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_TITLE, title->value);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_TITLE, title->value);
                 break;
             }
             case AVMEDIA_TYPE_SUBTITLE: {
-                ijkmeta_set_string_l(stream_meta, IJKM_KEY_TYPE, IJKM_VAL_TYPE__TIMEDTEXT);
-                AVDictionaryEntry *lang = av_dict_get(st->metadata, IJKM_KEY_LANGUAGE, NULL, AV_DICT_IGNORE_SUFFIX);
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_TYPE, FSM_VAL_TYPE__TIMEDTEXT);
+                AVDictionaryEntry *lang = av_dict_get(st->metadata, FSM_KEY_LANGUAGE, NULL, AV_DICT_IGNORE_SUFFIX);
                 if (lang && lang->value)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_LANGUAGE, lang->value);
-                AVDictionaryEntry *title = av_dict_get(st->metadata, IJKM_KEY_TITLE, NULL, AV_DICT_IGNORE_SUFFIX);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_LANGUAGE, lang->value);
+                AVDictionaryEntry *title = av_dict_get(st->metadata, FSM_KEY_TITLE, NULL, AV_DICT_IGNORE_SUFFIX);
                 if (title && title->value)
-                    ijkmeta_set_string_l(stream_meta, IJKM_KEY_TITLE, title->value);
+                    ijkmeta_set_string_l(stream_meta, FSM_KEY_TITLE, title->value);
                 break;
             }
             default: {
-                ijkmeta_set_string_l(stream_meta, IJKM_KEY_TYPE, IJKM_VAL_TYPE__UNKNOWN);
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_TYPE, FSM_VAL_TYPE__UNKNOWN);
                 break;
             }
         }
 
-        ijkmeta_set_int64_l(stream_meta, IJKM_KEY_STREAM_IDX, i);
+        ijkmeta_set_int64_l(stream_meta, FSM_KEY_STREAM_IDX, i);
         
         ijkmeta_append_child_l(meta, stream_meta);
         stream_meta = NULL;

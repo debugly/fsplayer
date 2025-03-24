@@ -46,7 +46,7 @@ fi
 
 cd $1
 
-NEW_REVISION="#define IJKPLAYER_VERSION \"$version\""
+NEW_REVISION="#define FSPLAYER_VERSION \"$version\""
 OLD_REVISION=$(cat "$2" 2> /dev/null | head -4 | tail -1)
 
 # String used for preprocessor guard

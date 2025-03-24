@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_metal.h
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2024/4/14.
 //

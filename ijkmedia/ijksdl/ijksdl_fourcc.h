@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_FOURCC_H
-#define IJKSDL__IJKSDL_FOURCC_H
+#ifndef FSSDL__IJKSDL_FOURCC_H
+#define FSSDL__IJKSDL_FOURCC_H
 
 #include "ijksdl_stdinc.h"
 #include "ijksdl_endian.h"
@@ -85,8 +85,8 @@
 #define SDL_FCC_UNDF    SDL_FOURCC('U', 'N', 'D', 'F')    /**< undefined */
 
 enum {
-    IJK_AV_PIX_FMT__START = 10000,
-    IJK_AV_PIX_FMT__ANDROID_MEDIACODEC,
+    FS_AV_PIX_FMT__START = 10000,
+    FS_AV_PIX_FMT__ANDROID_MEDIACODEC,
 };
 
 #endif

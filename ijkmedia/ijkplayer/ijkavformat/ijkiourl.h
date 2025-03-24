@@ -21,8 +21,8 @@
  * unbuffered private I/O API
  */
 
-#ifndef IJKAVFORMAT_IJKIOURL_H
-#define IJKAVFORMAT_IJKIOURL_H
+#ifndef FSAVFORMAT_IJKIOURL_H
+#define FSAVFORMAT_IJKIOURL_H
 
 #include <stdint.h>
 #include "ijkplayer/ijkavutil/ijkdict.h"
@@ -30,8 +30,8 @@
 
 struct IjkURLProtocol;
 
-#define IJKURL_PAUSED  0x10
-#define IJKURL_STARTED 0x20
+#define FSURL_PAUSED  0x10
+#define FSURL_STARTED 0x20
 
 typedef struct IjkURLContext {
     const struct IjkURLProtocol *prot;
@@ -52,4 +52,4 @@ typedef struct IjkURLProtocol {
     int flags;
 } IjkURLProtocol;
 
-#endif  // IJKAVFORMAT_IJKIOURL_H
+#endif  // FSAVFORMAT_IJKIOURL_H

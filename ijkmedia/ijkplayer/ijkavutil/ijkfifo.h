@@ -21,8 +21,8 @@
  * a very simple circular buffer FIFO implementation
  */
 
-#ifndef IJKUTIL_IJKFIFO_H
-#define IJKUTIL_IJKFIFO_H
+#ifndef FSUTIL_IJKFIFO_H
+#define FSUTIL_IJKFIFO_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -175,4 +175,4 @@ static inline uint8_t *ijk_av_fifo_peek2(const IjkFifoBuffer *f, int offs)
     return ptr;
 }
 
-#endif /* IJKUTIL_IJKFIFO_H */
+#endif /* FSUTIL_IJKFIFO_H */

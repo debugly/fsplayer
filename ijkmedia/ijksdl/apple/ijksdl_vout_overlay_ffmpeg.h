@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
-#define IJKSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
+#ifndef FSSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
+#define FSSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
 
 #include "../ijksdl_stdinc.h"
 #include "../ijksdl_vout.h"

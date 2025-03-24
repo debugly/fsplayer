@@ -25,16 +25,16 @@
 #define MAX_QUEUE 1024
 
 typedef enum {
-    IJK_THREADPOOL_INVALID        = -1,
-    IJK_THREADPOOL_LOCK_FAILURE   = -2,
-    IJK_THREADPOOL_QUEUE_FULL     = -3,
-    IJK_THREADPOOL_SHUTDOWN       = -4,
-    IJK_THREADPOOL_THREAD_FAILURE = -5
+    FS_THREADPOOL_INVALID        = -1,
+    FS_THREADPOOL_LOCK_FAILURE   = -2,
+    FS_THREADPOOL_QUEUE_FULL     = -3,
+    FS_THREADPOOL_SHUTDOWN       = -4,
+    FS_THREADPOOL_THREAD_FAILURE = -5
 } IjkThreadPoolErrorType;
 
 typedef enum {
-    IJK_IMMEDIATE_SHUTDOWN = 1,
-    IJK_LEISURELY_SHUTDOWN = 2
+    FS_IMMEDIATE_SHUTDOWN = 1,
+    FS_LEISURELY_SHUTDOWN = 2
 } IjkThreadPoolShutdownType;
 
 typedef void (*Runable)(void *, void *);

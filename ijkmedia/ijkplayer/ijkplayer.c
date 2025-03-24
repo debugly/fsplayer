@@ -98,7 +98,7 @@ void ijkmp_global_set_inject_callback(ijk_inject_callback cb)
 
 const char *ijkmp_version(void)
 {
-    return IJKPLAYER_VERSION;
+    return FSPLAYER_VERSION;
 }
 
 void ijkmp_change_state_l(IjkMediaPlayer *mp, int new_state)
@@ -872,7 +872,7 @@ void ijkmp_step_to_next_frame(IjkMediaPlayer *mp)
     ffp_step_to_next_frame(mp->ffplayer);
 }
 
-void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, IJKSDLSubtitlePreference* sp)
+void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSDLSubtitlePreference* sp)
 {
     assert(mp);
     ffp_set_subtitle_preference(mp->ffplayer, sp);

@@ -30,31 +30,31 @@
 #include "ff_ffpipenode.h"
 #include "ff_ffplay_def.h"
 
-typedef struct IJKFF_Pipeline_Opaque IJKFF_Pipeline_Opaque;
-typedef struct IJKFF_Pipeline IJKFF_Pipeline;
-struct IJKFF_Pipeline {
+typedef struct FSFF_Pipeline_Opaque FSFF_Pipeline_Opaque;
+typedef struct FSFF_Pipeline FSFF_Pipeline;
+struct FSFF_Pipeline {
     SDL_Class             *opaque_class;
-    IJKFF_Pipeline_Opaque *opaque;
+    FSFF_Pipeline_Opaque *opaque;
 
-    void            (*func_destroy)                   (IJKFF_Pipeline *pipeline);
-    IJKFF_Pipenode *(*func_open_video_decoder)        (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
-    SDL_Aout       *(*func_open_audio_output)         (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
-    IJKFF_Pipenode *(*func_init_video_decoder)        (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
-    int           (*func_config_video_decoder)        (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+    void            (*func_destroy)                   (FSFF_Pipeline *pipeline);
+    FSFF_Pipenode *(*func_open_video_decoder)        (FSFF_Pipeline *pipeline, FFPlayer *ffp);
+    SDL_Aout       *(*func_open_audio_output)         (FSFF_Pipeline *pipeline, FFPlayer *ffp);
+    FSFF_Pipenode *(*func_init_video_decoder)        (FSFF_Pipeline *pipeline, FFPlayer *ffp);
+    int           (*func_config_video_decoder)        (FSFF_Pipeline *pipeline, FFPlayer *ffp);
 };
 
-IJKFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size);
-void ffpipeline_free(IJKFF_Pipeline *pipeline);
-void ffpipeline_free_p(IJKFF_Pipeline **pipeline);
+FSFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size);
+void ffpipeline_free(FSFF_Pipeline *pipeline);
+void ffpipeline_free_p(FSFF_Pipeline **pipeline);
 
-IJKFF_Pipenode *ffpipeline_open_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
-SDL_Aout       *ffpipeline_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+FSFF_Pipenode *ffpipeline_open_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp);
+SDL_Aout       *ffpipeline_open_audio_output(FSFF_Pipeline *pipeline, FFPlayer *ffp);
 
-IJKFF_Pipenode* ffpipeline_init_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
-int ffpipeline_config_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+FSFF_Pipenode* ffpipeline_init_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp);
+int ffpipeline_config_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp);
 //return value greater than zero means has other decoder.
-int ffpipeline_has_another_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+int ffpipeline_has_another_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp);
 //create other video decoder pipenode.
-IJKFF_Pipenode* ffpipeline_open_another_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+FSFF_Pipenode* ffpipeline_open_another_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp);
 
 #endif

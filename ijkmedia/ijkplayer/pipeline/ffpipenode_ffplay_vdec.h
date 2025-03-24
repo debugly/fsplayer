@@ -28,6 +28,6 @@
 
 struct FFPlayer;
 
-IJKFF_Pipenode *ffpipenode_create_video_decoder_from_ffplay(struct FFPlayer *ffp);
+FSFF_Pipenode *ffpipenode_create_video_decoder_from_ffplay(struct FFPlayer *ffp);
 
 #endif

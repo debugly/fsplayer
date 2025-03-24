@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKAVUTIL_IJKTREE_H
-#define IJKAVUTIL_IJKTREE_H
+#ifndef FSAVUTIL_IJKTREE_H
+#define FSAVUTIL_IJKTREE_H
 
 /**
  * @addtogroup lavu_tree IjkAVTree
@@ -127,4 +127,4 @@ void ijk_av_tree_enumerate(struct IjkAVTreeNode *t, void *opaque,
  * @}
  */
 
-#endif /* IJKAVUTIL_IJKTREE_H */
+#endif /* FSAVUTIL_IJKTREE_H */

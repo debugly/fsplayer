@@ -1,14 +1,12 @@
 #1.7.0
 install! 'cocoapods', :generate_multiple_pod_projects => true
 
-target 'IJKMediaDemo' do
+target 'FSPlayerDemo' do
   # Comment the next line if you don't want to use dynamic frameworks
   use_frameworks!
 
-  # Pods for IJKMediaDemo
-
   platform :ios, '11.0'
 
-  pod 'IJKMediaPlayerKit', :path => '../../'
+  pod 'FSPlayer', :path => '../../'
 
 end

@@ -1,6 +1,6 @@
 //
 //  ff_sub_component.c
-//  IJKMediaPlayerKit
+//  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2022/5/24.
 //
@@ -27,7 +27,7 @@ typedef struct FFSubComponent{
     int video_width, video_height;
     int sub_width, sub_height;
     FFSubtitleBufferPacket sub_buffer_array;
-    IJKSDLSubtitlePreference sp;
+    FSSDLSubtitlePreference sp;
     int sp_changed;
     float startTime;
     
@@ -669,7 +669,7 @@ AVCodecContext * subComponent_get_avctx(FFSubComponent *com)
     return com ? com->decoder.avctx : NULL;
 }
 
-void subComponent_update_preference(FFSubComponent *com, IJKSDLSubtitlePreference* sp)
+void subComponent_update_preference(FFSubComponent *com, FSSDLSubtitlePreference* sp)
 {
     if (!com) {
         return;

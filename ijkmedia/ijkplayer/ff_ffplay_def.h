@@ -144,7 +144,7 @@ static unsigned sws_flags = SWS_BICUBIC;
 #endif
 
 #define MAX_DEVIATION 200000   // 200ms
-#define IJK_EXCHANGE_DECODER_FLAG -1000
+#define FS_EXCHANGE_DECODER_FLAG -1000
 
 typedef struct MyAVPacketList {
     AVPacket *pkt;
@@ -544,7 +544,7 @@ inline static void ffp_reset_demux_cache_control(FFDemuxCacheControl *dcc)
 
 /* ffplayer */
 struct IjkMediaMeta;
-struct IJKFF_Pipeline;
+struct FSFF_Pipeline;
 typedef struct FFPlayer {
     const AVClass *av_class;
 
@@ -630,8 +630,8 @@ typedef struct FFPlayer {
     SDL_Aout *aout;
     SDL_Vout *vout;
     struct SDL_GPU  *gpu;
-    struct IJKFF_Pipeline *pipeline;
-    struct IJKFF_Pipenode *node_vdec;
+    struct FSFF_Pipeline *pipeline;
+    struct FSFF_Pipenode *node_vdec;
 
     int sar_num;
     int sar_den;
@@ -717,7 +717,7 @@ typedef struct FFPlayer {
 
     ijk_audio_samples_callback audio_samples_callback;
     
-    IJKSDLSubtitlePreference sp;
+    FSSDLSubtitlePreference sp;
     
     //icy update
     int64_t icy_update_period;//ms

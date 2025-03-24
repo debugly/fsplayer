@@ -28,13 +28,13 @@
 #include "ijksdl/ijksdl_inc_internal.h"
 #include "ijksdl/ijksdl_thread.h"
 #include "ijksdl/ijksdl_aout_internal.h"
-#import "IJKSDLAudioUnitController.h"
-#import "IJKSDLAudioQueueController.h"
+#import "FSSDLAudioUnitController.h"
+#import "FSSDLAudioQueueController.h"
 
 #define SDL_IOS_AUDIO_MAX_CALLBACKS_PER_SEC 15
 
 struct SDL_Aout_Opaque {
-    __strong IJKSDLAudioQueueController *aoutController;
+    __strong FSSDLAudioQueueController *aoutController;
 };
 
 static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_AudioSpec *obtained)
@@ -43,7 +43,7 @@ static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_Aud
     SDLTRACE("aout_open_audio()\n");
     SDL_Aout_Opaque *opaque = aout->opaque;
     NSError * error = nil;
-    opaque->aoutController = [[IJKSDLAudioQueueController alloc] initWithAudioSpec:desired err:&error];
+    opaque->aoutController = [[FSSDLAudioQueueController alloc] initWithAudioSpec:desired err:&error];
     if (!opaque->aoutController) {
         ALOGE("aout_open_audio:%d,%s",error.code,[error.userInfo[NSLocalizedDescriptionKey] UTF8String]);
         return -1;

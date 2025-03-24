@@ -1,0 +1,542 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 55E809E51B145B55003E98A5 /* LaunchScreen.xib */; };
+		C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD02D91434300D768BC /* FSAppDelegate.m */; };
+		C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */; };
+		C9CC8BEE2D91438F00D768BC /* FSDemoMainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BDE2D91438F00D768BC /* FSDemoMainViewController.xib */; };
+		C9CC8BEF2D91438F00D768BC /* FSDemoSampleViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BE12D91438F00D768BC /* FSDemoSampleViewController.xib */; };
+		C9CC8BF02D91438F00D768BC /* FSMoviePlayerViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BE62D91438F00D768BC /* FSMoviePlayerViewController.xib */; };
+		C9CC8BF12D91438F00D768BC /* FSDemoInputURLViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BD92D91438F00D768BC /* FSDemoInputURLViewController.xib */; };
+		C9CC8BF32D91438F00D768BC /* FSMediaControl.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BE32D91438F00D768BC /* FSMediaControl.m */; };
+		C9CC8BF42D91438F00D768BC /* FSMoviePlayerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BE52D91438F00D768BC /* FSMoviePlayerViewController.m */; };
+		C9CC8BF52D91438F00D768BC /* FSDemoInputURLViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD82D91438F00D768BC /* FSDemoInputURLViewController.m */; };
+		C9CC8BF62D91438F00D768BC /* FSQRCodeScanViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BEA2D91438F00D768BC /* FSQRCodeScanViewController.m */; };
+		C9CC8BF72D91438F00D768BC /* FSDemoLocalFolderViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BDB2D91438F00D768BC /* FSDemoLocalFolderViewController.m */; };
+		C9CC8BF82D91438F00D768BC /* Barcode.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD32D91438F00D768BC /* Barcode.m */; };
+		C9CC8BF92D91438F00D768BC /* FSDemoSampleViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BE02D91438F00D768BC /* FSDemoSampleViewController.m */; };
+		C9CC8BFA2D91438F00D768BC /* FSDemoHistory.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD62D91438F00D768BC /* FSDemoHistory.m */; };
+		C9CC8BFB2D91438F00D768BC /* FSDemoMainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BDD2D91438F00D768BC /* FSDemoMainViewController.m */; };
+		E67323A71B69E6F800CB9036 /* AppIcons.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323A51B69E6F800CB9036 /* AppIcons.xcassets */; };
+		E67323A81B69E6F800CB9036 /* LaunchImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */; };
+		E67323AC1B69E76100CB9036 /* MoviePlayerImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */; };
+		E6903F0A17EAF70200CFD954 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E6903F0817EAF70200CFD954 /* InfoPlist.strings */; };
+		E6903F0C17EAF70200CFD954 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = E6903F0B17EAF70200CFD954 /* main.m */; };
+		E6903F1217EAF70200CFD954 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1117EAF70200CFD954 /* Default.png */; };
+		E6903F1417EAF70200CFD954 /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1317EAF70200CFD954 /* Default@2x.png */; };
+		E6903F1617EAF70200CFD954 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1517EAF70200CFD954 /* Default-568h@2x.png */; };
+		F753E46F92713A49D3CF4E86 /* Pods_FSPlayerDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 156710EE52D85A1D5873E15C /* Pods_FSPlayerDemo.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		156710EE52D85A1D5873E15C /* Pods_FSPlayerDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FSPlayerDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		226FF7AC1A7E64C2B8E3A54A /* Pods-FSPlayerDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerDemo.debug.xcconfig"; path = "Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		55E809E51B145B55003E98A5 /* LaunchScreen.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LaunchScreen.xib; sourceTree = "<group>"; };
+		75E33D81B82270292EEB4EBD /* Pods-FSPlayerDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerDemo.release.xcconfig"; path = "Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo.release.xcconfig"; sourceTree = "<group>"; };
+		C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAppDelegate.h; sourceTree = "<group>"; };
+		C9CC8BD02D91434300D768BC /* FSAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSAppDelegate.m; sourceTree = "<group>"; };
+		C9CC8BD22D91438F00D768BC /* Barcode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Barcode.h; sourceTree = "<group>"; };
+		C9CC8BD32D91438F00D768BC /* Barcode.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Barcode.m; sourceTree = "<group>"; };
+		C9CC8BD42D91438F00D768BC /* FSCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSCommon.h; sourceTree = "<group>"; };
+		C9CC8BD52D91438F00D768BC /* FSDemoHistory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSDemoHistory.h; sourceTree = "<group>"; };
+		C9CC8BD62D91438F00D768BC /* FSDemoHistory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSDemoHistory.m; sourceTree = "<group>"; };
+		C9CC8BD72D91438F00D768BC /* FSDemoInputURLViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSDemoInputURLViewController.h; sourceTree = "<group>"; };
+		C9CC8BD82D91438F00D768BC /* FSDemoInputURLViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSDemoInputURLViewController.m; sourceTree = "<group>"; };
+		C9CC8BD92D91438F00D768BC /* FSDemoInputURLViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = FSDemoInputURLViewController.xib; sourceTree = "<group>"; };
+		C9CC8BDA2D91438F00D768BC /* FSDemoLocalFolderViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSDemoLocalFolderViewController.h; sourceTree = "<group>"; };
+		C9CC8BDB2D91438F00D768BC /* FSDemoLocalFolderViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSDemoLocalFolderViewController.m; sourceTree = "<group>"; };
+		C9CC8BDC2D91438F00D768BC /* FSDemoMainViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSDemoMainViewController.h; sourceTree = "<group>"; };
+		C9CC8BDD2D91438F00D768BC /* FSDemoMainViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSDemoMainViewController.m; sourceTree = "<group>"; };
+		C9CC8BDE2D91438F00D768BC /* FSDemoMainViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = FSDemoMainViewController.xib; sourceTree = "<group>"; };
+		C9CC8BDF2D91438F00D768BC /* FSDemoSampleViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSDemoSampleViewController.h; sourceTree = "<group>"; };
+		C9CC8BE02D91438F00D768BC /* FSDemoSampleViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSDemoSampleViewController.m; sourceTree = "<group>"; };
+		C9CC8BE12D91438F00D768BC /* FSDemoSampleViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = FSDemoSampleViewController.xib; sourceTree = "<group>"; };
+		C9CC8BE22D91438F00D768BC /* FSMediaControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSMediaControl.h; sourceTree = "<group>"; };
+		C9CC8BE32D91438F00D768BC /* FSMediaControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSMediaControl.m; sourceTree = "<group>"; };
+		C9CC8BE42D91438F00D768BC /* FSMoviePlayerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSMoviePlayerViewController.h; sourceTree = "<group>"; };
+		C9CC8BE52D91438F00D768BC /* FSMoviePlayerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSMoviePlayerViewController.m; sourceTree = "<group>"; };
+		C9CC8BE62D91438F00D768BC /* FSMoviePlayerViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = FSMoviePlayerViewController.xib; sourceTree = "<group>"; };
+		C9CC8BE92D91438F00D768BC /* FSQRCodeScanViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSQRCodeScanViewController.h; sourceTree = "<group>"; };
+		C9CC8BEA2D91438F00D768BC /* FSQRCodeScanViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSQRCodeScanViewController.m; sourceTree = "<group>"; };
+		C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = FSQRCodeScanViewController.xib; sourceTree = "<group>"; };
+		E6166C9B17EDA4A20006B956 /* FSPlayerDemo.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FSPlayerDemo.pch; sourceTree = "<group>"; };
+		E67323A51B69E6F800CB9036 /* AppIcons.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = AppIcons.xcassets; sourceTree = "<group>"; };
+		E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = LaunchImages.xcassets; sourceTree = "<group>"; };
+		E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = MoviePlayerImages.xcassets; sourceTree = "<group>"; };
+		E6903EFC17EAF70200CFD954 /* FSPlayerDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FSPlayerDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E6903F0717EAF70200CFD954 /* FSPlayerDemo-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FSPlayerDemo-Info.plist"; sourceTree = "<group>"; };
+		E6903F0917EAF70200CFD954 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		E6903F0B17EAF70200CFD954 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		E6903F1117EAF70200CFD954 /* Default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Default.png; sourceTree = "<group>"; };
+		E6903F1317EAF70200CFD954 /* Default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default@2x.png"; sourceTree = "<group>"; };
+		E6903F1517EAF70200CFD954 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E6903EF917EAF70200CFD954 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F753E46F92713A49D3CF4E86 /* Pods_FSPlayerDemo.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		43104571B228D6E05432AF05 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				226FF7AC1A7E64C2B8E3A54A /* Pods-FSPlayerDemo.debug.xcconfig */,
+				75E33D81B82270292EEB4EBD /* Pods-FSPlayerDemo.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		C9CC8BEC2D91438F00D768BC /* ViewController */ = {
+			isa = PBXGroup;
+			children = (
+				C9CC8BD22D91438F00D768BC /* Barcode.h */,
+				C9CC8BD32D91438F00D768BC /* Barcode.m */,
+				C9CC8BD42D91438F00D768BC /* FSCommon.h */,
+				C9CC8BD52D91438F00D768BC /* FSDemoHistory.h */,
+				C9CC8BD62D91438F00D768BC /* FSDemoHistory.m */,
+				C9CC8BD72D91438F00D768BC /* FSDemoInputURLViewController.h */,
+				C9CC8BD82D91438F00D768BC /* FSDemoInputURLViewController.m */,
+				C9CC8BD92D91438F00D768BC /* FSDemoInputURLViewController.xib */,
+				C9CC8BDA2D91438F00D768BC /* FSDemoLocalFolderViewController.h */,
+				C9CC8BDB2D91438F00D768BC /* FSDemoLocalFolderViewController.m */,
+				C9CC8BDC2D91438F00D768BC /* FSDemoMainViewController.h */,
+				C9CC8BDD2D91438F00D768BC /* FSDemoMainViewController.m */,
+				C9CC8BDE2D91438F00D768BC /* FSDemoMainViewController.xib */,
+				C9CC8BDF2D91438F00D768BC /* FSDemoSampleViewController.h */,
+				C9CC8BE02D91438F00D768BC /* FSDemoSampleViewController.m */,
+				C9CC8BE12D91438F00D768BC /* FSDemoSampleViewController.xib */,
+				C9CC8BE22D91438F00D768BC /* FSMediaControl.h */,
+				C9CC8BE32D91438F00D768BC /* FSMediaControl.m */,
+				C9CC8BE42D91438F00D768BC /* FSMoviePlayerViewController.h */,
+				C9CC8BE52D91438F00D768BC /* FSMoviePlayerViewController.m */,
+				C9CC8BE62D91438F00D768BC /* FSMoviePlayerViewController.xib */,
+				C9CC8BE92D91438F00D768BC /* FSQRCodeScanViewController.h */,
+				C9CC8BEA2D91438F00D768BC /* FSQRCodeScanViewController.m */,
+				C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */,
+			);
+			path = ViewController;
+			sourceTree = "<group>";
+		};
+		D4AAE92C995B33AE6A135378 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				156710EE52D85A1D5873E15C /* Pods_FSPlayerDemo.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		E67323A01B69E6B800CB9036 /* XCAssets */ = {
+			isa = PBXGroup;
+			children = (
+				E67323A51B69E6F800CB9036 /* AppIcons.xcassets */,
+				E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */,
+				E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */,
+			);
+			path = XCAssets;
+			sourceTree = "<group>";
+		};
+		E6903EF317EAF70200CFD954 = {
+			isa = PBXGroup;
+			children = (
+				E6903F0517EAF70200CFD954 /* FSPlayerDemo */,
+				E6903EFD17EAF70200CFD954 /* Products */,
+				E67323A01B69E6B800CB9036 /* XCAssets */,
+				43104571B228D6E05432AF05 /* Pods */,
+				D4AAE92C995B33AE6A135378 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		E6903EFD17EAF70200CFD954 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E6903EFC17EAF70200CFD954 /* FSPlayerDemo.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E6903F0517EAF70200CFD954 /* FSPlayerDemo */ = {
+			isa = PBXGroup;
+			children = (
+				C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */,
+				C9CC8BD02D91434300D768BC /* FSAppDelegate.m */,
+				C9CC8BEC2D91438F00D768BC /* ViewController */,
+				E6903F0617EAF70200CFD954 /* Supporting Files */,
+			);
+			path = FSPlayerDemo;
+			sourceTree = "<group>";
+		};
+		E6903F0617EAF70200CFD954 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				E6903F0717EAF70200CFD954 /* FSPlayerDemo-Info.plist */,
+				E6903F0817EAF70200CFD954 /* InfoPlist.strings */,
+				E6903F0B17EAF70200CFD954 /* main.m */,
+				E6903F1117EAF70200CFD954 /* Default.png */,
+				E6903F1317EAF70200CFD954 /* Default@2x.png */,
+				E6903F1517EAF70200CFD954 /* Default-568h@2x.png */,
+				E6166C9B17EDA4A20006B956 /* FSPlayerDemo.pch */,
+				55E809E51B145B55003E98A5 /* LaunchScreen.xib */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E6903EFB17EAF70200CFD954 /* FSPlayerDemo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E6903F1917EAF70200CFD954 /* Build configuration list for PBXNativeTarget "FSPlayerDemo" */;
+			buildPhases = (
+				FA469C82FB92C17789D75FCD /* [CP] Check Pods Manifest.lock */,
+				E6903EF817EAF70200CFD954 /* Sources */,
+				E6903EF917EAF70200CFD954 /* Frameworks */,
+				E6903EFA17EAF70200CFD954 /* Resources */,
+				B4817AAC0936B46C5D6FB3B8 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FSPlayerDemo;
+			productName = IJKMediaDemo;
+			productReference = E6903EFC17EAF70200CFD954 /* FSPlayerDemo.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E6903EF417EAF70200CFD954 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				CLASSPREFIX = IJK;
+				LastUpgradeCheck = 1620;
+				ORGANIZATIONNAME = bilibili;
+				TargetAttributes = {
+					E6903EFB17EAF70200CFD954 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E6903EF717EAF70200CFD954 /* Build configuration list for PBXProject "FSPlayerDemo" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E6903EF317EAF70200CFD954;
+			productRefGroup = E6903EFD17EAF70200CFD954 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E6903EFB17EAF70200CFD954 /* FSPlayerDemo */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E6903EFA17EAF70200CFD954 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6903F0A17EAF70200CFD954 /* InfoPlist.strings in Resources */,
+				E67323AC1B69E76100CB9036 /* MoviePlayerImages.xcassets in Resources */,
+				E6903F1217EAF70200CFD954 /* Default.png in Resources */,
+				C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */,
+				C9CC8BEE2D91438F00D768BC /* FSDemoMainViewController.xib in Resources */,
+				C9CC8BEF2D91438F00D768BC /* FSDemoSampleViewController.xib in Resources */,
+				C9CC8BF02D91438F00D768BC /* FSMoviePlayerViewController.xib in Resources */,
+				C9CC8BF12D91438F00D768BC /* FSDemoInputURLViewController.xib in Resources */,
+				E6903F1417EAF70200CFD954 /* Default@2x.png in Resources */,
+				E6903F1617EAF70200CFD954 /* Default-568h@2x.png in Resources */,
+				E67323A71B69E6F800CB9036 /* AppIcons.xcassets in Resources */,
+				55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */,
+				E67323A81B69E6F800CB9036 /* LaunchImages.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		B4817AAC0936B46C5D6FB3B8 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/FSPlayer/FSPlayer.framework",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/FSPlayer.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		FA469C82FB92C17789D75FCD /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-FSPlayerDemo-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E6903EF817EAF70200CFD954 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6903F0C17EAF70200CFD954 /* main.m in Sources */,
+				C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */,
+				C9CC8BF32D91438F00D768BC /* FSMediaControl.m in Sources */,
+				C9CC8BF42D91438F00D768BC /* FSMoviePlayerViewController.m in Sources */,
+				C9CC8BF52D91438F00D768BC /* FSDemoInputURLViewController.m in Sources */,
+				C9CC8BF62D91438F00D768BC /* FSQRCodeScanViewController.m in Sources */,
+				C9CC8BF72D91438F00D768BC /* FSDemoLocalFolderViewController.m in Sources */,
+				C9CC8BF82D91438F00D768BC /* Barcode.m in Sources */,
+				C9CC8BF92D91438F00D768BC /* FSDemoSampleViewController.m in Sources */,
+				C9CC8BFA2D91438F00D768BC /* FSDemoHistory.m in Sources */,
+				C9CC8BFB2D91438F00D768BC /* FSDemoMainViewController.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		E6903F0817EAF70200CFD954 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				E6903F0917EAF70200CFD954 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		E6903F1717EAF70200CFD954 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E6903F1817EAF70200CFD954 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E6903F1A17EAF70200CFD954 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 226FF7AC1A7E64C2B8E3A54A /* Pods-FSPlayerDemo.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96C96H28CU;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = FSPlayerDemo/FSPlayerDemo.pch;
+				INFOPLIST_FILE = "FSPlayerDemo/FSPlayerDemo-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = FSPlayer;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				MARKETING_VERSION = 0.10.2;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALID_ARCHS = "arm64 x86_64";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		E6903F1B17EAF70200CFD954 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 75E33D81B82270292EEB4EBD /* Pods-FSPlayerDemo.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96C96H28CU;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = FSPlayerDemo/FSPlayerDemo.pch;
+				INFOPLIST_FILE = "FSPlayerDemo/FSPlayerDemo-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = FSPlayer;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				MARKETING_VERSION = 0.10.2;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALID_ARCHS = "arm64 x86_64";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E6903EF717EAF70200CFD954 /* Build configuration list for PBXProject "FSPlayerDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E6903F1717EAF70200CFD954 /* Debug */,
+				E6903F1817EAF70200CFD954 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E6903F1917EAF70200CFD954 /* Build configuration list for PBXNativeTarget "FSPlayerDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E6903F1A17EAF70200CFD954 /* Debug */,
+				E6903F1B17EAF70200CFD954 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E6903EF417EAF70200CFD954 /* Project object */;
+}

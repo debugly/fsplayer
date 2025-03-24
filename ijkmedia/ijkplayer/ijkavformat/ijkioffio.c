@@ -32,7 +32,7 @@ typedef struct IjkIOFFioContext {
 static int ijkio_copy_options(AVDictionary **dst, IjkAVDictionary *src) {
     IjkAVDictionaryEntry *t = NULL;
 
-    while ((t = ijk_av_dict_get(src, "", t, IJK_AV_DICT_IGNORE_SUFFIX))) {
+    while ((t = ijk_av_dict_get(src, "", t, FS_AV_DICT_IGNORE_SUFFIX))) {
         int ret = av_dict_set(dst, t->key, t->value, 0);
         if (ret < 0)
             return ret;

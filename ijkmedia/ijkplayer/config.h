@@ -46,7 +46,7 @@
 #endif
 
 #ifndef FFMPEG_LOG_TAG
-#define FFMPEG_LOG_TAG "IJKFFMPEG"
+#define FFMPEG_LOG_TAG "FSFFMPEG"
 #endif
 
 #endif//FFPLAY__CONFIG_H

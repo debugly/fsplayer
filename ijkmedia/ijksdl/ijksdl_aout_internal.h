@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_AOUT_INTERNAL_H
-#define IJKSDL__IJKSDL_AOUT_INTERNAL_H
+#ifndef FSSDL__IJKSDL_AOUT_INTERNAL_H
+#define FSSDL__IJKSDL_AOUT_INTERNAL_H
 
 #include "ijksdl_mutex.h"
 #include "ijksdl_aout.h"

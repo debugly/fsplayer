@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-IJKFF_Pipenode *ffpipenode_alloc(size_t opaque_size)
+FSFF_Pipenode *ffpipenode_alloc(size_t opaque_size)
 {
-    IJKFF_Pipenode *node = (IJKFF_Pipenode*) calloc(1, sizeof(IJKFF_Pipenode));
+    FSFF_Pipenode *node = (FSFF_Pipenode*) calloc(1, sizeof(FSFF_Pipenode));
     if (!node)
         return NULL;
 
@@ -48,7 +48,7 @@ IJKFF_Pipenode *ffpipenode_alloc(size_t opaque_size)
     return node;
 }
 
-void ffpipenode_free(IJKFF_Pipenode *node)
+void ffpipenode_free(FSFF_Pipenode *node)
 {
     if (!node)
         return;
@@ -60,11 +60,11 @@ void ffpipenode_free(IJKFF_Pipenode *node)
     SDL_DestroyMutexP(&node->mutex);
 
     free(node->opaque);
-    memset(node, 0, sizeof(IJKFF_Pipenode));
+    memset(node, 0, sizeof(FSFF_Pipenode));
     free(node);
 }
 
-void ffpipenode_free_p(IJKFF_Pipenode **node)
+void ffpipenode_free_p(FSFF_Pipenode **node)
 {
     if (!node)
         return;
@@ -73,12 +73,12 @@ void ffpipenode_free_p(IJKFF_Pipenode **node)
     *node = NULL;
 }
 
-int ffpipenode_run_sync(IJKFF_Pipenode *node)
+int ffpipenode_run_sync(FSFF_Pipenode *node)
 {
     return node->func_run_sync(node);
 }
 
-int ffpipenode_flush(IJKFF_Pipenode *node)
+int ffpipenode_flush(FSFF_Pipenode *node)
 {
     if (!node || !node->func_flush)
         return 0;

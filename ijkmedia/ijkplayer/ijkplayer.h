@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKPLAYER_ANDROID__IJKPLAYER_H
-#define IJKPLAYER_ANDROID__IJKPLAYER_H
+#ifndef FSPLAYER_ANDROID__IJKPLAYER_H
+#define FSPLAYER_ANDROID__IJKPLAYER_H
 
 #include <stdbool.h>
 #include "ff_ffmsg_queue.h"
@@ -141,14 +141,14 @@ struct SDL_Vout;
 
 
 
-#define IJKMP_IO_STAT_READ 1
+#define FSMP_IO_STAT_READ 1
 
 
-#define IJKMP_OPT_CATEGORY_FORMAT FFP_OPT_CATEGORY_FORMAT
-#define IJKMP_OPT_CATEGORY_CODEC  FFP_OPT_CATEGORY_CODEC
-#define IJKMP_OPT_CATEGORY_SWS    FFP_OPT_CATEGORY_SWS
-#define IJKMP_OPT_CATEGORY_PLAYER FFP_OPT_CATEGORY_PLAYER
-#define IJKMP_OPT_CATEGORY_SWR    FFP_OPT_CATEGORY_SWR
+#define FSMP_OPT_CATEGORY_FORMAT FFP_OPT_CATEGORY_FORMAT
+#define FSMP_OPT_CATEGORY_CODEC  FFP_OPT_CATEGORY_CODEC
+#define FSMP_OPT_CATEGORY_SWS    FFP_OPT_CATEGORY_SWS
+#define FSMP_OPT_CATEGORY_PLAYER FFP_OPT_CATEGORY_PLAYER
+#define FSMP_OPT_CATEGORY_SWR    FFP_OPT_CATEGORY_SWR
 
 
 void            ijkmp_global_init(void);
@@ -234,6 +234,6 @@ void ijkmp_set_enable_accurate_seek(IjkMediaPlayer *mp, int open);
 /* step to next frame */
 void ijkmp_step_to_next_frame(IjkMediaPlayer *mp);
 
-typedef struct IJKSDLSubtitlePreference IJKSDLSubtitlePreference;
-void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, IJKSDLSubtitlePreference* sp);
+typedef struct FSSDLSubtitlePreference FSSDLSubtitlePreference;
+void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSDLSubtitlePreference* sp);
 #endif

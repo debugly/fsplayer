@@ -29,32 +29,32 @@ static SDL_Class g_pipeline_class = {
     .name = "ffpipeline_ffplay",
 };
 
-struct IJKFF_Pipeline_Opaque {
+struct FSFF_Pipeline_Opaque {
     FFPlayer *ffp;
 };
 
-static void func_destroy(IJKFF_Pipeline *pipeline)
+static void func_destroy(FSFF_Pipeline *pipeline)
 {
     // do nothing
 }
 
-static IJKFF_Pipenode *func_open_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+static FSFF_Pipenode *func_open_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return ffpipenode_create_video_decoder_from_ffplay(ffp);
 }
 
-static SDL_Aout *func_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+static SDL_Aout *func_open_audio_output(FSFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return NULL;
 }
 
-IJKFF_Pipeline *ffpipeline_create_from_ffplay(FFPlayer *ffp)
+FSFF_Pipeline *ffpipeline_create_from_ffplay(FFPlayer *ffp)
 {
-    IJKFF_Pipeline *pipeline = ffpipeline_alloc(&g_pipeline_class, sizeof(IJKFF_Pipeline_Opaque));
+    FSFF_Pipeline *pipeline = ffpipeline_alloc(&g_pipeline_class, sizeof(FSFF_Pipeline_Opaque));
     if (!pipeline)
         return pipeline;
 
-    IJKFF_Pipeline_Opaque *opaque = pipeline->opaque;
+    FSFF_Pipeline_Opaque *opaque = pipeline->opaque;
     opaque->ffp                   = ffp;
 
     pipeline->func_destroy            = func_destroy;

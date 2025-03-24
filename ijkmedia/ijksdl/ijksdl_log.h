@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_LOG_H
-#define IJKSDL__IJKSDL_LOG_H
+#ifndef FSSDL__IJKSDL_LOG_H
+#define FSSDL__IJKSDL_LOG_H
 
 #include <stdio.h>
 
@@ -32,16 +32,16 @@
 #include <android/log.h>
 #include "ijksdl_extra_log.h"
 
-#define IJK_LOG_UNKNOWN     ANDROID_LOG_UNKNOWN
-#define IJK_LOG_DEFAULT     ANDROID_LOG_DEFAULT
+#define FS_LOG_UNKNOWN     ANDROID_LOG_UNKNOWN
+#define FS_LOG_DEFAULT     ANDROID_LOG_DEFAULT
 
-#define IJK_LOG_VERBOSE     ANDROID_LOG_VERBOSE
-#define IJK_LOG_DEBUG       ANDROID_LOG_DEBUG
-#define IJK_LOG_INFO        ANDROID_LOG_INFO
-#define IJK_LOG_WARN        ANDROID_LOG_WARN
-#define IJK_LOG_ERROR       ANDROID_LOG_ERROR
-#define IJK_LOG_FATAL       ANDROID_LOG_FATAL
-#define IJK_LOG_SILENT      ANDROID_LOG_SILENT
+#define FS_LOG_VERBOSE     ANDROID_LOG_VERBOSE
+#define FS_LOG_DEBUG       ANDROID_LOG_DEBUG
+#define FS_LOG_INFO        ANDROID_LOG_INFO
+#define FS_LOG_WARN        ANDROID_LOG_WARN
+#define FS_LOG_ERROR       ANDROID_LOG_ERROR
+#define FS_LOG_FATAL       ANDROID_LOG_FATAL
+#define FS_LOG_SILENT      ANDROID_LOG_SILENT
 
 #ifdef EXTRA_LOG_PRINT
 #define VLOG(level, TAG, ...)    ffp_log_extra_vprint(level, TAG, __VA_ARGS__)
@@ -53,16 +53,16 @@
 
 #else
 
-#define IJK_LOG_UNKNOWN     0
-#define IJK_LOG_DEFAULT     1
+#define FS_LOG_UNKNOWN     0
+#define FS_LOG_DEFAULT     1
 
-#define IJK_LOG_VERBOSE     2
-#define IJK_LOG_DEBUG       3
-#define IJK_LOG_INFO        4
-#define IJK_LOG_WARN        5
-#define IJK_LOG_ERROR       6
-#define IJK_LOG_FATAL       7
-#define IJK_LOG_SILENT      8
+#define FS_LOG_VERBOSE     2
+#define FS_LOG_DEBUG       3
+#define FS_LOG_INFO        4
+#define FS_LOG_WARN        5
+#define FS_LOG_ERROR       6
+#define FS_LOG_FATAL       7
+#define FS_LOG_SILENT      8
 
 #ifdef __APPLE__
 
@@ -80,19 +80,19 @@
 
 #endif
 
-#define IJK_LOG_TAG "IJKMEDIA"
+#define FS_LOG_TAG "FSMEDIA"
 
-#define VLOGV(...)  VLOG(IJK_LOG_VERBOSE,   IJK_LOG_TAG, __VA_ARGS__)
-#define VLOGD(...)  VLOG(IJK_LOG_DEBUG,     IJK_LOG_TAG, __VA_ARGS__)
-#define VLOGI(...)  VLOG(IJK_LOG_INFO,      IJK_LOG_TAG, __VA_ARGS__)
-#define VLOGW(...)  VLOG(IJK_LOG_WARN,      IJK_LOG_TAG, __VA_ARGS__)
-#define VLOGE(...)  VLOG(IJK_LOG_ERROR,     IJK_LOG_TAG, __VA_ARGS__)
+#define VLOGV(...)  VLOG(FS_LOG_VERBOSE,   FS_LOG_TAG, __VA_ARGS__)
+#define VLOGD(...)  VLOG(FS_LOG_DEBUG,     FS_LOG_TAG, __VA_ARGS__)
+#define VLOGI(...)  VLOG(FS_LOG_INFO,      FS_LOG_TAG, __VA_ARGS__)
+#define VLOGW(...)  VLOG(FS_LOG_WARN,      FS_LOG_TAG, __VA_ARGS__)
+#define VLOGE(...)  VLOG(FS_LOG_ERROR,     FS_LOG_TAG, __VA_ARGS__)
 
-#define ALOGV(...)  ALOG(IJK_LOG_VERBOSE,   IJK_LOG_TAG, __VA_ARGS__)
-#define ALOGD(...)  ALOG(IJK_LOG_DEBUG,     IJK_LOG_TAG, __VA_ARGS__)
-#define ALOGI(...)  ALOG(IJK_LOG_INFO,      IJK_LOG_TAG, __VA_ARGS__)
-#define ALOGW(...)  ALOG(IJK_LOG_WARN,      IJK_LOG_TAG, __VA_ARGS__)
-#define ALOGE(...)  ALOG(IJK_LOG_ERROR,     IJK_LOG_TAG, __VA_ARGS__)
+#define ALOGV(...)  ALOG(FS_LOG_VERBOSE,   FS_LOG_TAG, __VA_ARGS__)
+#define ALOGD(...)  ALOG(FS_LOG_DEBUG,     FS_LOG_TAG, __VA_ARGS__)
+#define ALOGI(...)  ALOG(FS_LOG_INFO,      FS_LOG_TAG, __VA_ARGS__)
+#define ALOGW(...)  ALOG(FS_LOG_WARN,      FS_LOG_TAG, __VA_ARGS__)
+#define ALOGE(...)  ALOG(FS_LOG_ERROR,     FS_LOG_TAG, __VA_ARGS__)
 #define LOG_ALWAYS_FATAL(...)   do { ALOGE(__VA_ARGS__); exit(1); } while (0)
 
 #endif
