@@ -16,7 +16,7 @@
  */
 
 #import "FSMediaControl.h"
-#import <FSPlayer/FSFFMonitor.h>
+#import <FSPlayer/FSMonitor.h>
 #import <FSPlayer/FSPlayerKit.h>
 
 @implementation FSMediaControl

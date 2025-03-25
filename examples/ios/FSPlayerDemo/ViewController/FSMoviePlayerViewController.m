@@ -84,7 +84,7 @@
     [FSPlayer checkIfFFmpegVersionMatch:YES];
     // [FSPlayer checkIfPlayerVersionMatch:YES major:1 minor:0 micro:0];
 
-    FSFFOptions *options = [FSFFOptions optionsByDefault];
+    FSOptions *options = [FSOptions optionsByDefault];
     
     BOOL isVideoToolBox = YES;
     if (isVideoToolBox) {
