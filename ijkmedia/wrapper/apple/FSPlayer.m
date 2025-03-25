@@ -1323,7 +1323,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [streams addObject:streamMeta];
         }
 
-        [newMediaMeta setObject:streams forKey:kk_IJKM_KEY_STREAMS];
+        [newMediaMeta setObject:streams forKey:FS_KEY_STREAMS];
 
         ijkmeta_unlock(rawMeta);
         _monitor.mediaMeta = newMediaMeta;

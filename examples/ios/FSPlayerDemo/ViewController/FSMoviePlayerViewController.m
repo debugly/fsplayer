@@ -75,10 +75,10 @@
 
 #ifdef DEBUG
     //[FSPlayer setLogReport:YES];
-    [FSPlayer setLogLevel:k_IJK_LOG_INFO];
+    [FSPlayer setLogLevel:FS_LOG_INFO];
 #else
     [FSPlayer setLogReport:NO];
-    [FSPlayer setLogLevel:k_IJK_LOG_WARN];
+    [FSPlayer setLogLevel:FS_LOG_WARN];
 #endif
 
     [FSPlayer checkIfFFmpegVersionMatch:YES];

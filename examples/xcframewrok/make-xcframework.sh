@@ -19,9 +19,11 @@ cd "$THIS_DIR"
 
 set -e
 
+FMN="FSPlayer"
+
 function get_inputs_with_path()
 {
-    fmwk="$1"
+    fmwk="${1}/$FMN/$FMN.framework"
     inputs=""
     if [[ -d $fmwk ]]; then
         inputs="$inputs -framework $fmwk"
@@ -36,15 +38,15 @@ function get_inputs_with_path()
 function get_inputs()
 {
     # add macOS
-    macos_inputs=$(get_inputs_with_path 'macos/Pods/Release/IJKMediaPlayerKit/IJKMediaPlayerKit.framework')
+    macos_inputs=$(get_inputs_with_path 'macos/Pods/Release')
     # add iOS
-    ios_inputs=$(get_inputs_with_path 'ios/Pods/Release-iphoneos/IJKMediaPlayerKit/IJKMediaPlayerKit.framework')
+    ios_inputs=$(get_inputs_with_path 'ios/Pods/Release-iphoneos')
     # add iOS Simulator
-    ios_sim_inputs=$(get_inputs_with_path 'ios/Pods/Release-iphonesimulator/IJKMediaPlayerKit/IJKMediaPlayerKit.framework')
+    ios_sim_inputs=$(get_inputs_with_path 'ios/Pods/Release-iphonesimulator')
     # add tvOS
-    tvos_inputs=$(get_inputs_with_path 'tvos/Pods/Release-appletvos/IJKMediaPlayerKit/IJKMediaPlayerKit.framework')
+    tvos_inputs=$(get_inputs_with_path 'tvos/Pods/Release-appletvos')
     # add tvOS Simulator
-    tvos_sim_inputs=$(get_inputs_with_path 'tvos/Pods/Release-appletvsimulator/IJKMediaPlayerKit/IJKMediaPlayerKit.framework')
+    tvos_sim_inputs=$(get_inputs_with_path 'tvos/Pods/Release-appletvsimulator')
     
     echo "${macos_inputs} ${ios_inputs} ${ios_sim_inputs} ${tvos_inputs} ${tvos_sim_inputs}"
 }
@@ -54,7 +56,7 @@ function do_make_xcframework() {
     local XC_XCFRMK_DIR='xcframewrok'
     mkdir -p "$XC_XCFRMK_DIR"
     inputs="$(get_inputs)"
-    output=$XC_XCFRMK_DIR/IJKMediaPlayerKit.xcframework
+    output=$XC_XCFRMK_DIR/${FMN}.xcframework
     rm -rf "$output"
     # echo "xcodebuild -create-xcframework $inputs -output $output"
     xcodebuild -create-xcframework $inputs -output $output

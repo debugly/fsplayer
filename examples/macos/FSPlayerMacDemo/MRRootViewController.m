@@ -438,13 +438,13 @@ static BOOL hdrAnimationShown = 0;
             {
                 //快速切换字幕
                 NSDictionary *dic = self.player.monitor.mediaMeta;
-                int currentIdx = [dic[k_IJKM_VAL_TYPE__SUBTITLE] intValue];
+                int currentIdx = [dic[FS_VAL_TYPE__SUBTITLE] intValue];
                 int position = -1;
                 NSMutableArray *subStreamIdxArr = [NSMutableArray array];
-                for (NSDictionary *stream in dic[kk_IJKM_KEY_STREAMS]) {
-                    NSString *type = stream[k_IJKM_KEY_TYPE];
-                    if ([type isEqualToString:k_IJKM_VAL_TYPE__SUBTITLE]) {
-                        int streamIdx = [stream[k_IJKM_KEY_STREAM_IDX] intValue];
+                for (NSDictionary *stream in dic[FS_KEY_STREAMS]) {
+                    NSString *type = stream[FS_KEY_TYPE];
+                    if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
+                        int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
                         if (currentIdx == streamIdx) {
                             position = (int)[subStreamIdxArr count];
                         }
@@ -777,7 +777,7 @@ static BOOL hdrAnimationShown = 0;
         [self printICYMeta];
         [self updateStreams];
         NSDictionary *dic = self.player.monitor.mediaMeta;
-        NSString *lrc = dic[k_IJKM_KEY_LYRICS];
+        NSString *lrc = dic[FS_KEY_LYRICS];
         if (lrc.length > 0) {
             NSString *dir = [self dirForCurrentPlayingUrl];
             NSString *movieName = [self.playingUrl lastPathComponent];
@@ -1002,14 +1002,14 @@ static BOOL hdrAnimationShown = 0;
 {
     NSDictionary *dic = self.player.monitor.mediaMeta;
     NSLog(@"---ICY Meta Changed---------------");
-    NSLog(k_IJKM_KEY_ICY_BR@":%@",dic[k_IJKM_KEY_ICY_BR]);
-    NSLog(k_IJKM_KEY_ICY_DESC@":%@",dic[k_IJKM_KEY_ICY_DESC]);
-    NSLog(k_IJKM_KEY_ICY_GENRE@":%@",dic[k_IJKM_KEY_ICY_GENRE]);
-    NSLog(k_IJKM_KEY_ICY_NAME@":%@",dic[k_IJKM_KEY_ICY_NAME]);
-    NSLog(k_IJKM_KEY_ICY_PUB@":%@",dic[k_IJKM_KEY_ICY_PUB]);
-    NSLog(k_IJKM_KEY_ICY_URL@":%@",dic[k_IJKM_KEY_ICY_URL]);
-    NSLog(k_IJKM_KEY_ICY_ST@":%@",dic[k_IJKM_KEY_ICY_ST]);
-    NSLog(k_IJKM_KEY_ICY_SU@":%@",dic[k_IJKM_KEY_ICY_SU]);
+    NSLog(FS_KEY_ICY_BR@":%@",dic[FS_KEY_ICY_BR]);
+    NSLog(FS_KEY_ICY_DESC@":%@",dic[FS_KEY_ICY_DESC]);
+    NSLog(FS_KEY_ICY_GENRE@":%@",dic[FS_KEY_ICY_GENRE]);
+    NSLog(FS_KEY_ICY_NAME@":%@",dic[FS_KEY_ICY_NAME]);
+    NSLog(FS_KEY_ICY_PUB@":%@",dic[FS_KEY_ICY_PUB]);
+    NSLog(FS_KEY_ICY_URL@":%@",dic[FS_KEY_ICY_URL]);
+    NSLog(FS_KEY_ICY_ST@":%@",dic[FS_KEY_ICY_ST]);
+    NSLog(FS_KEY_ICY_SU@":%@",dic[FS_KEY_ICY_SU]);
 }
 
 - (void)enableComputerSleep:(BOOL)enable
@@ -1515,23 +1515,23 @@ static BOOL hdrAnimationShown = 0;
 {
     str = [str lowercaseString];
     if ([str isEqualToString:@"default"]) {
-        return k_IJK_LOG_DEFAULT;
+        return FS_LOG_DEFAULT;
     } else if ([str isEqualToString:@"verbose"]) {
-        return k_IJK_LOG_VERBOSE;
+        return FS_LOG_VERBOSE;
     } else if ([str isEqualToString:@"debug"]) {
-        return k_IJK_LOG_DEBUG;
+        return FS_LOG_DEBUG;
     } else if ([str isEqualToString:@"info"]) {
-        return k_IJK_LOG_INFO;
+        return FS_LOG_INFO;
     } else if ([str isEqualToString:@"warn"]) {
-        return k_IJK_LOG_WARN;
+        return FS_LOG_WARN;
     } else if ([str isEqualToString:@"error"]) {
-        return k_IJK_LOG_ERROR;
+        return FS_LOG_ERROR;
     } else if ([str isEqualToString:@"fatal"]) {
-        return k_IJK_LOG_FATAL;
+        return FS_LOG_FATAL;
     } else if ([str isEqualToString:@"silent"]) {
-        return k_IJK_LOG_SILENT;
+        return FS_LOG_SILENT;
     } else {
-        return k_IJK_LOG_UNKNOWN;
+        return FS_LOG_UNKNOWN;
     }
 }
 

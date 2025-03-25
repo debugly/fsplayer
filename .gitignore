@@ -38,3 +38,4 @@ xcshareddata
 examples/macos/Pods
 examples/ios/Pods
 examples/tvos/Pods
+examples/xcframewrok/FSPlayer.xcframework

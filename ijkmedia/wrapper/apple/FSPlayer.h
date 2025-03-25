@@ -83,7 +83,7 @@
 #define FS_KEY_TITLE                @"title"
 #define FS_KEY_LANGUAGE             @"language"
 #define FS_KEY_EX_SUBTITLE_URL      @"ex_subtile_url"
-#define kk_IJKM_KEY_STREAMS             @"streams"
+#define FS_KEY_STREAMS              @"streams"
 
 typedef enum FSLogLevel {
     FS_LOG_UNKNOWN = 0,

@@ -46,11 +46,11 @@
 
 - (void)updateTracks:(NSDictionary *)mediaMeta
 {
-    int audioIdx = [mediaMeta[k_IJKM_VAL_TYPE__AUDIO] intValue];
+    int audioIdx = [mediaMeta[FS_VAL_TYPE__AUDIO] intValue];
     NSLog(@"当前音频：%d",audioIdx);
-    int videoIdx = [mediaMeta[k_IJKM_VAL_TYPE__VIDEO] intValue];
+    int videoIdx = [mediaMeta[FS_VAL_TYPE__VIDEO] intValue];
     NSLog(@"当前视频：%d",videoIdx);
-    int subtitleIdx = [mediaMeta[k_IJKM_VAL_TYPE__SUBTITLE] intValue];
+    int subtitleIdx = [mediaMeta[FS_VAL_TYPE__SUBTITLE] intValue];
     NSLog(@"当前字幕：%d",subtitleIdx);
     
     [self.settingsView removeAllItems];
@@ -62,54 +62,54 @@
     NSString *currentVideo = @"选择视轨";
     [self.settingsView addVideoItemWithTitle:currentVideo];
     
-    for (NSDictionary *stream in mediaMeta[kk_IJKM_KEY_STREAMS]) {
-        NSString *type = stream[k_IJKM_KEY_TYPE];
-        int streamIdx = [stream[k_IJKM_KEY_STREAM_IDX] intValue];
-        if ([type isEqualToString:k_IJKM_VAL_TYPE__SUBTITLE]) {
+    for (NSDictionary *stream in mediaMeta[FS_KEY_STREAMS]) {
+        NSString *type = stream[FS_KEY_TYPE];
+        int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
+        if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
             NSLog(@"subtile meta:%@",stream);
-            NSString *url = stream[k_IJKM_KEY_EX_SUBTITLE_URL];
+            NSString *url = stream[FS_KEY_EX_SUBTITLE_URL];
             NSString *title = nil;
             if (url) {
                 title = [[url lastPathComponent] stringByRemovingPercentEncoding];
             } else {
-                title = stream[k_IJKM_KEY_TITLE];
+                title = stream[FS_KEY_TITLE];
                 if (title.length == 0) {
-                    title = stream[k_IJKM_KEY_LANGUAGE];
+                    title = stream[FS_KEY_LANGUAGE];
                 }
                 if (title.length == 0) {
                     title = @"未知";
                 }
             }
             title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
-            if ([mediaMeta[k_IJKM_VAL_TYPE__SUBTITLE] intValue] == streamIdx) {
+            if ([mediaMeta[FS_VAL_TYPE__SUBTITLE] intValue] == streamIdx) {
                 currentSubtitle = title;
             }
             [self.settingsView addSubtitleItemWithTitle:title];
-        } else if ([type isEqualToString:k_IJKM_VAL_TYPE__AUDIO]) {
+        } else if ([type isEqualToString:FS_VAL_TYPE__AUDIO]) {
             NSLog(@"audio meta:%@",stream);
-            NSString *title = stream[k_IJKM_KEY_TITLE];
+            NSString *title = stream[FS_KEY_TITLE];
             if (title.length == 0) {
-                title = stream[k_IJKM_KEY_LANGUAGE];
+                title = stream[FS_KEY_LANGUAGE];
             }
             if (title.length == 0) {
                 title = @"未知";
             }
             title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
-            if ([mediaMeta[k_IJKM_VAL_TYPE__AUDIO] intValue] == streamIdx) {
+            if ([mediaMeta[FS_VAL_TYPE__AUDIO] intValue] == streamIdx) {
                 currentAudio = title;
             }
             [self.settingsView addAudioItemWithTitle:title];
-        } else if ([type isEqualToString:k_IJKM_VAL_TYPE__VIDEO]) {
+        } else if ([type isEqualToString:FS_VAL_TYPE__VIDEO]) {
             NSLog(@"video meta:%@",stream);
-            NSString *title = stream[k_IJKM_KEY_TITLE];
+            NSString *title = stream[FS_KEY_TITLE];
             if (title.length == 0) {
-                title = stream[k_IJKM_KEY_LANGUAGE];
+                title = stream[FS_KEY_LANGUAGE];
             }
             if (title.length == 0) {
                 title = @"未知";
             }
             title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
-            if ([mediaMeta[k_IJKM_VAL_TYPE__VIDEO] intValue] == streamIdx) {
+            if ([mediaMeta[FS_VAL_TYPE__VIDEO] intValue] == streamIdx) {
                 currentVideo = title;
             }
             [self.settingsView addVideoItemWithTitle:title];
@@ -142,11 +142,11 @@
     if (sender.indexOfSelectedItem == 0) {
         if (self.closeCurrentStream) {
             if (sender.tag == 1) {
-                self.closeCurrentStream(k_IJKM_VAL_TYPE__AUDIO);
+                self.closeCurrentStream(FS_VAL_TYPE__AUDIO);
             } else if (sender.tag == 2) {
-                self.closeCurrentStream(k_IJKM_VAL_TYPE__VIDEO);
+                self.closeCurrentStream(FS_VAL_TYPE__VIDEO);
             } else if (sender.tag == 3) {
-                self.closeCurrentStream(k_IJKM_VAL_TYPE__SUBTITLE);
+                self.closeCurrentStream(FS_VAL_TYPE__SUBTITLE);
             }
         }
     } else {

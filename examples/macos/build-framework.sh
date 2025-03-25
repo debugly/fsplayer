@@ -19,14 +19,14 @@ cd "$THIS_DIR"
 
 set -e
 
-if [[ ! -d Pods/IJKMediaPlayerKit.xcodeproj ]]; then
+if [[ ! -d Pods/FSPlayer.xcodeproj ]]; then
     echo "pod install"
     pod install
 fi
 
 # 1
-WORKSPACE_NAME="IJKMediaMacDemo.xcworkspace"
-TARGET_NAME="IJKMediaPlayerKit"
+WORKSPACE_NAME="FSPlayerMacDemo.xcworkspace"
+TARGET_NAME="FSPlayer"
 WORK_DIR="Pods/Release/${TARGET_NAME}"
 
 # 2

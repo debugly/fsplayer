@@ -391,13 +391,13 @@ static BOOL hdrAnimationShown = 0;
             {
                 //快速切换字幕
                 NSDictionary *dic = self.player.monitor.mediaMeta;
-                int currentIdx = [dic[k_IJKM_VAL_TYPE__SUBTITLE] intValue];
+                int currentIdx = [dic[FS_VAL_TYPE__SUBTITLE] intValue];
                 int position = -1;
                 NSMutableArray *subStreamIdxArr = [NSMutableArray array];
-                for (NSDictionary *stream in dic[kk_IJKM_KEY_STREAMS]) {
-                    NSString *type = stream[k_IJKM_KEY_TYPE];
-                    if ([type isEqualToString:k_IJKM_VAL_TYPE__SUBTITLE]) {
-                        int streamIdx = [stream[k_IJKM_KEY_STREAM_IDX] intValue];
+                for (NSDictionary *stream in dic[FS_KEY_STREAMS]) {
+                    NSString *type = stream[FS_KEY_TYPE];
+                    if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
+                        int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
                         if (currentIdx == streamIdx) {
                             position = (int)[subStreamIdxArr count];
                         }
@@ -544,7 +544,7 @@ static BOOL hdrAnimationShown = 0;
     
     self.seeking = NO;
     
-    [FSPlayer setLogLevel:k_IJK_LOG_INFO];
+    [FSPlayer setLogLevel:FS_LOG_INFO];
     
     FSOptions *options = [FSOptions optionsByDefault];
     //视频帧处理不过来的时候丢弃一些帧达到同步的效果
@@ -819,11 +819,11 @@ static BOOL hdrAnimationShown = 0;
     if (self.player.isPreparedToPlay) {
         
         NSDictionary *dic = self.player.monitor.mediaMeta;
-        int audioIdx = [dic[k_IJKM_VAL_TYPE__AUDIO] intValue];
+        int audioIdx = [dic[FS_VAL_TYPE__AUDIO] intValue];
         NSLog(@"当前音频：%d",audioIdx);
-        int videoIdx = [dic[k_IJKM_VAL_TYPE__VIDEO] intValue];
+        int videoIdx = [dic[FS_VAL_TYPE__VIDEO] intValue];
         NSLog(@"当前视频：%d",videoIdx);
-        int subtitleIdx = [dic[k_IJKM_VAL_TYPE__SUBTITLE] intValue];
+        int subtitleIdx = [dic[FS_VAL_TYPE__SUBTITLE] intValue];
         NSLog(@"当前字幕：%d",subtitleIdx);
         
         [self.subtitlePopUpBtn removeAllItems];
@@ -838,54 +838,54 @@ static BOOL hdrAnimationShown = 0;
         NSString *currentVideo = @"选择视轨";
         [self.videoPopUpBtn addItemWithTitle:currentVideo];
         
-        for (NSDictionary *stream in dic[kk_IJKM_KEY_STREAMS]) {
-            NSString *type = stream[k_IJKM_KEY_TYPE];
-            int streamIdx = [stream[k_IJKM_KEY_STREAM_IDX] intValue];
-            if ([type isEqualToString:k_IJKM_VAL_TYPE__SUBTITLE]) {
+        for (NSDictionary *stream in dic[FS_KEY_STREAMS]) {
+            NSString *type = stream[FS_KEY_TYPE];
+            int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
+            if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
                 NSLog(@"subtile meta:%@",stream);
-                NSString *url = stream[k_IJKM_KEY_EX_SUBTITLE_URL];
+                NSString *url = stream[FS_KEY_EX_SUBTITLE_URL];
                 NSString *title = nil;
                 if (url) {
                     title = [[url lastPathComponent] stringByRemovingPercentEncoding];
                 } else {
-                    title = stream[k_IJKM_KEY_TITLE];
+                    title = stream[FS_KEY_TITLE];
                     if (title.length == 0) {
-                        title = stream[k_IJKM_KEY_LANGUAGE];
+                        title = stream[FS_KEY_LANGUAGE];
                     }
                     if (title.length == 0) {
                         title = @"未知";
                     }
                 }
                 title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
-                if ([dic[k_IJKM_VAL_TYPE__SUBTITLE] intValue] == streamIdx) {
+                if ([dic[FS_VAL_TYPE__SUBTITLE] intValue] == streamIdx) {
                     currentTitle = title;
                 }
                 [self.subtitlePopUpBtn addItemWithTitle:title];
-            } else if ([type isEqualToString:k_IJKM_VAL_TYPE__AUDIO]) {
+            } else if ([type isEqualToString:FS_VAL_TYPE__AUDIO]) {
                 NSLog(@"audio meta:%@",stream);
-                NSString *title = stream[k_IJKM_KEY_TITLE];
+                NSString *title = stream[FS_KEY_TITLE];
                 if (title.length == 0) {
-                    title = stream[k_IJKM_KEY_LANGUAGE];
+                    title = stream[FS_KEY_LANGUAGE];
                 }
                 if (title.length == 0) {
                     title = @"未知";
                 }
                 title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
-                if ([dic[k_IJKM_VAL_TYPE__AUDIO] intValue] == streamIdx) {
+                if ([dic[FS_VAL_TYPE__AUDIO] intValue] == streamIdx) {
                     currentAudio = title;
                 }
                 [self.audioPopUpBtn addItemWithTitle:title];
-            } else if ([type isEqualToString:k_IJKM_VAL_TYPE__VIDEO]) {
+            } else if ([type isEqualToString:FS_VAL_TYPE__VIDEO]) {
                 NSLog(@"video meta:%@",stream);
-                NSString *title = stream[k_IJKM_KEY_TITLE];
+                NSString *title = stream[FS_KEY_TITLE];
                 if (title.length == 0) {
-                    title = stream[k_IJKM_KEY_LANGUAGE];
+                    title = stream[FS_KEY_LANGUAGE];
                 }
                 if (title.length == 0) {
                     title = @"未知";
                 }
                 title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
-                if ([dic[k_IJKM_VAL_TYPE__VIDEO] intValue] == streamIdx) {
+                if ([dic[FS_VAL_TYPE__VIDEO] intValue] == streamIdx) {
                     currentVideo = title;
                 }
                 [self.videoPopUpBtn addItemWithTitle:title];
@@ -1298,7 +1298,7 @@ static BOOL hdrAnimationShown = 0;
 - (IBAction)onSelectSubtitle:(NSPopUpButton*)sender
 {
     if (sender.indexOfSelectedItem == 0) {
-        [self.player closeCurrentStream:k_IJKM_VAL_TYPE__SUBTITLE];
+        [self.player closeCurrentStream:FS_VAL_TYPE__SUBTITLE];
     } else {
         NSString *title = sender.selectedItem.title;
         NSArray *items = [title componentsSeparatedByString:@"-"];
@@ -1467,7 +1467,7 @@ static BOOL hdrAnimationShown = 0;
 - (IBAction)onSelectAudioTrack:(NSPopUpButton*)sender
 {
     if (sender.indexOfSelectedItem == 0) {
-        [self.player closeCurrentStream:k_IJKM_VAL_TYPE__AUDIO];
+        [self.player closeCurrentStream:FS_VAL_TYPE__AUDIO];
     } else {
         NSString *title = sender.selectedItem.title;
         NSArray *items = [title componentsSeparatedByString:@"-"];
@@ -1480,7 +1480,7 @@ static BOOL hdrAnimationShown = 0;
 - (IBAction)onSelectVideoTrack:(NSPopUpButton*)sender
 {
     if (sender.indexOfSelectedItem == 0) {
-        [self.player closeCurrentStream:k_IJKM_VAL_TYPE__VIDEO];
+        [self.player closeCurrentStream:FS_VAL_TYPE__VIDEO];
     } else {
         NSString *title = sender.selectedItem.title;
         NSArray *items = [title componentsSeparatedByString:@"-"];
@@ -1513,23 +1513,23 @@ static BOOL hdrAnimationShown = 0;
 {
     str = [str lowercaseString];
     if ([str isEqualToString:@"default"]) {
-        return k_IJK_LOG_DEFAULT;
+        return FS_LOG_DEFAULT;
     } else if ([str isEqualToString:@"verbose"]) {
-        return k_IJK_LOG_VERBOSE;
+        return FS_LOG_VERBOSE;
     } else if ([str isEqualToString:@"debug"]) {
-        return k_IJK_LOG_DEBUG;
+        return FS_LOG_DEBUG;
     } else if ([str isEqualToString:@"info"]) {
-        return k_IJK_LOG_INFO;
+        return FS_LOG_INFO;
     } else if ([str isEqualToString:@"warn"]) {
-        return k_IJK_LOG_WARN;
+        return FS_LOG_WARN;
     } else if ([str isEqualToString:@"error"]) {
-        return k_IJK_LOG_ERROR;
+        return FS_LOG_ERROR;
     } else if ([str isEqualToString:@"fatal"]) {
-        return k_IJK_LOG_FATAL;
+        return FS_LOG_FATAL;
     } else if ([str isEqualToString:@"silent"]) {
-        return k_IJK_LOG_SILENT;
+        return FS_LOG_SILENT;
     } else {
-        return k_IJK_LOG_UNKNOWN;
+        return FS_LOG_UNKNOWN;
     }
 }
 

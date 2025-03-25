@@ -67,7 +67,6 @@
 
 /* Begin PBXFileReference section */
 		5EEA12AC4CEF7E961056F442 /* Pods_FSPlayerMacDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FSPlayerMacDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		9409D4EABED075A613A5C430 /* Pods-IJKMediaMacDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IJKMediaMacDemo.release.xcconfig"; path = "Target Support Files/Pods-IJKMediaMacDemo/Pods-IJKMediaMacDemo.release.xcconfig"; sourceTree = "<group>"; };
 		C607A48E64609F39847C65E2 /* Pods-FSPlayerMacDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerMacDemo.release.xcconfig"; path = "Target Support Files/Pods-FSPlayerMacDemo/Pods-FSPlayerMacDemo.release.xcconfig"; sourceTree = "<group>"; };
 		C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MRAutoTestViewController.xib; sourceTree = "<group>"; };
 		C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRAutoTestViewController.m; sourceTree = "<group>"; };
@@ -157,7 +156,6 @@
 		DDB7827A2757266900382094 /* SHBaseView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SHBaseView.m; sourceTree = "<group>"; };
 		DDE9FC6E273BD3CF00481560 /* NSFileManager+Sandbox.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSFileManager+Sandbox.h"; sourceTree = "<group>"; };
 		DDE9FC6F273BD3CF00481560 /* NSFileManager+Sandbox.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSFileManager+Sandbox.m"; sourceTree = "<group>"; };
-		EAD2A45A3180A5136D3DE7CA /* Pods-IJKMediaMacDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IJKMediaMacDemo.debug.xcconfig"; path = "Target Support Files/Pods-IJKMediaMacDemo/Pods-IJKMediaMacDemo.debug.xcconfig"; sourceTree = "<group>"; };
 		F357F32A742FA42E0FAFD5EE /* Pods-FSPlayerMacDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerMacDemo.debug.xcconfig"; path = "Target Support Files/Pods-FSPlayerMacDemo/Pods-FSPlayerMacDemo.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -337,8 +335,6 @@
 		FEE5CD56F22316C065CD4830 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				EAD2A45A3180A5136D3DE7CA /* Pods-IJKMediaMacDemo.debug.xcconfig */,
-				9409D4EABED075A613A5C430 /* Pods-IJKMediaMacDemo.release.xcconfig */,
 				F357F32A742FA42E0FAFD5EE /* Pods-FSPlayerMacDemo.debug.xcconfig */,
 				C607A48E64609F39847C65E2 /* Pods-FSPlayerMacDemo.release.xcconfig */,
 			);

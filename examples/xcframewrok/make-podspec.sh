@@ -18,9 +18,9 @@ THIS_DIR=$(DIRNAME=$(dirname "$0"); cd "$DIRNAME"; pwd)
 cd "$THIS_DIR"
 
 set -e
-version=${1:-$(grep -m 1 VERSION_NAME= ../../version.sh | awk -F = '{printf "k%s",$2}')}
+version=${1:-$(grep -m 1 VERSION_NAME= ../../version.sh | awk -F = '{printf "%s",$2}')}
 
-fn=IJKMediaPlayerKit.spec.json
+fn=FSPlayer.spec.json
 cat 'template.spec.json' \
     | sed "s/__VERSION__/${version}/" \
     > "${fn}"
