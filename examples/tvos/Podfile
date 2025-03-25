@@ -1,12 +1,12 @@
 #1.7.0
 install! 'cocoapods', :generate_multiple_pod_projects => true
 
-target 'IJKMediaTVDemo' do
+target 'FSPlayerTVDemo' do
   # Comment the next line if you don't want to use dynamic frameworks
   use_frameworks!
 
   platform :tvos, '12.0'
 
-  pod 'IJKMediaPlayerKit', :path => '../../'
+  pod 'FSPlayer', :path => '../../'
 
 end

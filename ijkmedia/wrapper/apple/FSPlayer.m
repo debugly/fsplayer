@@ -1259,7 +1259,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             NSMutableDictionary *streamMeta = [[NSMutableDictionary alloc] init];
 
             if (streamRawMeta) {
-                fillMetaInternal(streamMeta, streamRawMeta, FSM_KEY_TYPE, k_IJKM_VAL_TYPE__UNKNOWN);
+                fillMetaInternal(streamMeta, streamRawMeta, FSM_KEY_TYPE, FS_VAL_TYPE__UNKNOWN);
                 const char *type = ijkmeta_get_string_l(streamRawMeta, FSM_KEY_TYPE);
                 if (type) {
                     fillMetaInternal(streamMeta, streamRawMeta, FSM_KEY_CODEC_NAME, nil);

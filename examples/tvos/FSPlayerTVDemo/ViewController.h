@@ -1,6 +1,6 @@
 //
 //  ViewController.h
-//  IJKMediaTVDemo
+//  FSPlayerTVDemo
 //
 //  Created by Reach Matt on 2024/5/23.
 //

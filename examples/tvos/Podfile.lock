@@ -1,16 +1,16 @@
 PODS:
-  - IJKMediaPlayerKit (0.12.0)
+  - FSPlayer (1.0.0)
 
 DEPENDENCIES:
-  - IJKMediaPlayerKit (from `../../`)
+  - FSPlayer (from `../../`)
 
 EXTERNAL SOURCES:
-  IJKMediaPlayerKit:
+  FSPlayer:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  IJKMediaPlayerKit: d97346afb29221693a14e7fea7db0ee37aa4899c
+  FSPlayer: 6ed5544fc12d898f726587f99e5cf2e969dcfd63
 
-PODFILE CHECKSUM: 61b62f37b598e87b9117082bdf528ef9f99adafb
+PODFILE CHECKSUM: a8527a60936c524e4c2d83cc71540d61f67f5d18
 
 COCOAPODS: 1.16.1
