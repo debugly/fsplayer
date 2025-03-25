@@ -64,12 +64,10 @@ jobs:
         mkdir dist
         cp CHANGELOG.md dist 
         cp README.md dist
-        cp COPYING.LGPLv2.1 dist/LICENSE
+        cp COPYING.LGPLv3 dist/LICENSE
         cp -pPR examples/xcframewrok/FSPlayer.xcframework dist
         cd dist
         zip -ryq FSPlayer.zip ./*
-    - name: spm checksum
-      run: swift package compute-checksum dist/FSPlayer.zip
     - name: Upload Release Asset
       env:
         GH_TOKEN: ${{ github.token }}
