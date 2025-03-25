@@ -27,12 +27,12 @@ jobs:
       run: |
         grep -m 1 VERSION_NAME= version.sh | awk -F = '{printf "VERSION=%s",$2}' | xargs > constants.env
         echo "RELEAE_DATE=$(TZ=UTC-8 date +'%y%m%d%H%M%S')" >> constants.env
-        echo "TAG=k"$(grep "VERSION" constants.env | cut -d'=' -f2)"-beta-"$(grep "RELEAE_DATE" constants.env | cut -d'=' -f2) >> constants.env
+        echo "TAG="$(grep "VERSION" constants.env | cut -d'=' -f2)"-beta-"$(grep "RELEAE_DATE" constants.env | cut -d'=' -f2) >> constants.env
         cat constants.env
     - name: Prepare Normal Version
       if: ${{ inputs.beta == false }}
       run: |
-        grep -m 1 VERSION_NAME= version.sh | awk -F = '{printf "TAG=k%s",$2}' | xargs > constants.env
+        grep -m 1 VERSION_NAME= version.sh | awk -F = '{printf "TAG=%s",$2}' | xargs > constants.env
         cat constants.env
     - name: Export Env
       uses: cardinalby/export-env-action@v2
