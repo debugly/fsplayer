@@ -1,17 +1,17 @@
 //
-//  FSInternalRenderView.m
+//  FSVideoRenderView.m
 //  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2023/4/6.
 //
 
-#import "FSInternalRenderView.h"
+#import "FSVideoRenderView.h"
 #if TARGET_OS_OSX
 #import "FSSDLGLView.h"
 #endif
 #import "FSMetalView.h"
 
-@implementation FSInternalRenderView
+@implementation FSVideoRenderView
 
 #if TARGET_OS_OSX
 + (UIView<FSVideoRenderingProtocol> *)createGLRenderView

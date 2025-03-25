@@ -544,7 +544,7 @@ inline static void ffp_reset_demux_cache_control(FFDemuxCacheControl *dcc)
 
 /* ffplayer */
 struct IjkMediaMeta;
-struct FSFF_Pipeline;
+struct FS_Pipeline;
 typedef struct FFPlayer {
     const AVClass *av_class;
 
@@ -630,8 +630,8 @@ typedef struct FFPlayer {
     SDL_Aout *aout;
     SDL_Vout *vout;
     struct SDL_GPU  *gpu;
-    struct FSFF_Pipeline *pipeline;
-    struct FSFF_Pipenode *node_vdec;
+    struct FS_Pipeline *pipeline;
+    struct FS_Pipenode *node_vdec;
 
     int sar_num;
     int sar_den;

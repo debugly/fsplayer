@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_GLES2__INTERNAL__H
-#define IJKSDL__IJKSDL_GLES2__INTERNAL__H
+#ifndef FSSDL__IJKSDL_GLES2__INTERNAL__H
+#define FSSDL__IJKSDL_GLES2__INTERNAL__H
 
 #include <assert.h>
 #include <stdlib.h>
@@ -31,11 +31,11 @@
 #include "math_util.h"
 #include "color_matrix.h"
 
-#define IJK_GLES_STRINGIZE(x)   #x
-#define IJK_GLES_STRINGIZE2(x)  IJK_GLES_STRINGIZE(x)
-#define IJK_GLES_STRING(x)      IJK_GLES_STRINGIZE2(x)
+#define FS_GLES_STRINGIZE(x)   #x
+#define FS_GLES_STRINGIZE2(x)  FS_GLES_STRINGIZE(x)
+#define FS_GLES_STRING(x)      FS_GLES_STRINGIZE2(x)
 
-typedef struct IJK_GLES2_Renderer_Opaque IJK_GLES2_Renderer_Opaque;
+typedef struct FS_GLES2_Renderer_Opaque FS_GLES2_Renderer_Opaque;
 
 #ifdef __APPLE__
 typedef enum : int {
@@ -47,9 +47,9 @@ typedef enum : int {
     YUV_3P_SHADER,//for 420p
     UYVY_SHADER,  //for uyvy
     YUYV_SHADER   //for yuyv
-} IJK_SHADER_TYPE;
+} FS_SHADER_TYPE;
 
-static inline const int IJK_Sample_Count_For_Shader(IJK_SHADER_TYPE type)
+static inline const int FS_Sample_Count_For_Shader(FS_SHADER_TYPE type)
 {
     switch (type) {
         case BGRX_SHADER:
@@ -76,23 +76,23 @@ static inline const int IJK_Sample_Count_For_Shader(IJK_SHADER_TYPE type)
 }
 #endif
 
-typedef struct IJK_GLES2_Renderer
+typedef struct FS_GLES2_Renderer
 {
-    IJK_GLES2_Renderer_Opaque *opaque;
+    FS_GLES2_Renderer_Opaque *opaque;
 
     GLuint program;
 
-    GLuint plane_textures[IJK_GLES2_MAX_PLANE];
+    GLuint plane_textures[FS_GLES2_MAX_PLANE];
 
     GLint av4_position;
     GLint av2_texcoord;
     GLint um4_mvp;
 
-    GLint us2_sampler[IJK_GLES2_MAX_PLANE];
+    GLint us2_sampler[FS_GLES2_MAX_PLANE];
     GLint subSampler;//subtitle
     GLint um3_color_conversion;
     YUV_2_RGB_Color_Matrix colorMatrix;
-    IJK_Color_Transfer_Function transferFun;
+    FS_Color_Transfer_Function transferFun;
     GLint transferFunUM;
     GLboolean isFullRange;
     GLboolean isHDR;
@@ -101,17 +101,17 @@ typedef struct IJK_GLES2_Renderer
     GLint hdrAnimationUM;
     GLint um3_rgb_adjustment;
     
-    GLboolean (*func_use)(IJK_GLES2_Renderer *renderer);
-    GLsizei   (*func_getBufferWidth)(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
-    GLboolean (*func_uploadTexture)(IJK_GLES2_Renderer *renderer, void *picture);
-    GLvoid    (*func_useSubtitle)(IJK_GLES2_Renderer *renderer,GLboolean subtitle);
-    GLboolean (*func_uploadSubtitle)(IJK_GLES2_Renderer *renderer, int tex, int w, int h);
-    GLvoid    (*func_updateHDRAnimation)(IJK_GLES2_Renderer *renderer, float per);
-    GLboolean (*func_isHDR)(IJK_GLES2_Renderer *renderer);
+    GLboolean (*func_use)(FS_GLES2_Renderer *renderer);
+    GLsizei   (*func_getBufferWidth)(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
+    GLboolean (*func_uploadTexture)(FS_GLES2_Renderer *renderer, void *picture);
+    GLvoid    (*func_useSubtitle)(FS_GLES2_Renderer *renderer,GLboolean subtitle);
+    GLboolean (*func_uploadSubtitle)(FS_GLES2_Renderer *renderer, int tex, int w, int h);
+    GLvoid    (*func_updateHDRAnimation)(FS_GLES2_Renderer *renderer, float per);
+    GLboolean (*func_isHDR)(FS_GLES2_Renderer *renderer);
 #ifndef __APPLE__
-    void*     (*func_getVideoImage)(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
+    void*     (*func_getVideoImage)(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
 #endif
-    GLvoid    (*func_destroy)(IJK_GLES2_Renderer *renderer);
+    GLvoid    (*func_destroy)(FS_GLES2_Renderer *renderer);
 
     GLsizei buffer_width;
     GLsizei visible_width;
@@ -149,36 +149,36 @@ typedef struct IJK_GLES2_Renderer
     int rotate_type;//x=1;y=2;z=3
     int rotate_degrees;
     GLfloat rgb_adjustment[3];
-} IJK_GLES2_Renderer;
+} FS_GLES2_Renderer;
 
-ijk_matrix IJK_GLES2_makeOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat near, GLfloat far);
+ijk_matrix FS_GLES2_makeOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat near, GLfloat far);
 
-ijk_matrix IJK_GLES2_defaultOrtho(void);
+ijk_matrix FS_GLES2_defaultOrtho(void);
 
-void IJK_GLES2_getVertexShader_default(char *out,int ver);
+void FS_GLES2_getVertexShader_default(char *out,int ver);
 
 #ifndef __APPLE__
-const char *IJK_GLES2_getFragmentShader_rgb(void);
-const char *IJK_GLES2_getFragmentShader_argb(void);
+const char *FS_GLES2_getFragmentShader_rgb(void);
+const char *FS_GLES2_getFragmentShader_argb(void);
 
-const char *IJK_GL_getFragmentShader_yuv420sp(void);
-const char *IJK_GL_getFragmentShader_yuv420p(void);
+const char *FS_GL_getFragmentShader_yuv420sp(void);
+const char *FS_GL_getFragmentShader_yuv420p(void);
 
-IJK_GLES2_Renderer *IJK_GL_Renderer_create_rgbx(void);
-IJK_GLES2_Renderer *IJK_GL_Renderer_create_xrgb(void);
+FS_GLES2_Renderer *FS_GL_Renderer_create_rgbx(void);
+FS_GLES2_Renderer *FS_GL_Renderer_create_xrgb(void);
 
 #else
 
-IJK_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture, int openglVer);
-void ijk_get_apple_common_fragment_shader(IJK_SHADER_TYPE type, char *out, int ver);
+FS_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture, int openglVer);
+void ijk_get_apple_common_fragment_shader(FS_SHADER_TYPE type, char *out, int ver);
 
 GLboolean ijk_upload_texture_with_cvpixelbuffer(CVPixelBufferRef pixel_buffer, int textures[3]);
 #endif
 
-const GLfloat *IJK_GLES2_getColorMatrix_bt2020(void);
-const GLfloat *IJK_GLES2_getColorMatrix_bt709(void);
-const GLfloat *IJK_GLES2_getColorMatrix_bt601(void);
+const GLfloat *FS_GLES2_getColorMatrix_bt2020(void);
+const GLfloat *FS_GLES2_getColorMatrix_bt709(void);
+const GLfloat *FS_GLES2_getColorMatrix_bt601(void);
 
-IJK_GLES2_Renderer *IJK_GLES2_Renderer_create_base(const char *fragment_shader_source, int openglVer);
+FS_GLES2_Renderer *FS_GLES2_Renderer_create_base(const char *fragment_shader_source, int openglVer);
 
 #endif

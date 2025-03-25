@@ -22,8 +22,8 @@
  */
 
 #import "FSMediaPlayback.h"
-#import "FSFFMonitor.h"
-#import "FSFFOptions.h"
+#import "FSMonitor.h"
+#import "FSOptions.h"
 #import "FSVideoRenderingProtocol.h"
 
 // media meta
@@ -101,10 +101,10 @@ NS_ASSUME_NONNULL_BEGIN
 @interface FSPlayer : NSObject <FSMediaPlayback>
 
 - (id)initWithContentURL:(NSURL *)aUrl
-             withOptions:(FSFFOptions * _Nullable)options;
+             withOptions:(FSOptions * _Nullable)options;
 
 - (id)initWithMoreContent:(NSURL *)aUrl
-              withOptions:(FSFFOptions * _Nullable)options
+              withOptions:(FSOptions * _Nullable)options
                withGLView:(UIView<FSVideoRenderingProtocol> *)glView;
 
 - (void)prepareToPlay;
@@ -138,11 +138,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setOptionValue:(NSString *)value
                 forKey:(NSString *)key
-            ofCategory:(FSFFOptionCategory)category;
+            ofCategory:(FSOptionCategory)category;
 
 - (void)setOptionIntValue:(int64_t)value
                    forKey:(NSString *)key
-               ofCategory:(FSFFOptionCategory)category;
+               ofCategory:(FSOptionCategory)category;
 
 - (void)setFormatOptionValue:       (NSString *)value forKey:(NSString *)key;
 - (void)setCodecOptionValue:        (NSString *)value forKey:(NSString *)key;
@@ -163,7 +163,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)didShutdown;
 
 #pragma mark KVO properties
-@property (nonatomic, readonly) FSFFMonitor *monitor;
+@property (nonatomic, readonly) FSMonitor *monitor;
 
 - (void)exchangeSelectedStream:(int)streamIdx;
 // k_IJKM_VAL_TYPE__VIDEO, k_IJKM_VAL_TYPE__AUDIO, k_IJKM_VAL_TYPE__SUBTITLE

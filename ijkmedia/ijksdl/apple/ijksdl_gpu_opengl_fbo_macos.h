@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_fbo_macos.h
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/15.
 //
@@ -9,10 +9,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol IJKSDLSubtitleTextureWrapper;
-@interface IJKSDLOpenGLFBO : NSObject
+@protocol FSSDLSubtitleTextureWrapper;
+@interface FSSDLOpenGLFBO : NSObject
 
-@property(nonatomic, readonly) id<IJKSDLSubtitleTextureWrapper> texture;
+@property(nonatomic, readonly) id<FSSDLSubtitleTextureWrapper> texture;
 
 - (instancetype)initWithSize:(CGSize)size;
 - (BOOL)canReuse:(CGSize)size;

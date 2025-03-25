@@ -1,5 +1,5 @@
 /*
- * IJKSDLGLView.h
+ * FSSDLGLView.h
  *
  * Copyright (c) 2013 Bilibili
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
@@ -23,8 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "IJKVideoRenderingProtocol.h"
+#import "FSVideoRenderingProtocol.h"
 
-@interface IJKSDLGLView : NSOpenGLView <IJKVideoRenderingProtocol>
+@interface FSSDLGLView : NSOpenGLView <FSVideoRenderingProtocol>
 
 @end

@@ -32,7 +32,7 @@
 #endif
 #include "math_util.h"
 
-static void IJK_GLES2_printProgramInfo(GLuint program)
+static void FS_GLES2_printProgramInfo(GLuint program)
 {
     if (!program)
         return;
@@ -63,7 +63,7 @@ static void IJK_GLES2_printProgramInfo(GLuint program)
         free(buf_heap);
 }
 
-void IJK_GLES2_Renderer_reset(IJK_GLES2_Renderer *renderer)
+void FS_GLES2_Renderer_reset(FS_GLES2_Renderer *renderer)
 {
     if (!renderer)
         return;
@@ -71,7 +71,7 @@ void IJK_GLES2_Renderer_reset(IJK_GLES2_Renderer *renderer)
         glDeleteProgram(renderer->program);
     renderer->program         = 0;
 
-    for (int i = 0; i < IJK_GLES2_MAX_PLANE; ++i) {
+    for (int i = 0; i < FS_GLES2_MAX_PLANE; ++i) {
         if (renderer->plane_textures[i]) {
             glDeleteTextures(1, &renderer->plane_textures[i]);
             renderer->plane_textures[i] = 0;
@@ -81,64 +81,64 @@ void IJK_GLES2_Renderer_reset(IJK_GLES2_Renderer *renderer)
     glDeleteVertexArrays(1, &renderer->vao);
 }
 
-void IJK_GLES2_Renderer_free(IJK_GLES2_Renderer *renderer)
+void FS_GLES2_Renderer_free(FS_GLES2_Renderer *renderer)
 {
     if (!renderer)
         return;
     //delete opengl shader and buffers
-    IJK_GLES2_Renderer_reset(renderer);
+    FS_GLES2_Renderer_reset(renderer);
     
     if (renderer->func_destroy)
         renderer->func_destroy(renderer);
-    IJK_GLES2_checkError("renderer free");
+    FS_GLES2_checkError("renderer free");
     free(renderer);
 }
 
-void IJK_GLES2_Renderer_freeP(IJK_GLES2_Renderer **renderer)
+void FS_GLES2_Renderer_freeP(FS_GLES2_Renderer **renderer)
 {
     if (!renderer || !*renderer)
         return;
 
-    IJK_GLES2_Renderer_free(*renderer);
+    FS_GLES2_Renderer_free(*renderer);
     *renderer = NULL;
 }
 
-IJK_GLES2_Renderer *IJK_GLES2_Renderer_create_base(const char *fragment_shader_source,int openglVer)
+FS_GLES2_Renderer *FS_GLES2_Renderer_create_base(const char *fragment_shader_source,int openglVer)
 {
     assert(fragment_shader_source);
     
-    IJK_GLES2_Renderer *renderer = NULL;
+    FS_GLES2_Renderer *renderer = NULL;
     GLuint vertex_shader = 0;
     GLuint fragment_shader = 0;
     GLuint program = 0;
     
     char vsh_buffer[1024] = { '\0' };
-    IJK_GLES2_getVertexShader_default(vsh_buffer,openglVer);
+    FS_GLES2_getVertexShader_default(vsh_buffer,openglVer);
     
     ALOGD("vertex shader source:\n%s\n",vsh_buffer);
     ALOGD("fragment shader source:\n%s\n",fragment_shader_source);
     
-    vertex_shader = IJK_GLES2_loadShader(GL_VERTEX_SHADER, vsh_buffer);
+    vertex_shader = FS_GLES2_loadShader(GL_VERTEX_SHADER, vsh_buffer);
     if (!vertex_shader)
         goto fail;
     
-    fragment_shader = IJK_GLES2_loadShader(GL_FRAGMENT_SHADER, fragment_shader_source);
+    fragment_shader = FS_GLES2_loadShader(GL_FRAGMENT_SHADER, fragment_shader_source);
     if (!fragment_shader)
         goto fail;
 
-    program = glCreateProgram(); IJK_GLES2_checkError("glCreateProgram");
+    program = glCreateProgram(); FS_GLES2_checkError("glCreateProgram");
     if (!program)
         goto fail;
 
-    glAttachShader(program, vertex_shader);     IJK_GLES2_checkError("glAttachShader(vertex)");
-    glAttachShader(program, fragment_shader);   IJK_GLES2_checkError("glAttachShader(fragment)");
-    glLinkProgram(program);                     IJK_GLES2_checkError("glLinkProgram");
+    glAttachShader(program, vertex_shader);     FS_GLES2_checkError("glAttachShader(vertex)");
+    glAttachShader(program, fragment_shader);   FS_GLES2_checkError("glAttachShader(fragment)");
+    glLinkProgram(program);                     FS_GLES2_checkError("glLinkProgram");
     GLint link_status = GL_FALSE;
     glGetProgramiv(program, GL_LINK_STATUS, &link_status);
     if (!link_status)
         goto fail;
 
-    renderer = (IJK_GLES2_Renderer *)calloc(1, sizeof(IJK_GLES2_Renderer));
+    renderer = (FS_GLES2_Renderer *)calloc(1, sizeof(FS_GLES2_Renderer));
     if (!renderer)
         goto fail;
     
@@ -146,13 +146,13 @@ IJK_GLES2_Renderer *IJK_GLES2_Renderer_create_base(const char *fragment_shader_s
         glDeleteShader(vertex_shader);
     if (fragment_shader)
         glDeleteShader(fragment_shader);
-    IJK_GLES2_checkError("glDeleteShader");
+    FS_GLES2_checkError("glDeleteShader");
     
     renderer->program = program;
     
-    renderer->av4_position = glGetAttribLocation(renderer->program, "av4_Position");                IJK_GLES2_checkError_TRACE("glGetAttribLocation(av4_Position)");
-    renderer->av2_texcoord = glGetAttribLocation(renderer->program, "av2_Texcoord");                IJK_GLES2_checkError_TRACE("glGetAttribLocation(av2_Texcoord)");
-    renderer->um4_mvp      = glGetUniformLocation(renderer->program, "um4_ModelViewProjection");    IJK_GLES2_checkError_TRACE("glGetUniformLocation(um4_ModelViewProjection)");
+    renderer->av4_position = glGetAttribLocation(renderer->program, "av4_Position");                FS_GLES2_checkError_TRACE("glGetAttribLocation(av4_Position)");
+    renderer->av2_texcoord = glGetAttribLocation(renderer->program, "av2_Texcoord");                FS_GLES2_checkError_TRACE("glGetAttribLocation(av2_Texcoord)");
+    renderer->um4_mvp      = glGetUniformLocation(renderer->program, "um4_ModelViewProjection");    FS_GLES2_checkError_TRACE("glGetUniformLocation(um4_ModelViewProjection)");
     renderer->um3_color_conversion = -1;
     renderer->um3_rgb_adjustment = -1;
     
@@ -161,9 +161,9 @@ IJK_GLES2_Renderer *IJK_GLES2_Renderer_create_base(const char *fragment_shader_s
 fail:
     
     if (renderer && renderer->program)
-        IJK_GLES2_printProgramInfo(renderer->program);
+        FS_GLES2_printProgramInfo(renderer->program);
 
-    IJK_GLES2_Renderer_free(renderer);
+    FS_GLES2_Renderer_free(renderer);
     
     if (vertex_shader)
         glDeleteShader(vertex_shader);
@@ -176,17 +176,17 @@ fail:
 }
 
 #ifdef __APPLE__
-IJK_GLES2_Renderer *IJK_GLES2_Renderer_createApple(CVPixelBufferRef videoPicture,int openglVer)
+FS_GLES2_Renderer *FS_GLES2_Renderer_createApple(CVPixelBufferRef videoPicture,int openglVer)
 {
     static int flag = 0;
     if (!flag) {
-        IJK_GLES2_printString("Version", GL_VERSION);
-        IJK_GLES2_printString("Vendor", GL_VENDOR);
-        IJK_GLES2_printString("Renderer", GL_RENDERER);
+        FS_GLES2_printString("Version", GL_VERSION);
+        FS_GLES2_printString("Vendor", GL_VENDOR);
+        FS_GLES2_printString("Renderer", GL_RENDERER);
         //    GLint m_nMaxTextureSize;
         //    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_nMaxTextureSize);
-        //    IJK_GLES2_printString("Extensions", GL_EXTENSIONS);
-        //    IJK_GLES2_checkError("Extensions");
+        //    FS_GLES2_printString("Extensions", GL_EXTENSIONS);
+        //    FS_GLES2_checkError("Extensions");
         flag = 1;
     }
     
@@ -214,7 +214,7 @@ IJK_GLES2_Renderer *IJK_GLES2_Renderer_createApple(CVPixelBufferRef videoPicture
 #endif
     }
     //软硬解渲染统一
-    IJK_GLES2_Renderer *renderer = ijk_create_common_gl_Renderer(videoPicture, openglVer);
+    FS_GLES2_Renderer *renderer = ijk_create_common_gl_Renderer(videoPicture, openglVer);
 
     if (renderer) {
         glGenVertexArrays(1, &renderer->vao);
@@ -231,15 +231,15 @@ IJK_GLES2_Renderer *IJK_GLES2_Renderer_createApple(CVPixelBufferRef videoPicture
 
 #else
 
-IJK_GLES2_Renderer *IJK_GLES2_Renderer_create(SDL_VoutOverlay *overlay,int openglVer)
+FS_GLES2_Renderer *FS_GLES2_Renderer_create(SDL_VoutOverlay *overlay,int openglVer)
 {
-    IJK_GLES2_printString("Version", GL_VERSION);
-    IJK_GLES2_printString("Vendor", GL_VENDOR);
-    IJK_GLES2_printString("Renderer", GL_RENDERER);
+    FS_GLES2_printString("Version", GL_VERSION);
+    FS_GLES2_printString("Vendor", GL_VENDOR);
+    FS_GLES2_printString("Renderer", GL_RENDERER);
 //    GLint m_nMaxTextureSize;
 //    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_nMaxTextureSize);
-//    IJK_GLES2_printString("Extensions", GL_EXTENSIONS);
-//    IJK_GLES2_checkError("Extensions");
+//    FS_GLES2_printString("Extensions", GL_EXTENSIONS);
+//    FS_GLES2_checkError("Extensions");
     if (openglVer == 0) {
         const char *version_string = (const char *) glGetString(GL_VERSION);
         int major = 0, minor = 0;
@@ -255,15 +255,15 @@ IJK_GLES2_Renderer *IJK_GLES2_Renderer_create(SDL_VoutOverlay *overlay,int openg
         }
     }
     
-    IJK_GLES2_Renderer *renderer = NULL;
+    FS_GLES2_Renderer *renderer = NULL;
     
     switch (overlay->format) {
-        case SDL_FCC_RV16:      renderer = IJK_GLES2_Renderer_create_rgb565(); break;
-        case SDL_FCC_RV24:      renderer = IJK_GLES2_Renderer_create_rgb888(); break;
-        case SDL_FCC_RV32:      renderer = IJK_GLES2_Renderer_create_rgbx8888(); break;
-        case SDL_FCC_YV12:      renderer = IJK_GLES2_Renderer_create_yuv420p(); break;
-        case SDL_FCC_I420:      renderer = IJK_GLES2_Renderer_create_yuv420p(); break;
-        case SDL_FCC_J420:      renderer = IJK_GLES2_Renderer_create_yuv420p(); break;
+        case SDL_FCC_RV16:      renderer = FS_GLES2_Renderer_create_rgb565(); break;
+        case SDL_FCC_RV24:      renderer = FS_GLES2_Renderer_create_rgb888(); break;
+        case SDL_FCC_RV32:      renderer = FS_GLES2_Renderer_create_rgbx8888(); break;
+        case SDL_FCC_YV12:      renderer = FS_GLES2_Renderer_create_yuv420p(); break;
+        case SDL_FCC_I420:      renderer = FS_GLES2_Renderer_create_yuv420p(); break;
+        case SDL_FCC_J420:      renderer = FS_GLES2_Renderer_create_yuv420p(); break;
         default:
             ALOGE("[GLES2] unknown format %4s(%d)\n", (char *)&overlay->format, overlay->format);
             return NULL;
@@ -284,7 +284,7 @@ IJK_GLES2_Renderer *IJK_GLES2_Renderer_create(SDL_VoutOverlay *overlay,int openg
     return renderer;
 }
 
-void* IJK_GLES2_Renderer_getVideoImage(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay)
+void* FS_GLES2_Renderer_getVideoImage(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay)
 {
     if (renderer->func_getVideoImage) {
         return renderer->func_getVideoImage(renderer,overlay);
@@ -294,20 +294,20 @@ void* IJK_GLES2_Renderer_getVideoImage(IJK_GLES2_Renderer *renderer, SDL_VoutOve
 }
 #endif
 
-GLboolean IJK_GLES2_Renderer_isValid(IJK_GLES2_Renderer *renderer)
+GLboolean FS_GLES2_Renderer_isValid(FS_GLES2_Renderer *renderer)
 {
     return renderer && renderer->program ? GL_TRUE : GL_FALSE;
 }
 
-GLboolean IJK_GLES2_Renderer_isFormat(IJK_GLES2_Renderer *renderer, int format)
+GLboolean FS_GLES2_Renderer_isFormat(FS_GLES2_Renderer *renderer, int format)
 {
-    if (!IJK_GLES2_Renderer_isValid(renderer))
+    if (!FS_GLES2_Renderer_isValid(renderer))
         return GL_FALSE;
 
     return renderer->format == format ? GL_TRUE : GL_FALSE;
 }
 
-static void IJK_GLES2_Renderer_Vertices_reset(IJK_GLES2_Renderer *renderer)
+static void FS_GLES2_Renderer_Vertices_reset(FS_GLES2_Renderer *renderer)
 {
 /*
  OpenGL 世界坐标系：
@@ -336,7 +336,7 @@ static void IJK_GLES2_Renderer_Vertices_reset(IJK_GLES2_Renderer *renderer)
 }
 
 // 视频带有旋转 90 度倍数时需要将显示宽高交换后计算
-int IJK_GLES2_Renderer_NeedSwapForZAutoRotate(IJK_GLES2_Renderer *renderer)
+int FS_GLES2_Renderer_NeedSwapForZAutoRotate(FS_GLES2_Renderer *renderer)
 {
     if (!renderer) {
         return 0;
@@ -344,7 +344,7 @@ int IJK_GLES2_Renderer_NeedSwapForZAutoRotate(IJK_GLES2_Renderer *renderer)
     return abs(renderer->auto_z_rotate_degrees) / 90 % 2 == 1 ? 1 : 0;
 }
 
-int IJK_GLES2_Renderer_isZRotate90oddMultiple(IJK_GLES2_Renderer *renderer)
+int FS_GLES2_Renderer_isZRotate90oddMultiple(FS_GLES2_Renderer *renderer)
 {
     int total = 0;
     if (renderer->rotate_type == 3) {
@@ -355,19 +355,19 @@ int IJK_GLES2_Renderer_isZRotate90oddMultiple(IJK_GLES2_Renderer *renderer)
     return abs(total) / 90 % 2 == 1 ? 1 : 0;
 }
 
-static void IJK_GLES2_Renderer_Vertices_apply(IJK_GLES2_Renderer *renderer)
+static void FS_GLES2_Renderer_Vertices_apply(FS_GLES2_Renderer *renderer)
 {
     switch (renderer->gravity) {
-        case IJK_GLES2_GRAVITY_RESIZE_ASPECT:
+        case FS_GLES2_GRAVITY_RESIZE_ASPECT:
             break;
-        case IJK_GLES2_GRAVITY_RESIZE_ASPECT_FILL:
+        case FS_GLES2_GRAVITY_RESIZE_ASPECT_FILL:
             break;
-        case IJK_GLES2_GRAVITY_RESIZE:
-            IJK_GLES2_Renderer_Vertices_reset(renderer);
+        case FS_GLES2_GRAVITY_RESIZE:
+            FS_GLES2_Renderer_Vertices_reset(renderer);
             return;
         default:
             ALOGE("[GLES2] unknown gravity %d\n", renderer->gravity);
-            IJK_GLES2_Renderer_Vertices_reset(renderer);
+            FS_GLES2_Renderer_Vertices_reset(renderer);
             return;
     }
 
@@ -383,7 +383,7 @@ static void IJK_GLES2_Renderer_Vertices_apply(IJK_GLES2_Renderer *renderer)
         frame_height<= 0)
     {
         ALOGE("[GLES2] invalid width/height for gravity aspect\n");
-        IJK_GLES2_Renderer_Vertices_reset(renderer);
+        FS_GLES2_Renderer_Vertices_reset(renderer);
         return;
     }
     
@@ -393,7 +393,7 @@ static void IJK_GLES2_Renderer_Vertices_apply(IJK_GLES2_Renderer *renderer)
     }
 
     //when video's z rotate degrees is 90 odd multiple need swap w and h
-    if (IJK_GLES2_Renderer_isZRotate90oddMultiple(renderer)) {
+    if (FS_GLES2_Renderer_isZRotate90oddMultiple(renderer)) {
         float tmp = layer_width;
         layer_width = layer_height;
         layer_height = tmp;
@@ -404,7 +404,7 @@ static void IJK_GLES2_Renderer_Vertices_apply(IJK_GLES2_Renderer *renderer)
     if (renderer->user_dar_ratio > 0) {
         
         //when video's z rotate degrees is 90 odd multiple need swap user's ratio
-        if (IJK_GLES2_Renderer_isZRotate90oddMultiple(renderer)) {
+        if (FS_GLES2_Renderer_isZRotate90oddMultiple(renderer)) {
             dar_ratio = 1.0 / renderer->user_dar_ratio;
         }
         
@@ -420,8 +420,8 @@ static void IJK_GLES2_Renderer_Vertices_apply(IJK_GLES2_Renderer *renderer)
     float ratio         = 1.0f;
     
     switch (renderer->gravity) {
-        case IJK_GLES2_GRAVITY_RESIZE_ASPECT_FILL:  ratio = FFMAX(ratioW, ratioH); break;
-        case IJK_GLES2_GRAVITY_RESIZE_ASPECT:       ratio = FFMIN(ratioW, ratioH); break;
+        case FS_GLES2_GRAVITY_RESIZE_ASPECT_FILL:  ratio = FFMAX(ratioW, ratioH); break;
+        case FS_GLES2_GRAVITY_RESIZE_ASPECT:       ratio = FFMIN(ratioW, ratioH); break;
     }
     
     float nW = (frame_width  * ratio / layer_width);
@@ -441,9 +441,9 @@ static void IJK_GLES2_Renderer_Vertices_apply(IJK_GLES2_Renderer *renderer)
     renderer->vertices[7] =   nH;
 }
 
-GLboolean IJK_GLES2_Renderer_setGravity(IJK_GLES2_Renderer *renderer, int gravity, GLsizei layer_width, GLsizei layer_height)
+GLboolean FS_GLES2_Renderer_setGravity(FS_GLES2_Renderer *renderer, int gravity, GLsizei layer_width, GLsizei layer_height)
 {
-    if (renderer->gravity != gravity && gravity >= IJK_GLES2_GRAVITY_MIN && gravity <= IJK_GLES2_GRAVITY_MAX)
+    if (renderer->gravity != gravity && gravity >= FS_GLES2_GRAVITY_MIN && gravity <= FS_GLES2_GRAVITY_MAX)
         renderer->vertices_changed = 1;
     else if (renderer->layer_width != layer_width)
         renderer->vertices_changed = 1;
@@ -458,7 +458,7 @@ GLboolean IJK_GLES2_Renderer_setGravity(IJK_GLES2_Renderer *renderer, int gravit
     return GL_TRUE;
 }
 
-void IJK_GLES2_Renderer_updateRotate(IJK_GLES2_Renderer *renderer,int type,int degrees)
+void FS_GLES2_Renderer_updateRotate(FS_GLES2_Renderer *renderer,int type,int degrees)
 {
     int flag = 0;
     if (renderer->rotate_type != type) {
@@ -477,7 +477,7 @@ void IJK_GLES2_Renderer_updateRotate(IJK_GLES2_Renderer *renderer,int type,int d
     }
 }
 
-void IJK_GLES2_Renderer_updateAutoZRotate(IJK_GLES2_Renderer *renderer,int degrees)
+void FS_GLES2_Renderer_updateAutoZRotate(FS_GLES2_Renderer *renderer,int degrees)
 {
     if (renderer->auto_z_rotate_degrees != degrees) {
         renderer->auto_z_rotate_degrees = degrees;
@@ -485,7 +485,7 @@ void IJK_GLES2_Renderer_updateAutoZRotate(IJK_GLES2_Renderer *renderer,int degre
     }
 }
 
-void IJK_GLES2_Renderer_updateUserDefinedDAR(IJK_GLES2_Renderer *renderer,float ratio)
+void FS_GLES2_Renderer_updateUserDefinedDAR(FS_GLES2_Renderer *renderer,float ratio)
 {
     if (renderer->user_dar_ratio != ratio) {
         renderer->user_dar_ratio = ratio;
@@ -493,10 +493,10 @@ void IJK_GLES2_Renderer_updateUserDefinedDAR(IJK_GLES2_Renderer *renderer,float 
     }
 }
 
-static void IJK_GLES2_Renderer_TexCoords_cropRight(IJK_GLES2_Renderer *renderer, GLfloat cropRight)
+static void FS_GLES2_Renderer_TexCoords_cropRight(FS_GLES2_Renderer *renderer, GLfloat cropRight)
 {
     if (cropRight != 0) {
-        ALOGE("IJK_GLES2_Renderer_TexCoords_cropRight:%g\n",cropRight);
+        ALOGE("FS_GLES2_Renderer_TexCoords_cropRight:%g\n",cropRight);
     }
 /*
  OpenGL 纹理坐标系：
@@ -521,12 +521,12 @@ static void IJK_GLES2_Renderer_TexCoords_cropRight(IJK_GLES2_Renderer *renderer,
     renderer->texcoords[7] = 0.0f;
 }
 
-static void IJK_GLES2_Renderer_TexCoords_reset(IJK_GLES2_Renderer *renderer)
+static void FS_GLES2_Renderer_TexCoords_reset(FS_GLES2_Renderer *renderer)
 {
-    IJK_GLES2_Renderer_TexCoords_cropRight(renderer, 0.0f);
+    FS_GLES2_Renderer_TexCoords_cropRight(renderer, 0.0f);
 }
 
-static void IJK_GLES2_Renderer_Upload_Vbo_Data(IJK_GLES2_Renderer *renderer)
+static void FS_GLES2_Renderer_Upload_Vbo_Data(FS_GLES2_Renderer *renderer)
 {
     GLfloat quadData [] = {
         renderer->vertices[0],renderer->vertices[1],
@@ -557,23 +557,23 @@ static void IJK_GLES2_Renderer_Upload_Vbo_Data(IJK_GLES2_Renderer *renderer)
     // 第五个参数: 间隔多少个数据读取下一次数据
     // 第六个参数: 指定读取第一个数据在顶点数据中的偏移量
     glVertexAttribPointer(renderer->av4_position, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    IJK_GLES2_checkError_TRACE("glVertexAttribPointer(av4_position)");
+    FS_GLES2_checkError_TRACE("glVertexAttribPointer(av4_position)");
     //
     glEnableVertexAttribArray(renderer->av4_position);
     // texture coord attribute
     glVertexAttribPointer(renderer->av2_texcoord, 2, GL_FLOAT, GL_FALSE, 0, (void*)(8 * sizeof(float)));
-    IJK_GLES2_checkError_TRACE("glVertexAttribPointer(av2_texcoord)");
+    FS_GLES2_checkError_TRACE("glVertexAttribPointer(av2_texcoord)");
     glEnableVertexAttribArray(renderer->av2_texcoord);
 }
 
-static void IJK_GLES2_updateMVP_ifNeed(IJK_GLES2_Renderer *renderer)
+static void FS_GLES2_updateMVP_ifNeed(FS_GLES2_Renderer *renderer)
 {
     if (renderer->mvp_changed) {
         renderer->mvp_changed = 0;
         
         if (renderer->drawingSubtitle) {
-            ijk_matrix proj_matrix = IJK_GLES2_defaultOrtho();
-            glUniformMatrix4fv(renderer->um4_mvp, 1, GL_FALSE, (GLfloat*)(&proj_matrix.e));                    IJK_GLES2_checkError_TRACE("glUniformMatrix4fv(um4_mvp)");
+            ijk_matrix proj_matrix = FS_GLES2_defaultOrtho();
+            glUniformMatrix4fv(renderer->um4_mvp, 1, GL_FALSE, (GLfloat*)(&proj_matrix.e));                    FS_GLES2_checkError_TRACE("glUniformMatrix4fv(um4_mvp)");
         } else {
             ijk_float3_vector rotate_v3 = { 0.0 };
             //rotate x
@@ -601,9 +601,9 @@ static void IJK_GLES2_updateMVP_ifNeed(IJK_GLES2_Renderer *renderer)
                 rotation_matrix = rotation_matrix_1;
             }
             ijk_matrix r_matrix;
-            ijk_matrix proj_matrix = IJK_GLES2_defaultOrtho();
+            ijk_matrix proj_matrix = FS_GLES2_defaultOrtho();
             ijk_matrix_multiply(&proj_matrix,&rotation_matrix,&r_matrix);
-            glUniformMatrix4fv(renderer->um4_mvp, 1, GL_FALSE, (GLfloat*)(&r_matrix.e)); IJK_GLES2_checkError_TRACE("glUniformMatrix4fv(um4_mvp)");
+            glUniformMatrix4fv(renderer->um4_mvp, 1, GL_FALSE, (GLfloat*)(&r_matrix.e)); FS_GLES2_checkError_TRACE("glUniformMatrix4fv(um4_mvp)");
         }
     }
 }
@@ -611,25 +611,25 @@ static void IJK_GLES2_updateMVP_ifNeed(IJK_GLES2_Renderer *renderer)
 /*
  * Per-Renderer routine
  */
-GLboolean IJK_GLES2_Renderer_init(IJK_GLES2_Renderer *renderer)
+GLboolean FS_GLES2_Renderer_init(FS_GLES2_Renderer *renderer)
 {
-    if (IJK_GLES2_Renderer_useProgram(renderer)) {
+    if (FS_GLES2_Renderer_useProgram(renderer)) {
         renderer->rgb_adjustment[0] = 1.0;
         renderer->rgb_adjustment[1] = 1.0;
         renderer->rgb_adjustment[2] = 1.0;
         renderer->mvp_changed = 1;
         renderer->rgb_adjust_changed = 1;
         
-        IJK_GLES2_Renderer_TexCoords_reset(renderer);
-        IJK_GLES2_Renderer_Vertices_reset(renderer);
-        IJK_GLES2_Renderer_Upload_Vbo_Data(renderer);
-        IJK_GLES2_updateMVP_ifNeed(renderer);
+        FS_GLES2_Renderer_TexCoords_reset(renderer);
+        FS_GLES2_Renderer_Vertices_reset(renderer);
+        FS_GLES2_Renderer_Upload_Vbo_Data(renderer);
+        FS_GLES2_updateMVP_ifNeed(renderer);
         return GL_TRUE;
     }
     return GL_FALSE;
 }
 
-GLboolean IJK_GLES2_Renderer_useProgram(IJK_GLES2_Renderer *renderer)
+GLboolean FS_GLES2_Renderer_useProgram(FS_GLES2_Renderer *renderer)
 {
     if (!renderer)
         return GL_FALSE;
@@ -640,7 +640,7 @@ GLboolean IJK_GLES2_Renderer_useProgram(IJK_GLES2_Renderer *renderer)
     return GL_TRUE;
 }
 
-void IJK_GLES2_Renderer_updateColorConversion(IJK_GLES2_Renderer *renderer,float brightness,float satutaion,float contrast)
+void FS_GLES2_Renderer_updateColorConversion(FS_GLES2_Renderer *renderer,float brightness,float satutaion,float contrast)
 {
     int changed = 0;
     if (renderer->rgb_adjustment[0] != brightness) {
@@ -661,11 +661,11 @@ void IJK_GLES2_Renderer_updateColorConversion(IJK_GLES2_Renderer *renderer,float
     }
 }
 
-static void IJK_GLES2_updateRGB_adjust_ifNeed(IJK_GLES2_Renderer *renderer)
+static void FS_GLES2_updateRGB_adjust_ifNeed(FS_GLES2_Renderer *renderer)
 {
     if (renderer->rgb_adjust_changed && renderer->um3_rgb_adjustment >= 0) {
         glUniform3fv(renderer->um3_rgb_adjustment, 1, renderer->rgb_adjustment);
-        IJK_GLES2_checkError_TRACE("glUniform3fv(um3_rgb_adjustment)");
+        FS_GLES2_checkError_TRACE("glUniform3fv(um3_rgb_adjustment)");
         renderer->rgb_adjust_changed = 0;
     }
 }
@@ -673,7 +673,7 @@ static void IJK_GLES2_updateRGB_adjust_ifNeed(IJK_GLES2_Renderer *renderer)
 /*
  * update video vertex
  */
-GLboolean IJK_GLES2_Renderer_updateVertex(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay)
+GLboolean FS_GLES2_Renderer_updateVertex(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay)
 {
     if (!renderer)
         return GL_FALSE;
@@ -714,7 +714,7 @@ GLboolean IJK_GLES2_Renderer_updateVertex(IJK_GLES2_Renderer *renderer, SDL_Vout
     if (renderer->vertices_changed) {
         renderer->vertices_changed = 0;
 
-        IJK_GLES2_Renderer_Vertices_apply(renderer);
+        FS_GLES2_Renderer_Vertices_apply(renderer);
 
         renderer->buffer_width  = buffer_width;
         renderer->visible_width = visible_width;
@@ -722,13 +722,13 @@ GLboolean IJK_GLES2_Renderer_updateVertex(IJK_GLES2_Renderer *renderer, SDL_Vout
         GLsizei padding_pixels     = buffer_width - visible_width;
         GLfloat padding_normalized = ((GLfloat)padding_pixels) / buffer_width;
 
-        IJK_GLES2_Renderer_TexCoords_cropRight(renderer, padding_normalized);
-        IJK_GLES2_Renderer_Upload_Vbo_Data(renderer);
+        FS_GLES2_Renderer_TexCoords_cropRight(renderer, padding_normalized);
+        FS_GLES2_Renderer_Upload_Vbo_Data(renderer);
     }
     
-    IJK_GLES2_updateMVP_ifNeed(renderer);
-    IJK_GLES2_updateRGB_adjust_ifNeed(renderer);
-    glBindVertexArray(renderer->vao); IJK_GLES2_checkError_TRACE("glBindVertexArray");
+    FS_GLES2_updateMVP_ifNeed(renderer);
+    FS_GLES2_updateRGB_adjust_ifNeed(renderer);
+    glBindVertexArray(renderer->vao); FS_GLES2_checkError_TRACE("glBindVertexArray");
 
     return GL_TRUE;
 }
@@ -736,7 +736,7 @@ GLboolean IJK_GLES2_Renderer_updateVertex(IJK_GLES2_Renderer *renderer, SDL_Vout
 /*
  * update video vertex
  */
-GLboolean IJK_GLES2_Renderer_updateVertex2(IJK_GLES2_Renderer *renderer,
+GLboolean FS_GLES2_Renderer_updateVertex2(FS_GLES2_Renderer *renderer,
                                          int overlay_h,
                                          int overlay_w,
                                          int buffer_w,
@@ -777,7 +777,7 @@ GLboolean IJK_GLES2_Renderer_updateVertex2(IJK_GLES2_Renderer *renderer,
     if (renderer->vertices_changed) {
         renderer->vertices_changed = 0;
 
-        IJK_GLES2_Renderer_Vertices_apply(renderer);
+        FS_GLES2_Renderer_Vertices_apply(renderer);
 
         renderer->buffer_width  = buffer_width;
         renderer->visible_width = visible_width;
@@ -785,38 +785,38 @@ GLboolean IJK_GLES2_Renderer_updateVertex2(IJK_GLES2_Renderer *renderer,
         GLsizei padding_pixels     = buffer_width - visible_width;
         GLfloat padding_normalized = ((GLfloat)padding_pixels) / buffer_width;
 
-        IJK_GLES2_Renderer_TexCoords_cropRight(renderer, padding_normalized);
-        IJK_GLES2_Renderer_Upload_Vbo_Data(renderer);
+        FS_GLES2_Renderer_TexCoords_cropRight(renderer, padding_normalized);
+        FS_GLES2_Renderer_Upload_Vbo_Data(renderer);
     }
     
-    IJK_GLES2_updateMVP_ifNeed(renderer);
-    IJK_GLES2_updateRGB_adjust_ifNeed(renderer);
-    glBindVertexArray(renderer->vao); IJK_GLES2_checkError_TRACE("glBindVertexArray");
-    IJK_GLES2_checkError_TRACE("updateVertex2");
+    FS_GLES2_updateMVP_ifNeed(renderer);
+    FS_GLES2_updateRGB_adjust_ifNeed(renderer);
+    glBindVertexArray(renderer->vao); FS_GLES2_checkError_TRACE("glBindVertexArray");
+    FS_GLES2_checkError_TRACE("updateVertex2");
     return GL_TRUE;
 }
 
 /*
  * reset vao
  */
-GLboolean IJK_GLES2_Renderer_resetVao(IJK_GLES2_Renderer *renderer)
+GLboolean FS_GLES2_Renderer_resetVao(FS_GLES2_Renderer *renderer)
 {
     if (!renderer)
         return GL_FALSE;
     renderer->vertices_changed = 1;
-    IJK_GLES2_Renderer_Vertices_reset(renderer);
-    IJK_GLES2_Renderer_TexCoords_reset(renderer);
-    IJK_GLES2_Renderer_Upload_Vbo_Data(renderer);
-    IJK_GLES2_updateMVP_ifNeed(renderer);
-    IJK_GLES2_updateRGB_adjust_ifNeed(renderer);
-    glBindVertexArray(renderer->vao); IJK_GLES2_checkError_TRACE("glBindVertexArray");
+    FS_GLES2_Renderer_Vertices_reset(renderer);
+    FS_GLES2_Renderer_TexCoords_reset(renderer);
+    FS_GLES2_Renderer_Upload_Vbo_Data(renderer);
+    FS_GLES2_updateMVP_ifNeed(renderer);
+    FS_GLES2_updateRGB_adjust_ifNeed(renderer);
+    glBindVertexArray(renderer->vao); FS_GLES2_checkError_TRACE("glBindVertexArray");
     return GL_TRUE;
 }
 
 /*
  * upload video texture
  */
-GLboolean IJK_GLES2_Renderer_uploadTexture(IJK_GLES2_Renderer *renderer, void *picture)
+GLboolean FS_GLES2_Renderer_uploadTexture(FS_GLES2_Renderer *renderer, void *picture)
 {
     if (!renderer || !renderer->func_uploadTexture)
         return GL_FALSE;
@@ -829,7 +829,7 @@ GLboolean IJK_GLES2_Renderer_uploadTexture(IJK_GLES2_Renderer *renderer, void *p
     return GL_TRUE;
 }
 
-void IJK_GLES2_Renderer_updateHdrAnimationProgress(IJK_GLES2_Renderer *renderer, float per)
+void FS_GLES2_Renderer_updateHdrAnimationProgress(FS_GLES2_Renderer *renderer, float per)
 {
     if (!renderer || !renderer->func_updateHDRAnimation)
         return;
@@ -837,19 +837,19 @@ void IJK_GLES2_Renderer_updateHdrAnimationProgress(IJK_GLES2_Renderer *renderer,
     renderer->func_updateHDRAnimation(renderer, per);
 }
 
-GLboolean IJK_GLES2_Renderer_isHDR(IJK_GLES2_Renderer *renderer)
+GLboolean FS_GLES2_Renderer_isHDR(FS_GLES2_Renderer *renderer)
 {
     if (!renderer || !renderer->func_isHDR)
         return GL_FALSE;
     return renderer->func_isHDR(renderer);
 }
 
-void IJK_GLES2_Renderer_drawArrays(void)
+void FS_GLES2_Renderer_drawArrays(void)
 {
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); IJK_GLES2_checkError_TRACE("glDrawArrays");
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); FS_GLES2_checkError_TRACE("glDrawArrays");
 }
 
-void IJK_GLES2_Renderer_beginDrawSubtitle(IJK_GLES2_Renderer *renderer)
+void FS_GLES2_Renderer_beginDrawSubtitle(FS_GLES2_Renderer *renderer)
 {
     if (!renderer->drawingSubtitle) {
         if (renderer->func_useSubtitle) {
@@ -861,7 +861,7 @@ void IJK_GLES2_Renderer_beginDrawSubtitle(IJK_GLES2_Renderer *renderer)
     }
 }
 
-void IJK_GLES2_Renderer_endDrawSubtitle(IJK_GLES2_Renderer *renderer)
+void FS_GLES2_Renderer_endDrawSubtitle(FS_GLES2_Renderer *renderer)
 {
     if (renderer->drawingSubtitle) {
         if (renderer->func_useSubtitle) {
@@ -876,7 +876,7 @@ void IJK_GLES2_Renderer_endDrawSubtitle(IJK_GLES2_Renderer *renderer)
 /*
  * upload subtitle texture
  */
-GLboolean IJK_GLES2_Renderer_uploadSubtitleTexture(IJK_GLES2_Renderer *renderer, int texture, int w, int h)
+GLboolean FS_GLES2_Renderer_uploadSubtitleTexture(FS_GLES2_Renderer *renderer, int texture, int w, int h)
 {
     if (!renderer || !renderer->func_uploadSubtitle)
         return GL_FALSE;
@@ -892,7 +892,7 @@ GLboolean IJK_GLES2_Renderer_uploadSubtitleTexture(IJK_GLES2_Renderer *renderer,
 /*
  * update subtitle vertex
  */
-void IJK_GLES2_Renderer_updateSubtitleVertex(IJK_GLES2_Renderer *renderer, float width, float height)
+void FS_GLES2_Renderer_updateSubtitleVertex(FS_GLES2_Renderer *renderer, float width, float height)
 {
     glEnable(GL_BLEND);
     //ass字幕已经做了预乘，所以这里选择 GL_ONE，而不是 GL_SRC_ALPHA
@@ -931,8 +931,8 @@ void IJK_GLES2_Renderer_updateSubtitleVertex(IJK_GLES2_Renderer *renderer, float
     
     //标记下，渲染视频的时候能修正回来；
     renderer->vertices_changed = 1;
-    IJK_GLES2_Renderer_TexCoords_reset(renderer);
-    IJK_GLES2_Renderer_Upload_Vbo_Data(renderer);
+    FS_GLES2_Renderer_TexCoords_reset(renderer);
+    FS_GLES2_Renderer_Upload_Vbo_Data(renderer);
     
-    IJK_GLES2_updateMVP_ifNeed(renderer);
+    FS_GLES2_updateMVP_ifNeed(renderer);
 }

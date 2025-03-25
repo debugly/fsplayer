@@ -87,15 +87,15 @@ TODO: Add long description of the pod here.
   # s.project_header_files = 'ijkmedia/**/*.{h}'
   s.public_header_files =
     'ijkmedia/wrapper/apple/FSMediaPlayback.h',
-    'ijkmedia/wrapper/apple/FSFFOptions.h',
-    'ijkmedia/wrapper/apple/FSFFMonitor.h',
+    'ijkmedia/wrapper/apple/FSOptions.h',
+    'ijkmedia/wrapper/apple/FSMonitor.h',
     'ijkmedia/wrapper/apple/FSPlayer.h',
     'ijkmedia/wrapper/apple/FSMediaModule.h',
     'ijkmedia/wrapper/apple/FSNotificationManager.h',
     'ijkmedia/wrapper/apple/FSKVOController.h',
     'ijkmedia/wrapper/apple/FSVideoRenderingProtocol.h',
     'ijkmedia/wrapper/apple/FSPlayerKit.h',
-    'ijkmedia/wrapper/apple/FSInternalRenderView.h',
+    'ijkmedia/wrapper/apple/FSVideoRenderView.h',
     'ijkmedia/ijkplayer/ff_subtitle_def.h',
     'ijkmedia/ijksdl/ijksdl_rectangle.h',
     'ijkmedia/tools/*.{h}'

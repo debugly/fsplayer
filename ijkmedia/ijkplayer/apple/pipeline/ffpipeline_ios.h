@@ -27,6 +27,6 @@
 
 struct FFPlayer;
 
-FSFF_Pipeline *ffpipeline_create_from_ios(struct FFPlayer *ffp);
+FS_Pipeline *ffpipeline_create_from_ios(struct FFPlayer *ffp);
 
 #endif

@@ -25,9 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-FSFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size)
+FS_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size)
 {
-    FSFF_Pipeline *pipeline = (FSFF_Pipeline*) calloc(1, sizeof(FSFF_Pipeline));
+    FS_Pipeline *pipeline = (FS_Pipeline*) calloc(1, sizeof(FS_Pipeline));
     if (!pipeline)
         return NULL;
 
@@ -41,7 +41,7 @@ FSFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size)
     return pipeline;
 }
 
-void ffpipeline_free(FSFF_Pipeline *pipeline)
+void ffpipeline_free(FS_Pipeline *pipeline)
 {
     if (!pipeline)
         return;
@@ -51,11 +51,11 @@ void ffpipeline_free(FSFF_Pipeline *pipeline)
     }
 
     free(pipeline->opaque);
-    memset(pipeline, 0, sizeof(FSFF_Pipeline));
+    memset(pipeline, 0, sizeof(FS_Pipeline));
     free(pipeline);
 }
 
-void ffpipeline_free_p(FSFF_Pipeline **pipeline)
+void ffpipeline_free_p(FS_Pipeline **pipeline)
 {
     if (!pipeline)
         return;
@@ -63,22 +63,22 @@ void ffpipeline_free_p(FSFF_Pipeline **pipeline)
     ffpipeline_free(*pipeline);
 }
 
-FSFF_Pipenode* ffpipeline_open_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
+FS_Pipenode* ffpipeline_open_video_decoder(FS_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_open_video_decoder(pipeline, ffp);
 }
 
-FSFF_Pipenode* ffpipeline_init_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
+FS_Pipenode* ffpipeline_init_video_decoder(FS_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_init_video_decoder(pipeline, ffp);
 }
 
-int ffpipeline_config_video_decoder(FSFF_Pipeline *pipeline, FFPlayer *ffp)
+int ffpipeline_config_video_decoder(FS_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_config_video_decoder(pipeline, ffp);
 }
 
-SDL_Aout *ffpipeline_open_audio_output(FSFF_Pipeline *pipeline, FFPlayer *ffp)
+SDL_Aout *ffpipeline_open_audio_output(FS_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_open_audio_output(pipeline, ffp);
 }

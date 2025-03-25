@@ -1,19 +1,19 @@
 //
 //  MRRenderViewAuxProxy.h
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Reach Matt on 2023/4/6.
-//  Copyright © 2023 IJK Mac. All rights reserved.
+//  Copyright © 2023 FSPlayer Mac. All rights reserved.
 //
 
-#import <IJKMediaPlayerKit/IJKVideoRenderingProtocol.h>
+#import <FSPlayer/FSVideoRenderingProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface MRRenderViewAuxProxy : NSView <IJKVideoRenderingProtocol>
+@interface MRRenderViewAuxProxy : NSView <FSVideoRenderingProtocol>
 
-- (void)addRenderView:(NSView<IJKVideoRenderingProtocol> *)view;
-- (void)removeRenderView:(NSView<IJKVideoRenderingProtocol> *)view;
+- (void)addRenderView:(NSView<FSVideoRenderingProtocol> *)view;
+- (void)removeRenderView:(NSView<FSVideoRenderingProtocol> *)view;
 
 @end
 

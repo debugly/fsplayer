@@ -1,9 +1,9 @@
 //
 //  MRProgressSlider.m
-//  IJKMediaDemo
+//  FSPlayerMacDemo
 //
 //  Created by Matt Reach on 2021/5/17.
-//  Copyright © 2021 IJK Mac 版. All rights reserved.
+//  Copyright © 2021 FSPlayer Mac 版. All rights reserved.
 //
 
 #import "MRProgressSlider.h"

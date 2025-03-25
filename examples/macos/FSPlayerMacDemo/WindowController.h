@@ -1,9 +1,9 @@
 //
 //  WindowController.h
-//  IJKMediaMacDemo
+//  FSPlayerDemo
 //
 //  Created by Matt Reach on 2021/11/2.
-//  Copyright © 2021 IJK Mac. All rights reserved.
+//  Copyright © 2021 debugly. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>

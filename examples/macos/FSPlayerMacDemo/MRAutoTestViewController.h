@@ -1,9 +1,9 @@
 //
 //  MRAutoTestViewController.h
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Matt Reach on 2024/1/15.
-//  Copyright © 2024 IJK Mac. All rights reserved.
+//  Copyright © 2024 FSPlayer Mac. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>

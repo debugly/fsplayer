@@ -23,7 +23,7 @@
 
 #import "FSMediaPlayback.h"
 
-#import "FSFFOptions.h"
+#import "FSOptions.h"
 #import "FSPlayer.h"
 
 #import "FSMediaModule.h"

@@ -22,14 +22,14 @@ FOUNDATION_EXPORT double FSMediaMacFrameworkVersionNumber;
 FOUNDATION_EXPORT const unsigned char FSMediaMacFrameworkVersionString[];
 
 #import <FSPlayer/FSMediaPlayback.h>
-#import <FSPlayer/FSFFMonitor.h>
-#import <FSPlayer/FSFFOptions.h>
+#import <FSPlayer/FSMonitor.h>
+#import <FSPlayer/FSOptions.h>
 #import <FSPlayer/FSPlayer.h>
 #import <FSPlayer/FSMediaModule.h>
 #import <FSPlayer/FSNotificationManager.h>
 #import <FSPlayer/FSKVOController.h>
 #import <FSPlayer/FSVideoRenderingProtocol.h>
-#import <FSPlayer/FSInternalRenderView.h>
+#import <FSPlayer/FSVideoRenderView.h>
 
 // backward compatible for old names
 #define FSMediaPlaybackIsPreparedToPlayDidChangeNotification FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification

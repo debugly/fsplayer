@@ -323,7 +323,7 @@
 		<true/>
 	</dict>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2022 IJK Mac. All rights reserved.</string>
+	<string>Copyright © 2022 FSPlayer Mac. All rights reserved.</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>

@@ -1,9 +1,9 @@
 //
 //  MRCocoaBindingUserDefault.m
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Reach Matt on 2024/1/25.
-//  Copyright © 2024 IJK Mac. All rights reserved.
+//  Copyright © 2024 FSPlayer Mac. All rights reserved.
 //
 //https://itecnote.com/tecnote/ios-nsuserdefaultsdidchangenotification-whats-the-name-of-the-key-that-changed/
 
@@ -12,8 +12,8 @@
 #import "MRCocoaBindingUserDefault.h"
 #import <AppKit/NSUserDefaultsController.h>
 #import <AppKit/NSColor.h>
-#import <IJKMediaPlayerKit/ff_subtitle_def.h>
-#import <IJKMediaPlayerKit/IJKMediaPlayback.h>
+#import <FSPlayer/ff_subtitle_def.h>
+#import <FSPlayer/FSMediaPlayback.h>
 
 @interface MRCocoaBindingUserDefault()
 
@@ -44,7 +44,7 @@
 
 + (NSDictionary *)initValues 
 {
-    IJKSDLSubtitlePreference sp = ijk_subtitle_default_preference();
+    FSSDLSubtitlePreference sp = ijk_subtitle_default_preference();
     
     NSColor *text_color = ijk_ass_int_to_color(sp.PrimaryColour);
     NSData *text_color_data = [NSKeyedArchiver archivedDataWithRootObject:text_color];

@@ -49,7 +49,7 @@
 #define GL_TEXTURE_TARGET GL_TEXTURE_2D
 #endif
 
-typedef struct IJK_GLES2_Renderer_Opaque
+typedef struct FS_GLES2_Renderer_Opaque
 {
     GLint                 isSubtitle;
     int samples;
@@ -57,15 +57,15 @@ typedef struct IJK_GLES2_Renderer_Opaque
     GLint                 textureDimension[3];
     GLint                 subTextureDimension;
 #endif
-} IJK_GLES2_Renderer_Opaque;
+} FS_GLES2_Renderer_Opaque;
 
-static GLboolean use(IJK_GLES2_Renderer *renderer)
+static GLboolean use(FS_GLES2_Renderer *renderer)
 {
     //ALOGI("use common vtb render\n");
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     //glEnable(GL_TEXTURE_TARGET);
-    glUseProgram(renderer->program);            IJK_GLES2_checkError_TRACE("glUseProgram");
-    IJK_GLES2_Renderer_Opaque * opaque = renderer->opaque;
+    glUseProgram(renderer->program);            FS_GLES2_checkError_TRACE("glUseProgram");
+    FS_GLES2_Renderer_Opaque * opaque = renderer->opaque;
     if (opaque->samples == 0) {
         ALOGE("renderer apple samples must not be zero");
     }
@@ -74,7 +74,7 @@ static GLboolean use(IJK_GLES2_Renderer *renderer)
     return GL_TRUE;
 }
 
-static GLsizei getBufferWidth(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay)
+static GLsizei getBufferWidth(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay)
 {
     if (!overlay)
         return 0;
@@ -82,7 +82,7 @@ static GLsizei getBufferWidth(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *ove
     return overlay->pitches[0];
 }
 
-static GLboolean upload_texture_use_IOSurface(CVPixelBufferRef pixel_buffer,IJK_GLES2_Renderer *renderer)
+static GLboolean upload_texture_use_IOSurface(CVPixelBufferRef pixel_buffer,FS_GLES2_Renderer *renderer)
 {
     uint32_t cvpixfmt = CVPixelBufferGetPixelFormatType(pixel_buffer);
     struct vt_format *f = vt_get_gl_format(cvpixfmt);
@@ -221,45 +221,45 @@ GLboolean ijk_upload_texture_with_cvpixelbuffer(CVPixelBufferRef pixel_buffer, i
     return GL_TRUE;
 }
 
-static GLboolean upload_Texture(IJK_GLES2_Renderer *renderer, void *picture)
+static GLboolean upload_Texture(FS_GLES2_Renderer *renderer, void *picture)
 {
     if (!picture) {
         return GL_FALSE;
     }
     CVPixelBufferRef pixel_buffer = (CVPixelBufferRef)picture;
     
-    IJK_GLES2_Renderer_Opaque *opaque = renderer->opaque;
+    FS_GLES2_Renderer_Opaque *opaque = renderer->opaque;
     if (!opaque) {
         return GL_FALSE;
     }
-    IJK_GLES2_checkError_TRACE("transferFunUM begin");
+    FS_GLES2_checkError_TRACE("transferFunUM begin");
     if (renderer->colorMatrix != YUV_2_RGB_Color_Matrix_None) {
-        glUniformMatrix3fv(renderer->um3_color_conversion, 1, GL_FALSE, IJK_GLES2_getColorMatrix(renderer->colorMatrix));
-        IJK_GLES2_checkError_TRACE("transferFunUM 1");
+        glUniformMatrix3fv(renderer->um3_color_conversion, 1, GL_FALSE, FS_GLES2_getColorMatrix(renderer->colorMatrix));
+        FS_GLES2_checkError_TRACE("transferFunUM 1");
     }
     
     if (renderer->fullRangeUM != -1) {
         glUniform1i(renderer->fullRangeUM, renderer->isFullRange);
-        IJK_GLES2_checkError_TRACE("transferFunUM 2");
+        FS_GLES2_checkError_TRACE("transferFunUM 2");
     }
     
     if (renderer->transferFunUM != -1) {
         glUniform1i(renderer->transferFunUM, renderer->transferFun);
-        IJK_GLES2_checkError_TRACE("transferFunUM 3");
+        FS_GLES2_checkError_TRACE("transferFunUM 3");
     }
     
     if (renderer->hdrAnimationUM != -1) {
         glUniform1f(renderer->hdrAnimationUM, renderer->hdrAnimationPercentage);
     }
     
-    IJK_GLES2_checkError_TRACE("transferFunUM");
+    FS_GLES2_checkError_TRACE("transferFunUM");
     CVPixelBufferRetain(pixel_buffer);
     GLboolean uploaded = upload_texture_use_IOSurface(pixel_buffer, renderer);
     CVPixelBufferRelease(pixel_buffer);
     return uploaded;
 }
 
-static GLvoid destroy(IJK_GLES2_Renderer *renderer)
+static GLvoid destroy(FS_GLES2_Renderer *renderer)
 {
     if (!renderer || !renderer->opaque)
         return;
@@ -267,28 +267,28 @@ static GLvoid destroy(IJK_GLES2_Renderer *renderer)
     renderer->opaque = nil;
 }
 
-static GLvoid useSubtitle(IJK_GLES2_Renderer *renderer,GLboolean subtitle)
+static GLvoid useSubtitle(FS_GLES2_Renderer *renderer,GLboolean subtitle)
 {
     glUniform1i(renderer->opaque->isSubtitle, (GLint)subtitle);
 }
 
-static GLvoid updateHDRAnimation(IJK_GLES2_Renderer *renderer,float per)
+static GLvoid updateHDRAnimation(FS_GLES2_Renderer *renderer,float per)
 {
     renderer->hdrAnimationPercentage = per;
 }
 
-GLboolean isHDR(IJK_GLES2_Renderer *renderer)
+GLboolean isHDR(FS_GLES2_Renderer *renderer)
 {
     return renderer->isHDR;
 }
 
-static GLboolean uploadSubtitle(IJK_GLES2_Renderer *renderer, int texture, int w, int h)
+static GLboolean uploadSubtitle(FS_GLES2_Renderer *renderer, int texture, int w, int h)
 {
     if (!texture) {
         return GL_FALSE;
     }
 
-    IJK_GLES2_Renderer_Opaque *opaque = renderer->opaque;
+    FS_GLES2_Renderer_Opaque *opaque = renderer->opaque;
     if (!opaque) {
         return GL_FALSE;
     }
@@ -296,14 +296,14 @@ static GLboolean uploadSubtitle(IJK_GLES2_Renderer *renderer, int texture, int w
     GLenum GLTarget = GL_TEXTURE_TARGET;
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GLTarget, texture);
-    IJK_GLES2_checkError_TRACE("uploadSubtitle1");
+    FS_GLES2_checkError_TRACE("uploadSubtitle1");
     //设置采样器位置，和纹理单元对应
     glUniform1i(renderer->subSampler, 0);
-    IJK_GLES2_checkError_TRACE("uploadSubtitle2");
+    FS_GLES2_checkError_TRACE("uploadSubtitle2");
 #if TARGET_OS_OSX
     glUniform2f(renderer->opaque->subTextureDimension, w, h);
 #endif
-    IJK_GLES2_checkError_TRACE("uploadSubtitle3");
+    FS_GLES2_checkError_TRACE("uploadSubtitle3");
     glTexParameteri(GLTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GLTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameterf(GLTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -312,13 +312,13 @@ static GLboolean uploadSubtitle(IJK_GLES2_Renderer *renderer, int texture, int w
     return true;
 }
 
-IJK_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture, int openglVer)
+FS_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture, int openglVer)
 {
     Uint32 cv_format = CVPixelBufferGetPixelFormatType(videoPicture);
     CFStringRef colorMatrixStr = CVBufferGetAttachment(videoPicture, kCVImageBufferYCbCrMatrixKey, NULL);
     CFStringRef transferFuntion = CVBufferGetAttachment(videoPicture, kCVImageBufferTransferFunctionKey, NULL);
     
-    IJK_SHADER_TYPE shaderType;
+    FS_SHADER_TYPE shaderType;
     if (cv_format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange || 
         cv_format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange ||
         cv_format == kCVPixelFormatType_422YpCbCr8BiPlanarVideoRange ||
@@ -397,23 +397,23 @@ IJK_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture,
         kCVPixelFormatType_444YpCbCr10BiPlanarFullRange == cv_format) {
         fullRange = 1;
     }
-    IJK_Color_Transfer_Function tf;
+    FS_Color_Transfer_Function tf;
     if (transferFuntion) {
-        if (CFStringCompare(transferFuntion, IJK_TransferFunction_ITU_R_2100_HLG, 0) == kCFCompareEqualTo) {
-            tf = IJK_Color_Transfer_Function_HLG;
-        } else if (CFStringCompare(transferFuntion, IJK_TransferFunction_SMPTE_ST_2084_PQ, 0) == kCFCompareEqualTo || CFStringCompare(transferFuntion, IJK_TransferFunction_SMPTE_ST_428_1, 0) == kCFCompareEqualTo) {
-            tf = IJK_Color_Transfer_Function_PQ;
+        if (CFStringCompare(transferFuntion, FS_TransferFunction_ITU_R_2100_HLG, 0) == kCFCompareEqualTo) {
+            tf = FS_Color_Transfer_Function_HLG;
+        } else if (CFStringCompare(transferFuntion, FS_TransferFunction_SMPTE_ST_2084_PQ, 0) == kCFCompareEqualTo || CFStringCompare(transferFuntion, FS_TransferFunction_SMPTE_ST_428_1, 0) == kCFCompareEqualTo) {
+            tf = FS_Color_Transfer_Function_PQ;
         } else {
-            tf = IJK_Color_Transfer_Function_LINEAR;
+            tf = FS_Color_Transfer_Function_LINEAR;
         }
     } else {
-        tf = IJK_Color_Transfer_Function_LINEAR;
+        tf = FS_Color_Transfer_Function_LINEAR;
     }
         
     char shader_buffer[5120] = { '\0' };
     
     ijk_get_apple_common_fragment_shader(shaderType,shader_buffer,openglVer);
-    IJK_GLES2_Renderer *renderer = IJK_GLES2_Renderer_create_base(shader_buffer,openglVer);
+    FS_GLES2_Renderer *renderer = FS_GLES2_Renderer_create_base(shader_buffer,openglVer);
 
     if (!renderer)
         goto fail;
@@ -423,22 +423,22 @@ IJK_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture,
     renderer->transferFun = tf;
     renderer->isHDR = shaderType == YUV_2P_HDR_SHADER;
     
-    const int samples = IJK_Sample_Count_For_Shader(shaderType);
+    const int samples = FS_Sample_Count_For_Shader(shaderType);
     
     for (int i = 0; i < samples; i++) {
         char name[20] = "us2_Sampler";
         name[strlen(name)] = (char)i + '0';
-        renderer->us2_sampler[i] = glGetUniformLocation(renderer->program, name); IJK_GLES2_checkError_TRACE("glGetUniformLocation(us2_Sampler)");
+        renderer->us2_sampler[i] = glGetUniformLocation(renderer->program, name); FS_GLES2_checkError_TRACE("glGetUniformLocation(us2_Sampler)");
     }
     
-    renderer->subSampler = glGetUniformLocation(renderer->program, "subSampler"); IJK_GLES2_checkError_TRACE("glGetUniformLocation(subSampler)");
+    renderer->subSampler = glGetUniformLocation(renderer->program, "subSampler"); FS_GLES2_checkError_TRACE("glGetUniformLocation(subSampler)");
     
     //yuv to rgb
     renderer->um3_color_conversion = glGetUniformLocation(renderer->program, "um3_ColorConversion");
     renderer->fullRangeUM   = glGetUniformLocation(renderer->program, "isFullRange");
     renderer->transferFunUM = glGetUniformLocation(renderer->program, "transferFun");
     renderer->hdrAnimationUM = glGetUniformLocation(renderer->program, "hdrPercentage");
-    renderer->um3_rgb_adjustment = glGetUniformLocation(renderer->program, "um3_rgbAdjustment"); IJK_GLES2_checkError_TRACE("glGetUniformLocation(um3_rgb_adjustmentVector)");
+    renderer->um3_rgb_adjustment = glGetUniformLocation(renderer->program, "um3_rgbAdjustment"); FS_GLES2_checkError_TRACE("glGetUniformLocation(um3_rgb_adjustmentVector)");
     
     renderer->func_use            = use;
     renderer->func_getBufferWidth = getBufferWidth;
@@ -448,10 +448,10 @@ IJK_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture,
     renderer->func_uploadSubtitle = uploadSubtitle;
     renderer->func_updateHDRAnimation = updateHDRAnimation;
     renderer->func_isHDR = isHDR;
-    renderer->opaque = calloc(1, sizeof(IJK_GLES2_Renderer_Opaque));
+    renderer->opaque = calloc(1, sizeof(FS_GLES2_Renderer_Opaque));
     if (!renderer->opaque)
         goto fail;
-    bzero(renderer->opaque, sizeof(IJK_GLES2_Renderer_Opaque));
+    bzero(renderer->opaque, sizeof(FS_GLES2_Renderer_Opaque));
     renderer->opaque->samples = samples;
     renderer->opaque->isSubtitle = glGetUniformLocation(renderer->program, "isSubtitle");
     
@@ -467,6 +467,6 @@ IJK_GLES2_Renderer *ijk_create_common_gl_Renderer(CVPixelBufferRef videoPicture,
     renderer->format = cv_format;
     return renderer;
 fail:
-    IJK_GLES2_Renderer_free(renderer);
+    FS_GLES2_Renderer_free(renderer);
     return NULL;
 }

@@ -1,5 +1,5 @@
 /*
- * IJKSDLGLView.m
+ * FSSDLGLView.m
  *
  * Copyright (c) 2013 Bilibili
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
@@ -28,7 +28,7 @@
  on low macOS (below 10.13) CGLLock is no effect for multiple NSOpenGLContext!
  multiple thread may get lock same time, and block in CGLFlushDrawable function.
  try use apple fence and flushBuffer instead of CGLFlushDrawable are no effect.
- so record IJKSDLGLView's count,when create more than one NSOpenGLContext just dispath all gl* task to main thread execute.
+ so record FSSDLGLView's count,when create more than one NSOpenGLContext just dispath all gl* task to main thread execute.
  */
 
 /*
@@ -53,7 +53,7 @@
  every glview hold a render thread.
  */
 
-#import "IJKSDLGLView.h"
+#import "FSSDLGLView.h"
 #import <AVFoundation/AVFoundation.h>
 #import <CoreVideo/CoreVideo.h>
 #import <CoreImage/CIContext.h>
@@ -61,8 +61,8 @@
 #import "ijksdl_timer.h"
 #import "ijksdl_gles2.h"
 #import "ijksdl_vout_overlay_ffmpeg_hw.h"
-#import "IJKMediaPlayback.h"
-#import "IJKSDLThread.h"
+#import "FSMediaPlayback.h"
+#import "FSSDLThread.h"
 #import "../gles2/internal.h"
 #import "ijksdl_vout_ios_gles2.h"
 #import "ijksdl_gpu_opengl_fbo_macos.h"
@@ -105,24 +105,24 @@ static void unlock_gl(NSOpenGLContext *ctx)
     }
 }
 
-@interface IJKSDLGLView()
+@interface FSSDLGLView()
 
-@property(atomic) IJKOverlayAttach *currentAttach;
+@property(atomic) FSOverlayAttach *currentAttach;
 //view size
 @property(assign) CGSize viewSize;
 @property(atomic) GLint backingWidth;
 @property(atomic) GLint backingHeight;
-@property(atomic) IJKSDLOpenGLFBO * fbo;
-@property(atomic) IJKSDLThread *renderThread;
+@property(atomic) FSSDLOpenGLFBO * fbo;
+@property(atomic) FSSDLThread *renderThread;
 @property(assign) int hdrAnimationFrameCount;
 @property(nonatomic) NSOpenGLContext *sharedContext;
 @property(nonatomic) NSArray *bgColor;
 
 @end
 
-@implementation IJKSDLGLView
+@implementation FSSDLGLView
 {
-    IJK_GLES2_Renderer *_renderer;
+    FS_GLES2_Renderer *_renderer;
     int    _rendererGravity;
 }
 
@@ -139,7 +139,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
 - (void)destroyRender
 {
     self.fbo = nil;
-    IJK_GLES2_Renderer_freeP(&_renderer);
+    FS_GLES2_Renderer_freeP(&_renderer);
 }
 
 - (void)dealloc
@@ -161,14 +161,14 @@ static void unlock_gl(NSOpenGLContext *ctx)
 {
     self = [super initWithFrame:frame];
     if (self) {
-        self.renderThread = [[IJKSDLThread alloc] initWithName:@"ijk_renderer"];
+        self.renderThread = [[FSSDLThread alloc] initWithName:@"ijk_renderer"];
         [self.renderThread start];
         [self setup];
 
-        _rotatePreference   = (IJKSDLRotatePreference){IJKSDLRotateNone, 0.0};
-        _colorPreference    = (IJKSDLColorConversionPreference){1.0, 1.0, 1.0};
-        _darPreference      = (IJKSDLDARPreference){0.0};
-        _rendererGravity    = IJK_GLES2_GRAVITY_RESIZE_ASPECT;
+        _rotatePreference   = (FSSDLRotatePreference){FSSDLRotateNone, 0.0};
+        _colorPreference    = (FSSDLColorConversionPreference){1.0, 1.0, 1.0};
+        _darPreference      = (FSSDLDARPreference){0.0};
+        _rendererGravity    = FS_GLES2_GRAVITY_RESIZE_ASPECT;
     }
     return self;
 }
@@ -244,41 +244,41 @@ static void unlock_gl(NSOpenGLContext *ctx)
     }
 }
 
-- (BOOL)setupRendererIfNeed:(IJKOverlayAttach *)attach
+- (BOOL)setupRendererIfNeed:(FSOverlayAttach *)attach
 {
     if (attach == nil)
         return _renderer != nil;
     
     Uint32 cv_format = CVPixelBufferGetPixelFormatType(attach.videoPicture);
     
-    if (!IJK_GLES2_Renderer_isValid(_renderer) ||
-        !IJK_GLES2_Renderer_isFormat(_renderer, cv_format)) {
+    if (!FS_GLES2_Renderer_isValid(_renderer) ||
+        !FS_GLES2_Renderer_isFormat(_renderer, cv_format)) {
         
-        IJK_GLES2_Renderer_reset(_renderer);
-        IJK_GLES2_Renderer_freeP(&_renderer);
+        FS_GLES2_Renderer_reset(_renderer);
+        FS_GLES2_Renderer_freeP(&_renderer);
         int openglVer = 330;
     #if USE_LEGACY_OPENGL
         openglVer = 120;
     #endif
         
-        _renderer = IJK_GLES2_Renderer_createApple(attach.videoPicture, openglVer);
-        if (!IJK_GLES2_Renderer_isValid(_renderer))
+        _renderer = FS_GLES2_Renderer_createApple(attach.videoPicture, openglVer);
+        if (!FS_GLES2_Renderer_isValid(_renderer))
             return NO;
         
-        if (!IJK_GLES2_Renderer_init(_renderer))
+        if (!FS_GLES2_Renderer_init(_renderer))
             return NO;
         
-        IJK_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
+        FS_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
         
-        IJK_GLES2_Renderer_updateRotate(_renderer, _rotatePreference.type, _rotatePreference.degrees);
+        FS_GLES2_Renderer_updateRotate(_renderer, _rotatePreference.type, _rotatePreference.degrees);
         
-        IJK_GLES2_Renderer_updateAutoZRotate(_renderer, attach.autoZRotate);
+        FS_GLES2_Renderer_updateAutoZRotate(_renderer, attach.autoZRotate);
         
-        IJK_GLES2_Renderer_updateColorConversion(_renderer, _colorPreference.brightness, _colorPreference.saturation,_colorPreference.contrast);
+        FS_GLES2_Renderer_updateColorConversion(_renderer, _colorPreference.brightness, _colorPreference.saturation,_colorPreference.contrast);
         
-        IJK_GLES2_Renderer_updateUserDefinedDAR(_renderer, _darPreference.ratio);
+        FS_GLES2_Renderer_updateUserDefinedDAR(_renderer, _darPreference.ratio);
     } else {
-        if (!IJK_GLES2_Renderer_useProgram(_renderer))
+        if (!FS_GLES2_Renderer_useProgram(_renderer))
             return NO;
     }
     return YES;
@@ -319,33 +319,33 @@ static void unlock_gl(NSOpenGLContext *ctx)
     }
 }
 
-- (void)doUploadSubtitle:(IJKOverlayAttach *)attach viewport:(CGSize)viewport
+- (void)doUploadSubtitle:(FSOverlayAttach *)attach viewport:(CGSize)viewport
 {
-    id<IJKSDLSubtitleTextureWrapper>subTexture = attach.subTexture;
+    id<FSSDLSubtitleTextureWrapper>subTexture = attach.subTexture;
     if (subTexture) {
-        IJK_GLES2_Renderer_beginDrawSubtitle(_renderer);
-        IJK_GLES2_Renderer_updateSubtitleVertex(_renderer, subTexture.w, subTexture.h);
-        if (IJK_GLES2_Renderer_uploadSubtitleTexture(_renderer, subTexture.texture, subTexture.w, subTexture.h)) {
-            IJK_GLES2_Renderer_drawArrays();
+        FS_GLES2_Renderer_beginDrawSubtitle(_renderer);
+        FS_GLES2_Renderer_updateSubtitleVertex(_renderer, subTexture.w, subTexture.h);
+        if (FS_GLES2_Renderer_uploadSubtitleTexture(_renderer, subTexture.texture, subTexture.w, subTexture.h)) {
+            FS_GLES2_Renderer_drawArrays();
         } else {
             ALOGE("[GL] GLES2 Render Subtitle failed\n");
         }
-        IJK_GLES2_Renderer_endDrawSubtitle(_renderer);
+        FS_GLES2_Renderer_endDrawSubtitle(_renderer);
     }
 }
 
 - (void)sendHDRAnimationNotifiOnMainThread:(int)state
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:IJKMoviePlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:FSMoviePlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
     });
 }
 
-- (void)doUploadVideoPicture:(IJKOverlayAttach *)attach
+- (void)doUploadVideoPicture:(FSOverlayAttach *)attach
 {
     if (attach.videoPicture) {
-        if (IJK_GLES2_Renderer_updateVertex2(_renderer, attach.h, attach.w, attach.pixelW, attach.sarNum, attach.sarDen)) {
-            if (IJK_GLES2_Renderer_isHDR(_renderer)) {
+        if (FS_GLES2_Renderer_updateVertex2(_renderer, attach.h, attach.w, attach.pixelW, attach.sarNum, attach.sarDen)) {
+            if (FS_GLES2_Renderer_isHDR(_renderer)) {
                 float hdrPer = 1.0;
                 if (self.showHdrAnimation) {
             #define _C(c) (attach.fps > 0 ? (int)ceil(attach.fps * c / 24.0) : c)
@@ -366,10 +366,10 @@ static void unlock_gl(NSOpenGLContext *ctx)
                         hdrPer = 0.5;
                     }
                 }
-                IJK_GLES2_Renderer_updateHdrAnimationProgress(_renderer, hdrPer);
+                FS_GLES2_Renderer_updateHdrAnimationProgress(_renderer, hdrPer);
             }
-            if (IJK_GLES2_Renderer_uploadTexture(_renderer, (void *)attach.videoPicture)) {
-                IJK_GLES2_Renderer_drawArrays();
+            if (FS_GLES2_Renderer_uploadTexture(_renderer, (void *)attach.videoPicture)) {
+                FS_GLES2_Renderer_drawArrays();
             } else {
                 ALOGE("[GL] Renderer_updateVertex failed\n");
             }
@@ -379,7 +379,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
     }
 }
 
-- (void)doRefreshCurrentAttach:(IJKOverlayAttach *)currentAttach
+- (void)doRefreshCurrentAttach:(FSOverlayAttach *)currentAttach
 {
     if (!currentAttach) {
         [self applyClearColor];
@@ -394,7 +394,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
     [self doRefreshCurrentAttach:self.currentAttach];
 }
 
-- (void)doDisplayVideoPicAndSubtitle:(IJKOverlayAttach *)attach
+- (void)doDisplayVideoPicAndSubtitle:(FSOverlayAttach *)attach
 {
     if (!attach) {
         return;
@@ -403,20 +403,20 @@ static void unlock_gl(NSOpenGLContext *ctx)
     lock_gl([self openGLContext]);
     [[self openGLContext] makeCurrentContext];
 
-    if ([self setupRendererIfNeed:attach] && IJK_GLES2_Renderer_isValid(_renderer)) {
+    if ([self setupRendererIfNeed:attach] && FS_GLES2_Renderer_isValid(_renderer)) {
         // Bind the FBO to screen.
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, self.backingWidth, self.backingHeight);
         glClear(GL_COLOR_BUFFER_BIT);
         // the pixel is not aligment, so must set GL_UNPACK_ALIGNMENT
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        IJK_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
+        FS_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
         //for video
         [self doUploadVideoPicture:attach];
         //for subtitle
         [self doUploadSubtitle:attach viewport:CGSizeMake(self.backingWidth, self.backingHeight)];
     } else {
-        ALOGW("IJKSDLGLView: Renderer not ok.\n");
+        ALOGW("FSSDLGLView: Renderer not ok.\n");
     }
     
     if (self.inLiveResize) {
@@ -435,13 +435,13 @@ static void unlock_gl(NSOpenGLContext *ctx)
                          waitUntilDone:NO];
 }
 
-- (BOOL)displayAttach:(IJKOverlayAttach *)attach
+- (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
     //in vout thread hold the attach,let currentAttach dealloc in vout thread,because it's texture overlay was created in vout thread,must keep same thread in macOS 10.12 is so important!
     self.currentAttach = attach;
     
     if (!attach.videoPicture) {
-        ALOGW("IJKSDLGLView: videoPicture is nil\n");
+        ALOGW("FSSDLGLView: videoPicture is nil\n");
         return NO;
     }
     
@@ -465,7 +465,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
 - (void)_snapshotEffectOriginWithSubtitle:(NSDictionary *)params
 {
     BOOL containSub = [params[@"containSub"] boolValue];
-    IJKOverlayAttach * attach = params[@"attach"];
+    FSOverlayAttach * attach = params[@"attach"];
     NSValue *ptrValue = params[@"outImg"];
     CGImageRef *outImg = (CGImageRef *)[ptrValue pointerValue];
     if (outImg) {
@@ -479,14 +479,14 @@ static void unlock_gl(NSOpenGLContext *ctx)
     [[self openGLContext] makeCurrentContext];
     //[self setupRendererIfNeed:attach];
     CGImageRef img = NULL;
-    if (IJK_GLES2_Renderer_isValid(_renderer)) {
+    if (FS_GLES2_Renderer_isValid(_renderer)) {
         float videoSar = 1.0;
         if (attach.sarNum > 0 && attach.sarDen > 0) {
             videoSar = 1.0 * attach.sarNum / attach.sarDen;
         }
         CGSize picSize = CGSizeMake(CVPixelBufferGetWidth(attach.videoPicture) * videoSar, CVPixelBufferGetHeight(attach.videoPicture));
         //视频带有旋转 90 度倍数时需要将显示宽高交换后计算
-        if (IJK_GLES2_Renderer_isZRotate90oddMultiple(_renderer)) {
+        if (FS_GLES2_Renderer_isZRotate90oddMultiple(_renderer)) {
             picSize = CGSizeMake(picSize.height, picSize.width);
         }
         
@@ -504,7 +504,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
         }
         
         if (![self.fbo canReuse:picSize]) {
-            self.fbo = [[IJKSDLOpenGLFBO alloc] initWithSize:picSize];
+            self.fbo = [[FSSDLOpenGLFBO alloc] initWithSize:picSize];
         }
         
         if (self.fbo) {
@@ -512,14 +512,14 @@ static void unlock_gl(NSOpenGLContext *ctx)
                 [self.fbo bind];
                 glViewport(0, 0, picSize.width, picSize.height);
                 glClear(GL_COLOR_BUFFER_BIT);
-                IJK_GLES2_Renderer_setGravity(_renderer, _rendererGravity, picSize.width, picSize.height);
-                if (!IJK_GLES2_Renderer_resetVao(_renderer))
+                FS_GLES2_Renderer_setGravity(_renderer, _rendererGravity, picSize.width, picSize.height);
+                if (!FS_GLES2_Renderer_resetVao(_renderer))
                     ALOGE("[GL] Renderer_resetVao failed\n");
                 
-                if (!IJK_GLES2_Renderer_uploadTexture(_renderer, (void *)attach.videoPicture))
+                if (!FS_GLES2_Renderer_uploadTexture(_renderer, (void *)attach.videoPicture))
                     ALOGE("[GL] Renderer_updateVertex failed\n");
                 
-                IJK_GLES2_Renderer_drawArrays();
+                FS_GLES2_Renderer_drawArrays();
             }
             
             if (containSub) {
@@ -537,7 +537,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
     }
 }
 
-- (CGImageRef)_snapshot_origin:(IJKOverlayAttach *)attach
+- (CGImageRef)_snapshot_origin:(FSOverlayAttach *)attach
 {
     CVPixelBufferRef pixelBuffer = CVPixelBufferRetain(attach.videoPicture);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
@@ -660,17 +660,17 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     }
 }
 
-- (CGImageRef)snapshot:(IJKSDLSnapshotType)aType
+- (CGImageRef)snapshot:(FSSDLSnapshotType)aType
 {
-    IJKOverlayAttach *attach = self.currentAttach;
+    FSOverlayAttach *attach = self.currentAttach;
     if (!attach) {
         return NULL;
     }
     
     switch (aType) {
-        case IJKSDLSnapshot_Origin:
+        case FSSDLSnapshot_Origin:
             return [self _snapshot_origin:attach];
-        case IJKSDLSnapshot_Screen:
+        case FSSDLSnapshot_Screen:
         {
             CGImageRef reuslt = NULL;
             NSValue * address = [NSValue valueWithPointer:(void *)&reuslt];
@@ -680,7 +680,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
                                  waitUntilDone:YES];
             return reuslt ? (CGImageRef)CFAutorelease(reuslt) : NULL;
         }
-        case IJKSDLSnapshot_Effect_Origin:
+        case FSSDLSnapshot_Effect_Origin:
         {
             CGImageRef reuslt = NULL;
             NSValue * address = [NSValue valueWithPointer:(void *)&reuslt];
@@ -695,7 +695,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
                                  waitUntilDone:YES];
             return reuslt ? (CGImageRef)CFAutorelease(reuslt) : NULL;
         }
-        case IJKSDLSnapshot_Effect_Subtitle_Origin:
+        case FSSDLSnapshot_Effect_Subtitle_Origin:
         {
             CGImageRef reuslt = NULL;
             NSValue * address = [NSValue valueWithPointer:(void *)&reuslt];
@@ -715,51 +715,51 @@ static CGImageRef _FlipCGImage(CGImageRef src)
 
 #pragma mark - override setter methods
 
-- (void)setScalingMode:(IJKMPMovieScalingMode)scalingMode
+- (void)setScalingMode:(FSMPMovieScalingMode)scalingMode
 {
     switch (scalingMode) {
-        case IJKMPMovieScalingModeFill:
-            _rendererGravity = IJK_GLES2_GRAVITY_RESIZE;
+        case FSMPMovieScalingModeFill:
+            _rendererGravity = FS_GLES2_GRAVITY_RESIZE;
             break;
-        case IJKMPMovieScalingModeAspectFit:
-            _rendererGravity = IJK_GLES2_GRAVITY_RESIZE_ASPECT;
+        case FSMPMovieScalingModeAspectFit:
+            _rendererGravity = FS_GLES2_GRAVITY_RESIZE_ASPECT;
             break;
-        case IJKMPMovieScalingModeAspectFill:
-            _rendererGravity = IJK_GLES2_GRAVITY_RESIZE_ASPECT_FILL;
+        case FSMPMovieScalingModeAspectFill:
+            _rendererGravity = FS_GLES2_GRAVITY_RESIZE_ASPECT_FILL;
             break;
     }
     _scalingMode = scalingMode;
-    if (IJK_GLES2_Renderer_isValid(_renderer)) {
-        IJK_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
+    if (FS_GLES2_Renderer_isValid(_renderer)) {
+        FS_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
     }
 }
 
-- (void)setRotatePreference:(IJKSDLRotatePreference)rotatePreference
+- (void)setRotatePreference:(FSSDLRotatePreference)rotatePreference
 {
     if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
         _rotatePreference = rotatePreference;
-        if (IJK_GLES2_Renderer_isValid(_renderer)) {
-            IJK_GLES2_Renderer_updateRotate(_renderer, _rotatePreference.type, _rotatePreference.degrees);
+        if (FS_GLES2_Renderer_isValid(_renderer)) {
+            FS_GLES2_Renderer_updateRotate(_renderer, _rotatePreference.type, _rotatePreference.degrees);
         }
     }
 }
 
-- (void)setColorPreference:(IJKSDLColorConversionPreference)colorPreference
+- (void)setColorPreference:(FSSDLColorConversionPreference)colorPreference
 {
     if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
         _colorPreference = colorPreference;
-        if (IJK_GLES2_Renderer_isValid(_renderer)) {
-            IJK_GLES2_Renderer_updateColorConversion(_renderer, _colorPreference.brightness, _colorPreference.saturation,_colorPreference.contrast);
+        if (FS_GLES2_Renderer_isValid(_renderer)) {
+            FS_GLES2_Renderer_updateColorConversion(_renderer, _colorPreference.brightness, _colorPreference.saturation,_colorPreference.contrast);
         }
     }
 }
 
-- (void)setDarPreference:(IJKSDLDARPreference)darPreference
+- (void)setDarPreference:(FSSDLDARPreference)darPreference
 {
     if (_darPreference.ratio != darPreference.ratio) {
         _darPreference = darPreference;
-        if (IJK_GLES2_Renderer_isValid(_renderer)) {
-            IJK_GLES2_Renderer_updateUserDefinedDAR(_renderer, _darPreference.ratio);
+        if (FS_GLES2_Renderer_isValid(_renderer)) {
+            FS_GLES2_Renderer_updateUserDefinedDAR(_renderer, _darPreference.ratio);
         }
     }
 }

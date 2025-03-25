@@ -22,7 +22,7 @@
 #include "ijksdl/gles2/internal.h"
 
 //for hdr (macos only,ios not support convert IOSurface to texture)
-static const char g_shader_hdr[] = IJK_GLES_STRING(
+static const char g_shader_hdr[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform sampler2DRect us2_Sampler0;
     uniform sampler2DRect us2_Sampler1;
@@ -191,7 +191,7 @@ static const char g_shader_hdr[] = IJK_GLES_STRING(
 );
 
 //for 420sp
-static const char g_shader_nv12[] = IJK_GLES_STRING(
+static const char g_shader_nv12[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform mat3 um3_ColorConversion;
     uniform vec3 um3_rgbAdjustment;
@@ -245,7 +245,7 @@ static const char g_shader_nv12[] = IJK_GLES_STRING(
 );
 
 //for bgrx texture
-static const char g_shader_rect_bgrx_1[] = IJK_GLES_STRING(
+static const char g_shader_rect_bgrx_1[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform vec3 um3_rgbAdjustment;
     
@@ -281,7 +281,7 @@ static const char g_shader_rect_bgrx_1[] = IJK_GLES_STRING(
 );
 
 //for uyvy texture
-static const char g_shader_rect_uyvy_legacy_1[] = IJK_GLES_STRING(
+static const char g_shader_rect_uyvy_legacy_1[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform vec3 um3_rgbAdjustment;
     
@@ -306,7 +306,7 @@ static const char g_shader_rect_uyvy_legacy_1[] = IJK_GLES_STRING(
 );
 
 //for xrgb texture (macos only,ios not support convert IOSurface to texture)
-static const char g_shader_rect_xrgb_1[] = IJK_GLES_STRING(
+static const char g_shader_rect_xrgb_1[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform vec3 um3_rgbAdjustment;
     
@@ -344,7 +344,7 @@ static const char g_shader_rect_xrgb_1[] = IJK_GLES_STRING(
 );
 
 //for yuv420p
-static const char g_shader_rect_3[] = IJK_GLES_STRING(
+static const char g_shader_rect_3[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform mat3 um3_ColorConversion;
     uniform vec3 um3_rgbAdjustment;
@@ -403,7 +403,7 @@ static const char g_shader_rect_3[] = IJK_GLES_STRING(
 );
 
 //for uyvy texture
-static const char g_shader_rect_uyvy_1[] = IJK_GLES_STRING(
+static const char g_shader_rect_uyvy_1[] = FS_GLES_STRING(
     varying vec2 vv2_Texcoord;
     uniform vec3 um3_rgbAdjustment;
     uniform mat3 um3_ColorConversion;
@@ -442,7 +442,7 @@ static const char g_shader_rect_uyvy_1[] = IJK_GLES_STRING(
     }
 );
 
-void ijk_get_apple_common_fragment_shader(IJK_SHADER_TYPE type,char *out,int ver)
+void ijk_get_apple_common_fragment_shader(FS_SHADER_TYPE type,char *out,int ver)
 {
     *out = '\0';
     sprintf(out, "#version %d\n",ver);
@@ -462,7 +462,7 @@ void ijk_get_apple_common_fragment_shader(IJK_SHADER_TYPE type,char *out,int ver
     }
 #endif
     strcat(out, "\n");
-    strcat(out, IJK_GLES_STRING(
+    strcat(out, FS_GLES_STRING(
                 vec3 rgb_adjust(vec3 rgb,vec3 rgbAdjustment) {
                     //C 是对比度值，B 是亮度值，S 是饱和度
                     float B = rgbAdjustment.x;

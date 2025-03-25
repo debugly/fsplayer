@@ -32,8 +32,8 @@
 //提交：
 //5258c012febdfba0ef56ad8ce6f7cb003611c47b
 
-#ifndef IJKSDL__renderer_pixfmt__INTERNAL__H
-#define IJKSDL__renderer_pixfmt__INTERNAL__H
+#ifndef FSSDL__renderer_pixfmt__INTERNAL__H
+#define FSSDL__renderer_pixfmt__INTERNAL__H
 
 #import <CoreVideo/CoreVideo.h>
 

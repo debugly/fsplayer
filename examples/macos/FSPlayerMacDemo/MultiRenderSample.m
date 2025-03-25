@@ -1,18 +1,18 @@
 //
 //  MultiRenderSample.m
-//  IJKMediaMacDemo
+//  FSPlayerDemo
 //
 //  Created by Reach Matt on 2023/4/6.
-//  Copyright © 2023 IJK Mac. All rights reserved.
+//  Copyright © 2023 debugly. All rights reserved.
 //
 
 #import "MultiRenderSample.h"
-#import <IJKMediaPlayerKit/IJKMediaPlayerKit.h>
+#import <FSPlayer/FSPlayerKit.h>
 #import "MRRenderViewAuxProxy.h"
 
 @interface MultiRenderSample ()
 
-@property (nonatomic, strong) IJKFFMoviePlayerController *player;
+@property (nonatomic, strong) FSPlayer *player;
 
 @end
 
@@ -35,7 +35,7 @@
         self.player = nil;
     }
     
-    IJKFFOptions *options = [IJKFFOptions optionsByDefault];
+    FSOptions *options = [FSOptions optionsByDefault];
     //视频帧处理不过来的时候丢弃一些帧达到同步的效果
     [options setPlayerOptionIntValue:1 forKey:@"framedrop"];
     [options setPlayerOptionIntValue:6      forKey:@"video-pictq-size"];
@@ -48,8 +48,8 @@
     [options setPlayerOptionIntValue:1 forKey:@"videotoolbox_hwaccel"];
     
     
-    UIView<IJKVideoRenderingProtocol> *render1 = [IJKInternalRenderView createGLRenderView];
-    UIView<IJKVideoRenderingProtocol> *render2 = [IJKInternalRenderView createMetalRenderView];
+    UIView<FSVideoRenderingProtocol> *render1 = [FSVideoRenderView createGLRenderView];
+    UIView<FSVideoRenderingProtocol> *render2 = [FSVideoRenderView createMetalRenderView];
     
     {
         CGRect rect = self.view.bounds;
@@ -77,9 +77,9 @@
     [aux addRenderView:render1];
     [aux addRenderView:render2];
     
-    self.player = [[IJKFFMoviePlayerController alloc] initWithMoreContent:url withOptions:options withGLView:aux];
+    self.player = [[FSPlayer alloc] initWithMoreContent:url withOptions:options withGLView:aux];
     
-    aux.scalingMode = IJKMPMovieScalingModeAspectFill;
+    aux.scalingMode = FSMPMovieScalingModeAspectFill;
     self.player.shouldAutoplay = YES;
     [self.player prepareToPlay];
 }

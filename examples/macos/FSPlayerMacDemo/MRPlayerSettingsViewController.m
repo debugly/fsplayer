@@ -1,13 +1,13 @@
 //
 //  MRPlayerSettingsViewController.m
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Reach Matt on 2024/1/24.
-//  Copyright © 2024 IJK Mac. All rights reserved.
+//  Copyright © 2024 FSPlayer Mac. All rights reserved.
 //
 
 #import "MRPlayerSettingsViewController.h"
-#import <IJKMediaPlayerKit/IJKFFMoviePlayerController.h>
+#import <FSPlayer/FSPlayer.h>
 #import "MRCocoaBindingUserDefault.h"
 #import "MRPlayerSettingsView.h"
 

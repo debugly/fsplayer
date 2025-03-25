@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_fbo_macos.m
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/15.
 //
@@ -10,14 +10,14 @@
 #import "ijksdl_vout_ios_gles2.h"
 #include <libavutil/log.h>
 
-@interface IJKSDLOpenGLFBO()
+@interface FSSDLOpenGLFBO()
 
 @property(nonatomic, assign) GLuint fbo;
-@property(nonatomic, readwrite) id<IJKSDLSubtitleTextureWrapper> texture;
+@property(nonatomic, readwrite) id<FSSDLSubtitleTextureWrapper> texture;
 
 @end
 
-@implementation IJKSDLOpenGLFBO
+@implementation FSSDLOpenGLFBO
 
 - (void)dealloc
 {
@@ -55,7 +55,7 @@
         
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (GL_FRAMEBUFFER_COMPLETE == status) {
-            _texture = IJKSDL_crate_openglTextureWrapper(t, size.width, size.height);
+            _texture = FSSDL_crate_openglTextureWrapper(t, size.width, size.height);
             glBindTexture(target, 0);
             return self;
         } else {

@@ -3,7 +3,7 @@
 //  MRFoundation
 //
 //  Created by Matt Reach on 2019/8/5.
-//  Copyright © 2022 IJK Mac. All rights reserved.
+//  Copyright © 2022 debugly. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

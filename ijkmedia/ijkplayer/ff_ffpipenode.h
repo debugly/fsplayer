@@ -26,22 +26,22 @@
 
 #include "ijksdl/ijksdl_mutex.h"
 
-typedef struct FSFF_Pipenode_Opaque FSFF_Pipenode_Opaque;
-typedef struct FSFF_Pipenode FSFF_Pipenode;
-struct FSFF_Pipenode {
+typedef struct FS_Pipenode_Opaque FS_Pipenode_Opaque;
+typedef struct FS_Pipenode FS_Pipenode;
+struct FS_Pipenode {
     SDL_mutex *mutex;
     void *opaque;
     int vdec_type;
-    void (*func_destroy) (FSFF_Pipenode *node);
-    int  (*func_run_sync)(FSFF_Pipenode *node);
-    int  (*func_flush)   (FSFF_Pipenode *node); // optional
+    void (*func_destroy) (FS_Pipenode *node);
+    int  (*func_run_sync)(FS_Pipenode *node);
+    int  (*func_flush)   (FS_Pipenode *node); // optional
 };
 
-FSFF_Pipenode *ffpipenode_alloc(size_t opaque_size);
-void ffpipenode_free(FSFF_Pipenode *node);
-void ffpipenode_free_p(FSFF_Pipenode **node);
+FS_Pipenode *ffpipenode_alloc(size_t opaque_size);
+void ffpipenode_free(FS_Pipenode *node);
+void ffpipenode_free_p(FS_Pipenode **node);
 
-int  ffpipenode_run_sync(FSFF_Pipenode *node);
-int  ffpipenode_flush(FSFF_Pipenode *node);
+int  ffpipenode_run_sync(FS_Pipenode *node);
+int  ffpipenode_flush(FS_Pipenode *node);
 
 #endif

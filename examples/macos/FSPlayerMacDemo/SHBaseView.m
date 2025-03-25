@@ -1,9 +1,9 @@
 //
 //  AppDelegate.h
-//  IJKMediaDemo
+//  FSPlayerDemo
 //
 //  Created by Matt Reach on 2021/12/01.
-//  Copyright © 2021 IJK Mac. All rights reserved.
+//  Copyright © 2021 debugly. All rights reserved.
 //
 
 #import "SHBaseView.h"

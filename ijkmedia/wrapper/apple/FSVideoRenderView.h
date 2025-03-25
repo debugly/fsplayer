@@ -1,5 +1,5 @@
 //
-//  FSInternalRenderView.h
+//  FSVideoRenderView.h
 //  FSMediaPlayerKit
 //
 //  Created by Reach Matt on 2023/4/6.
@@ -11,7 +11,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface FSInternalRenderView : NSObject
+@interface FSVideoRenderView : NSObject
 
 #if TARGET_OS_OSX
 + (UIView<FSVideoRenderingProtocol> *)createGLRenderView;

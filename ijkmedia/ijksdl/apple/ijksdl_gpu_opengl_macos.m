@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_macos.m
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/14.
 //
@@ -19,15 +19,15 @@ typedef struct SDL_GPU_Opaque_GL {
 } SDL_GPU_Opaque_GL;
 
 typedef struct SDL_TextureOverlay_Opaque_GL {
-    id<IJKSDLSubtitleTextureWrapper> texture;
+    id<FSSDLSubtitleTextureWrapper> texture;
     NSOpenGLContext *glContext;
 } SDL_TextureOverlay_Opaque_GL;
 
 typedef struct SDL_FBOOverlay_Opaque_GL {
     NSOpenGLContext *glContext;
     SDL_TextureOverlay *toverlay;
-    IJKSDLOpenGLFBO *fbo;
-    IJKSDLOpenGLSubRenderer *renderer;
+    FSSDLOpenGLFBO *fbo;
+    FSSDLOpenGLSubRenderer *renderer;
 } SDL_FBOOverlay_Opaque_GL;
 
 static void* getTexture(SDL_TextureOverlay *overlay);
@@ -39,7 +39,7 @@ static void replaceRegion(SDL_TextureOverlay *overlay, SDL_Rectangle rect, void 
     if (overlay && overlay->opaque) {
         
         SDL_TextureOverlay_Opaque_GL *op = overlay->opaque;
-        id<IJKSDLSubtitleTextureWrapper>t = op->texture;
+        id<FSSDLSubtitleTextureWrapper>t = op->texture;
         if (rect.x + rect.w > t.w) {
             rect.x = 0;
             rect.w = t.w;
@@ -70,7 +70,7 @@ static void replaceRegion(SDL_TextureOverlay *overlay, SDL_Rectangle rect, void 
         glTexSubImage2D(target, 0, rect.x, rect.y, (GLsizei)rect.w, (GLsizei)rect.h, format, GL_UNSIGNED_BYTE, (const GLvoid *)pixels);
         //macOS 10.14及以下系统，需要glFlush操作，多线程共享该纹理，否者导致出现多个拖影，或者只有一部分被替换的奇怪bug。
         glFlush();
-        IJK_GLES2_checkError("replaceOpenGlRegion");
+        FS_GLES2_checkError("replaceOpenGlRegion");
         glBindTexture(target, 0);
         CGLUnlockContext([op->glContext CGLContextObj]);
     }
@@ -105,7 +105,7 @@ static void dealloc_texture(SDL_TextureOverlay *overlay)
     }
 }
 
-static SDL_TextureOverlay * create_textureOverlay_with_glTexture(NSOpenGLContext *context, id<IJKSDLSubtitleTextureWrapper> subTexture)
+static SDL_TextureOverlay * create_textureOverlay_with_glTexture(NSOpenGLContext *context, id<FSSDLSubtitleTextureWrapper> subTexture)
 {
     SDL_TextureOverlay *overlay = (SDL_TextureOverlay*) calloc(1, sizeof(SDL_TextureOverlay));
     if (!overlay)
@@ -163,8 +163,8 @@ static SDL_TextureOverlay *createOpenGLTexture(NSOpenGLContext *context, int w, 
     }
     
     CGLUnlockContext([context CGLContextObj]);
-    IJK_GLES2_checkError("create OpenGL Texture");
-    id<IJKSDLSubtitleTextureWrapper> t = IJKSDL_crate_openglTextureWrapper(texture, w, h);
+    FS_GLES2_checkError("create OpenGL Texture");
+    id<FSSDLSubtitleTextureWrapper> t = FSSDL_crate_openglTextureWrapper(texture, w, h);
     SDL_TextureOverlay *toverlay = create_textureOverlay_with_glTexture(context, t);
     if (toverlay) {
         toverlay->fmt = fmt;
@@ -217,7 +217,7 @@ static SDL_FBOOverlay *createOpenGLFBO(NSOpenGLContext *glContext, int w, int h)
     
     CGLLockContext([glContext CGLContextObj]);
     [glContext makeCurrentContext];
-    opaque->fbo = [[IJKSDLOpenGLFBO alloc] initWithSize:size];
+    opaque->fbo = [[FSSDLOpenGLFBO alloc] initWithSize:size];
     CGLUnlockContext([glContext CGLContextObj]);
     
     opaque->glContext = glContext;
@@ -238,7 +238,7 @@ static void beginDraw_fbo(SDL_GPU *gpu, SDL_FBOOverlay *overlay, int ass)
             
     } else {
         if (!fop->renderer) {
-            fop->renderer = [[IJKSDLOpenGLSubRenderer alloc] init];
+            fop->renderer = [[FSSDLOpenGLSubRenderer alloc] init];
         }
         
         if (fop->renderer) {
@@ -257,9 +257,9 @@ static void drawTexture_fbo(SDL_GPU *gpu, SDL_FBOOverlay *foverlay, SDL_TextureO
     }
     SDL_FBOOverlay_Opaque_GL *fop = foverlay->opaque;
     CGSize viewport = [fop->fbo size];
-    CGRect rect = IJKSDL_make_openGL_NDC(frame, toverlay->scale, viewport);
+    CGRect rect = FSSDL_make_openGL_NDC(frame, toverlay->scale, viewport);
     [fop->renderer updateSubtitleVertexIfNeed:rect];
-    id<IJKSDLSubtitleTextureWrapper> texture = (__bridge id<IJKSDLSubtitleTextureWrapper>)toverlay->getTexture(toverlay);
+    id<FSSDLSubtitleTextureWrapper> texture = (__bridge id<FSSDLSubtitleTextureWrapper>)toverlay->getTexture(toverlay);
     [fop->renderer drawTexture:texture colors:toverlay->palette];
 }
 
@@ -305,7 +305,7 @@ static SDL_TextureOverlay * getTexture_fbo(SDL_FBOOverlay *foverlay)
     
     SDL_FBOOverlay_Opaque_GL *fop = foverlay->opaque;
     if (!fop->toverlay) {
-        id<IJKSDLSubtitleTextureWrapper> subTexture = [fop->fbo texture];
+        id<FSSDLSubtitleTextureWrapper> subTexture = [fop->fbo texture];
         fop->toverlay = create_textureOverlay_with_glTexture(fop->glContext, subTexture);
     }
     return SDL_TextureOverlay_Retain(fop->toverlay);

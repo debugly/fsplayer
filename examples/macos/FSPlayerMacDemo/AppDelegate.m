@@ -1,9 +1,9 @@
 //
 //  AppDelegate.m
-//  IJKMediaDemo
+//  FSPlayerMacDemo
 //
 //  Created by Matt Reach on 2019/6/25.
-//  Copyright © 2019 IJK Mac. All rights reserved.
+//  Copyright © 2019 FSPlayer Mac. All rights reserved.
 //
 
 #import "AppDelegate.h"
@@ -11,7 +11,7 @@
 #import "MRRootViewController.h"
 #import "MRAutoTestViewController.h"
 #import "MRStatisticalViewController.h"
-#import <IJKMediaPlayerKit/IJKMediaPlayerKit.h>
+#import <FSPlayer/FSPlayer.h>
 #import "MRGlobalNotification.h"
 #import "MRUtil+SystemPanel.h"
 #import "MRActionKit.h"
@@ -115,7 +115,7 @@
     self.windowCtrl.window = window;
     [window center];
     [self.windowCtrl showWindow:nil];
-    BOOL match = [IJKFFMoviePlayerController checkIfFFmpegVersionMatch:YES];
+    BOOL match = [FSPlayer checkIfFFmpegVersionMatch:YES];
     NSLog(@"==FFmpegVersionMatch:%d",match);
     
     if ([self.waitHandleArr count] > 0) {
@@ -177,7 +177,7 @@
 
 - (IBAction)showSupportedDecoder:(id)sender
 {
-    NSString *text = [[IJKFFMoviePlayerController supportedDecoders] description];
+    NSString *text = [[FSPlayer supportedDecoders] description];
     MRTextInfoViewController *vc = [[MRTextInfoViewController alloc] initWithText:text];
     vc.title = @"Supported Decoder";
     [self.windowCtrl.window.contentViewController presentViewControllerAsModalWindow:vc];

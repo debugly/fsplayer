@@ -1,15 +1,15 @@
 //
 //  MRAutoTestViewController.m
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Matt Reach on 2021/11/1.
-//  Copyright © 2021 IJK Mac. All rights reserved.
+//  Copyright © 2021 FSPlayer Mac. All rights reserved.
 //
 
 #import "MRAutoTestViewController.h"
 #import "MRDragView.h"
 #import "MRUtil+SystemPanel.h"
-#import <IJKMediaPlayerKit/IJKMediaPlayerKit.h>
+#import <FSPlayer/FSPlayerKit.h>
 #import "NSFileManager+Sandbox.h"
 #import "SHBaseView.h"
 #import <Quartz/Quartz.h>
@@ -67,7 +67,7 @@ static BOOL hdrAnimationShown = 0;
 @property (nonatomic, assign) BOOL snapshot2;
 @property (nonatomic, assign) int tickCount;
 //player
-@property (nonatomic, strong) IJKFFMoviePlayerController *player;
+@property (nonatomic, strong) FSPlayer *player;
 @property (nonatomic, strong) NSMutableArray *playList;
 @property (nonatomic, strong) NSMutableArray *subtitles;
 @property (nonatomic, copy) NSURL *playingUrl;
@@ -97,7 +97,7 @@ static BOOL hdrAnimationShown = 0;
     //[self.view setWantsLayer:YES];
     //self.view.layer.backgroundColor = [[NSColor redColor] CGColor];
     self.title = @"AutoTest";
-    [IJKFFMoviePlayerController setLogHandler:^(IJKLogLevel level, NSString *tag, NSString *msg) {
+    [FSPlayer setLogHandler:^(FSLogLevel level, NSString *tag, NSString *msg) {
         NSLog(@"[%@] [%d] %@",tag,level,msg);
 //        printf("[%s] %s\n",[tag UTF8String],[msg UTF8String]);
     }];
@@ -332,18 +332,18 @@ static BOOL hdrAnimationShown = 0;
                 break;
             case kVK_ANSI_R:
             {
-                IJKSDLRotatePreference preference = self.player.view.rotatePreference;
+                FSSDLRotatePreference preference = self.player.view.rotatePreference;
                 
-                if (preference.type == IJKSDLRotateNone) {
-                    preference.type = IJKSDLRotateZ;
+                if (preference.type == FSSDLRotateNone) {
+                    preference.type = FSSDLRotateZ;
                 }
                 
                 if (event.modifierFlags & NSEventModifierFlagOption) {
                     
                     preference.type --;
                     
-                    if (preference.type <= IJKSDLRotateNone) {
-                        preference.type = IJKSDLRotateZ;
+                    if (preference.type <= FSSDLRotateNone) {
+                        preference.type = FSSDLRotateZ;
                     }
                 }
                 
@@ -586,7 +586,7 @@ static BOOL hdrAnimationShown = 0;
     
     self.seeking = NO;
     
-    [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_INFO];
+    [FSPlayer setLogLevel:k_IJK_LOG_INFO];
     
     NSString *dir = [self dirForCurrentPlayingUrl];
     NSString *movieName = [[url absoluteString] lastPathComponent];
@@ -599,13 +599,13 @@ static BOOL hdrAnimationShown = 0;
     self.autoSeeked = NO;
     self.snapshot2 = NO;
     
-    IJKFFOptions *options = [IJKFFOptions optionsByDefault];
+    FSOptions *options = [FSOptions optionsByDefault];
     //视频帧处理不过来的时候丢弃一些帧达到同步的效果
     [options setPlayerOptionIntValue:1 forKey:@"framedrop"];
     [options setPlayerOptionIntValue:6      forKey:@"video-pictq-size"];
     //    [options setPlayerOptionIntValue:50000      forKey:@"min-frames"];
     [options setPlayerOptionIntValue:119     forKey:@"max-fps"];
-    [options setCodecOptionIntValue:IJK_AVDISCARD_DEFAULT forKey:@"skip_loop_filter"];
+    [options setCodecOptionIntValue:FS_AVDISCARD_DEFAULT forKey:@"skip_loop_filter"];
     //for mgeg-ts seek
     [options setFormatOptionIntValue:1 forKey:@"seek_flag_keyframe"];
 //    default is 5000000,but some high bit rate video probe faild cause no audio.
@@ -683,9 +683,9 @@ static BOOL hdrAnimationShown = 0;
     self.playerSlider.tags = dus;
     
     [NSDocumentController.sharedDocumentController noteNewRecentDocumentURL:url];
-    self.player = [[IJKFFMoviePlayerController alloc] initWithContentURL:url withOptions:options];
+    self.player = [[FSPlayer alloc] initWithContentURL:url withOptions:options];
     
-    NSView <IJKVideoRenderingProtocol>*playerView = self.player.view;
+    NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
     CGRect rect = self.view.frame;
     rect.origin = CGPointZero;
     playerView.frame = rect;
@@ -697,25 +697,25 @@ static BOOL hdrAnimationShown = 0;
     //test
     [playerView setBackgroundColor:0 g:0 b:0];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:IJKMPMoviePlayerFirstVideoFrameRenderedNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSMPMoviePlayerFirstVideoFrameRenderedNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:IJKMPMediaPlaybackIsPreparedToPlayDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:IJKMPMoviePlayerSelectedStreamDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSMPMoviePlayerSelectedStreamDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:IJKMPMoviePlayerPlaybackDidFinishNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:FSMPMoviePlayerPlaybackDidFinishNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:IJKMPMovieNoCodecFoundNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:FSMPMovieNoCodecFoundNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:IJKMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:IJKMPMoviePlayerVideoDecoderFatalNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSMPMoviePlayerVideoDecoderFatalNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:IJKMPMoviePlayerPlaybackRecvWarningNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSMPMoviePlayerPlaybackRecvWarningNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:IJKMoviePlayerHDRAnimationStateChanged object:self.player.view];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:FSMoviePlayerHDRAnimationStateChanged object:self.player.view];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:IJKMPMoviePlayerFindStreamInfoNotification object:self.player.view];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSMPMoviePlayerFindStreamInfoNotification object:self.player.view];
     
     self.player.shouldAutoplay = YES;
     [self onVolumeChange:nil];
@@ -726,11 +726,11 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerRecvWarning:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int reason = [notifi.userInfo[IJKMPMoviePlayerPlaybackWarningReasonUserInfoKey] intValue];
+        int reason = [notifi.userInfo[FSMPMoviePlayerPlaybackWarningReasonUserInfoKey] intValue];
         if (reason == 1000) {
             NSLog(@"recv warning:%d",reason);
             //会收到很多次，所以立马取消掉监听
-            [[NSNotificationCenter defaultCenter] removeObserver:self name:IJKMPMoviePlayerPlaybackRecvWarningNotification object:notifi.object];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:FSMPMoviePlayerPlaybackRecvWarningNotification object:notifi.object];
             [self retry];
         }
     }
@@ -796,8 +796,8 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerDidFinish:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int reason = [notifi.userInfo[IJKMPMoviePlayerPlaybackDidFinishReasonUserInfoKey] intValue];
-        if (IJKMPMovieFinishReasonPlaybackError == reason) {
+        int reason = [notifi.userInfo[FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey] intValue];
+        if (FSMPMovieFinishReasonPlaybackError == reason) {
             int errCode = [notifi.userInfo[@"code"] intValue];
             NSLog(@"播放出错:%d",errCode);
             NSString *dir = [self saveDir:nil];
@@ -812,7 +812,7 @@ static BOOL hdrAnimationShown = 0;
             if (errCode != -5) {
                 [self playNext:nil];
             }
-        } else if (IJKMPMovieFinishReasonPlaybackEnded == reason) {
+        } else if (FSMPMovieFinishReasonPlaybackEnded == reason) {
             NSLog(@"播放结束");
             if ([[MRUtil pictureType] containsObject:[[self.playingUrl lastPathComponent] pathExtension]]) {
 //                [self stopPlay];
@@ -1321,7 +1321,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (IBAction)fastForward:(NSButton *)sender
 {    
-    if (self.player.playbackState == IJKMPMoviePlaybackStatePaused) {
+    if (self.player.playbackState == FSMPMoviePlaybackStatePaused) {
         [self.player stepToNextFrame];
     } else {
         float cp = self.player.currentPlaybackTime;
@@ -1350,14 +1350,14 @@ static BOOL hdrAnimationShown = 0;
 {
     NSMenuItem *item = [sender selectedItem];
     int bgrValue = (int)item.tag;
-    IJKSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSDLSubtitlePreference p = self.player.subtitlePreference;
     p.PrimaryColour = bgrValue;
     self.player.subtitlePreference = p;
 }
 
 - (IBAction)onChangeSubtitleSize:(NSStepper *)sender
 {
-    IJKSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSDLSubtitlePreference p = self.player.subtitlePreference;
     p.Scale = sender.floatValue / 50;
     self.player.subtitlePreference = p;
 }
@@ -1382,7 +1382,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (IBAction)onChangeSubtitleBottomMargin:(NSSlider *)sender
 {
-    IJKSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSDLSubtitlePreference p = self.player.subtitlePreference;
     p.BottomMargin = sender.floatValue;
     self.player.subtitlePreference = p;
 }
@@ -1399,13 +1399,13 @@ static BOOL hdrAnimationShown = 0;
     NSMenuItem *item = [sender selectedItem];
     if (item.tag == 1) {
         //scale to fill
-        [self.player setScalingMode:IJKMPMovieScalingModeFill];
+        [self.player setScalingMode:FSMPMovieScalingModeFill];
     } else if (item.tag == 2) {
         //aspect fill
-        [self.player setScalingMode:IJKMPMovieScalingModeAspectFill];
+        [self.player setScalingMode:FSMPMovieScalingModeAspectFill];
     } else if (item.tag == 3) {
         //aspect fit
-        [self.player setScalingMode:IJKMPMovieScalingModeAspectFit];
+        [self.player setScalingMode:FSMPMovieScalingModeAspectFit];
     }
     
     if (!self.player.isPlaying) {
@@ -1417,25 +1417,25 @@ static BOOL hdrAnimationShown = 0;
 {
     NSMenuItem *item = [sender selectedItem];
     
-    IJKSDLRotatePreference preference = self.player.view.rotatePreference;
+    FSSDLRotatePreference preference = self.player.view.rotatePreference;
     
     if (item.tag == 0) {
-        preference.type = IJKSDLRotateNone;
+        preference.type = FSSDLRotateNone;
         preference.degrees = 0;
     } else if (item.tag == 1) {
-        preference.type = IJKSDLRotateZ;
+        preference.type = FSSDLRotateZ;
         preference.degrees = -90;
     } else if (item.tag == 2) {
-        preference.type = IJKSDLRotateZ;
+        preference.type = FSSDLRotateZ;
         preference.degrees = -180;
     } else if (item.tag == 3) {
-        preference.type = IJKSDLRotateZ;
+        preference.type = FSSDLRotateZ;
         preference.degrees = -270;
     } else if (item.tag == 4) {
-        preference.type = IJKSDLRotateY;
+        preference.type = FSSDLRotateY;
         preference.degrees = 180;
     } else if (item.tag == 5) {
-        preference.type = IJKSDLRotateX;
+        preference.type = FSSDLRotateX;
         preference.degrees = 180;
     }
     
@@ -1488,7 +1488,7 @@ static BOOL hdrAnimationShown = 0;
         self.contrast = sender.floatValue;
     }
     
-    IJKSDLColorConversionPreference colorPreference = self.player.view.colorPreference;
+    FSSDLColorConversionPreference colorPreference = self.player.view.colorPreference;
     colorPreference.brightness = self.brightness;//B
     colorPreference.saturation = self.saturation;//S
     colorPreference.contrast = self.contrast;//C
@@ -1506,7 +1506,7 @@ static BOOL hdrAnimationShown = 0;
         const char* str = sender.titleOfSelectedItem.UTF8String;
         sscanf(str, "%d:%d", &dar_num, &dar_den);
     }
-    self.player.view.darPreference = (IJKSDLDARPreference){1.0 * dar_num/dar_den};
+    self.player.view.darPreference = (FSSDLDARPreference){1.0 * dar_num/dar_den};
     if (!self.player.isPlaying) {
         [self.player.view setNeedsRefreshCurrentPic];
     }
@@ -1603,7 +1603,7 @@ static BOOL hdrAnimationShown = 0;
 - (void)reSetLoglevel:(NSString *)loglevel
 {
     int level = [self levelWithString:loglevel];
-    [IJKFFMoviePlayerController setLogLevel:level];
+    [FSPlayer setLogLevel:level];
 }
 
 - (IBAction)onChangeLogLevel:(NSPopUpButton*)sender

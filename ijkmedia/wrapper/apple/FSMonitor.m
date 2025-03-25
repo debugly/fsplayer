@@ -19,13 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "FSFFMonitor.h"
+#import "FSMonitor.h"
 #include "ijksdl/ijksdl_timer.h"
 #include "ijkplayer/ijkmeta.h"
 
 #define FS_FFM_SAMPLE_RANGE 2000
 
-@implementation FSFFMonitor
+@implementation FSMonitor
 {
     SDL_SpeedSampler2 _tcpSpeedSampler;
 }

@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_GLES2__MATHUTIL__H
-#define IJKSDL__IJKSDL_GLES2__MATHUTIL__H
+#ifndef FSSDL__IJKSDL_GLES2__MATHUTIL__H
+#define FSSDL__IJKSDL_GLES2__MATHUTIL__H
 
 typedef struct { float x;float y;float z; } ijk_float3_vector;
 typedef struct { float c1;float c2;float c3;float c4; } ijk_float4_vector;

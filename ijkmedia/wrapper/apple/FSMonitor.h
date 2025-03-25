@@ -21,7 +21,7 @@
 
 #import <Foundation/Foundation.h>
 
-@interface FSFFMonitor : NSObject
+@interface FSMonitor : NSObject
 
 - (instancetype)init;
 

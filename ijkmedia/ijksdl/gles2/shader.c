@@ -21,7 +21,7 @@
 
 #include "internal.h"
 
-static void IJK_GLES2_printShaderInfo(GLuint shader)
+static void FS_GLES2_printShaderInfo(GLuint shader)
 {
     if (!shader)
         return;
@@ -52,18 +52,18 @@ static void IJK_GLES2_printShaderInfo(GLuint shader)
         free(buf_heap);
 }
 
-GLuint IJK_GLES2_loadShader(GLenum shader_type, const char *shader_source)
+GLuint FS_GLES2_loadShader(GLenum shader_type, const char *shader_source)
 {
     assert(shader_source);
 
-    GLuint shader = glCreateShader(shader_type);        IJK_GLES2_checkError("glCreateShader");
+    GLuint shader = glCreateShader(shader_type);        FS_GLES2_checkError("glCreateShader");
     if (!shader)
         return 0;
 
     assert(shader_source);
 
-    glShaderSource(shader, 1, &shader_source, NULL);    IJK_GLES2_checkError_TRACE("glShaderSource");
-    glCompileShader(shader);                            IJK_GLES2_checkError_TRACE("glCompileShader");
+    glShaderSource(shader, 1, &shader_source, NULL);    FS_GLES2_checkError_TRACE("glShaderSource");
+    glCompileShader(shader);                            FS_GLES2_checkError_TRACE("glCompileShader");
 
 #if defined(DEBUG)
     GLint logLength;
@@ -86,7 +86,7 @@ GLuint IJK_GLES2_loadShader(GLenum shader_type, const char *shader_source)
 fail:
 
     if (shader) {
-        IJK_GLES2_printShaderInfo(shader);
+        FS_GLES2_printShaderInfo(shader);
         glDeleteShader(shader);
     }
 

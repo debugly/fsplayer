@@ -1,5 +1,5 @@
 /*
- * FSFFOptions.h
+ * FSOptions.h
  *
  * Copyright (c) 2013-2015 Bilibili
  * Copyright (c) 2013-2015 Zhang Rui <bbcallen@gmail.com>
@@ -23,13 +23,13 @@
 
 #import <Foundation/Foundation.h>
 
-typedef enum FSFFOptionCategory {
+typedef enum FSOptionCategory {
     kIJKFFOptionCategoryFormat = 1,
     kIJKFFOptionCategoryCodec  = 2,
     kIJKFFOptionCategorySws    = 3,
     kIJKFFOptionCategoryPlayer = 4,
     kIJKFFOptionCategorySwr    = 5,
-} FSFFOptionCategory;
+} FSOptionCategory;
 
 // for codec option 'skip_loop_filter' and 'skip_frame'
 typedef enum FSAVDiscard {
@@ -47,19 +47,19 @@ struct IjkMediaPlayer;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface FSFFOptions : NSObject
+@interface FSOptions : NSObject
 
-+ (FSFFOptions *)optionsByDefault;
++ (FSOptions *)optionsByDefault;
 
 - (void)applyTo:(struct IjkMediaPlayer *)mediaPlayer;
 
 - (void)setOptionValue:(NSString * _Nullable)value
                 forKey:(NSString *)key
-            ofCategory:(FSFFOptionCategory)category;
+            ofCategory:(FSOptionCategory)category;
 
 - (void)setOptionIntValue:(int64_t)value
                    forKey:(NSString *)key
-               ofCategory:(FSFFOptionCategory)category;
+               ofCategory:(FSOptionCategory)category;
 
 
 - (void)setFormatOptionValue:       (NSString * _Nullable)value forKey:(NSString *)key;

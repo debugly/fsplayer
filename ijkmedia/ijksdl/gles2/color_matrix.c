@@ -23,7 +23,7 @@
 #include "color_matrix.h"
 
 //Full Range YUV to RGB reference
-const GLfloat *IJK_GLES2_getColorMatrix_bt2020(void)
+const GLfloat *FS_GLES2_getColorMatrix_bt2020(void)
 {
     // BT.2020, which is the standard for HDR.
     static const GLfloat g_bt2020[] = {
@@ -34,7 +34,7 @@ const GLfloat *IJK_GLES2_getColorMatrix_bt2020(void)
     return g_bt2020;
 }
 
-const GLfloat *IJK_GLES2_getColorMatrix_bt709(void)
+const GLfloat *FS_GLES2_getColorMatrix_bt709(void)
 {
     // BT.709, which is the standard for HDTV.
     static const GLfloat g_bt709[] = {
@@ -46,7 +46,7 @@ const GLfloat *IJK_GLES2_getColorMatrix_bt709(void)
 }
 
 //https://developer.apple.com/library/archive/samplecode/AVBasicVideoOutput/Listings/AVBasicVideoOutput_APLEAGLView_m.html
-const GLfloat *IJK_GLES2_getColorMatrix_bt601(void)
+const GLfloat *FS_GLES2_getColorMatrix_bt601(void)
 {
     // BT.601, which is the standard for HDTV.
     static const GLfloat g_bt601[] = {
@@ -57,16 +57,16 @@ const GLfloat *IJK_GLES2_getColorMatrix_bt601(void)
     return g_bt601;
 }
 
-const GLfloat *IJK_GLES2_getColorMatrix(YUV_2_RGB_Color_Matrix type)
+const GLfloat *FS_GLES2_getColorMatrix(YUV_2_RGB_Color_Matrix type)
 {
     switch (type) {
         case YUV_2_RGB_Color_Matrix_None:
             return NULL;
         case YUV_2_RGB_Color_Matrix_BT601:
-            return IJK_GLES2_getColorMatrix_bt601();
+            return FS_GLES2_getColorMatrix_bt601();
         case YUV_2_RGB_Color_Matrix_BT709:
-            return IJK_GLES2_getColorMatrix_bt709();
+            return FS_GLES2_getColorMatrix_bt709();
         case YUV_2_RGB_Color_Matrix_BT2020:
-            return IJK_GLES2_getColorMatrix_bt2020();
+            return FS_GLES2_getColorMatrix_bt2020();
     }
 }

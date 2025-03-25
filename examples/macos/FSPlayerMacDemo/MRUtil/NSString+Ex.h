@@ -1,9 +1,9 @@
 //
 //  NSString+Ex.h
-//  IJKMediaMacDemo
+//  FSPlayerDemo
 //
 //  Created by Reach Matt on 2023/6/15.
-//  Copyright © 2023 IJK Mac. All rights reserved.
+//  Copyright © 2023 debugly. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

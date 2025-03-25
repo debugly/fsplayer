@@ -21,18 +21,18 @@
 
 #include "internal.h"
 
-void IJK_GLES2_checkError(const char* op) {
+void FS_GLES2_checkError(const char* op) {
     for (GLint error = glGetError(); error; error = glGetError()) {
         ALOGE("[GLES2] after %s() glError (0x%x)\n", op, error);
     }
 }
 
-void IJK_GLES2_printString(const char *name, GLenum s) {
+void FS_GLES2_printString(const char *name, GLenum s) {
     const char *v = (const char *) glGetString(s);
     ALOGI("[GLES2] %s = %s\n", name, v);
 }
 
-ijk_matrix IJK_GLES2_makeOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat near, GLfloat far)
+ijk_matrix FS_GLES2_makeOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat near, GLfloat far)
 {
     GLfloat r_l = right - left;
     GLfloat t_b = top - bottom;
@@ -47,7 +47,7 @@ ijk_matrix IJK_GLES2_makeOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfl
                                 tx        ,         ty,          tz, 1.0f);
 }
 
-ijk_matrix IJK_GLES2_defaultOrtho(void)
+ijk_matrix FS_GLES2_defaultOrtho(void)
 {
-    return IJK_GLES2_makeOrtho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+    return FS_GLES2_makeOrtho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
 }

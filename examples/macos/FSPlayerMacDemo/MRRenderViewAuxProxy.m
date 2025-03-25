@@ -1,13 +1,13 @@
 //
 //  MRRenderViewAuxProxy.m
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Reach Matt on 2023/4/6.
-//  Copyright © 2023 IJK Mac. All rights reserved.
+//  Copyright © 2023 FSPlayer Mac. All rights reserved.
 //
 
 #import "MRRenderViewAuxProxy.h"
-#import <IJKMediaPlayerKit/IJKInternalRenderView.h>
+#import <FSPlayer/FSVideoRenderView.h>
 
 @interface MRRenderViewAuxProxy ()
 
@@ -40,7 +40,7 @@
     return self;
 }
 
-- (void)addRenderView:(NSView<IJKVideoRenderingProtocol> *)view
+- (void)addRenderView:(NSView<FSVideoRenderingProtocol> *)view
 {
     if (view) {
         [self.lock lock];
@@ -49,7 +49,7 @@
     }
 }
 
-- (void)removeRenderView:(NSView<IJKVideoRenderingProtocol> *)view
+- (void)removeRenderView:(NSView<FSVideoRenderingProtocol> *)view
 {
     if (view) {
         [self.lock lock];
@@ -58,7 +58,7 @@
     }
 }
 
-- (BOOL)displayAttach:(IJKOverlayAttach *)attach
+- (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
     [self.lock lock];
     NSArray *renderViewArr = [self.renderViewArr copy];
@@ -80,12 +80,12 @@
     [renderViewArr makeObjectsPerformSelector:_cmd];
 }
 
-- (CGImageRef)snapshot:(IJKSDLSnapshotType)aType
+- (CGImageRef)snapshot:(FSSDLSnapshotType)aType
 {
     [self.lock lock];
     NSArray *renderViewArr = [self.renderViewArr copy];
     [self.lock unlock];
-    NSView<IJKVideoRenderingProtocol> *view = [renderViewArr firstObject];
+    NSView<FSVideoRenderingProtocol> *view = [renderViewArr firstObject];
     return [view snapshot:aType];
 }
 
@@ -94,7 +94,7 @@
     return nil;
 }
 
-- (void)setColorPreference:(IJKSDLColorConversionPreference)colorPreference
+- (void)setColorPreference:(FSSDLColorConversionPreference)colorPreference
 {
     _colorPreference = colorPreference;
     
@@ -102,12 +102,12 @@
     NSArray *renderViewArr = [self.renderViewArr copy];
     [self.lock unlock];
     
-    for (NSView<IJKVideoRenderingProtocol> *view in renderViewArr) {
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setColorPreference:colorPreference];
     }
 }
 
-- (void)setDarPreference:(IJKSDLDARPreference)darPreference
+- (void)setDarPreference:(FSSDLDARPreference)darPreference
 {
     _darPreference = darPreference;
     
@@ -115,7 +115,7 @@
     NSArray *renderViewArr = [self.renderViewArr copy];
     [self.lock unlock];
     
-    for (NSView<IJKVideoRenderingProtocol> *view in renderViewArr) {
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setDarPreference:darPreference];
     }
 }
@@ -128,12 +128,12 @@
     NSArray *renderViewArr = [self.renderViewArr copy];
     [self.lock unlock];
     
-    for (NSView<IJKVideoRenderingProtocol> *view in renderViewArr) {
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setPreventDisplay:preventDisplay];
     }
 }
 
-- (void)setRotatePreference:(IJKSDLRotatePreference)rotatePreference
+- (void)setRotatePreference:(FSSDLRotatePreference)rotatePreference
 {
     _rotatePreference = rotatePreference;
     
@@ -141,12 +141,12 @@
     NSArray *renderViewArr = [self.renderViewArr copy];
     [self.lock unlock];
     
-    for (NSView<IJKVideoRenderingProtocol> *view in renderViewArr) {
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setRotatePreference:rotatePreference];
     }
 }
 
-- (void)setScalingMode:(IJKMPMovieScalingMode)scalingMode
+- (void)setScalingMode:(FSMPMovieScalingMode)scalingMode
 {
     _scalingMode = scalingMode;
     
@@ -154,7 +154,7 @@
     NSArray *renderViewArr = [self.renderViewArr copy];
     [self.lock unlock];
     
-    for (NSView<IJKVideoRenderingProtocol> *view in renderViewArr) {
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setScalingMode:scalingMode];
     }
 }

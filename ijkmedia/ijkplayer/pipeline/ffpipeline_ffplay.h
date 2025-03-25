@@ -27,6 +27,6 @@
 #include "../ff_ffpipeline.h"
 
 // There is no default aout for ffplay.
-// FSFF_Pipeline *ffpipeline_create_from_ffplay(FFPlayer *ffp);
+// FS_Pipeline *ffpipeline_create_from_ffplay(FFPlayer *ffp);
 
 #endif

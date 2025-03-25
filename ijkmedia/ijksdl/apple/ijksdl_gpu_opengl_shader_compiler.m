@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_shader_compiler.m
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/15.
 //
@@ -8,13 +8,13 @@
 #import "ijksdl_gpu_opengl_shader_compiler.h"
 #import "ijksdl_gles2.h"
 
-@interface IJKSDLOpenGLCompiler ()
+@interface FSSDLOpenGLCompiler ()
 
 @property uint32_t program;
 
 @end
 
-@implementation IJKSDLOpenGLCompiler
+@implementation FSSDLOpenGLCompiler
 
 - (void)dealloc
 {
@@ -61,7 +61,7 @@
     NSAssert(self.program > 0, @"you must compile opengl program firstly!");
     NSAssert(strlen(name) > 0, @"what's your uniform name?");
     int r = glGetUniformLocation(self.program, name);
-    IJK_GLES2_checkError("GetUniform");
+    FS_GLES2_checkError("GetUniform");
     return r;
 }
 
@@ -79,11 +79,11 @@
 {
     // Create and compile the vertex shader.
     GLuint vertShader = [self compileShader:self.vsh type:GL_VERTEX_SHADER];
-    IJK_GLES2_checkError("compile vertex shader");
+    FS_GLES2_checkError("compile vertex shader");
     NSAssert(vertShader, @"Failed to compile vertex shader");
     // Create and compile fragment shader.
     GLuint fragShader = [self compileShader:self.fsh type:GL_FRAGMENT_SHADER];
-    IJK_GLES2_checkError("compile fragment shader");
+    FS_GLES2_checkError("compile fragment shader");
     NSAssert(fragShader, @"Failed to compile fragment shader");
     GLuint program = glCreateProgram();
     
@@ -126,7 +126,7 @@
         glDeleteShader(fragShader);
     }
     
-    IJK_GLES2_checkError("link program");
+    FS_GLES2_checkError("link program");
     return program;
 }
 

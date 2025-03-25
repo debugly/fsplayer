@@ -24,7 +24,7 @@
 #import "FSPlayer.h"
 #import "FSMetalView.h"
 #import "FSSDLHudControl.h"
-#import "FSFFMoviePlayerDef.h"
+#import "FSMoviePlayerDef.h"
 #import "FSMediaPlayback.h"
 #import "FSMediaModule.h"
 #import "FSNotificationManager.h"
@@ -61,7 +61,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @implementation FSPlayer {
     IjkMediaPlayer *_mediaPlayer;
     UIView<FSVideoRenderingProtocol>* _glView;
-    FSFFMoviePlayerMessagePool *_msgPool;
+    FSMoviePlayerMessagePool *_msgPool;
 
     NSInteger _videoWidth;
     NSInteger _videoHeight;
@@ -121,7 +121,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     // [UIApplication sharedApplication].idleTimerDisabled = on;
 }
 
-- (void)_initWithContent:(NSURL *)aUrl options:(FSFFOptions *)options glView:(UIView <FSVideoRenderingProtocol> *)glView
+- (void)_initWithContent:(NSURL *)aUrl options:(FSOptions *)options glView:(UIView <FSVideoRenderingProtocol> *)glView
 {
     // init media resource
     _contentURL = aUrl;
@@ -132,7 +132,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     [FSPlayer checkIfFFmpegVersionMatch:NO];
 
     if (options == nil)
-        options = [FSFFOptions optionsByDefault];
+        options = [FSOptions optionsByDefault];
 
     // init fields
     _scalingMode = FSMPMovieScalingModeAspectFit;
@@ -142,11 +142,11 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     memset(&_asyncStat, 0, sizeof(_asyncStat));
     memset(&_cacheStat, 0, sizeof(_cacheStat));
 
-    _monitor = [[FSFFMonitor alloc] init];
+    _monitor = [[FSMonitor alloc] init];
 
     // init player
     _mediaPlayer = ijkmp_ios_create(media_player_msg_loop);
-    _msgPool = [[FSFFMoviePlayerMessagePool alloc] init];
+    _msgPool = [[FSMoviePlayerMessagePool alloc] init];
     FSWeakHolder *weakHolder = [FSWeakHolder new];
     weakHolder.object = self;
 
@@ -184,7 +184,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 #endif
 }
 
-- (id)initWithContentURL:(NSURL *)aUrl withOptions:(FSFFOptions *)options
+- (id)initWithContentURL:(NSURL *)aUrl withOptions:(FSOptions *)options
 {
     if (aUrl == nil)
         return nil;
@@ -216,7 +216,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 }
 
 - (id)initWithMoreContent:(NSURL *)aUrl
-              withOptions:(FSFFOptions *)options
+              withOptions:(FSOptions *)options
                withGLView:(UIView<FSVideoRenderingProtocol> *)glView
 {
     if (aUrl == nil)
@@ -388,7 +388,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     _pauseInBackground = pause;
 }
 
-inline static int getPlayerOption(FSFFOptionCategory category)
+inline static int getPlayerOption(FSOptionCategory category)
 {
     int mp_category = -1;
     switch (category) {
@@ -412,7 +412,7 @@ inline static int getPlayerOption(FSFFOptionCategory category)
 
 - (void)setOptionValue:(NSString *)value
                 forKey:(NSString *)key
-            ofCategory:(FSFFOptionCategory)category
+            ofCategory:(FSOptionCategory)category
 {
     assert(_mediaPlayer);
     if (!_mediaPlayer)
@@ -423,7 +423,7 @@ inline static int getPlayerOption(FSFFOptionCategory category)
 
 - (void)setOptionIntValue:(int64_t)value
                    forKey:(NSString *)key
-               ofCategory:(FSFFOptionCategory)category
+               ofCategory:(FSOptionCategory)category
 {
     assert(_mediaPlayer);
     if (!_mediaPlayer)
@@ -807,7 +807,7 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     return _mediaPlayer ? ijkmp_get_property_float(_mediaPlayer, FFP_PROP_FLOAT_VIDEO_OUTPUT_FRAMES_PER_SECOND, .0f) : .0f;
 }
 
-#pragma mark FSFFHudController
+#pragma mark FSHudController
 
 - (NSDictionary *)allHudItem
 {
@@ -1346,7 +1346,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
     return [[NSString alloc] initWithUTF8String:errbuf];
 }
 
-- (void)postEvent: (FSFFMoviePlayerMessage *)msg
+- (void)postEvent: (FSMoviePlayerMessage *)msg
 {
     if (!msg)
         return;
@@ -1627,7 +1627,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
     [_msgPool recycle:msg];
 }
 
-- (FSFFMoviePlayerMessage *) obtainMessage {
+- (FSMoviePlayerMessage *) obtainMessage {
     return [_msgPool obtain];
 }
 
@@ -1642,7 +1642,7 @@ static int media_player_msg_loop(void* arg)
         __weak FSPlayer *ffpController = ffplayerRetain(ijkmp_set_weak_thiz(mp, NULL));
         while (ffpController) {
             @autoreleasepool {
-                FSFFMoviePlayerMessage *msg = [ffpController obtainMessage];
+                FSMoviePlayerMessage *msg = [ffpController obtainMessage];
                 if (!msg)
                     break;
 
@@ -1795,7 +1795,7 @@ static int onInjectOnHttpEvent(FSPlayer *mpc, int type, void *data, size_t data_
 
     NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
     NSURL        *nsurl   = nil;
-    FSFFMonitor *monitor = mpc->_monitor;
+    FSMonitor *monitor = mpc->_monitor;
     NSString     *url  = monitor.httpUrl;
     NSString     *host = monitor.httpHost;
     int64_t       elapsed = 0;

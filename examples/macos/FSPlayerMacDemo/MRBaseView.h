@@ -1,9 +1,9 @@
 //
 //  MRBaseView.h
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Reach Matt on 2022/2/25.
-//  Copyright © 2022 IJK Mac. All rights reserved.
+//  Copyright © 2022 FSPlayer Mac. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>

@@ -1,9 +1,9 @@
 //
 //  AppDelegate.h
-//  IJKMediaDemo
+//  FSPlayerMacDemo
 //
 //  Created by Matt Reach on 2019/6/25.
-//  Copyright © 2019 IJK Mac. All rights reserved.
+//  Copyright © 2019 FSPlayer Mac. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>

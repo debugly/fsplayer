@@ -1,8 +1,8 @@
 install! 'cocoapods', :generate_multiple_pod_projects => true
-project 'IJKMediaMacDemo.xcodeproj'
+project 'FSPlayerMacDemo.xcodeproj'
 
-target 'IJKMediaMacDemo' do
+target 'FSPlayerMacDemo' do
     use_frameworks!
     platform :osx, '10.13'
-    pod 'IJKMediaPlayerKit', :path => '../../'
+    pod 'FSPlayer', :path => '../../'
 end

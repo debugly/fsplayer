@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_renderer_macos.m
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/15.
 //
@@ -26,7 +26,7 @@ enum
     NUM_ATTRIBUTES_AI
 };
 
-@interface IJKSDLOpenGLSubRenderer()
+@interface FSSDLOpenGLSubRenderer()
 {
     GLint _uniforms[NUM_UNIFORMS_AI];
     GLint _attributers[NUM_ATTRIBUTES_AI];
@@ -37,12 +37,12 @@ enum
     GLuint _ubo;
 }
 
-@property (nonatomic) IJKSDLOpenGLCompiler * openglCompiler;
+@property (nonatomic) FSSDLOpenGLCompiler * openglCompiler;
 @property (nonatomic) CGRect lastRect;
 
 @end
 
-@implementation IJKSDLOpenGLSubRenderer
+@implementation FSSDLOpenGLSubRenderer
 
 - (void)dealloc
 {
@@ -142,7 +142,7 @@ void main()
 - (void)setupOpenGLProgramIfNeed
 {
     if (!self.openglCompiler) {
-        self.openglCompiler = [[IJKSDLOpenGLCompiler alloc] initWithvsh:[self commonVSH] fsh:[self fsh2]];
+        self.openglCompiler = [[FSSDLOpenGLCompiler alloc] initWithvsh:[self commonVSH] fsh:[self fsh2]];
         
         if ([self.openglCompiler compileIfNeed]) {
             // Get uniform locations.
@@ -158,7 +158,7 @@ void main()
             
             [self.openglCompiler active];
             
-            IJK_GLES2_checkError_TRACE("glUniformBlockBinding(setupOpenGLProgramIfNeed)111");
+            FS_GLES2_checkError_TRACE("glUniformBlockBinding(setupOpenGLProgramIfNeed)111");
             
             //ubo
             glGenBuffers(1, &_ubo);
@@ -170,7 +170,7 @@ void main()
             GLuint binding_point_index = 2;
             glBindBufferBase(GL_UNIFORM_BUFFER, binding_point_index, _ubo);
             glUniformBlockBinding(program, block_index, binding_point_index);
-            IJK_GLES2_checkError_TRACE("glUniformBlockBinding(setupOpenGLProgramIfNeed)");
+            FS_GLES2_checkError_TRACE("glUniformBlockBinding(setupOpenGLProgramIfNeed)");
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
         }
     }
@@ -184,7 +184,7 @@ void main()
     glDisable(GL_DEPTH_TEST);
 }
 
-- (void)bindFBO:(IJKSDLOpenGLFBO *)fbo
+- (void)bindFBO:(FSSDLOpenGLFBO *)fbo
 {
     // Bind the FBO
     [fbo bind];
@@ -251,10 +251,10 @@ void main()
     // 第五个参数: 间隔多少个数据读取下一次数据
     // 第六个参数: 指定读取第一个数据在顶点数据中的偏移量
     glVertexAttribPointer(_attributers[ATTRIB_VERTEX_AI], 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    IJK_GLES2_checkError_TRACE("glVertexAttribPointer(av4_position)");
+    FS_GLES2_checkError_TRACE("glVertexAttribPointer(av4_position)");
     // texture coord attribute
     glVertexAttribPointer(_attributers[ATTRIB_TEXCOORD_AI], 2, GL_FLOAT, GL_FALSE, 0, (void*)(8 * sizeof(float)));
-    IJK_GLES2_checkError_TRACE("glVertexAttribPointer(av2_texcoord)");
+    FS_GLES2_checkError_TRACE("glVertexAttribPointer(av2_texcoord)");
 }
 
 - (void)updateColors:(void *)colors w:(GLuint)w h:(GLuint)h
@@ -269,10 +269,10 @@ void main()
     offset += 4;
     glBufferSubData(GL_UNIFORM_BUFFER, offset, 4, &h);
     
-    IJK_GLES2_checkError_TRACE("glBufferSubData(updateColors)");
+    FS_GLES2_checkError_TRACE("glBufferSubData(updateColors)");
 }
 
-- (void)drawTexture:(id<IJKSDLSubtitleTextureWrapper>)subTexture colors:(void *)colors
+- (void)drawTexture:(id<FSSDLSubtitleTextureWrapper>)subTexture colors:(void *)colors
 {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -287,7 +287,7 @@ void main()
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    IJK_GLES2_checkError("subtitle renderer draw");
+    FS_GLES2_checkError("subtitle renderer draw");
 }
 
 @end

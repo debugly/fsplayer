@@ -1,5 +1,5 @@
 //
-//  IJKHudRowView.h
+//  FSHudRowView.h
 //  FFmpegTutorial-macOS
 //
 //  Created by qianlongxu on 2020/11/27.
@@ -15,7 +15,7 @@ typedef enum : NSUInteger {
     KSeparactorStyleNone,
 } KSeparactorStyle;
 
-@interface IJKHudRowView : NSTableRowView <NSUserInterfaceItemIdentification>
+@interface FSHudRowView : NSTableRowView <NSUserInterfaceItemIdentification>
 
 @property KSeparactorStyle sepStyle;
 

@@ -1,5 +1,5 @@
 /*
- * FSFFOptions.m
+ * FSOptions.m
  *
  * Copyright (c) 2013-2015 Bilibili
  * Copyright (c) 2013-2015 Zhang Rui <bbcallen@gmail.com>
@@ -21,10 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "FSFFOptions.h"
+#import "FSOptions.h"
 #include "ijkplayer/apple/ijkplayer_ios.h"
 
-@implementation FSFFOptions {
+@implementation FSOptions {
     NSMutableDictionary *_optionCategories;
     NSMutableDictionary *_playerOptions;
     NSMutableDictionary *_formatOptions;
@@ -33,9 +33,9 @@
     NSMutableDictionary *_swrOptions;
 }
 
-+ (FSFFOptions *)optionsByDefault
++ (FSOptions *)optionsByDefault
 {
-    FSFFOptions *options = [[FSFFOptions alloc] init];
+    FSOptions *options = [[FSOptions alloc] init];
 
     [options setPlayerOptionIntValue:30     forKey:@"max-fps"];
     [options setPlayerOptionIntValue:0      forKey:@"framedrop"];
@@ -93,7 +93,7 @@
 
 - (void)setOptionValue:(NSString *)value
                 forKey:(NSString *)key
-            ofCategory:(FSFFOptionCategory)category
+            ofCategory:(FSOptionCategory)category
 {
     if (!key)
         return;
@@ -110,7 +110,7 @@
 
 - (void)setOptionIntValue:(int64_t)value
                    forKey:(NSString *)key
-               ofCategory:(FSFFOptionCategory)category
+               ofCategory:(FSOptionCategory)category
 {
     if (!key)
         return;

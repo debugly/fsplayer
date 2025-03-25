@@ -1,20 +1,20 @@
 //
-//  IJKHudRowView.m
+//  FSHudRowView.m
 //  FFmpegTutorial-macOS
 //
 //  Created by qianlongxu on 2020/11/27.
 //
 
-#import "IJKHudRowView.h"
+#import "FSHudRowView.h"
 
-@interface IJKHudRowView ()
+@interface FSHudRowView ()
 
 @property (nonatomic, weak) NSTextField *titleLb;
 @property (nonatomic, weak) NSTextField *detailLb;
 
 @end
 
-@implementation IJKHudRowView
+@implementation FSHudRowView
 
 - (NSTextField *)createLabel
 {

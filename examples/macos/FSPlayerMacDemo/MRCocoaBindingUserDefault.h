@@ -1,9 +1,9 @@
 //
 //  MRCocoaBindingUserDefault.h
-//  IJKMediaMacDemo
+//  FSPlayerMediaMacDemo
 //
 //  Created by Reach Matt on 2024/1/25.
-//  Copyright © 2024 IJK Mac. All rights reserved.
+//  Copyright © 2024 FSPlayer Mac. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

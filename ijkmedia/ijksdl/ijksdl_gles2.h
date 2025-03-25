@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef IJKSDL__IJKSDL_GLES2_H
-#define IJKSDL__IJKSDL_GLES2_H
+#ifndef FSSDL__IJKSDL_GLES2_H
+#define FSSDL__IJKSDL_GLES2_H
 #include "ijksdl_stdinc.h"
 #ifdef __APPLE__
     #include <TargetConditionals.h>
@@ -43,66 +43,66 @@ typedef struct SDL_VoutOverlay SDL_VoutOverlay;
  */
 
 //#ifdef DEBUG
-//#define IJK_GLES2_checkError_TRACE(op)
-//#define IJK_GLES2_checkError_DEBUG(op)
+//#define FS_GLES2_checkError_TRACE(op)
+//#define FS_GLES2_checkError_DEBUG(op)
 //#else
-#define IJK_GLES2_checkError_TRACE(op) IJK_GLES2_checkError(op) 
-#define IJK_GLES2_checkError_DEBUG(op) IJK_GLES2_checkError(op)
+#define FS_GLES2_checkError_TRACE(op) FS_GLES2_checkError(op) 
+#define FS_GLES2_checkError_DEBUG(op) FS_GLES2_checkError(op)
 //#endif
 
-void IJK_GLES2_printString(const char *name, GLenum s);
-void IJK_GLES2_checkError(const char *op);
+void FS_GLES2_printString(const char *name, GLenum s);
+void FS_GLES2_checkError(const char *op);
 
-GLuint IJK_GLES2_loadShader(GLenum shader_type, const char *shader_source);
+GLuint FS_GLES2_loadShader(GLenum shader_type, const char *shader_source);
 
 
 /*
  * Renderer
  */
-#define IJK_GLES2_MAX_PLANE 3
-typedef struct IJK_GLES2_Renderer IJK_GLES2_Renderer;
+#define FS_GLES2_MAX_PLANE 3
+typedef struct FS_GLES2_Renderer FS_GLES2_Renderer;
 #ifdef __APPLE__
 //openglVer greater than 330 use morden opengl, otherwise use legacy opengl
-IJK_GLES2_Renderer *IJK_GLES2_Renderer_createApple(CVPixelBufferRef videoPicture, int openglVer);
+FS_GLES2_Renderer *FS_GLES2_Renderer_createApple(CVPixelBufferRef videoPicture, int openglVer);
 #else
-void* IJK_GLES2_Renderer_getVideoImage(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
-IJK_GLES2_Renderer *IJK_GLES2_Renderer_create(SDL_VoutOverlay *overlay, int openglVer);
+void* FS_GLES2_Renderer_getVideoImage(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
+FS_GLES2_Renderer *FS_GLES2_Renderer_create(SDL_VoutOverlay *overlay, int openglVer);
 #endif
-void      IJK_GLES2_Renderer_reset(IJK_GLES2_Renderer *renderer);
-void      IJK_GLES2_Renderer_free(IJK_GLES2_Renderer *renderer);
-void      IJK_GLES2_Renderer_freeP(IJK_GLES2_Renderer **renderer);
+void      FS_GLES2_Renderer_reset(FS_GLES2_Renderer *renderer);
+void      FS_GLES2_Renderer_free(FS_GLES2_Renderer *renderer);
+void      FS_GLES2_Renderer_freeP(FS_GLES2_Renderer **renderer);
 
-GLboolean IJK_GLES2_Renderer_isValid(IJK_GLES2_Renderer *renderer);
-GLboolean IJK_GLES2_Renderer_isFormat(IJK_GLES2_Renderer *renderer, int format);
+GLboolean FS_GLES2_Renderer_isValid(FS_GLES2_Renderer *renderer);
+GLboolean FS_GLES2_Renderer_isFormat(FS_GLES2_Renderer *renderer, int format);
 //call once
-GLboolean IJK_GLES2_Renderer_init(IJK_GLES2_Renderer *renderer);
-GLboolean IJK_GLES2_Renderer_useProgram(IJK_GLES2_Renderer *renderer);
-void IJK_GLES2_Renderer_updateColorConversion(IJK_GLES2_Renderer *renderer, float brightness, float satutaion, float contrast);
+GLboolean FS_GLES2_Renderer_init(FS_GLES2_Renderer *renderer);
+GLboolean FS_GLES2_Renderer_useProgram(FS_GLES2_Renderer *renderer);
+void FS_GLES2_Renderer_updateColorConversion(FS_GLES2_Renderer *renderer, float brightness, float satutaion, float contrast);
 
-GLboolean IJK_GLES2_Renderer_updateVertex(IJK_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
-GLboolean IJK_GLES2_Renderer_updateVertex2(IJK_GLES2_Renderer *renderer, int overlay_h, int overlay_w, int buffer_w, int sar_num, int sar_den);
-GLboolean IJK_GLES2_Renderer_uploadTexture(IJK_GLES2_Renderer *renderer, void *texture);
-void IJK_GLES2_Renderer_updateHdrAnimationProgress(IJK_GLES2_Renderer *renderer, float per);
-GLboolean IJK_GLES2_Renderer_isHDR(IJK_GLES2_Renderer *renderer);
-GLboolean IJK_GLES2_Renderer_resetVao(IJK_GLES2_Renderer *renderer);
-void IJK_GLES2_Renderer_drawArrays(void);
+GLboolean FS_GLES2_Renderer_updateVertex(FS_GLES2_Renderer *renderer, SDL_VoutOverlay *overlay);
+GLboolean FS_GLES2_Renderer_updateVertex2(FS_GLES2_Renderer *renderer, int overlay_h, int overlay_w, int buffer_w, int sar_num, int sar_den);
+GLboolean FS_GLES2_Renderer_uploadTexture(FS_GLES2_Renderer *renderer, void *texture);
+void FS_GLES2_Renderer_updateHdrAnimationProgress(FS_GLES2_Renderer *renderer, float per);
+GLboolean FS_GLES2_Renderer_isHDR(FS_GLES2_Renderer *renderer);
+GLboolean FS_GLES2_Renderer_resetVao(FS_GLES2_Renderer *renderer);
+void FS_GLES2_Renderer_drawArrays(void);
 
-void IJK_GLES2_Renderer_beginDrawSubtitle(IJK_GLES2_Renderer *renderer);
-void IJK_GLES2_Renderer_updateSubtitleVertex(IJK_GLES2_Renderer *renderer, float width, float height);
-GLboolean IJK_GLES2_Renderer_uploadSubtitleTexture(IJK_GLES2_Renderer *renderer, int texture, int w, int h);
-void IJK_GLES2_Renderer_endDrawSubtitle(IJK_GLES2_Renderer *renderer);
+void FS_GLES2_Renderer_beginDrawSubtitle(FS_GLES2_Renderer *renderer);
+void FS_GLES2_Renderer_updateSubtitleVertex(FS_GLES2_Renderer *renderer, float width, float height);
+GLboolean FS_GLES2_Renderer_uploadSubtitleTexture(FS_GLES2_Renderer *renderer, int texture, int w, int h);
+void FS_GLES2_Renderer_endDrawSubtitle(FS_GLES2_Renderer *renderer);
 
-#define IJK_GLES2_GRAVITY_MIN                   (0)
-#define IJK_GLES2_GRAVITY_RESIZE                (0) // Stretch to fill layer bounds.
-#define IJK_GLES2_GRAVITY_RESIZE_ASPECT         (1) // Preserve aspect ratio; fit within layer bounds.
-#define IJK_GLES2_GRAVITY_RESIZE_ASPECT_FILL    (2) // Preserve aspect ratio; fill layer bounds.
-#define IJK_GLES2_GRAVITY_MAX                   (2)
+#define FS_GLES2_GRAVITY_MIN                   (0)
+#define FS_GLES2_GRAVITY_RESIZE                (0) // Stretch to fill layer bounds.
+#define FS_GLES2_GRAVITY_RESIZE_ASPECT         (1) // Preserve aspect ratio; fit within layer bounds.
+#define FS_GLES2_GRAVITY_RESIZE_ASPECT_FILL    (2) // Preserve aspect ratio; fill layer bounds.
+#define FS_GLES2_GRAVITY_MAX                   (2)
 
-GLboolean IJK_GLES2_Renderer_setGravity(IJK_GLES2_Renderer *renderer, int gravity, GLsizei view_width, GLsizei view_height);
+GLboolean FS_GLES2_Renderer_setGravity(FS_GLES2_Renderer *renderer, int gravity, GLsizei view_width, GLsizei view_height);
 
-void      IJK_GLES2_Renderer_updateRotate(IJK_GLES2_Renderer *renderer, int type, int degrees);
-void      IJK_GLES2_Renderer_updateAutoZRotate(IJK_GLES2_Renderer *renderer, int degrees);
-void      IJK_GLES2_Renderer_updateUserDefinedDAR(IJK_GLES2_Renderer *renderer, float ratio);
-int       IJK_GLES2_Renderer_isZRotate90oddMultiple(IJK_GLES2_Renderer *renderer);
+void      FS_GLES2_Renderer_updateRotate(FS_GLES2_Renderer *renderer, int type, int degrees);
+void      FS_GLES2_Renderer_updateAutoZRotate(FS_GLES2_Renderer *renderer, int degrees);
+void      FS_GLES2_Renderer_updateUserDefinedDAR(FS_GLES2_Renderer *renderer, float ratio);
+int       FS_GLES2_Renderer_isZRotate90oddMultiple(FS_GLES2_Renderer *renderer);
 
 #endif

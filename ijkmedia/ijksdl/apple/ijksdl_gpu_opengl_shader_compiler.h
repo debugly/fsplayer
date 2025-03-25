@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_shader_compiler.h
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/15.
 //
@@ -9,7 +9,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface IJKSDLOpenGLCompiler : NSObject
+@interface FSSDLOpenGLCompiler : NSObject
 
 @property (copy) NSString *vsh;
 @property (copy) NSString *fsh;

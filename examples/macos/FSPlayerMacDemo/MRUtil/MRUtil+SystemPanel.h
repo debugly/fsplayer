@@ -1,9 +1,9 @@
 //
 //  MRUtil+SystemPanel.h
-//  IJKMediaMacDemo
+//  FSPlayerDemo
 //
 //  Created by Matt Reach on 2020/3/11.
-//  Copyright © 2021 IJK Mac.. All rights reserved.
+//  Copyright © 2021 debugly.. All rights reserved.
 //
 
 #import "MRUtil.h"

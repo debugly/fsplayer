@@ -21,7 +21,7 @@
 
 #include "ijksdl/gles2/internal.h"
 
-void IJK_GLES2_getVertexShader_default(char *out,int ver)
+void FS_GLES2_getVertexShader_default(char *out,int ver)
 {
     *out = '\0';
     
@@ -32,14 +32,14 @@ void IJK_GLES2_getVertexShader_default(char *out,int ver)
 #endif
     
     if (ver >= 330) {
-        strcat(out, IJK_GLES_STRING(
+        strcat(out, FS_GLES_STRING(
                     out vec2 vv2_Texcoord;
                     in vec2 av2_Texcoord;
                     in vec4 av4_Position;
                     uniform mat4 um4_ModelViewProjection;
                                     ));
     } else {
-        strcat(out, IJK_GLES_STRING(
+        strcat(out, FS_GLES_STRING(
                     varying   vec2 vv2_Texcoord;
                     attribute vec4 av4_Position;
                     attribute vec2 av2_Texcoord;
@@ -47,7 +47,7 @@ void IJK_GLES2_getVertexShader_default(char *out,int ver)
                                     ));
     }
     
-    strcat(out, IJK_GLES_STRING(
+    strcat(out, FS_GLES_STRING(
                 void main()
                 {
                     gl_Position  = um4_ModelViewProjection * av4_Position;

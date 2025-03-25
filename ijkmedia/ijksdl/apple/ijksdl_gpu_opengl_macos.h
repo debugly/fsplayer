@@ -1,6 +1,6 @@
 //
 //  ijksdl_gpu_opengl_macos.h
-//  IJKMediaPlayerKit
+//  FSPlayer
 //
 //  Created by Reach Matt on 2024/4/14.
 //
