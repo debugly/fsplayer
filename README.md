@@ -1,5 +1,5 @@
 <div align="center">
-  <img alt="f s p la y er" src="./primary-wide.png">
+<!--   <img alt="fsplayer" src="./primary-wide.png"> -->
   <h1>fsplayer</h1>
   <img src="https://github.com/debugly/fsplayer/actions/workflows/apple.yml/badge.svg">
 </div>
@@ -73,7 +73,7 @@ https://github.com/debugly/FSPlayer-SPM.git
 - integration via Cocoapods:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0-beta-250325144721/FSPlayer.spec.json'
 ```
 
 ## Development
