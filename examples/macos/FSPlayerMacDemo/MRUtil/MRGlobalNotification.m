@@ -2,7 +2,7 @@
 //  MRGlobalNotification.m
 //  FSPlayerDemo
 //
-//  Created by Matt Reach on 2019/3/14.
+//  Created by debugly on 2019/3/14.
 //  Copyright © 2019 debugly. All rights reserved.
 //
 

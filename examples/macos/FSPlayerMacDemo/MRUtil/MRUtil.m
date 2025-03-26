@@ -2,7 +2,7 @@
 //  MRUtil.m
 //  FFmpegTutorial-macOS
 //
-//  Created by qianlongxu on 2020/12/2.
+//  Created by debugly on 2020/12/2.
 //
 
 #import "MRUtil.h"

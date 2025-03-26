@@ -2,7 +2,7 @@
 //  MRAutoTestViewController.h
 //  FSPlayerMediaMacDemo
 //
-//  Created by Matt Reach on 2024/1/15.
+//  Created by debugly on 2024/1/15.
 //  Copyright © 2024 FSPlayer Mac. All rights reserved.
 //
 

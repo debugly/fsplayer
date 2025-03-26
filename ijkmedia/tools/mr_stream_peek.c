@@ -3,7 +3,7 @@
 //
 // ijkplayer not use the file, but the file will be used by other module in app.
 //
-//  Created by Reach Matt on 2023/9/7.
+//  Created by debugly on 2023/9/7.
 //
 
 #include "mr_stream_peek.h"

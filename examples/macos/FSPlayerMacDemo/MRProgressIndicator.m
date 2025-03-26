@@ -2,7 +2,7 @@
 //  MRProgressIndicator.m
 //  FSPlayerMacDemo
 //
-//  Created by Matt Reach on 2022/11/07.
+//  Created by debugly on 2022/11/07.
 //  Copyright © 2022 FSPlayer Mac 版. All rights reserved.
 
 #import "MRProgressIndicator.h"

@@ -1,8 +1,8 @@
 //
 //  FSMetalSubtitlePipeline.m
-//  FSMediaPlayerKit
+//  FSPlayer
 //
-//  Created by Reach Matt on 2022/12/23.
+//  Created by debugly on 2022/12/23.
 //
 
 #import "FSMetalSubtitlePipeline.h"

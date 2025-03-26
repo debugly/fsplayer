@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013-2015 Bilibili
  * Copyright (C) 2013-2015 Zhang Rui <bbcallen@gmail.com>
+ * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

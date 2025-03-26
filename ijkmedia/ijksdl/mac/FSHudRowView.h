@@ -2,7 +2,7 @@
 //  FSHudRowView.h
 //  FFmpegTutorial-macOS
 //
-//  Created by qianlongxu on 2020/11/27.
+//  Created by debugly on 2020/11/27.
 //
 
 #import <Cocoa/Cocoa.h>

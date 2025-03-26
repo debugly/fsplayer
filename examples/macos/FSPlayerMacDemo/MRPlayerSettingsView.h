@@ -2,7 +2,7 @@
 //  MRPlayerSettingsView.h
 //  FSPlayerMediaMacDemo
 //
-//  Created by Reach Matt on 2024/5/16.
+//  Created by debugly on 2024/5/16.
 //  Copyright © 2024 FSPlayer Mac. All rights reserved.
 //
 

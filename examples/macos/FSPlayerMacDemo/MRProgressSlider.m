@@ -2,7 +2,7 @@
 //  MRProgressSlider.m
 //  FSPlayerMacDemo
 //
-//  Created by Matt Reach on 2021/5/17.
+//  Created by debugly on 2021/5/17.
 //  Copyright © 2021 FSPlayer Mac 版. All rights reserved.
 //
 

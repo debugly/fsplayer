@@ -2,16 +2,17 @@
  * ijksdl_vout_overlay_videotoolbox.m
  *****************************************************************************
  *
- * copyright (c) 2014 ZhouQuan <zhouqicy@gmail.com>
+ * Copyright (c) 2014 ZhouQuan <zhouqicy@gmail.com>
+ * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
  *
- * This file is part of ijkPlayer.
+ * This file is part of FSPlayer.
  *
- * ijkPlayer is free software; you can redistribute it and/or
+ * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  *
- * ijkPlayer is distributed in the hope that it will be useful,
+ * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.

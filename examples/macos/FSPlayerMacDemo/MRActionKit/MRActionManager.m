@@ -2,7 +2,7 @@
 //  MRActionManager.m
 //  MRPlayer
 //
-//  Created by Matt Reach on 2019/8/2.
+//  Created by debugly on 2019/8/2.
 //  Copyright © 2022 debugly. All rights reserved.
 //
 

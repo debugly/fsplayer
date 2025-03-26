@@ -2,7 +2,7 @@
 //  MRDragView.m
 //  FFmpegTutorial-macOS
 //
-//  Created by Matt Reach on 2020/12/2.
+//  Created by debugly on 2020/12/2.
 //
 
 #import "MRDragView.h"

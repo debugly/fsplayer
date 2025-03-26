@@ -1,8 +1,8 @@
 //
 //  FSMetalFBO.h
-//  FSMediaPlayerKit
+//  FSPlayer
 //
-//  Created by Reach Matt on 2024/4/10.
+//  Created by debugly on 2024/4/10.
 //
 
 #import <Foundation/Foundation.h>

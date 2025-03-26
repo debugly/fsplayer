@@ -2,8 +2,8 @@
 //  FSMetalView.h
 //  FFmpegTutorial-macOS
 //
-//  Created by qianlongxu on 2022/11/22.
-//  Copyright © 2022 Matt Reach's Awesome FFmpeg Tutotial. All rights reserved.
+//  Created by debugly on 2022/11/22.
+//  Copyright © 2022 debugly's Awesome FFmpeg Tutotial. All rights reserved.
 //
 
 #import "FSVideoRenderingProtocol.h"

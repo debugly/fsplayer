@@ -2,15 +2,16 @@
  * Copyright (c) 2003 Bilibili
  * Copyright (c) 2003 Fabrice Bellard
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
+ * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
  *
- * This file is part of ijkPlayer.
+ * This file is part of FSPlayer.
  *
- * ijkPlayer is free software; you can redistribute it and/or
+ * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  *
- * ijkPlayer is distributed in the hope that it will be useful,
+ * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -165,33 +166,33 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
 /*
  fix crash by xql: seek continually beyound duration.
  * thread #36, stop reason = EXC_BAD_ACCESS (code=1, address=0x3948cffd0)
-   * frame #0: 0x000000010650e31c FSMediaPlayerKit`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
-     frame #1: 0x0000000106335878 FSMediaPlayerKit`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
-     frame #2: 0x0000000106335a30 FSMediaPlayerKit`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
-     frame #3: 0x00000001066ec734 FSMediaPlayerKit`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
-     frame #4: 0x00000001062bf6a0 FSMediaPlayerKit`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
-     frame #5: 0x0000000106019e5c FSMediaPlayerKit`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
-     frame #6: 0x0000000105fd47c8 FSMediaPlayerKit`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
-     frame #7: 0x0000000105fb45e0 FSMediaPlayerKit`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
-     frame #8: 0x0000000105fbe5e4 FSMediaPlayerKit`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
-     frame #9: 0x000000010606ab6c FSMediaPlayerKit`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
-     frame #10: 0x000000010606abac FSMediaPlayerKit`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
-     frame #11: 0x00000001060381ac FSMediaPlayerKit`-[FSPlayer shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at FSPlayer.m:591:5
+   * frame #0: 0x000000010650e31c FSPlayer`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
+     frame #1: 0x0000000106335878 FSPlayer`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
+     frame #2: 0x0000000106335a30 FSPlayer`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
+     frame #3: 0x00000001066ec734 FSPlayer`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
+     frame #4: 0x00000001062bf6a0 FSPlayer`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
+     frame #5: 0x0000000106019e5c FSPlayer`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
+     frame #6: 0x0000000105fd47c8 FSPlayer`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
+     frame #7: 0x0000000105fb45e0 FSPlayer`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
+     frame #8: 0x0000000105fbe5e4 FSPlayer`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
+     frame #9: 0x000000010606ab6c FSPlayer`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
+     frame #10: 0x000000010606abac FSPlayer`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
+     frame #11: 0x00000001060381ac FSPlayer`-[FSPlayer shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at FSPlayer.m:591:5
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  * thread #36, stop reason = EXC_BAD_ACCESS (code=1, address=0x3948cffd0)
-   * frame #0: 0x000000010650e31c FSMediaPlayerKit`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
-     frame #1: 0x0000000106335878 FSMediaPlayerKit`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
-     frame #2: 0x0000000106335a30 FSMediaPlayerKit`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
-     frame #3: 0x00000001066ec734 FSMediaPlayerKit`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
-     frame #4: 0x00000001062bf6a0 FSMediaPlayerKit`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
-     frame #5: 0x0000000106019e5c FSMediaPlayerKit`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
-     frame #6: 0x0000000105fd47c8 FSMediaPlayerKit`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
-     frame #7: 0x0000000105fb45e0 FSMediaPlayerKit`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
-     frame #8: 0x0000000105fbe5e4 FSMediaPlayerKit`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
-     frame #9: 0x000000010606ab6c FSMediaPlayerKit`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
-     frame #10: 0x000000010606abac FSMediaPlayerKit`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
-     frame #11: 0x00000001060381ac FSMediaPlayerKit`-[FSPlayer shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at FSPlayer.m:591:5
+   * frame #0: 0x000000010650e31c FSPlayer`av_freep(arg=0x00000003948cffd0) at mem.c:231:5 [opt]
+     frame #1: 0x0000000106335878 FSPlayer`ff_videotoolbox_uninit(avctx=<unavailable>) at videotoolbox.c:439:9 [opt]
+     frame #2: 0x0000000106335a30 FSPlayer`videotoolbox_uninit(avctx=0x000000034c53bbe0) at videotoolbox.c:1008:5 [opt]
+     frame #3: 0x00000001066ec734 FSPlayer`avcodec_close(avctx=0x000000034c53bbe0) at utils.c:1093:13 [opt]
+     frame #4: 0x00000001062bf6a0 FSPlayer`avcodec_free_context(pavctx=0x0000000338297c50) at options.c:178:5 [opt]
+     frame #5: 0x0000000106019e5c FSPlayer`decoder_destroy(d=0x0000000338297c40) at ff_ffplay_def.c:43:5
+     frame #6: 0x0000000105fd47c8 FSPlayer`stream_component_close(ffp=0x0000000334267bd0, stream_index=1) at ff_ffplay.c:669:9
+     frame #7: 0x0000000105fb45e0 FSPlayer`stream_close(ffp=0x0000000334267bd0) at ff_ffplay.c:708:9
+     frame #8: 0x0000000105fbe5e4 FSPlayer`ffp_wait_stop_l(ffp=0x0000000334267bd0) at ff_ffplay.c:4523:9
+     frame #9: 0x000000010606ab6c FSPlayer`ijkmp_shutdown_l(mp=0x000000033425ff30) at ijkplayer.c:301:9
+     frame #10: 0x000000010606abac FSPlayer`ijkmp_shutdown(mp=0x000000033425ff30) at ijkplayer.c:308:12
+     frame #11: 0x00000001060381ac FSPlayer`-[FSPlayer shutdownWaitStop:](self=0x00000003295fbeb0, _cmd="shutdownWaitStop:", mySelf=0x00000003295fbeb0) at FSPlayer.m:591:5
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  */

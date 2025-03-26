@@ -1,8 +1,8 @@
 //
 //  FSMetalPipelineMeta.h
-//  FSMediaPlayerKit
+//  FSPlayer
 //
-//  Created by Reach Matt on 2023/6/26.
+//  Created by debugly on 2023/6/26.
 //
 
 #import <Foundation/Foundation.h>

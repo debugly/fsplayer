@@ -2,7 +2,7 @@
 //  MultiRenderSample.m
 //  FSPlayerDemo
 //
-//  Created by Reach Matt on 2023/4/6.
+//  Created by debugly on 2023/4/6.
 //  Copyright © 2023 debugly. All rights reserved.
 //
 

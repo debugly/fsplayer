@@ -2,14 +2,15 @@
  * Copyright (c) 2003 Bilibili
  * Copyright (c) 2003 Fabrice Bellard
  * Copyright (c) 2015 Zhang Rui <bbcallen@gmail.com>
+ * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
  *
- * This file is part of ijkPlayer.
+ * This file is part of FSPlayer.
  * Based on libavformat/allformats.c
  *
  * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  *
  * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of

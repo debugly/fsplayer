@@ -2,7 +2,7 @@
 //  MRUtil+SystemPanel.h
 //  FSPlayerDemo
 //
-//  Created by Matt Reach on 2020/3/11.
+//  Created by debugly on 2020/3/11.
 //  Copyright © 2021 debugly.. All rights reserved.
 //
 

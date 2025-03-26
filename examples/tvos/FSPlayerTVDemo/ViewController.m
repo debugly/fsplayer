@@ -2,7 +2,7 @@
 //  ViewController.m
 //  FSPlayerTVDemo
 //
-//  Created by Reach Matt on 2024/5/23.
+//  Created by debugly on 2024/5/23.
 //
 
 #import "ViewController.h"

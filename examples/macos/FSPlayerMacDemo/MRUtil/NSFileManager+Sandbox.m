@@ -2,7 +2,7 @@
 //  NSFileManager+Sandbox.m
 //  MRFoundation
 //
-//  Created by Matt Reach on 2019/11/5.
+//  Created by debugly on 2019/11/5.
 //
 
 #import "NSFileManager+Sandbox.h"

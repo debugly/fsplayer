@@ -2,8 +2,8 @@
 //  FSMetalOffscreenRendering.h
 //  FFmpegTutorial-macOS
 //
-//  Created by Reach Matt on 2022/12/2.
-//  Copyright © 2022 Matt Reach's Awesome FFmpeg Tutotial. All rights reserved.
+//  Created by debugly on 2022/12/2.
+//  Copyright © 2022 debugly's Awesome FFmpeg Tutotial. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

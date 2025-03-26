@@ -2,7 +2,7 @@
 //  AppDelegate.h
 //  FSPlayerMacDemo
 //
-//  Created by Matt Reach on 2019/6/25.
+//  Created by debugly on 2019/6/25.
 //  Copyright © 2019 FSPlayer Mac. All rights reserved.
 //
 
