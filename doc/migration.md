@@ -13,4 +13,11 @@
 | kk_IJKM_KEY_STREAMS                             | FS_KEY_STREAMS                |
 | k_IJKM                                          | FS                            |
 | k_IJK                                           | FS                            |
+| IJKMPMovieNoCodec                               | FSPlayerNoCodec               |
+| IJKMoviePlayer                                  | FSPlayer                      |
+| IJKMPMediaPlayback                              | FSPlayer                      |
+| IJKMPMoviePlayerPlayback                        | FSPlayer                      |
+| IJKMPMoviePlaybackState                         | FSPlayerPlaybackState         |
+| IJKMPMovieLoadState                             | FSPlayerLoadState             |
+| IJKMPMovie                                      | FS                            |
 | IJK                                             | FS                            |
