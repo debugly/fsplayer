@@ -146,7 +146,7 @@
     }
 }
 
-- (void)setScalingMode:(FSMPMovieScalingMode)scalingMode
+- (void)setScalingMode:(FSScalingMode)scalingMode
 {
     _scalingMode = scalingMode;
     

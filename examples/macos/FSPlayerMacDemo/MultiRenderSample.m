@@ -79,7 +79,7 @@
     
     self.player = [[FSPlayer alloc] initWithMoreContent:url withOptions:options withGLView:aux];
     
-    aux.scalingMode = FSMPMovieScalingModeAspectFill;
+    aux.scalingMode = FSScalingModeAspectFill;
     self.player.shouldAutoplay = YES;
     [self.player prepareToPlay];
 }

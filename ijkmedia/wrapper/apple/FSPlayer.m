@@ -24,7 +24,7 @@
 #import "FSPlayer.h"
 #import "FSMetalView.h"
 #import "FSSDLHudControl.h"
-#import "FSMoviePlayerDef.h"
+#import "FSPlayerDef.h"
 #import "FSMediaPlayback.h"
 #import "FSMediaModule.h"
 #import "FSNotificationManager.h"
@@ -61,7 +61,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @implementation FSPlayer {
     IjkMediaPlayer *_mediaPlayer;
     UIView<FSVideoRenderingProtocol>* _glView;
-    FSMoviePlayerMessagePool *_msgPool;
+    FSPlayerMessagePool *_msgPool;
 
     NSInteger _videoWidth;
     NSInteger _videoHeight;
@@ -135,7 +135,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
         options = [FSOptions optionsByDefault];
 
     // init fields
-    _scalingMode = FSMPMovieScalingModeAspectFit;
+    _scalingMode = FSScalingModeAspectFit;
     _shouldAutoplay = YES;
     _canUpdateAccurateSeek = YES;
     
@@ -146,7 +146,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
     // init player
     _mediaPlayer = ijkmp_ios_create(media_player_msg_loop);
-    _msgPool = [[FSMoviePlayerMessagePool alloc] init];
+    _msgPool = [[FSPlayerMessagePool alloc] init];
     FSWeakHolder *weakHolder = [FSWeakHolder new];
     weakHolder.object = self;
 
@@ -624,41 +624,41 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 {
 }
 
-- (FSMPMoviePlaybackState)playbackState
+- (FSPlayerPlaybackState)playbackState
 {
     if (!_mediaPlayer)
         return NO;
 
-    FSMPMoviePlaybackState mpState = FSMPMoviePlaybackStateStopped;
+    FSPlayerPlaybackState mpState = FSPlayerPlaybackStateStopped;
     int state = ijkmp_get_state(_mediaPlayer);
     switch (state) {
         case MP_STATE_STOPPED:
         case MP_STATE_COMPLETED:
         case MP_STATE_ERROR:
         case MP_STATE_END:
-            mpState = FSMPMoviePlaybackStateStopped;
+            mpState = FSPlayerPlaybackStateStopped;
             break;
         case MP_STATE_IDLE:
         case MP_STATE_INITIALIZED:
         case MP_STATE_ASYNC_PREPARING:
         case MP_STATE_PAUSED:
-            mpState = FSMPMoviePlaybackStatePaused;
+            mpState = FSPlayerPlaybackStatePaused;
             break;
         case MP_STATE_PREPARED:
         case MP_STATE_STARTED: {
             if (_seeking)
-                mpState = FSMPMoviePlaybackStateSeekingForward;
+                mpState = FSPlayerPlaybackStateSeekingForward;
             else
-                mpState = FSMPMoviePlaybackStatePlaying;
+                mpState = FSPlayerPlaybackStatePlaying;
             break;
         }
     }
-    // FSMPMoviePlaybackStatePlaying,
-    // FSMPMoviePlaybackStatePaused,
-    // FSMPMoviePlaybackStateStopped,
-    // FSMPMoviePlaybackStateInterrupted,
-    // FSMPMoviePlaybackStateSeekingForward,
-    // FSMPMoviePlaybackStateSeekingBackward
+    // FSPlayerPlaybackStatePlaying,
+    // FSPlayerPlaybackStatePaused,
+    // FSPlayerPlaybackStateStopped,
+    // FSPlayerPlaybackStateInterrupted,
+    // FSPlayerPlaybackStateSeekingForward,
+    // FSPlayerPlaybackStateSeekingBackward
     return mpState;
 }
 
@@ -671,7 +671,7 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     _canUpdateAccurateSeek = NO;
     
     [[NSNotificationCenter defaultCenter]
-     postNotificationName:FSMPMoviePlayerPlaybackStateDidChangeNotification
+     postNotificationName:FSPlayerPlaybackStateDidChangeNotification
      object:self];
 
     _bufferingPosition = 0;
@@ -762,11 +762,11 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
         [self didChangeValueForKey:@"naturalSize"];
 #if TARGET_OS_IOS || TARGET_OS_TV
         [[NSNotificationCenter defaultCenter]
-         postNotificationName:FSMPMovieNaturalSizeAvailableNotification
+         postNotificationName:FSPlayerNaturalSizeAvailableNotification
          object:self userInfo:@{@"size":NSStringFromCGSize(self->_naturalSize)}];
 #else
         [[NSNotificationCenter defaultCenter]
-         postNotificationName:FSMPMovieNaturalSizeAvailableNotification
+         postNotificationName:FSPlayerNaturalSizeAvailableNotification
          object:self userInfo:@{@"size":NSStringFromSize(self->_naturalSize)}];
 #endif
     }
@@ -777,15 +777,15 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     return _videoZRotateDegrees;
 }
 
-- (void)setScalingMode:(FSMPMovieScalingMode) aScalingMode
+- (void)setScalingMode:(FSScalingMode) aScalingMode
 {
-    FSMPMovieScalingMode newScalingMode = aScalingMode;
+    FSScalingMode newScalingMode = aScalingMode;
     self.view.scalingMode = aScalingMode;
     _scalingMode = newScalingMode;
 }
 
 // deprecated, for MPMoviePlayerController compatiable
-- (UIImage *)thumbnailImageAtTime:(NSTimeInterval)playbackTime timeOption:(FSMPMovieTimeOption)option
+- (UIImage *)thumbnailImageAtTime:(NSTimeInterval)playbackTime timeOption:(FSTimeOption)option
 {
     return nil;
 }
@@ -1346,7 +1346,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
     return [[NSString alloc] initWithUTF8String:errbuf];
 }
 
-- (void)postEvent: (FSMoviePlayerMessage *)msg
+- (void)postEvent: (FSPlayerMessage *)msg
 {
     if (!msg)
         return;
@@ -1357,34 +1357,34 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             break;
         case FFP_MSG_WARNING: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerPlaybackRecvWarningNotification
-             object:self userInfo:@{FSMPMoviePlayerPlaybackWarningReasonUserInfoKey: @(avmsg->arg1)}];
+             postNotificationName:FSPlayerRecvWarningNotification
+             object:self userInfo:@{FSPlayerWarningReasonUserInfoKey: @(avmsg->arg1)}];
         }
             break;
         case FFP_MSG_ERROR: {
             [self setScreenOn:NO];
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerPlaybackStateDidChangeNotification
+             postNotificationName:FSPlayerPlaybackStateDidChangeNotification
              object:self];
             
             [[NSNotificationCenter defaultCenter]
-                postNotificationName:FSMPMoviePlayerPlaybackDidFinishNotification
+                postNotificationName:FSPlayerDidFinishNotification
                 object:self
                 userInfo:@{
-                    FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey: @(FSMPMovieFinishReasonPlaybackError),
+                    FSPlayerDidFinishReasonUserInfoKey: @(FSFinishReasonPlaybackError),
                     @"msg":[self averrToString:avmsg->arg1],@"code": @(avmsg->arg1)}];
             break;
         }
         case FFP_MSG_SELECTED_STREAM_CHANGED:  {//stream changed msg
             IjkMediaMeta *rawMeta = ijkmp_get_meta_l(_mediaPlayer);
             [self traverseIJKMetaData:rawMeta];
-            [[NSNotificationCenter defaultCenter] postNotificationName:FSMPMoviePlayerSelectedStreamDidChangeNotification object:self];
+            [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerSelectedStreamDidChangeNotification object:self];
             break;
         }
         case FFP_MSG_SELECTING_STREAM_FAILED:  {//select stream failed
             int *code = avmsg->obj;
-            [[NSNotificationCenter defaultCenter] postNotificationName:FSMoviePlayerSelectingStreamDidFailed object:self userInfo:@{FSMoviePlayerSelectingStreamIDUserInfoKey : @(avmsg->arg1),FSMoviePlayerPreSelectingStreamIDUserInfoKey : @(avmsg->arg2), FSMoviePlayerSelectingStreamErrUserInfoKey : @(*code)}];
+            [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerSelectingStreamDidFailed object:self userInfo:@{FSPlayerSelectingStreamIDUserInfoKey : @(avmsg->arg1),FSPlayerPreSelectingStreamIDUserInfoKey : @(avmsg->arg2), FSPlayerSelectingStreamErrUserInfoKey : @(*code)}];
             break;
         }
         case FFP_MSG_PREPARED: {
@@ -1402,11 +1402,11 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self startHudTimer];
             _isPreparedToPlay = YES;
 
-            [[NSNotificationCenter defaultCenter] postNotificationName:FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification object:self];
-            _loadState = FSMPMovieLoadStatePlayable | FSMPMovieLoadStatePlaythroughOK;
+            [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayDidChangeNotification object:self];
+            _loadState = FSPlayerLoadStatePlayable | FSPlayerLoadStatePlaythroughOK;
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerLoadStateDidChangeNotification
+             postNotificationName:FSPlayerLoadStateDidChangeNotification
              object:self];
 
             break;
@@ -1416,13 +1416,13 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self setScreenOn:NO];
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerPlaybackStateDidChangeNotification
+             postNotificationName:FSPlayerPlaybackStateDidChangeNotification
              object:self];
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerPlaybackDidFinishNotification
+             postNotificationName:FSPlayerDidFinishNotification
              object:self
-             userInfo:@{FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey: @(FSMPMovieFinishReasonPlaybackEnded)}];
+             userInfo:@{FSPlayerDidFinishReasonUserInfoKey: @(FSFinishReasonPlaybackEnded)}];
             break;
         }
         case FFP_MSG_VIDEO_SIZE_CHANGED:
@@ -1442,11 +1442,11 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_BUFFERING_START: {
             _monitor.lastPrerollStartTick = (int64_t)SDL_GetTickHR();
 
-            _loadState = FSMPMovieLoadStateStalled;
+            _loadState = FSPlayerLoadStateStalled;
             _isSeekBuffering = avmsg->arg1;
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerLoadStateDidChangeNotification
+             postNotificationName:FSPlayerLoadStateDidChangeNotification
              object:self];
             _isSeekBuffering = 0;
             break;
@@ -1454,14 +1454,14 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_BUFFERING_END: {
             _monitor.lastPrerollDuration = (int64_t)SDL_GetTickHR() - _monitor.lastPrerollStartTick;
 
-            _loadState = FSMPMovieLoadStatePlayable | FSMPMovieLoadStatePlaythroughOK;
+            _loadState = FSPlayerLoadStatePlayable | FSPlayerLoadStatePlaythroughOK;
             _isSeekBuffering = avmsg->arg1;
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerLoadStateDidChangeNotification
+             postNotificationName:FSPlayerLoadStateDidChangeNotification
              object:self];
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerPlaybackStateDidChangeNotification
+             postNotificationName:FSPlayerPlaybackStateDidChangeNotification
              object:self];
             _isSeekBuffering = 0;
             break;
@@ -1480,47 +1480,47 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             break;
         case FFP_MSG_PLAYBACK_STATE_CHANGED:
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerPlaybackStateDidChangeNotification
+             postNotificationName:FSPlayerPlaybackStateDidChangeNotification
              object:self];
             break;
         case FFP_MSG_SEEK_COMPLETE: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerDidSeekCompleteNotification
+             postNotificationName:FSPlayerDidSeekCompleteNotification
              object:self
-             userInfo:@{FSMPMoviePlayerDidSeekCompleteTargetKey: @(avmsg->arg1),
-                        FSMPMoviePlayerDidSeekCompleteErrorKey: @(avmsg->arg2)}];
+             userInfo:@{FSPlayerDidSeekCompleteTargetKey: @(avmsg->arg1),
+                        FSPlayerDidSeekCompleteErrorKey: @(avmsg->arg2)}];
             _seeking = NO;
             break;
         }
         case FFP_MSG_VIDEO_DECODER_OPEN: {
             [self updateMonitor4VideoDecoder:avmsg->arg1];
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerVideoDecoderOpenNotification
+             postNotificationName:FSPlayerVideoDecoderOpenNotification
              object:self];
             break;
         }
         case FFP_MSG_VIDEO_RENDERING_START: {
             _monitor.firstVideoFrameLatency = (int64_t)SDL_GetTickHR() - _monitor.prepareStartTick;
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerFirstVideoFrameRenderedNotification
+             postNotificationName:FSPlayerFirstVideoFrameRenderedNotification
              object:self];
             break;
         }
         case FFP_MSG_AUDIO_RENDERING_START: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerFirstAudioFrameRenderedNotification
+             postNotificationName:FSPlayerFirstAudioFrameRenderedNotification
              object:self];
             break;
         }
         case FFP_MSG_AUDIO_DECODED_START: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerFirstAudioFrameDecodedNotification
+             postNotificationName:FSPlayerFirstAudioFrameDecodedNotification
              object:self];
             break;
         }
         case FFP_MSG_VIDEO_DECODED_START: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerFirstVideoFrameDecodedNotification
+             postNotificationName:FSPlayerFirstVideoFrameDecodedNotification
              object:self];
             break;
         }
@@ -1535,7 +1535,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
                 str = @"";
             }
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerOpenInputNotification
+             postNotificationName:FSPlayerOpenInputNotification
              object:self
              userInfo:@{@"name": str}];
             break;
@@ -1543,27 +1543,27 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_FIND_STREAM_INFO: {
             _monitor.findStreamInfoLatency = (int64_t)SDL_GetTickHR() - _monitor.prepareStartTick;
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerFindStreamInfoNotification
+             postNotificationName:FSPlayerFindStreamInfoNotification
              object:self];
             break;
         }
         case FFP_MSG_COMPONENT_OPEN: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerComponentOpenNotification
+             postNotificationName:FSPlayerComponentOpenNotification
              object:self];
             break;
         }
         case FFP_MSG_ACCURATE_SEEK_COMPLETE: {
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerAccurateSeekCompleteNotification
+             postNotificationName:FSPlayerAccurateSeekCompleteNotification
              object:self
-             userInfo:@{FSMPMoviePlayerDidAccurateSeekCompleteCurPos: @(avmsg->arg1)}];
+             userInfo:@{FSPlayerDidAccurateSeekCompleteCurPos: @(avmsg->arg1)}];
             break;
         }
         case FFP_MSG_VIDEO_SEEK_RENDERING_START: {
             _isVideoSync = avmsg->arg1;
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerSeekVideoStartNotification
+             postNotificationName:FSPlayerSeekVideoStartNotification
              object:self];
             _isVideoSync = 0;
             break;
@@ -1571,7 +1571,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_AUDIO_SEEK_RENDERING_START: {
             _isAudioSync = avmsg->arg1;
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerSeekAudioStartNotification
+             postNotificationName:FSPlayerSeekAudioStartNotification
              object:self];
             _isAudioSync = 0;
             break;
@@ -1581,14 +1581,14 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
                 _videoZRotateDegrees = avmsg->arg1;
                 
                 [[NSNotificationCenter defaultCenter]
-                         postNotificationName:FSMPMovieZRotateAvailableNotification
+                         postNotificationName:FSPlayerZRotateAvailableNotification
                          object:self userInfo:@{@"degrees":@(_videoZRotateDegrees)}];
             }
             break;
         case FFP_MSG_NO_CODEC_FOUND: {
             NSString *name = [NSString stringWithCString:avcodec_get_name(avmsg->arg1) encoding:NSUTF8StringEncoding];
             [[NSNotificationCenter defaultCenter]
-                     postNotificationName:FSMPMovieNoCodecFoundNotification
+                     postNotificationName:FSPlayerNoCodecFoundNotification
              object:self userInfo:@{@"codecName":name}];
             break;
         }
@@ -1599,7 +1599,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
                 _enableAccurateSeek = 0;
             }
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification
+             postNotificationName:FSPlayerAfterSeekFirstVideoFrameDisplayNotification
              object:self userInfo:@{@"du" : @(du)}];
             _canUpdateAccurateSeek = YES;
             break;
@@ -1607,7 +1607,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_VIDEO_DECODER_FATAL: {
             int code = avmsg->arg1;
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerVideoDecoderFatalNotification
+             postNotificationName:FSPlayerVideoDecoderFatalNotification
              object:self userInfo:@{@"code" : @(code),@"msg" : [self averrToString:code]}];
             break;
         }
@@ -1615,7 +1615,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             IjkMediaMeta *rawMeta = ijkmp_get_meta_l(_mediaPlayer);
             [self updateICYMeta:rawMeta];
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSMPMoviePlayerICYMetaChangedNotification
+             postNotificationName:FSPlayerICYMetaChangedNotification
              object:self userInfo:nil];
             break;
         }
@@ -1627,7 +1627,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
     [_msgPool recycle:msg];
 }
 
-- (FSMoviePlayerMessage *) obtainMessage {
+- (FSPlayerMessage *) obtainMessage {
     return [_msgPool obtain];
 }
 
@@ -1642,7 +1642,7 @@ static int media_player_msg_loop(void* arg)
         __weak FSPlayer *ffpController = ffplayerRetain(ijkmp_set_weak_thiz(mp, NULL));
         while (ffpController) {
             @autoreleasepool {
-                FSMoviePlayerMessage *msg = [ffpController obtainMessage];
+                FSPlayerMessage *msg = [ffpController obtainMessage];
                 if (!msg)
                     break;
 
@@ -1966,7 +1966,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
         _glView.scaleFactor = scale;
     }
 #endif
-     [[NSNotificationCenter defaultCenter] postNotificationName:FSMPMoviePlayerIsAirPlayVideoActiveDidChangeNotification object:nil userInfo:nil];
+     [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsAirPlayVideoActiveDidChangeNotification object:nil userInfo:nil];
 }
 
 
@@ -2055,8 +2055,8 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
         case AVAudioSessionInterruptionTypeBegan: {
             NSLog(@"FSPlayer:audioSessionInterrupt: begin\n");
             switch (self.playbackState) {
-                case FSMPMoviePlaybackStatePaused:
-                case FSMPMoviePlaybackStateStopped:
+                case FSPlayerPlaybackStatePaused:
+                case FSPlayerPlaybackStateStopped:
                     _playingBeforeInterruption = NO;
                     break;
                 default:

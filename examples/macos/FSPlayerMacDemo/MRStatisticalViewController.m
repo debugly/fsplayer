@@ -667,25 +667,25 @@ static BOOL hdrAnimationShown = 0;
     //test
     [playerView setBackgroundColor:0 g:0 b:0];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSMPMoviePlayerFirstVideoFrameRenderedNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSPlayerFirstVideoFrameRenderedNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSPlayerIsPreparedToPlayDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSMPMoviePlayerSelectedStreamDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSPlayerSelectedStreamDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:FSMPMoviePlayerPlaybackDidFinishNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:FSPlayerDidFinishNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:FSMPMovieNoCodecFoundNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:FSPlayerNoCodecFoundNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:FSPlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSMPMoviePlayerVideoDecoderFatalNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSPlayerVideoDecoderFatalNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSMPMoviePlayerPlaybackRecvWarningNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSPlayerRecvWarningNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:FSMoviePlayerHDRAnimationStateChanged object:self.player.view];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:FSPlayerHDRAnimationStateChanged object:self.player.view];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSMPMoviePlayerFindStreamInfoNotification object:self.player.view];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSPlayerFindStreamInfoNotification object:self.player.view];
     
     self.player.shouldAutoplay = YES;
     [self onVolumeChange:nil];
@@ -696,11 +696,11 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerRecvWarning:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int reason = [notifi.userInfo[FSMPMoviePlayerPlaybackWarningReasonUserInfoKey] intValue];
+        int reason = [notifi.userInfo[FSPlayerWarningReasonUserInfoKey] intValue];
         if (reason == 1000) {
             NSLog(@"recv warning:%d",reason);
             //会收到很多次，所以立马取消掉监听
-            [[NSNotificationCenter defaultCenter] removeObserver:self name:FSMPMoviePlayerPlaybackRecvWarningNotification object:notifi.object];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:FSPlayerRecvWarningNotification object:notifi.object];
             [self retry];
         }
     }
@@ -796,11 +796,11 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerDidFinish:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int reason = [notifi.userInfo[FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey] intValue];
-        if (FSMPMovieFinishReasonPlaybackError == reason) {
+        int reason = [notifi.userInfo[FSPlayerDidFinishReasonUserInfoKey] intValue];
+        if (FSFinishReasonPlaybackError == reason) {
             int errCode = [notifi.userInfo[@"code"] intValue];
             NSLog(@"播放出错:%d",errCode);
-        } else if (FSMPMovieFinishReasonPlaybackEnded == reason) {
+        } else if (FSFinishReasonPlaybackEnded == reason) {
             NSLog(@"播放结束");
             if ([[MRUtil pictureType] containsObject:[[self.playingUrl lastPathComponent] pathExtension]]) {
 //                [self stopPlay];
@@ -1254,7 +1254,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (IBAction)fastForward:(NSButton *)sender
 {    
-    if (self.player.playbackState == FSMPMoviePlaybackStatePaused) {
+    if (self.player.playbackState == FSPlayerPlaybackStatePaused) {
         [self.player stepToNextFrame];
     } else {
         float cp = self.player.currentPlaybackTime;
@@ -1332,13 +1332,13 @@ static BOOL hdrAnimationShown = 0;
     NSMenuItem *item = [sender selectedItem];
     if (item.tag == 1) {
         //scale to fill
-        [self.player setScalingMode:FSMPMovieScalingModeFill];
+        [self.player setScalingMode:FSScalingModeFill];
     } else if (item.tag == 2) {
         //aspect fill
-        [self.player setScalingMode:FSMPMovieScalingModeAspectFill];
+        [self.player setScalingMode:FSScalingModeAspectFill];
     } else if (item.tag == 3) {
         //aspect fit
-        [self.player setScalingMode:FSMPMovieScalingModeAspectFit];
+        [self.player setScalingMode:FSScalingModeAspectFit];
     }
     
     if (!self.player.isPlaying) {

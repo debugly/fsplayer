@@ -110,7 +110,7 @@
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
 //    self.player.view.frame = CGRectMake(0, 0, 414, 232);
-    self.player.scalingMode = FSMPMovieScalingModeAspectFit;
+    self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
     
     FSSDLSubtitlePreference p = self.player.subtitlePreference;
@@ -225,12 +225,12 @@
     //    MPMovieLoadStatePlaythroughOK  = 1 << 1, // Playback will be automatically started in this state when shouldAutoplay is YES
     //    MPMovieLoadStateStalled        = 1 << 2, // Playback will be automatically paused in this state, if started
 
-    FSMPMovieLoadState loadState = _player.loadState;
+    FSPlayerLoadState loadState = _player.loadState;
 
-    if ((loadState & FSMPMovieLoadStatePlaythroughOK) != 0) {
-        NSLog(@"loadStateDidChange: FSMPMovieLoadStatePlaythroughOK: %d\n", (int)loadState);
-    } else if ((loadState & FSMPMovieLoadStateStalled) != 0) {
-        NSLog(@"loadStateDidChange: FSMPMovieLoadStateStalled: %d\n", (int)loadState);
+    if ((loadState & FSPlayerLoadStatePlaythroughOK) != 0) {
+        NSLog(@"loadStateDidChange: FSPlayerLoadStatePlaythroughOK: %d\n", (int)loadState);
+    } else if ((loadState & FSPlayerLoadStateStalled) != 0) {
+        NSLog(@"loadStateDidChange: FSPlayerLoadStateStalled: %d\n", (int)loadState);
     } else {
         NSLog(@"loadStateDidChange: ???: %d\n", (int)loadState);
     }
@@ -241,20 +241,20 @@
     //    MPMovieFinishReasonPlaybackEnded,
     //    MPMovieFinishReasonPlaybackError,
     //    MPMovieFinishReasonUserExited
-    int reason = [[[notification userInfo] valueForKey:FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey] intValue];
+    int reason = [[[notification userInfo] valueForKey:FSPlayerDidFinishReasonUserInfoKey] intValue];
 
     switch (reason)
     {
-        case FSMPMovieFinishReasonPlaybackEnded:
-            NSLog(@"playbackStateDidChange: FSMPMovieFinishReasonPlaybackEnded: %d\n", reason);
+        case FSFinishReasonPlaybackEnded:
+            NSLog(@"playbackStateDidChange: FSFinishReasonPlaybackEnded: %d\n", reason);
             break;
 
-        case FSMPMovieFinishReasonUserExited:
-            NSLog(@"playbackStateDidChange: FSMPMovieFinishReasonUserExited: %d\n", reason);
+        case FSFinishReasonUserExited:
+            NSLog(@"playbackStateDidChange: FSFinishReasonUserExited: %d\n", reason);
             break;
 
-        case FSMPMovieFinishReasonPlaybackError:
-            NSLog(@"playbackStateDidChange: FSMPMovieFinishReasonPlaybackError: %d\n", reason);
+        case FSFinishReasonPlaybackError:
+            NSLog(@"playbackStateDidChange: FSFinishReasonPlaybackError: %d\n", reason);
             break;
 
         default:
@@ -279,29 +279,29 @@
 
     switch (_player.playbackState)
     {
-        case FSMPMoviePlaybackStateStopped: {
-            NSLog(@"FSMPMoviePlayBackStateDidChange %d: stoped", (int)_player.playbackState);
+        case FSPlayerPlaybackStateStopped: {
+            NSLog(@"FSPlayerPlaybackStateDidChange %d: stoped", (int)_player.playbackState);
             break;
         }
-        case FSMPMoviePlaybackStatePlaying: {
-            NSLog(@"FSMPMoviePlayBackStateDidChange %d: playing", (int)_player.playbackState);
+        case FSPlayerPlaybackStatePlaying: {
+            NSLog(@"FSPlayerPlaybackStateDidChange %d: playing", (int)_player.playbackState);
             break;
         }
-        case FSMPMoviePlaybackStatePaused: {
-            NSLog(@"FSMPMoviePlayBackStateDidChange %d: paused", (int)_player.playbackState);
+        case FSPlayerPlaybackStatePaused: {
+            NSLog(@"FSPlayerPlaybackStateDidChange %d: paused", (int)_player.playbackState);
             break;
         }
-        case FSMPMoviePlaybackStateInterrupted: {
-            NSLog(@"FSMPMoviePlayBackStateDidChange %d: interrupted", (int)_player.playbackState);
+        case FSPlayerPlaybackStateInterrupted: {
+            NSLog(@"FSPlayerPlaybackStateDidChange %d: interrupted", (int)_player.playbackState);
             break;
         }
-        case FSMPMoviePlaybackStateSeekingForward:
-        case FSMPMoviePlaybackStateSeekingBackward: {
-            NSLog(@"FSMPMoviePlayBackStateDidChange %d: seeking", (int)_player.playbackState);
+        case FSPlayerPlaybackStateSeekingForward:
+        case FSPlayerPlaybackStateSeekingBackward: {
+            NSLog(@"FSPlayerPlaybackStateDidChange %d: seeking", (int)_player.playbackState);
             break;
         }
         default: {
-            NSLog(@"FSMPMoviePlayBackStateDidChange %d: unknown", (int)_player.playbackState);
+            NSLog(@"FSPlayerPlaybackStateDidChange %d: unknown", (int)_player.playbackState);
             break;
         }
     }
@@ -314,22 +314,22 @@
 {
 	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(loadStateDidChange:)
-                                                 name:FSMPMoviePlayerLoadStateDidChangeNotification
+                                                 name:FSPlayerLoadStateDidChangeNotification
                                                object:_player];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(moviePlayBackDidFinish:)
-                                                 name:FSMPMoviePlayerPlaybackDidFinishNotification
+                                                 name:FSPlayerDidFinishNotification
                                                object:_player];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(mediaIsPreparedToPlayDidChange:)
-                                                 name:FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification
+                                                 name:FSPlayerIsPreparedToPlayDidChangeNotification
                                                object:_player];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(moviePlayBackStateDidChange:)
-                                                 name:FSMPMoviePlayerPlaybackStateDidChangeNotification
+                                                 name:FSPlayerPlaybackStateDidChangeNotification
                                                object:_player];
 }
 
@@ -338,10 +338,10 @@
 /* Remove the movie notification observers from the movie object. */
 -(void)removeMovieNotificationObservers
 {
-    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSMPMoviePlayerLoadStateDidChangeNotification object:_player];
-    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSMPMoviePlayerPlaybackDidFinishNotification object:_player];
-    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification object:_player];
-    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSMPMoviePlayerPlaybackStateDidChangeNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerLoadStateDidChangeNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerDidFinishNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerIsPreparedToPlayDidChangeNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerPlaybackStateDidChangeNotification object:_player];
 }
 
 @end

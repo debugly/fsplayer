@@ -36,10 +36,10 @@ typedef NSView UIView;
 #endif
 #import "ff_subtitle_def.h"
 
-typedef NS_ENUM(NSInteger, FSMPMovieScalingMode) {
-    FSMPMovieScalingModeAspectFit,  // Uniform scale until one dimension fits
-    FSMPMovieScalingModeAspectFill, // Uniform scale until the movie fills the visible bounds. One dimension may have clipped contents
-    FSMPMovieScalingModeFill        // Non-uniform scale. Both render dimensions will exactly match the visible bounds
+typedef NS_ENUM(NSInteger, FSScalingMode) {
+    FSScalingModeAspectFit,  // Uniform scale until one dimension fits
+    FSScalingModeAspectFill, // Uniform scale until the movie fills the visible bounds. One dimension may have clipped contents
+    FSScalingModeFill        // Non-uniform scale. Both render dimensions will exactly match the visible bounds
 };
 
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
@@ -132,7 +132,7 @@ typedef enum : NSUInteger {
 
 @protocol FSVideoRenderingProtocol <NSObject>
 
-@property(nonatomic) FSMPMovieScalingMode scalingMode;
+@property(nonatomic) FSScalingMode scalingMode;
 #if TARGET_OS_IOS
 @property(nonatomic) CGFloat scaleFactor;
 #endif

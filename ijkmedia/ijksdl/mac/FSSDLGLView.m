@@ -337,7 +337,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
 - (void)sendHDRAnimationNotifiOnMainThread:(int)state
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:FSMoviePlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
     });
 }
 
@@ -715,16 +715,16 @@ static CGImageRef _FlipCGImage(CGImageRef src)
 
 #pragma mark - override setter methods
 
-- (void)setScalingMode:(FSMPMovieScalingMode)scalingMode
+- (void)setScalingMode:(FSScalingMode)scalingMode
 {
     switch (scalingMode) {
-        case FSMPMovieScalingModeFill:
+        case FSScalingModeFill:
             _rendererGravity = FS_GLES2_GRAVITY_RESIZE;
             break;
-        case FSMPMovieScalingModeAspectFit:
+        case FSScalingModeAspectFit:
             _rendererGravity = FS_GLES2_GRAVITY_RESIZE_ASPECT;
             break;
-        case FSMPMovieScalingModeAspectFill:
+        case FSScalingModeAspectFill:
             _rendererGravity = FS_GLES2_GRAVITY_RESIZE_ASPECT_FILL;
             break;
     }

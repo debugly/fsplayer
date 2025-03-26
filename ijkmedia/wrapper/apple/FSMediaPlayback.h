@@ -30,34 +30,34 @@ typedef NSView UIView;
 #endif
 #import "FSVideoRenderingProtocol.h"
 
-typedef NS_ENUM(NSInteger, FSMPMoviePlaybackState) {
-    FSMPMoviePlaybackStateStopped,
-    FSMPMoviePlaybackStatePlaying,
-    FSMPMoviePlaybackStatePaused,
-    FSMPMoviePlaybackStateInterrupted,
-    FSMPMoviePlaybackStateSeekingForward,
-    FSMPMoviePlaybackStateSeekingBackward
+typedef NS_ENUM(NSInteger, FSPlayerPlaybackState) {
+    FSPlayerPlaybackStateStopped,
+    FSPlayerPlaybackStatePlaying,
+    FSPlayerPlaybackStatePaused,
+    FSPlayerPlaybackStateInterrupted,
+    FSPlayerPlaybackStateSeekingForward,
+    FSPlayerPlaybackStateSeekingBackward
 };
 
-typedef NS_OPTIONS(NSUInteger, FSMPMovieLoadState) {
-    FSMPMovieLoadStateUnknown        = 0,
-    FSMPMovieLoadStatePlayable       = 1 << 0,
-    FSMPMovieLoadStatePlaythroughOK  = 1 << 1, // Playback will be automatically started in this state when shouldAutoplay is YES
-    FSMPMovieLoadStateStalled        = 1 << 2, // Playback will be automatically paused in this state, if started
+typedef NS_OPTIONS(NSUInteger, FSPlayerLoadState) {
+    FSPlayerLoadStateUnknown        = 0,
+    FSPlayerLoadStatePlayable       = 1 << 0,
+    FSPlayerLoadStatePlaythroughOK  = 1 << 1, // Playback will be automatically started in this state when shouldAutoplay is YES
+    FSPlayerLoadStateStalled        = 1 << 2, // Playback will be automatically paused in this state, if started
 };
 
-typedef NS_ENUM(NSInteger, FSMPMovieFinishReason) {
-    FSMPMovieFinishReasonPlaybackEnded,
-    FSMPMovieFinishReasonPlaybackError,
-    FSMPMovieFinishReasonUserExited
+typedef NS_ENUM(NSInteger, FSFinishReason) {
+    FSFinishReasonPlaybackEnded,
+    FSFinishReasonPlaybackError,
+    FSFinishReasonUserExited
 };
 
 // -----------------------------------------------------------------------------
 // Thumbnails
 
-typedef NS_ENUM(NSInteger, FSMPMovieTimeOption) {
-    FSMPMovieTimeOptionNearestKeyFrame,
-    FSMPMovieTimeOptionExact
+typedef NS_ENUM(NSInteger, FSTimeOption) {
+    FSTimeOptionNearestKeyFrame,
+    FSTimeOptionExact
 };
 
 @protocol FSMediaPlayback;
@@ -96,8 +96,8 @@ typedef NS_ENUM(NSInteger, FSMPMovieTimeOption) {
 @property(nonatomic, readonly)  NSInteger bufferingProgress;
 
 @property(nonatomic, readonly)  BOOL isPreparedToPlay;
-@property(nonatomic, readonly)  FSMPMoviePlaybackState playbackState;
-@property(nonatomic, readonly)  FSMPMovieLoadState loadState;
+@property(nonatomic, readonly)  FSPlayerPlaybackState playbackState;
+@property(nonatomic, readonly)  FSPlayerLoadState loadState;
 @property(nonatomic, readonly) int isSeekBuffering;
 @property(nonatomic, readonly) int isAudioSync;
 @property(nonatomic, readonly) int isVideoSync;
@@ -107,7 +107,7 @@ typedef NS_ENUM(NSInteger, FSMPMovieTimeOption) {
 @property(nonatomic, readonly) CGSize naturalSize;
 @property(nonatomic, readonly) NSInteger videoZRotateDegrees;
 
-@property(nonatomic) FSMPMovieScalingMode scalingMode;
+@property(nonatomic) FSScalingMode scalingMode;
 @property(nonatomic) BOOL shouldAutoplay;
 
 @property (nonatomic) BOOL allowsMediaAirPlay;
@@ -139,76 +139,76 @@ typedef NS_ENUM(NSInteger, FSMPMovieTimeOption) {
 
 // Posted when the prepared state changes of an object conforming to the MPMediaPlayback protocol changes.
 // This supersedes MPMoviePlayerContentPreloadDidFinishNotification.
-FS_EXTERN NSString *const FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification;
+FS_EXTERN NSString *const FSPlayerIsPreparedToPlayDidChangeNotification;
 
 // -----------------------------------------------------------------------------
 //  MPMoviePlayerController.h
 //  Movie Player Notifications
 
 // Posted when the scaling mode changes.
-FS_EXTERN NSString* const FSMPMoviePlayerScalingModeDidChangeNotification;
+FS_EXTERN NSString* const FSPlayerScalingModeDidChangeNotification;
 
 // Posted when movie playback ends or a user exits playback.
-FS_EXTERN NSString* const FSMPMoviePlayerPlaybackDidFinishNotification;
-FS_EXTERN NSString* const FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey; // NSNumber (FSMPMovieFinishReason)
+FS_EXTERN NSString* const FSPlayerDidFinishNotification;
+FS_EXTERN NSString* const FSPlayerDidFinishReasonUserInfoKey; // NSNumber (FSFinishReason)
 
 // Posted when the playback state changes, either programatically or by the user.
-FS_EXTERN NSString* const FSMPMoviePlayerPlaybackStateDidChangeNotification;
+FS_EXTERN NSString* const FSPlayerPlaybackStateDidChangeNotification;
 
 // Posted when the network load state changes.
-FS_EXTERN NSString* const FSMPMoviePlayerLoadStateDidChangeNotification;
+FS_EXTERN NSString* const FSPlayerLoadStateDidChangeNotification;
 
 // Posted when the movie player begins or ends playing video via AirPlay.
-FS_EXTERN NSString* const FSMPMoviePlayerIsAirPlayVideoActiveDidChangeNotification;
+FS_EXTERN NSString* const FSPlayerIsAirPlayVideoActiveDidChangeNotification;
 
 // -----------------------------------------------------------------------------
 // Movie Property Notifications
 
 // Calling -prepareToPlay on the movie player will begin determining movie properties asynchronously.
 // These notifications are posted when the associated movie property becomes available.
-FS_EXTERN NSString* const FSMPMovieNaturalSizeAvailableNotification;
+FS_EXTERN NSString* const FSPlayerNaturalSizeAvailableNotification;
 
 //video's z rotate degrees
-FS_EXTERN NSString* const FSMPMovieZRotateAvailableNotification;
-FS_EXTERN NSString* const FSMPMovieNoCodecFoundNotification;
+FS_EXTERN NSString* const FSPlayerZRotateAvailableNotification;
+FS_EXTERN NSString* const FSPlayerNoCodecFoundNotification;
 // -----------------------------------------------------------------------------
 //  Extend Notifications
 
-FS_EXTERN NSString *const FSMPMoviePlayerVideoDecoderOpenNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerFirstVideoFrameRenderedNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerFirstAudioFrameRenderedNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerFirstAudioFrameDecodedNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerFirstVideoFrameDecodedNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerOpenInputNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerFindStreamInfoNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerComponentOpenNotification;
+FS_EXTERN NSString *const FSPlayerVideoDecoderOpenNotification;
+FS_EXTERN NSString *const FSPlayerFirstVideoFrameRenderedNotification;
+FS_EXTERN NSString *const FSPlayerFirstAudioFrameRenderedNotification;
+FS_EXTERN NSString *const FSPlayerFirstAudioFrameDecodedNotification;
+FS_EXTERN NSString *const FSPlayerFirstVideoFrameDecodedNotification;
+FS_EXTERN NSString *const FSPlayerOpenInputNotification;
+FS_EXTERN NSString *const FSPlayerFindStreamInfoNotification;
+FS_EXTERN NSString *const FSPlayerComponentOpenNotification;
 
-FS_EXTERN NSString *const FSMPMoviePlayerDidSeekCompleteNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerDidSeekCompleteTargetKey;
-FS_EXTERN NSString *const FSMPMoviePlayerDidSeekCompleteErrorKey;
-FS_EXTERN NSString *const FSMPMoviePlayerDidAccurateSeekCompleteCurPos;
-FS_EXTERN NSString *const FSMPMoviePlayerAccurateSeekCompleteNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerSeekAudioStartNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerSeekVideoStartNotification;
+FS_EXTERN NSString *const FSPlayerDidSeekCompleteNotification;
+FS_EXTERN NSString *const FSPlayerDidSeekCompleteTargetKey;
+FS_EXTERN NSString *const FSPlayerDidSeekCompleteErrorKey;
+FS_EXTERN NSString *const FSPlayerDidAccurateSeekCompleteCurPos;
+FS_EXTERN NSString *const FSPlayerAccurateSeekCompleteNotification;
+FS_EXTERN NSString *const FSPlayerSeekAudioStartNotification;
+FS_EXTERN NSString *const FSPlayerSeekVideoStartNotification;
 
-FS_EXTERN NSString *const FSMPMoviePlayerSelectedStreamDidChangeNotification;
-FS_EXTERN NSString *const FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification;
+FS_EXTERN NSString *const FSPlayerSelectedStreamDidChangeNotification;
+FS_EXTERN NSString *const FSPlayerAfterSeekFirstVideoFrameDisplayNotification;
 //when received this fatal notifi,need stop player,otherwize read frame and play to end.
-FS_EXTERN NSString *const FSMPMoviePlayerVideoDecoderFatalNotification; /*useinfo's code is decoder's err code.*/
-FS_EXTERN NSString *const FSMPMoviePlayerPlaybackRecvWarningNotification; /*warning notifi.*/
-FS_EXTERN NSString *const FSMPMoviePlayerPlaybackWarningReasonUserInfoKey; /*useinfo's key,value is int.*/
+FS_EXTERN NSString *const FSPlayerVideoDecoderFatalNotification; /*useinfo's code is decoder's err code.*/
+FS_EXTERN NSString *const FSPlayerRecvWarningNotification; /*warning notifi.*/
+FS_EXTERN NSString *const FSPlayerWarningReasonUserInfoKey; /*useinfo's key,value is int.*/
 //user info's state key:1 means begin,2 means end.
-FS_EXTERN NSString *const FSMoviePlayerHDRAnimationStateChanged;
+FS_EXTERN NSString *const FSPlayerHDRAnimationStateChanged;
 //select stream failed user info key
-FS_EXTERN NSString *const FSMoviePlayerSelectingStreamIDUserInfoKey;
+FS_EXTERN NSString *const FSPlayerSelectingStreamIDUserInfoKey;
 //pre selected stream user info key
-FS_EXTERN NSString *const FSMoviePlayerPreSelectingStreamIDUserInfoKey;
+FS_EXTERN NSString *const FSPlayerPreSelectingStreamIDUserInfoKey;
 //select stream failed err code key
-FS_EXTERN NSString *const FSMoviePlayerSelectingStreamErrUserInfoKey;
+FS_EXTERN NSString *const FSPlayerSelectingStreamErrUserInfoKey;
 //select stream failed.
-FS_EXTERN NSString *const FSMoviePlayerSelectingStreamDidFailed;
+FS_EXTERN NSString *const FSPlayerSelectingStreamDidFailed;
 //icy meta changed.
-FS_EXTERN NSString *const FSMPMoviePlayerICYMetaChangedNotification;
+FS_EXTERN NSString *const FSPlayerICYMetaChangedNotification;
 
 @end
 

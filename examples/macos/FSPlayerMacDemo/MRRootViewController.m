@@ -716,33 +716,33 @@ static BOOL hdrAnimationShown = 0;
     //test
     [playerView setBackgroundColor:0 g:0 b:0];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSMPMoviePlayerOpenInputNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSMPMoviePlayerFindStreamInfoNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSPlayerFindStreamInfoNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSPlayerIsPreparedToPlayDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSMPMoviePlayerFirstVideoFrameRenderedNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSPlayerFirstVideoFrameRenderedNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSMPMoviePlayerSelectedStreamDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSPlayerSelectedStreamDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:FSMPMoviePlayerPlaybackDidFinishNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:FSPlayerDidFinishNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:FSMPMovieNoCodecFoundNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:FSPlayerNoCodecFoundNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerNaturalSizeAvailable:) name:FSMPMovieNaturalSizeAvailableNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerNaturalSizeAvailable:) name:FSPlayerNaturalSizeAvailableNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:FSPlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSMPMoviePlayerVideoDecoderFatalNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSPlayerVideoDecoderFatalNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSMPMoviePlayerPlaybackRecvWarningNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSPlayerRecvWarningNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:FSMoviePlayerHDRAnimationStateChanged object:self.player.view];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:FSPlayerHDRAnimationStateChanged object:self.player.view];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectingStreamDidFailed:) name:FSMoviePlayerSelectingStreamDidFailed object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectingStreamDidFailed:) name:FSPlayerSelectingStreamDidFailed object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerICYMetaChanged:) name:FSMPMoviePlayerICYMetaChangedNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerICYMetaChanged:) name:FSPlayerICYMetaChangedNotification object:self.player];
     
     self.player.shouldAutoplay = YES;
     [self onVolumeChange:nil];
@@ -800,11 +800,11 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerRecvWarning:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int reason = [notifi.userInfo[FSMPMoviePlayerPlaybackWarningReasonUserInfoKey] intValue];
+        int reason = [notifi.userInfo[FSPlayerWarningReasonUserInfoKey] intValue];
         if (reason == 1000) {
             NSLog(@"recv warning:%d",reason);
             //会收到很多次，所以立马取消掉监听
-            [[NSNotificationCenter defaultCenter] removeObserver:self name:FSMPMoviePlayerPlaybackRecvWarningNotification object:notifi.object];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:FSPlayerRecvWarningNotification object:notifi.object];
             [self retry];
         }
     }
@@ -826,10 +826,10 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerSelectingStreamDidFailed:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int stream = [notifi.userInfo[FSMoviePlayerSelectingStreamIDUserInfoKey] intValue];
-        int preStream = [notifi.userInfo[FSMoviePlayerPreSelectingStreamIDUserInfoKey] intValue];
+        int stream = [notifi.userInfo[FSPlayerSelectingStreamIDUserInfoKey] intValue];
+        int preStream = [notifi.userInfo[FSPlayerPreSelectingStreamIDUserInfoKey] intValue];
         
-        int code = [notifi.userInfo[FSMoviePlayerSelectingStreamErrUserInfoKey] intValue];
+        int code = [notifi.userInfo[FSPlayerSelectingStreamErrUserInfoKey] intValue];
         NSLog(@"Selecting Stream Did Failed:%d, pre selected stream is %d,Err Code:%d",stream,preStream,code);
     }
 }
@@ -900,8 +900,8 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerDidFinish:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        int reason = [notifi.userInfo[FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey] intValue];
-        if (FSMPMovieFinishReasonPlaybackError == reason) {
+        int reason = [notifi.userInfo[FSPlayerDidFinishReasonUserInfoKey] intValue];
+        if (FSFinishReasonPlaybackError == reason) {
             int errCode = [notifi.userInfo[@"code"] intValue];
             NSLog(@"播放出错:%d",errCode);
             NSAlert *alert = [[NSAlert alloc] init];
@@ -933,7 +933,7 @@ static BOOL hdrAnimationShown = 0;
                     }
                 }
             }];
-        } else if (FSMPMovieFinishReasonPlaybackEnded == reason) {
+        } else if (FSFinishReasonPlaybackEnded == reason) {
             NSLog(@"播放结束");
             if ([[MRUtil pictureType] containsObject:[[self.playingUrl lastPathComponent] pathExtension]]) {
 //                [self stopPlay];
@@ -1394,7 +1394,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (void)fastForward:(NSButton *)sender
 {
-    if (self.player.playbackState == FSMPMoviePlaybackStatePaused) {
+    if (self.player.playbackState == FSPlayerPlaybackStatePaused) {
         [self.player stepToNextFrame];
     } else {
         float cp = self.player.currentPlaybackTime;

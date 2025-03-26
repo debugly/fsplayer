@@ -23,58 +23,58 @@
 
 #import "FSMediaPlayback.h"
 
-NSString *const FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification = @"FSMPMediaPlaybackIsPreparedToPlayDidChangeNotification";
+NSString *const FSPlayerIsPreparedToPlayDidChangeNotification = @"FSPlayerIsPreparedToPlayDidChangeNotification";
 
-NSString *const FSMPMoviePlayerPlaybackDidFinishNotification = @"FSMPMoviePlayerPlaybackDidFinishNotification";
-NSString *const FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey =
-    @"FSMPMoviePlayerPlaybackDidFinishReasonUserInfoKey";
-NSString *const FSMPMoviePlayerPlaybackStateDidChangeNotification = @"FSMPMoviePlayerPlaybackStateDidChangeNotification";
-NSString *const FSMPMoviePlayerLoadStateDidChangeNotification = @"FSMPMoviePlayerLoadStateDidChangeNotification";
+NSString *const FSPlayerDidFinishNotification = @"FSPlayerDidFinishNotification";
+NSString *const FSPlayerDidFinishReasonUserInfoKey =
+    @"FSPlayerDidFinishReasonUserInfoKey";
+NSString *const FSPlayerPlaybackStateDidChangeNotification = @"FSPlayerPlaybackStateDidChangeNotification";
+NSString *const FSPlayerLoadStateDidChangeNotification = @"FSPlayerLoadStateDidChangeNotification";
 
-NSString *const FSMPMoviePlayerIsAirPlayVideoActiveDidChangeNotification = @"FSMPMoviePlayerIsAirPlayVideoActiveDidChangeNotification";
+NSString *const FSPlayerIsAirPlayVideoActiveDidChangeNotification = @"FSPlayerIsAirPlayVideoActiveDidChangeNotification";
 
-NSString *const FSMPMovieNaturalSizeAvailableNotification = @"FSMPMovieNaturalSizeAvailableNotification";
-NSString *const FSMPMovieZRotateAvailableNotification = @"FSMPMovieZRotateAvailableNotification";
-NSString *const FSMPMovieNoCodecFoundNotification = @"FSMPMovieNoCodecFoundNotification";
+NSString *const FSPlayerNaturalSizeAvailableNotification = @"FSPlayerNaturalSizeAvailableNotification";
+NSString *const FSPlayerZRotateAvailableNotification = @"FSPlayerZRotateAvailableNotification";
+NSString *const FSPlayerNoCodecFoundNotification = @"FSPlayerNoCodecFoundNotification";
 
-NSString *const FSMPMoviePlayerVideoDecoderOpenNotification = @"FSMPMoviePlayerVideoDecoderOpenNotification";
+NSString *const FSPlayerVideoDecoderOpenNotification = @"FSPlayerVideoDecoderOpenNotification";
 
-NSString *const FSMPMoviePlayerFirstVideoFrameRenderedNotification = @"FSMPMoviePlayerFirstVideoFrameRenderedNotification";
-NSString *const FSMPMoviePlayerFirstAudioFrameRenderedNotification = @"FSMPMoviePlayerFirstAudioFrameRenderedNotification";
-NSString *const FSMPMoviePlayerFirstAudioFrameDecodedNotification  = @"FSMPMoviePlayerFirstAudioFrameDecodedNotification";
-NSString *const FSMPMoviePlayerFirstVideoFrameDecodedNotification  = @"FSMPMoviePlayerFirstVideoFrameDecodedNotification";
-NSString *const FSMPMoviePlayerOpenInputNotification               = @"FSMPMoviePlayerOpenInputNotification";
-NSString *const FSMPMoviePlayerFindStreamInfoNotification          = @"FSMPMoviePlayerFindStreamInfoNotification";
-NSString *const FSMPMoviePlayerComponentOpenNotification           = @"FSMPMoviePlayerComponentOpenNotification";
+NSString *const FSPlayerFirstVideoFrameRenderedNotification = @"FSPlayerFirstVideoFrameRenderedNotification";
+NSString *const FSPlayerFirstAudioFrameRenderedNotification = @"FSPlayerFirstAudioFrameRenderedNotification";
+NSString *const FSPlayerFirstAudioFrameDecodedNotification  = @"FSPlayerFirstAudioFrameDecodedNotification";
+NSString *const FSPlayerFirstVideoFrameDecodedNotification  = @"FSPlayerFirstVideoFrameDecodedNotification";
+NSString *const FSPlayerOpenInputNotification               = @"FSPlayerOpenInputNotification";
+NSString *const FSPlayerFindStreamInfoNotification          = @"FSPlayerFindStreamInfoNotification";
+NSString *const FSPlayerComponentOpenNotification           = @"FSPlayerComponentOpenNotification";
 
-NSString *const FSMPMoviePlayerAccurateSeekCompleteNotification = @"FSMPMoviePlayerAccurateSeekCompleteNotification";
+NSString *const FSPlayerAccurateSeekCompleteNotification = @"FSPlayerAccurateSeekCompleteNotification";
 
-NSString *const FSMPMoviePlayerDidSeekCompleteNotification = @"FSMPMoviePlayerDidSeekCompleteNotification";
-NSString *const FSMPMoviePlayerDidSeekCompleteTargetKey = @"FSMPMoviePlayerDidSeekCompleteTargetKey";
-NSString *const FSMPMoviePlayerDidSeekCompleteErrorKey = @"FSMPMoviePlayerDidSeekCompleteErrorKey";
-NSString *const FSMPMoviePlayerDidAccurateSeekCompleteCurPos = @"FSMPMoviePlayerDidAccurateSeekCompleteCurPos";
+NSString *const FSPlayerDidSeekCompleteNotification = @"FSPlayerDidSeekCompleteNotification";
+NSString *const FSPlayerDidSeekCompleteTargetKey = @"FSPlayerDidSeekCompleteTargetKey";
+NSString *const FSPlayerDidSeekCompleteErrorKey = @"FSPlayerDidSeekCompleteErrorKey";
+NSString *const FSPlayerDidAccurateSeekCompleteCurPos = @"FSPlayerDidAccurateSeekCompleteCurPos";
 
-NSString *const FSMPMoviePlayerSeekAudioStartNotification  = @"FSMPMoviePlayerSeekAudioStartNotification";
-NSString *const FSMPMoviePlayerSeekVideoStartNotification  = @"FSMPMoviePlayerSeekVideoStartNotification";
+NSString *const FSPlayerSeekAudioStartNotification  = @"FSPlayerSeekAudioStartNotification";
+NSString *const FSPlayerSeekVideoStartNotification  = @"FSPlayerSeekVideoStartNotification";
 
-NSString *const FSMPMoviePlayerSelectedStreamDidChangeNotification =
-    @"FSMPMoviePlayerSelectedStreamDidChangeNotification";
-NSString *const FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification = @"FSMPMoviePlayerAfterSeekFirstVideoFrameDisplayNotification";
+NSString *const FSPlayerSelectedStreamDidChangeNotification =
+    @"FSPlayerSelectedStreamDidChangeNotification";
+NSString *const FSPlayerAfterSeekFirstVideoFrameDisplayNotification = @"FSPlayerAfterSeekFirstVideoFrameDisplayNotification";
 
-NSString *const FSMPMoviePlayerVideoDecoderFatalNotification = @"FSMPMoviePlayerVideoDecoderFatalNotification";
+NSString *const FSPlayerVideoDecoderFatalNotification = @"FSPlayerVideoDecoderFatalNotification";
 
-NSString *const FSMPMoviePlayerPlaybackRecvWarningNotification = @"FSMPMoviePlayerPlaybackRecvWarningNotification";
+NSString *const FSPlayerRecvWarningNotification = @"FSPlayerRecvWarningNotification";
 
-NSString *const FSMPMoviePlayerPlaybackWarningReasonUserInfoKey = @"FSMPMoviePlayerPlaybackWarningReasonUserInfoKey";
+NSString *const FSPlayerWarningReasonUserInfoKey = @"FSPlayerWarningReasonUserInfoKey";
 
-NSString *const FSMoviePlayerHDRAnimationStateChanged = @"FSMoviePlayerHDRAnimationStateChanged";
+NSString *const FSPlayerHDRAnimationStateChanged = @"FSPlayerHDRAnimationStateChanged";
 
-NSString *const FSMoviePlayerSelectingStreamIDUserInfoKey = @"stream-id";
-NSString *const FSMoviePlayerPreSelectingStreamIDUserInfoKey = @"pre-stream-id";
-NSString *const FSMoviePlayerSelectingStreamErrUserInfoKey = @"err-code";
-NSString *const FSMoviePlayerSelectingStreamDidFailed = @"FSMoviePlayerSelectingStreamDidFailed";
+NSString *const FSPlayerSelectingStreamIDUserInfoKey = @"stream-id";
+NSString *const FSPlayerPreSelectingStreamIDUserInfoKey = @"pre-stream-id";
+NSString *const FSPlayerSelectingStreamErrUserInfoKey = @"err-code";
+NSString *const FSPlayerSelectingStreamDidFailed = @"FSPlayerSelectingStreamDidFailed";
 
-NSString *const FSMPMoviePlayerICYMetaChangedNotification = @"FSMPMoviePlayerICYMetaChangedNotification";
+NSString *const FSPlayerICYMetaChangedNotification = @"FSPlayerICYMetaChangedNotification";
 
 @implementation FSMediaUrlOpenData {
     NSString *_url;

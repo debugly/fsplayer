@@ -1,5 +1,5 @@
 /*
- * FSMoviePlayerDef.m
+ * FSPlayerDef.m
  *
  * Copyright (c) 2013 Bilibili
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
@@ -21,10 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "FSMoviePlayerDef.h"
+#import "FSPlayerDef.h"
 #include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 
-@implementation FSMoviePlayerMessage
+@implementation FSPlayerMessage
 {
     @public
     AVMessage m_msg;
@@ -37,11 +37,11 @@
 
 @end
 
-@implementation FSMoviePlayerMessagePool{
+@implementation FSPlayerMessagePool{
     NSMutableArray *_array;
 }
 
-- (FSMoviePlayerMessagePool *)init
+- (FSPlayerMessagePool *)init
 {
     self = [super init];
     if (self) {
@@ -50,9 +50,9 @@
     return self;
 }
 
-- (FSMoviePlayerMessage *) obtain
+- (FSPlayerMessage *) obtain
 {
-    FSMoviePlayerMessage *msg = nil;
+    FSPlayerMessage *msg = nil;
 
     @synchronized(self) {
         NSUInteger count = [_array count];
@@ -63,12 +63,12 @@
     }
 
     if (!msg)
-        msg = [[FSMoviePlayerMessage alloc] init];
+        msg = [[FSPlayerMessage alloc] init];
 
     return msg;
 }
 
-- (void) recycle:(FSMoviePlayerMessage *)msg
+- (void) recycle:(FSPlayerMessage *)msg
 {
     if (!msg)
         return;

@@ -53,7 +53,7 @@
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
 //    self.player.view.frame = CGRectMake(0, 0, 414, 232);
-    self.player.scalingMode = FSMPMovieScalingModeAspectFit;
+    self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
     
     FSSDLSubtitlePreference p = self.player.subtitlePreference;

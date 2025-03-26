@@ -1,5 +1,5 @@
 /*
- * FSMoviePlayerDef.h
+ * FSPlayerDef.h
  *
  * Copyright (c) 2013 Bilibili
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
@@ -55,17 +55,17 @@ FSSampleAspectRatioMake(NSInteger numerator, NSInteger denominator)
 
 typedef struct AVMessage AVMessage;
 
-@interface FSMoviePlayerMessage : NSObject
+@interface FSPlayerMessage : NSObject
 
 @property (nonatomic, assign) AVMessage *msg;
 
 @end
 
 
-@interface FSMoviePlayerMessagePool : NSObject
+@interface FSPlayerMessagePool : NSObject
 
-- (FSMoviePlayerMessagePool *)init;
-- (FSMoviePlayerMessage *) obtain;
-- (void) recycle:(FSMoviePlayerMessage *)msg;
+- (FSPlayerMessagePool *)init;
+- (FSPlayerMessage *) obtain;
+- (void) recycle:(FSPlayerMessage *)msg;
 
 @end

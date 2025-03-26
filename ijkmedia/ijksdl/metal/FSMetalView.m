@@ -130,7 +130,7 @@ typedef CGRect NSRect;
 
 - (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach
 {
-    if (_scalingMode == FSMPMovieScalingModeFill) {
+    if (_scalingMode == FSScalingModeFill) {
         return CGSizeMake(1.0, 1.0);
     }
     
@@ -176,9 +176,9 @@ typedef CGRect NSRect;
     float hRatio = drawableSize.height / frameHeight;
     float ratio  = 1.0f;
     
-    if (_scalingMode == FSMPMovieScalingModeAspectFit) {
+    if (_scalingMode == FSScalingModeAspectFit) {
         ratio = FFMIN(wRatio, hRatio);
-    } else if (_scalingMode == FSMPMovieScalingModeAspectFill) {
+    } else if (_scalingMode == FSScalingModeAspectFill) {
         ratio = FFMAX(wRatio, hRatio);
     }
     float nW = (frameWidth * ratio / drawableSize.width);
@@ -292,7 +292,7 @@ typedef CGRect NSRect;
 - (void)sendHDRAnimationNotifiOnMainThread:(int)state
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:FSMoviePlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
     });
 }
 
@@ -653,7 +653,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 #pragma mark - override setter methods
 
-- (void)setScalingMode:(FSMPMovieScalingMode)scalingMode
+- (void)setScalingMode:(FSScalingMode)scalingMode
 {
     if (_scalingMode != scalingMode) {
         _scalingMode = scalingMode;
