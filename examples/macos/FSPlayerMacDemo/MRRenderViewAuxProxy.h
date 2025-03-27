@@ -1,6 +1,6 @@
 //
 //  MRRenderViewAuxProxy.h
-//  FSPlayerMediaMacDemo
+//  FSPlayerMacDemo
 //
 //  Created by debugly on 2023/4/6.
 //  Copyright © 2023 FSPlayer Mac. All rights reserved.

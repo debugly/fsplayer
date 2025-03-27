@@ -1,6 +1,6 @@
 //
 //  MRTextInfoViewController.h
-//  FSPlayerMediaMacDemo
+//  FSPlayerMacDemo
 //
 //  Created by debugly on 2023/5/25.
 //  Copyright © 2023 FSPlayer Mac. All rights reserved.

@@ -1,6 +1,6 @@
 //
 //  MRPlayerSettingsView.m
-//  FSPlayerMediaMacDemo
+//  FSPlayerMacDemo
 //
 //  Created by debugly on 2024/5/16.
 //  Copyright © 2024 FSPlayer Mac. All rights reserved.

@@ -1,6 +1,6 @@
 //
 //  MRBaseView.h
-//  FSPlayerMediaMacDemo
+//  FSPlayerMacDemo
 //
 //  Created by debugly on 2022/2/25.
 //  Copyright © 2022 FSPlayer Mac. All rights reserved.

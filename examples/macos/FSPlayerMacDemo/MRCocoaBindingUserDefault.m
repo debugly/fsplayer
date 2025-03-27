@@ -1,6 +1,6 @@
 //
 //  MRCocoaBindingUserDefault.m
-//  FSPlayerMediaMacDemo
+//  FSPlayerMacDemo
 //
 //  Created by debugly on 2024/1/25.
 //  Copyright © 2024 FSPlayer Mac. All rights reserved.
