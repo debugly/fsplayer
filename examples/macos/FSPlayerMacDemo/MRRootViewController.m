@@ -667,8 +667,9 @@ static BOOL hdrAnimationShown = 0;
     //    [options setFormatOptionValue:@"fastopen=2:dns_cache_timeout=600000:addrinfo_timeout=2000000" forKey:@"seg_format_options"];
     //default inherit options : "headers", "user_agent", "cookies", "http_proxy", "referer", "rw_timeout", "icy",you can inherit more:
     
-    //protocol_whitelist need add httpproxy
-    //[options setFormatOptionValue:@"http://127.0.0.1:8888" forKey:@"http_proxy"];
+    //protocolWhitelist need set to httpproxy
+    //options.protocolWhitelist = @"httpproxy";
+    //[options setFormatOptionValue:@"127.0.0.1:7890" forKey:@"http_proxy"];
     
     //[options setFormatOptionIntValue:1 forKey:@"use_n516_configure_mov_pkt_buffer"];
 

@@ -162,7 +162,12 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_FORMAT,"safe", 0);
     //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_PLAYER,"protocol_whitelist","ffconcat,file,http,https");
     //httpproxy
-    ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_FORMAT,"protocol_whitelist","ijkio,ijkhttphook,concat,http,tcp,https,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp");
+    const char *default_p_whitelist = "ijkio,ijkhttphook,concat,http,tcp,https,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp";
+    if (options.protocolWhitelist.length > 0) {
+        NSString *whitelist = [[NSString stringWithUTF8String:default_p_whitelist] stringByAppendingFormat:@",%@",options.protocolWhitelist];
+        default_p_whitelist = [whitelist UTF8String];
+    }
+    ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_FORMAT, "protocol_whitelist", default_p_whitelist);
     
     _subtitlePreference = ijk_subtitle_default_preference();
     // init hud

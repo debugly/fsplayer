@@ -3434,7 +3434,7 @@ static int read_thread(void *arg)
     if (err < 0) {
         ret = -1;
         
-        av_log(NULL, AV_LOG_ERROR, "open [%s] failed:%s,err:%d\n", is->filename, av_err2str(err), err);
+        av_log(NULL, AV_LOG_ERROR, "open failed:%s,err:%d,[%s]\n", av_err2str(err), err, is->filename);
         last_error = err;
         goto fail;
     }

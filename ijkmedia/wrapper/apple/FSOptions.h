@@ -76,6 +76,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) BOOL showHudView;
 //default is auto; you can set to NO means force use opengl.
 @property(nonatomic) BOOL metalRenderer;
+//append extra protocol whitelist
+@property(nonatomic, copy) NSString *protocolWhitelist;
 
 @end
 NS_ASSUME_NONNULL_END
