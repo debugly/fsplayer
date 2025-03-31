@@ -134,7 +134,6 @@
 		DD9B139122C23A7A002D1D79 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		DD9B139322C23A7A002D1D79 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		DD9B139422C23A7A002D1D79 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		DD9B139622C23A7A002D1D79 /* IJKMediaDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IJKMediaDemo.entitlements; sourceTree = "<group>"; };
 		DD9B13B922C24017002D1D79 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		DD9B13BB22C2401F002D1D79 /* libbz2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libbz2.tbd; path = usr/lib/libbz2.tbd; sourceTree = SDKROOT; };
 		DD9B13BD22C24026002D1D79 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
@@ -188,6 +187,53 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C98E41692D9A281A0076F2F8 /* ViewController */ = {
+			isa = PBXGroup;
+			children = (
+				DDB782792757266800382094 /* SHBaseView.h */,
+				DDB7827A2757266900382094 /* SHBaseView.m */,
+				DD4EAFFF27310F1C00FBCD3A /* WindowController.h */,
+				DD4EB00027310F1C00FBCD3A /* WindowController.m */,
+				C99B0F1829DE76B100E88ECB /* MRRenderViewAuxProxy.h */,
+				C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */,
+				C905CF1E2B55163C00D59730 /* MRRootViewController.h */,
+				C905CF1F2B55163C00D59730 /* MRRootViewController.m */,
+				C905CF202B55163C00D59730 /* MRRootViewController.xib */,
+				C9C7E27F2B60F09100D5F2E0 /* MRPlayerSettingsViewController.h */,
+				C9C7E2802B60F09100D5F2E0 /* MRPlayerSettingsViewController.m */,
+				C9C7E2812B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib */,
+				C9CCCB042BF5B58E00A13FE2 /* MRPlayerSettingsView.h */,
+				C9CCCB052BF5B58E00A13FE2 /* MRPlayerSettingsView.m */,
+				C9CCCB022BF5B51400A13FE2 /* MRPlayerSettingsView.xib */,
+				C905CF162B54C8D300D59730 /* MRAutoTestViewController.h */,
+				C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */,
+				C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */,
+				C905CF1A2B550C7400D59730 /* MRStatisticalViewController.h */,
+				C905CF192B550C7400D59730 /* MRStatisticalViewController.m */,
+				C905CF1B2B550C7400D59730 /* MRStatisticalViewController.xib */,
+				C9C7E2772B60E37200D5F2E0 /* MRPlaylistViewController.h */,
+				C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */,
+				C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */,
+				C9C291CC2B6234FB00C42B5C /* MRCocoaBindingUserDefault.h */,
+				C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */,
+				C9C7E27C2B60E54A00D5F2E0 /* MRPlaylistRowView.h */,
+				C9C7E27D2B60E54A00D5F2E0 /* MRPlaylistRowView.m */,
+				C99B0F8F29DE9D2500E88ECB /* MultiRenderSample.h */,
+				C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */,
+				C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */,
+				C97DCC0527C867EA0019874F /* MRBaseView.h */,
+				C97DCC0627C867EA0019874F /* MRBaseView.m */,
+				C9FFF21427C864C100284B46 /* MRProgressSlider.h */,
+				C9FFF21327C864C100284B46 /* MRProgressSlider.m */,
+				C96F5B9A291A052100C79E07 /* MRProgressIndicator.h */,
+				C96F5B99291A052000C79E07 /* MRProgressIndicator.m */,
+				C97674EB2A1F333D00B7627E /* MRTextInfoViewController.h */,
+				C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */,
+				C97674ED2A1F333D00B7627E /* MRTextInfoViewController.xib */,
+			);
+			path = ViewController;
+			sourceTree = "<group>";
+		};
 		DD0443DB27E7749800CB946B /* MRActionKit */ = {
 			isa = PBXGroup;
 			children = (
@@ -254,46 +300,7 @@
 			children = (
 				DD9B138B22C23A79002D1D79 /* AppDelegate.h */,
 				DD9B138C22C23A79002D1D79 /* AppDelegate.m */,
-				DDB782792757266800382094 /* SHBaseView.h */,
-				DDB7827A2757266900382094 /* SHBaseView.m */,
-				DD4EAFFF27310F1C00FBCD3A /* WindowController.h */,
-				DD4EB00027310F1C00FBCD3A /* WindowController.m */,
-				C99B0F1829DE76B100E88ECB /* MRRenderViewAuxProxy.h */,
-				C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */,
-				C905CF1E2B55163C00D59730 /* MRRootViewController.h */,
-				C905CF1F2B55163C00D59730 /* MRRootViewController.m */,
-				C905CF202B55163C00D59730 /* MRRootViewController.xib */,
-				C9C7E27F2B60F09100D5F2E0 /* MRPlayerSettingsViewController.h */,
-				C9C7E2802B60F09100D5F2E0 /* MRPlayerSettingsViewController.m */,
-				C9C7E2812B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib */,
-				C9CCCB042BF5B58E00A13FE2 /* MRPlayerSettingsView.h */,
-				C9CCCB052BF5B58E00A13FE2 /* MRPlayerSettingsView.m */,
-				C9CCCB022BF5B51400A13FE2 /* MRPlayerSettingsView.xib */,
-				C905CF162B54C8D300D59730 /* MRAutoTestViewController.h */,
-				C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */,
-				C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */,
-				C905CF1A2B550C7400D59730 /* MRStatisticalViewController.h */,
-				C905CF192B550C7400D59730 /* MRStatisticalViewController.m */,
-				C905CF1B2B550C7400D59730 /* MRStatisticalViewController.xib */,
-				C9C7E2772B60E37200D5F2E0 /* MRPlaylistViewController.h */,
-				C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */,
-				C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */,
-				C9C291CC2B6234FB00C42B5C /* MRCocoaBindingUserDefault.h */,
-				C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */,
-				C9C7E27C2B60E54A00D5F2E0 /* MRPlaylistRowView.h */,
-				C9C7E27D2B60E54A00D5F2E0 /* MRPlaylistRowView.m */,
-				C99B0F8F29DE9D2500E88ECB /* MultiRenderSample.h */,
-				C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */,
-				C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */,
-				C97DCC0527C867EA0019874F /* MRBaseView.h */,
-				C97DCC0627C867EA0019874F /* MRBaseView.m */,
-				C9FFF21427C864C100284B46 /* MRProgressSlider.h */,
-				C9FFF21327C864C100284B46 /* MRProgressSlider.m */,
-				C96F5B9A291A052100C79E07 /* MRProgressIndicator.h */,
-				C96F5B99291A052000C79E07 /* MRProgressIndicator.m */,
-				C97674EB2A1F333D00B7627E /* MRTextInfoViewController.h */,
-				C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */,
-				C97674ED2A1F333D00B7627E /* MRTextInfoViewController.xib */,
+				C98E41692D9A281A0076F2F8 /* ViewController */,
 				DD050F9A25A43A1300F01E2F /* DragView */,
 				DD050F9425A43A1300F01E2F /* MRUtil */,
 				DD0443DB27E7749800CB946B /* MRActionKit */,
@@ -302,7 +309,6 @@
 				C955004627C765A30026AB17 /* PrefixHeader.pch */,
 				DD9B139322C23A7A002D1D79 /* Info.plist */,
 				DD9B139422C23A7A002D1D79 /* main.m */,
-				DD9B139622C23A7A002D1D79 /* IJKMediaDemo.entitlements */,
 			);
 			path = FSPlayerMacDemo;
 			sourceTree = "<group>";

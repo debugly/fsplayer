@@ -166,7 +166,7 @@
         _isPaused = YES;
         OSStatus status = AudioQueuePause(_audioQueueRef);
         if (status != noErr)
-        NSLog(@"AudioQueue: AudioQueuePause failed (%d)\n", (int)status);
+            NSLog(@"AudioQueue: AudioQueuePause failed (%d)\n", (int)status);
     }
 }
 

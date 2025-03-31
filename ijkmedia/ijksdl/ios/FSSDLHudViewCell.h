@@ -1,6 +1,6 @@
 //
 //  FSSDLHudViewCell.h
-//  FSMediaPlayer
+//  FSPlayer
 //
 //  Created by Zhang Rui on 15/12/14.
 //  Copyright © 2015年 bilibili. All rights reserved.
