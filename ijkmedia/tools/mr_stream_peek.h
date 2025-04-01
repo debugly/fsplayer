@@ -1,7 +1,7 @@
 //
 //  mr_stream_peek.h
 //
-// ijkplayer not use the file, but the file will be used by other module in app.
+// FSPlayer not use the file, but the file will be used by other module in app.
 //
 //  Created by debugly on 2023/9/7.
 //
