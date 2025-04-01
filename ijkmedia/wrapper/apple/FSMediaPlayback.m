@@ -24,7 +24,7 @@
 
 #import "FSMediaPlayback.h"
 
-NSString *const FSPlayerIsPreparedToPlayDidChangeNotification = @"FSPlayerIsPreparedToPlayDidChangeNotification";
+NSString *const FSPlayerIsPreparedToPlayNotification = @"FSPlayerIsPreparedToPlayNotification";
 
 NSString *const FSPlayerDidFinishNotification = @"FSPlayerDidFinishNotification";
 NSString *const FSPlayerDidFinishReasonUserInfoKey =

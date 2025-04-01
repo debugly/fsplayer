@@ -63,7 +63,7 @@
     [self.settingsView addVideoItemWithTitle:currentVideo];
     
     for (NSDictionary *stream in mediaMeta[FS_KEY_STREAMS]) {
-        NSString *type = stream[FS_KEY_TYPE];
+        NSString *type = stream[FS_KEY_STREAM_TYPE];
         int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
         if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
             NSLog(@"subtile meta:%@",stream);

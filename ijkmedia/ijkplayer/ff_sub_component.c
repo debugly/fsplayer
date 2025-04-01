@@ -42,7 +42,7 @@ typedef struct FFSubComponent{
     int video_width, video_height;
     int sub_width, sub_height;
     FFSubtitleBufferPacket sub_buffer_array;
-    FSSDLSubtitlePreference sp;
+    FSSubtitlePreference sp;
     int sp_changed;
     float startTime;
     
@@ -684,7 +684,7 @@ AVCodecContext * subComponent_get_avctx(FFSubComponent *com)
     return com ? com->decoder.avctx : NULL;
 }
 
-void subComponent_update_preference(FFSubComponent *com, FSSDLSubtitlePreference* sp)
+void subComponent_update_preference(FFSubComponent *com, FSSubtitlePreference* sp)
 {
     if (!com) {
         return;

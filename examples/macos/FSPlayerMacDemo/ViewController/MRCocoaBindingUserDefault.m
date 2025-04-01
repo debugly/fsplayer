@@ -44,7 +44,7 @@
 
 + (NSDictionary *)initValues 
 {
-    FSSDLSubtitlePreference sp = ijk_subtitle_default_preference();
+    FSSubtitlePreference sp = ijk_subtitle_default_preference();
     
     NSColor *text_color = ijk_ass_int_to_color(sp.PrimaryColour);
     NSData *text_color_data = [NSKeyedArchiver archivedDataWithRootObject:text_color];

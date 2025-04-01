@@ -332,18 +332,18 @@ static BOOL hdrAnimationShown = 0;
                 break;
             case kVK_ANSI_R:
             {
-                FSSDLRotatePreference preference = self.player.view.rotatePreference;
+                FSRotatePreference preference = self.player.view.rotatePreference;
                 
-                if (preference.type == FSSDLRotateNone) {
-                    preference.type = FSSDLRotateZ;
+                if (preference.type == FSRotateNone) {
+                    preference.type = FSRotateZ;
                 }
                 
                 if (event.modifierFlags & NSEventModifierFlagOption) {
                     
                     preference.type --;
                     
-                    if (preference.type <= FSSDLRotateNone) {
-                        preference.type = FSSDLRotateZ;
+                    if (preference.type <= FSRotateNone) {
+                        preference.type = FSRotateZ;
                     }
                 }
                 
@@ -401,7 +401,7 @@ static BOOL hdrAnimationShown = 0;
                 int position = -1;
                 NSMutableArray *subStreamIdxArr = [NSMutableArray array];
                 for (NSDictionary *stream in dic[FS_KEY_STREAMS]) {
-                    NSString *type = stream[FS_KEY_TYPE];
+                    NSString *type = stream[FS_KEY_STREAM_TYPE];
                     if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
                         int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
                         if (currentIdx == streamIdx) {
@@ -699,7 +699,7 @@ static BOOL hdrAnimationShown = 0;
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSPlayerFirstVideoFrameRenderedNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSPlayerIsPreparedToPlayDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSPlayerIsPreparedToPlayNotification object:self.player];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSPlayerSelectedStreamDidChangeNotification object:self.player];
     
@@ -875,7 +875,7 @@ static BOOL hdrAnimationShown = 0;
         [self.videoPopUpBtn addItemWithTitle:currentVideo];
         
         for (NSDictionary *stream in dic[FS_KEY_STREAMS]) {
-            NSString *type = stream[FS_KEY_TYPE];
+            NSString *type = stream[FS_KEY_STREAM_TYPE];
             int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
             if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
                 NSLog(@"subtile meta:%@",stream);
@@ -1350,14 +1350,14 @@ static BOOL hdrAnimationShown = 0;
 {
     NSMenuItem *item = [sender selectedItem];
     int bgrValue = (int)item.tag;
-    FSSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSubtitlePreference p = self.player.subtitlePreference;
     p.PrimaryColour = bgrValue;
     self.player.subtitlePreference = p;
 }
 
 - (IBAction)onChangeSubtitleSize:(NSStepper *)sender
 {
-    FSSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSubtitlePreference p = self.player.subtitlePreference;
     p.Scale = sender.floatValue / 50;
     self.player.subtitlePreference = p;
 }
@@ -1382,7 +1382,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (IBAction)onChangeSubtitleBottomMargin:(NSSlider *)sender
 {
-    FSSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSubtitlePreference p = self.player.subtitlePreference;
     p.BottomMargin = sender.floatValue;
     self.player.subtitlePreference = p;
 }
@@ -1417,25 +1417,25 @@ static BOOL hdrAnimationShown = 0;
 {
     NSMenuItem *item = [sender selectedItem];
     
-    FSSDLRotatePreference preference = self.player.view.rotatePreference;
+    FSRotatePreference preference = self.player.view.rotatePreference;
     
     if (item.tag == 0) {
-        preference.type = FSSDLRotateNone;
+        preference.type = FSRotateNone;
         preference.degrees = 0;
     } else if (item.tag == 1) {
-        preference.type = FSSDLRotateZ;
+        preference.type = FSRotateZ;
         preference.degrees = -90;
     } else if (item.tag == 2) {
-        preference.type = FSSDLRotateZ;
+        preference.type = FSRotateZ;
         preference.degrees = -180;
     } else if (item.tag == 3) {
-        preference.type = FSSDLRotateZ;
+        preference.type = FSRotateZ;
         preference.degrees = -270;
     } else if (item.tag == 4) {
-        preference.type = FSSDLRotateY;
+        preference.type = FSRotateY;
         preference.degrees = 180;
     } else if (item.tag == 5) {
-        preference.type = FSSDLRotateX;
+        preference.type = FSRotateX;
         preference.degrees = 180;
     }
     
@@ -1488,7 +1488,7 @@ static BOOL hdrAnimationShown = 0;
         self.contrast = sender.floatValue;
     }
     
-    FSSDLColorConversionPreference colorPreference = self.player.view.colorPreference;
+    FSColorConvertPreference colorPreference = self.player.view.colorPreference;
     colorPreference.brightness = self.brightness;//B
     colorPreference.saturation = self.saturation;//S
     colorPreference.contrast = self.contrast;//C
@@ -1506,7 +1506,7 @@ static BOOL hdrAnimationShown = 0;
         const char* str = sender.titleOfSelectedItem.UTF8String;
         sscanf(str, "%d:%d", &dar_num, &dar_den);
     }
-    self.player.view.darPreference = (FSSDLDARPreference){1.0 * dar_num/dar_den};
+    self.player.view.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
     if (!self.player.isPlaying) {
         [self.player.view setNeedsRefreshCurrentPic];
     }

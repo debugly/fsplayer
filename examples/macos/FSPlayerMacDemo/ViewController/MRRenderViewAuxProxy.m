@@ -80,7 +80,7 @@
     [renderViewArr makeObjectsPerformSelector:_cmd];
 }
 
-- (CGImageRef)snapshot:(FSSDLSnapshotType)aType
+- (CGImageRef)snapshot:(FSSnapshotType)aType
 {
     [self.lock lock];
     NSArray *renderViewArr = [self.renderViewArr copy];
@@ -94,7 +94,7 @@
     return nil;
 }
 
-- (void)setColorPreference:(FSSDLColorConversionPreference)colorPreference
+- (void)setColorPreference:(FSColorConvertPreference)colorPreference
 {
     _colorPreference = colorPreference;
     
@@ -107,7 +107,7 @@
     }
 }
 
-- (void)setDarPreference:(FSSDLDARPreference)darPreference
+- (void)setDarPreference:(FSDARPreference)darPreference
 {
     _darPreference = darPreference;
     
@@ -133,7 +133,7 @@
     }
 }
 
-- (void)setRotatePreference:(FSSDLRotatePreference)rotatePreference
+- (void)setRotatePreference:(FSRotatePreference)rotatePreference
 {
     _rotatePreference = rotatePreference;
     

@@ -52,7 +52,7 @@
 #define FS_KEY_ICY_SU               @"StreamUrl"
 
 // stream meta
-#define FS_KEY_TYPE                 @"type"
+#define FS_KEY_STREAM_TYPE          @"type"
 #define FS_VAL_TYPE__VIDEO          @"video"
 #define FS_VAL_TYPE__AUDIO          @"audio"
 #define FS_VAL_TYPE__SUBTITLE       @"timedtext"

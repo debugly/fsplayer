@@ -368,18 +368,18 @@ static BOOL hdrAnimationShown = 0;
                 break;
             case kVK_ANSI_R:
             {
-                FSSDLRotatePreference preference = self.player.view.rotatePreference;
+                FSRotatePreference preference = self.player.view.rotatePreference;
                 
-                if (preference.type == FSSDLRotateNone) {
-                    preference.type = FSSDLRotateZ;
+                if (preference.type == FSRotateNone) {
+                    preference.type = FSRotateZ;
                 }
                 
                 if (event.modifierFlags & NSEventModifierFlagOption) {
                     
                     preference.type --;
                     
-                    if (preference.type <= FSSDLRotateNone) {
-                        preference.type = FSSDLRotateZ;
+                    if (preference.type <= FSRotateNone) {
+                        preference.type = FSRotateZ;
                     }
                 }
                 
@@ -442,7 +442,7 @@ static BOOL hdrAnimationShown = 0;
                 int position = -1;
                 NSMutableArray *subStreamIdxArr = [NSMutableArray array];
                 for (NSDictionary *stream in dic[FS_KEY_STREAMS]) {
-                    NSString *type = stream[FS_KEY_TYPE];
+                    NSString *type = stream[FS_KEY_STREAM_TYPE];
                     if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
                         int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
                         if (currentIdx == streamIdx) {
@@ -575,6 +575,10 @@ static BOOL hdrAnimationShown = 0;
     
     FSOptions *options = [FSOptions optionsByDefault];
     
+    [options setFormatOptionValue:@"ijkhttp1" forKey:@"selected_http"];
+    [options setFormatOptionIntValue:4 forKey:@"bee_log_level"];
+    [options setFormatOptionIntValue:1 forKey:@"bluray_allow_cache"];
+
     //isLive表示是直播还是点播
     if (isLive) {
         // Param for living
@@ -646,9 +650,9 @@ static BOOL hdrAnimationShown = 0;
     //默认不使用dns缓存，指定超时时间才会使用；
     if ([MRCocoaBindingUserDefault use_dns_cache]) {
         [options setFormatOptionIntValue:[MRCocoaBindingUserDefault dns_cache_period] * 1000 forKey:@"dns_cache_timeout"];
-        [options setFormatOptionValue:@"connect_timeout,ijkapplication,addrinfo_one_by_one,addrinfo_timeout,dns_cache_timeout,fastopen,dns_cache_clear" forKey:@"seg_inherit_options"];
+        [options setFormatOptionValue:@"connect_timeout,ijkapplication,selected_http,addrinfo_one_by_one,addrinfo_timeout,dns_cache_timeout,fastopen,dns_cache_clear" forKey:@"seg_inherit_options"];
     } else {
-        [options setFormatOptionValue:@"ijkapplication" forKey:@"seg_inherit_options"];
+        [options setFormatOptionValue:@"ijkapplication,selected_http" forKey:@"seg_inherit_options"];
     }
     
     if ([MRCocoaBindingUserDefault open_gzip]) {
@@ -670,7 +674,7 @@ static BOOL hdrAnimationShown = 0;
     //protocolWhitelist need set to httpproxy
     //options.protocolWhitelist = @"httpproxy";
     //[options setFormatOptionValue:@"127.0.0.1:7890" forKey:@"http_proxy"];
-    
+    options.protocolWhitelist = @"ijkhttp1";
     //[options setFormatOptionIntValue:1 forKey:@"use_n516_configure_mov_pkt_buffer"];
 
 //    NSString *cacheDir = [NSFileManager mr_DirWithType:NSCachesDirectory WithPathComponent:@"ijk-cache"];
@@ -721,7 +725,7 @@ static BOOL hdrAnimationShown = 0;
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSPlayerFindStreamInfoNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSPlayerIsPreparedToPlayDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSPlayerIsPreparedToPlayNotification object:self.player];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSPlayerFirstVideoFrameRenderedNotification object:self.player];
     
@@ -1422,7 +1426,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (void)applySubtitlePreference
 {
-    FSSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSubtitlePreference p = self.player.subtitlePreference;
     p.ForceOverride = [MRCocoaBindingUserDefault force_override];
     p.PrimaryColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault PrimaryColour]);
     p.SecondaryColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault SecondaryColour]);
@@ -1447,7 +1451,7 @@ static BOOL hdrAnimationShown = 0;
 
 - (void)applyBSC
 {
-    FSSDLColorConversionPreference colorPreference = self.player.view.colorPreference;
+    FSColorConvertPreference colorPreference = self.player.view.colorPreference;
     colorPreference.brightness = [MRCocoaBindingUserDefault color_adjust_brightness];
     colorPreference.saturation = [MRCocoaBindingUserDefault color_adjust_saturation];
     colorPreference.contrast   = [MRCocoaBindingUserDefault color_adjust_contrast];
@@ -1480,30 +1484,30 @@ static BOOL hdrAnimationShown = 0;
         dar_num = 1;
         dar_den = 1;
     }
-    self.player.view.darPreference = (FSSDLDARPreference){1.0 * dar_num/dar_den};
+    self.player.view.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
 }
 
 - (void)applyRotate
 {
-    FSSDLRotatePreference preference = self.player.view.rotatePreference;
+    FSRotatePreference preference = self.player.view.rotatePreference;
     int rotate = [MRCocoaBindingUserDefault picture_ratate_mode];
     if (rotate == 0) {
-        preference.type = FSSDLRotateNone;
+        preference.type = FSRotateNone;
         preference.degrees = 0;
     } else if (rotate == 1) {
-        preference.type = FSSDLRotateZ;
+        preference.type = FSRotateZ;
         preference.degrees = -90;
     } else if (rotate == 2) {
-        preference.type = FSSDLRotateZ;
+        preference.type = FSRotateZ;
         preference.degrees = -180;
     } else if (rotate == 3) {
-        preference.type = FSSDLRotateZ;
+        preference.type = FSRotateZ;
         preference.degrees = -270;
     } else if (rotate == 4) {
-        preference.type = FSSDLRotateY;
+        preference.type = FSRotateY;
         preference.degrees = 180;
     } else if (rotate == 5) {
-        preference.type = FSSDLRotateX;
+        preference.type = FSRotateX;
         preference.degrees = 180;
     }
     self.player.view.rotatePreference = preference;
@@ -1613,7 +1617,7 @@ static BOOL hdrAnimationShown = 0;
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         NSString *name = v;
         if (name) {
             strcpy(p.FontName,[name UTF8String]);
@@ -1625,14 +1629,14 @@ static BOOL hdrAnimationShown = 0;
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.BottomMargin = ([v intValue] - 20) / 100.0;
         self.player.subtitlePreference = p;
     } forKey:@"subtitle_bottom_margin"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.Scale = [v floatValue];
         self.player.subtitlePreference = p;
     } forKey:@"subtitle_scale"];
@@ -1640,7 +1644,7 @@ static BOOL hdrAnimationShown = 0;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
         NSColor *color = v;
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.PrimaryColour = ijk_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"PrimaryColour"];
@@ -1648,7 +1652,7 @@ static BOOL hdrAnimationShown = 0;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
         NSColor *color = v;
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.SecondaryColour = ijk_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"SecondaryColour"];
@@ -1656,7 +1660,7 @@ static BOOL hdrAnimationShown = 0;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
         NSColor *color = v;
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.BackColour = ijk_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"BackColour"];
@@ -1664,28 +1668,28 @@ static BOOL hdrAnimationShown = 0;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
         NSColor *color = v;
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.OutlineColour = ijk_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"OutlineColour"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.Outline = [v floatValue];
         self.player.subtitlePreference = p;
     } forKey:@"Outline"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         p.ForceOverride = [v boolValue];
         self.player.subtitlePreference = p;
     } forKey:@"force_override"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull rm) {
         __strongSelf__
-        FSSDLSubtitlePreference p = self.player.subtitlePreference;
+        FSSubtitlePreference p = self.player.subtitlePreference;
         if (!v) {
             v = @"";
         }

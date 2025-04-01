@@ -67,7 +67,7 @@ int ff_sub_set_delay(FFSubtitle *sub, float delay, float cp);
 float ff_sub_get_delay(FFSubtitle *sub);
 
 //return 1 means need refresh display
-int ff_update_sub_preference(FFSubtitle *sub, FSSDLSubtitlePreference* sp);
+int ff_update_sub_preference(FFSubtitle *sub, FSSubtitlePreference* sp);
 
 //for external subtitle.
 int ff_sub_add_ex_subtitle(FFSubtitle *sub, const char *file_name, IjkMediaMeta **out_meta, int *out_idx);

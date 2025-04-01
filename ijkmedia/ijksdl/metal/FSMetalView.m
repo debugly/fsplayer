@@ -66,9 +66,9 @@ typedef CGRect NSRect;
 
 - (BOOL)prepareMetal
 {
-    _rotatePreference   = (FSSDLRotatePreference){FSSDLRotateNone, 0.0};
-    _colorPreference    = (FSSDLColorConversionPreference){1.0, 1.0, 1.0};
-    _darPreference      = (FSSDLDARPreference){0.0};
+    _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
+    _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
+    _darPreference      = (FSDARPreference){0.0};
     _pilelineLock = [[NSLock alloc]init];
     
     self.device = MTLCreateSystemDefaultDevice();
@@ -143,7 +143,7 @@ typedef CGRect NSRect;
     }
     
     int zDegrees = 0;
-    if (_rotatePreference.type == FSSDLRotateZ) {
+    if (_rotatePreference.type == FSRotateZ) {
         zDegrees += _rotatePreference.degrees;
     }
     zDegrees += attach.autoZRotate;
@@ -412,7 +412,7 @@ typedef CGRect NSRect;
     float darRatio = self.darPreference.ratio;
     
     int zDegrees = 0;
-    if (_rotatePreference.type == FSSDLRotateZ) {
+    if (_rotatePreference.type == FSRotateZ) {
         zDegrees += _rotatePreference.degrees;
     }
     zDegrees += attach.autoZRotate;
@@ -522,16 +522,16 @@ typedef CGRect NSRect;
     }];
 }
 
-- (CGImageRef)snapshot:(FSSDLSnapshotType)aType
+- (CGImageRef)snapshot:(FSSnapshotType)aType
 {
     switch (aType) {
-        case FSSDLSnapshot_Origin:
+        case FSSnapshotTypeOrigin:
             return [self _snapshotOrigin:self.currentAttach];
-        case FSSDLSnapshot_Screen:
+        case FSSnapshotTypeScreen:
             return [self _snapshotScreen];
-        case FSSDLSnapshot_Effect_Origin:
+        case FSSnapshotTypeEffect_Origin:
             return [self _snapshotWithSubtitle:NO];
-        case FSSDLSnapshot_Effect_Subtitle_Origin:
+        case FSSnapshotTypeEffect_Subtitle_Origin:
             return [self _snapshotWithSubtitle:YES];
     }
 }
@@ -539,7 +539,7 @@ typedef CGRect NSRect;
 #if TARGET_OS_IOS || TARGET_OS_TV
 - (UIImage *)snapshot
 {
-    CGImageRef cgImg = [self snapshot:FSSDLSnapshot_Screen];
+    CGImageRef cgImg = [self snapshot:FSSnapshotTypeScreen];
     return [[UIImage alloc]initWithCGImage:cgImg];
 }
 
@@ -660,21 +660,21 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     }
 }
 
-- (void)setRotatePreference:(FSSDLRotatePreference)rotatePreference
+- (void)setRotatePreference:(FSRotatePreference)rotatePreference
 {
     if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
         _rotatePreference = rotatePreference;
     }
 }
 
-- (void)setColorPreference:(FSSDLColorConversionPreference)colorPreference
+- (void)setColorPreference:(FSColorConvertPreference)colorPreference
 {
     if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
         _colorPreference = colorPreference;
     }
 }
 
-- (void)setDarPreference:(FSSDLDARPreference)darPreference
+- (void)setDarPreference:(FSDARPreference)darPreference
 {
     if (_darPreference.ratio != darPreference.ratio) {
         _darPreference = darPreference;

@@ -1408,7 +1408,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self startHudTimer];
             _isPreparedToPlay = YES;
 
-            [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayDidChangeNotification object:self];
+            [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayNotification object:self];
             _loadState = FSPlayerLoadStatePlayable | FSPlayerLoadStatePlaythroughOK;
 
             [[NSNotificationCenter defaultCenter]
@@ -2138,7 +2138,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     }
 }
 
-- (void)setSubtitlePreference:(FSSDLSubtitlePreference)subtitlePreference
+- (void)setSubtitlePreference:(FSSubtitlePreference)subtitlePreference
 {
     if (!isIJKSDLSubtitlePreferenceEqual(&_subtitlePreference, &subtitlePreference)) {
         _subtitlePreference = subtitlePreference;

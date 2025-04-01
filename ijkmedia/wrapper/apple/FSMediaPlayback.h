@@ -123,7 +123,7 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 #endif
 
 //subtitle preference
-@property(nonatomic) FSSDLSubtitlePreference subtitlePreference;
+@property(nonatomic) FSSubtitlePreference subtitlePreference;
 //load spped (byte)
 - (int64_t)currentDownloadSpeed;
 
@@ -140,7 +140,7 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 
 // Posted when the prepared state changes of an object conforming to the MPMediaPlayback protocol changes.
 // This supersedes MPMoviePlayerContentPreloadDidFinishNotification.
-FS_EXTERN NSString *const FSPlayerIsPreparedToPlayDidChangeNotification;
+FS_EXTERN NSString *const FSPlayerIsPreparedToPlayNotification;
 
 // -----------------------------------------------------------------------------
 //  MPMoviePlayerController.h

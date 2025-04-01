@@ -873,7 +873,7 @@ void ijkmp_step_to_next_frame(IjkMediaPlayer *mp)
     ffp_step_to_next_frame(mp->ffplayer);
 }
 
-void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSDLSubtitlePreference* sp)
+void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSubtitlePreference* sp)
 {
     assert(mp);
     ffp_set_subtitle_preference(mp->ffplayer, sp);

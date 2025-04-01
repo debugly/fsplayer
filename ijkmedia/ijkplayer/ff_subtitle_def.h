@@ -41,7 +41,7 @@ typedef struct FFSubtitleBuffer {
 FFSubtitleBuffer * ff_subtitle_buffer_retain(FFSubtitleBuffer *);
 void ff_subtitle_buffer_release(FFSubtitleBuffer **);
 
-typedef struct FSSDLSubtitlePreference {
+typedef struct FSSubtitlePreference {
     float Scale; //字体缩放,默认 1.0
     float BottomMargin;//距离底部距离[0.0, 1.0]
     
@@ -54,11 +54,11 @@ typedef struct FSSDLSubtitlePreference {
     uint32_t OutlineColour;//字体边框颜色
     float Outline;//Outline 边框宽度
     char FontsDir[1024];//存放字体的文件夹路径（当字体没有安装到系统里时指定）
-} FSSDLSubtitlePreference;
+} FSSubtitlePreference;
 
-static inline FSSDLSubtitlePreference ijk_subtitle_default_preference(void)
+static inline FSSubtitlePreference ijk_subtitle_default_preference(void)
 {
-    return (FSSDLSubtitlePreference){1.0, 0.025, 0, "", 0xFFFFFF00, 0x00FFFF00, 0x00000080, 0, 1, ""};
+    return (FSSubtitlePreference){1.0, 0.025, 0, "", 0xFFFFFF00, 0x00FFFF00, 0x00000080, 0, 1, ""};
 }
 
 static inline uint32_t str_to_uint32_color(char *token)
@@ -90,7 +90,7 @@ static inline void uint32_color_to_str(uint32_t color, char *buff, int size)
     sprintf(buff + 8, "%02X", a);
 }
 
-static inline int isIJKSDLSubtitlePreferenceEqual(FSSDLSubtitlePreference* p1,FSSDLSubtitlePreference* p2)
+static inline int isIJKSDLSubtitlePreferenceEqual(FSSubtitlePreference* p1,FSSubtitlePreference* p2)
 {
     if (!p1 || !p2) {
         return 0;

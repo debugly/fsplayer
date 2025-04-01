@@ -118,5 +118,5 @@ void      ffp_set_enable_accurate_seek(FFPlayer *ffp,int open);
 /* step to next frame */
 void      ffp_step_to_next_frame(FFPlayer *ffp);
 /* set subtitle preference*/
-void      ffp_set_subtitle_preference(FFPlayer *ffp, FSSDLSubtitlePreference* sp);
+void      ffp_set_subtitle_preference(FFPlayer *ffp, FSSubtitlePreference* sp);
 #endif

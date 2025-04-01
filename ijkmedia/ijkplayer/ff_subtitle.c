@@ -62,7 +62,7 @@ typedef struct FFSubtitle {
     int next_idx;
     
     int video_w, video_h;
-    FSSDLSubtitlePreference sp;
+    FSSubtitlePreference sp;
     SDL_TextureOverlay *assTexture;
     SDL_FBOOverlay *fbo;
     SDL_TextureOverlay *preTexture;
@@ -726,7 +726,7 @@ int ff_sub_packet_queue_flush(FFSubtitle *sub)
     return -1;
 }
 
-int ff_update_sub_preference(FFSubtitle *sub, FSSDLSubtitlePreference* sp)
+int ff_update_sub_preference(FFSubtitle *sub, FSSubtitlePreference* sp)
 {
     int r = 0;
     if (sub) {

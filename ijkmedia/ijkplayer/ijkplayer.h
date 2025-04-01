@@ -235,6 +235,6 @@ void ijkmp_set_enable_accurate_seek(IjkMediaPlayer *mp, int open);
 /* step to next frame */
 void ijkmp_step_to_next_frame(IjkMediaPlayer *mp);
 
-typedef struct FSSDLSubtitlePreference FSSDLSubtitlePreference;
-void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSDLSubtitlePreference* sp);
+typedef struct FSSubtitlePreference FSSubtitlePreference;
+void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSubtitlePreference* sp);
 #endif

@@ -718,7 +718,7 @@ typedef struct FFPlayer {
 
     ijk_audio_samples_callback audio_samples_callback;
     
-    FSSDLSubtitlePreference sp;
+    FSSubtitlePreference sp;
     
     //icy update
     int64_t icy_update_period;//ms

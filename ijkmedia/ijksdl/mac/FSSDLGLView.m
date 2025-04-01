@@ -166,9 +166,9 @@ static void unlock_gl(NSOpenGLContext *ctx)
         [self.renderThread start];
         [self setup];
 
-        _rotatePreference   = (FSSDLRotatePreference){FSSDLRotateNone, 0.0};
-        _colorPreference    = (FSSDLColorConversionPreference){1.0, 1.0, 1.0};
-        _darPreference      = (FSSDLDARPreference){0.0};
+        _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
+        _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
+        _darPreference      = (FSDARPreference){0.0};
         _rendererGravity    = FS_GLES2_GRAVITY_RESIZE_ASPECT;
     }
     return self;
@@ -661,7 +661,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     }
 }
 
-- (CGImageRef)snapshot:(FSSDLSnapshotType)aType
+- (CGImageRef)snapshot:(FSSnapshotType)aType
 {
     FSOverlayAttach *attach = self.currentAttach;
     if (!attach) {
@@ -669,9 +669,9 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     }
     
     switch (aType) {
-        case FSSDLSnapshot_Origin:
+        case FSSnapshotTypeOrigin:
             return [self _snapshot_origin:attach];
-        case FSSDLSnapshot_Screen:
+        case FSSnapshotTypeScreen:
         {
             CGImageRef reuslt = NULL;
             NSValue * address = [NSValue valueWithPointer:(void *)&reuslt];
@@ -681,7 +681,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
                                  waitUntilDone:YES];
             return reuslt ? (CGImageRef)CFAutorelease(reuslt) : NULL;
         }
-        case FSSDLSnapshot_Effect_Origin:
+        case FSSnapshotTypeEffect_Origin:
         {
             CGImageRef reuslt = NULL;
             NSValue * address = [NSValue valueWithPointer:(void *)&reuslt];
@@ -696,7 +696,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
                                  waitUntilDone:YES];
             return reuslt ? (CGImageRef)CFAutorelease(reuslt) : NULL;
         }
-        case FSSDLSnapshot_Effect_Subtitle_Origin:
+        case FSSnapshotTypeEffect_Subtitle_Origin:
         {
             CGImageRef reuslt = NULL;
             NSValue * address = [NSValue valueWithPointer:(void *)&reuslt];
@@ -735,7 +735,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     }
 }
 
-- (void)setRotatePreference:(FSSDLRotatePreference)rotatePreference
+- (void)setRotatePreference:(FSRotatePreference)rotatePreference
 {
     if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
         _rotatePreference = rotatePreference;
@@ -745,7 +745,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     }
 }
 
-- (void)setColorPreference:(FSSDLColorConversionPreference)colorPreference
+- (void)setColorPreference:(FSColorConvertPreference)colorPreference
 {
     if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
         _colorPreference = colorPreference;
@@ -755,7 +755,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     }
 }
 
-- (void)setDarPreference:(FSSDLDARPreference)darPreference
+- (void)setDarPreference:(FSDARPreference)darPreference
 {
     if (_darPreference.ratio != darPreference.ratio) {
         _darPreference = darPreference;

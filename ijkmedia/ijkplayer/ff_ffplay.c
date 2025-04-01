@@ -5624,7 +5624,7 @@ int ffp_apply_subtitle_preference(FFPlayer *ffp)
     return ff_update_sub_preference(ffp->is->ffSub, &ffp->sp);
 }
 
-void ffp_set_subtitle_preference(FFPlayer *ffp, FSSDLSubtitlePreference* sp)
+void ffp_set_subtitle_preference(FFPlayer *ffp, FSSubtitlePreference* sp)
 {
     if (!ffp || !sp) {
         return;

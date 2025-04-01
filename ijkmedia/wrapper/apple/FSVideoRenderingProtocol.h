@@ -100,36 +100,36 @@ static inline UIColor * ijk_ass_int_to_color(uint32_t rgba) {
 }
 
 typedef enum _IJKSDLRotateType {
-    FSSDLRotateNone,
-    FSSDLRotateX,
-    FSSDLRotateY,
-    FSSDLRotateZ
-} FSSDLRotateType;
+    FSRotateNone,
+    FSRotateX,
+    FSRotateY,
+    FSRotateZ
+} FSRotateType;
 
-typedef struct _IJKSDLRotatePreference FSSDLRotatePreference;
+typedef struct _IJKSDLRotatePreference FSRotatePreference;
 struct _IJKSDLRotatePreference {
-    FSSDLRotateType type;
+    FSRotateType type;
     float degrees;
 };
 
-typedef struct _IJKSDLColorConversionPreference FSSDLColorConversionPreference;
-struct _IJKSDLColorConversionPreference {
+typedef struct _FSColorConvertPreference FSColorConvertPreference;
+struct _FSColorConvertPreference {
     float brightness;
     float saturation;
     float contrast;
 };
 
-typedef struct _IJKSDLDARPreference FSSDLDARPreference;
+typedef struct _IJKSDLDARPreference FSDARPreference;
 struct _IJKSDLDARPreference {
     float ratio; //ratio is width / height;
 };
 
 typedef enum : NSUInteger {
-    FSSDLSnapshot_Origin, //keep original video size,without subtitle and video effect
-    FSSDLSnapshot_Screen, //current glview's picture as you see
-    FSSDLSnapshot_Effect_Origin,//keep original video size,with subtitle,without video effect
-    FSSDLSnapshot_Effect_Subtitle_Origin //keep original video size,with subtitle and video effect
-} FSSDLSnapshotType;
+    FSSnapshotTypeOrigin, //keep original video size,without subtitle and video effect
+    FSSnapshotTypeScreen, //current glview's picture as you see
+    FSSnapshotTypeEffect_Origin,//keep original video size,with subtitle,without video effect
+    FSSnapshotTypeEffect_Subtitle_Origin //keep original video size,with subtitle and video effect
+} FSSnapshotType;
 
 @protocol FSVideoRenderingProtocol <NSObject>
 
@@ -142,11 +142,11 @@ typedef enum : NSUInteger {
  you can call -[setNeedsRefreshCurrentPic] method let current picture refresh right now.
  */
 // rotate preference
-@property(nonatomic) FSSDLRotatePreference rotatePreference;
+@property(nonatomic) FSRotatePreference rotatePreference;
 // color conversion preference
-@property(nonatomic) FSSDLColorConversionPreference colorPreference;
+@property(nonatomic) FSColorConvertPreference colorPreference;
 // user defined display aspect ratio
-@property(nonatomic) FSSDLDARPreference darPreference;
+@property(nonatomic) FSDARPreference darPreference;
 // not render picture and subtitle,but holder overlay content.
 @property(atomic) BOOL preventDisplay;
 // hdr video show 'Gray mask' animation
@@ -160,7 +160,7 @@ typedef enum : NSUInteger {
 #if !TARGET_OS_OSX
 - (UIImage *)snapshot;
 #else
-- (CGImageRef)snapshot:(FSSDLSnapshotType)aType;
+- (CGImageRef)snapshot:(FSSnapshotType)aType;
 #endif
 - (NSString *)name;
 - (id)context;
