@@ -575,10 +575,6 @@ static BOOL hdrAnimationShown = 0;
     
     FSOptions *options = [FSOptions optionsByDefault];
     
-    [options setFormatOptionValue:@"ijkhttp1" forKey:@"selected_http"];
-    [options setFormatOptionIntValue:4 forKey:@"bee_log_level"];
-    [options setFormatOptionIntValue:1 forKey:@"bluray_allow_cache"];
-
     //isLive表示是直播还是点播
     if (isLive) {
         // Param for living
