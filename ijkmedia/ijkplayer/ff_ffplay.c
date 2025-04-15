@@ -3321,34 +3321,37 @@ static AVDictionary **setup_find_stream_info_opts(AVFormatContext *s,
 
 int ffp_apply_subtitle_preference(FFPlayer *ffp);
 
-static void reset_buffer_size(FFPlayer *ffp)
+static void auto_decide_buffer_size(FFPlayer *ffp)
 {
     if (!ffp->is) {
         return;
     }
     SDL_LockMutex(ffp->is->play_mutex);
-    int buffer_size = DEFAULT_QUEUE_SIZE;
-    double audio_delay = ffp->is->audio_st ? get_clock_extral_delay(&ffp->is->audclk) : 0;
     AVFormatContext *ic = ffp->is->ic;
     if (ic) {
+        int buffer_size;
         if (ic->bit_rate > 0) {
             buffer_size = (int)(ic->bit_rate / 8) * (MAX_PACKETS_CACHE_DURATION);
-    //        if (ic->bit_rate < 10000000) {
-    //            buffer_size += ic->bit_rate/1000000 * 1024 * 1024;
-    //        } else {
-    //            buffer_size += 10 * 1024 * 1024;
-    //            int rate = (int)(ic->bit_rate / 1000000);
-    //            buffer_size += rate * 1024 * 1024;
-    //        }
             buffer_size = FFMAX(DEFAULT_QUEUE_SIZE, buffer_size);
             buffer_size = FFMIN(MAX_QUEUE_SIZE, buffer_size);
         } else {
-            buffer_size = (DEFAULT_QUEUE_SIZE + MAX_QUEUE_SIZE) / 2 + fabs(audio_delay) * 1024 * 1024;
+            buffer_size = (DEFAULT_QUEUE_SIZE + MAX_QUEUE_SIZE) / 2;
         }
+        double audio_delay = ffp->is->audio_st ? get_clock_extral_delay(&ffp->is->audclk) : 0;
         ffp->dcc.max_buffer_size = buffer_size + fabs(audio_delay) * DEFAULT_QUEUE_SIZE;
-        av_log(NULL, AV_LOG_INFO, "auto decision max buffer size:%dMB\n",ffp->dcc.max_buffer_size/1024/1024);
+        av_log(NULL, AV_LOG_INFO, "auto decide max buffer size:%dMB\n",ffp->dcc.max_buffer_size/1024/1024);
     }
     SDL_UnlockMutex(ffp->is->play_mutex);
+}
+
+static double max_buffer_size(FFPlayer *ffp)
+{
+    double audio_delay = 0.0;
+    
+    if (ffp->is) {
+        audio_delay = ffp->is->audio_st ? get_clock_extral_delay(&ffp->is->audclk) : 0;
+    }
+    return ffp->dcc.max_buffer_size + fabs(audio_delay) * DEFAULT_QUEUE_SIZE;
 }
 
 /* this thread gets the stream from the disk or the network */
@@ -3636,7 +3639,7 @@ static int read_thread(void *arg)
     ffp->stat.bit_rate = ic->bit_rate;
     
     if (ffp->dcc.max_buffer_size == 0) {
-        reset_buffer_size(ffp);
+        auto_decide_buffer_size(ffp);
     }
     
     if (is->video_stream < 0 && is->audio_stream < 0) {
@@ -3848,7 +3851,7 @@ static int read_thread(void *arg)
 #ifdef FFP_MERGE
               (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE)
 #else
-               (is->audioq.size + is->videoq.size + ff_sub_frame_cache_remaining(is->ffSub) > ffp->dcc.max_buffer_size
+               (is->audioq.size + is->videoq.size + ff_sub_frame_cache_remaining(is->ffSub) > max_buffer_size(ffp)
 #endif
             || (   stream_has_enough_packets(is->audio_st, is->audio_stream, &is->audioq, MIN_FRAMES)
                 && stream_has_enough_packets(is->video_st, is->video_stream, &is->videoq, MIN_FRAMES)
@@ -5478,7 +5481,6 @@ void ffp_set_audio_extra_delay(FFPlayer *ffp, const float delay)
     if (!is)
         return;
     set_clock_extral_delay(&is->audclk, delay);
-    reset_buffer_size(ffp);
 }
 
 float ffp_get_audio_extra_delay(FFPlayer *ffp)

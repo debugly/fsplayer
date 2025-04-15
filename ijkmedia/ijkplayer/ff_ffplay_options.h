@@ -137,8 +137,8 @@ static const AVOption ffp_context_options[] = {
                                                        VIDEO_PICTURE_QUEUE_SIZE_MIN,
                                                        VIDEO_PICTURE_QUEUE_SIZE_MAX) },
 
-    { "max-buffer-size",                    "max buffer size should be pre-read,support auto decision",
-        OPTION_OFFSET(dcc.max_buffer_size), OPTION_INT(0, 0, MAX_QUEUE_SIZE) },
+    { "max-buffer-size",                    "max buffer size (500MB) should be pre-read,support auto decision",
+        OPTION_OFFSET(dcc.max_buffer_size), OPTION_INT(0, 0, 524288000 ) },
     { "min-frames",                         "minimal frames to stop pre-reading",
         OPTION_OFFSET(dcc.min_frames),      OPTION_INT(DEFAULT_MIN_FRAMES, MIN_MIN_FRAMES, MAX_MIN_FRAMES) },
     { "first-high-water-mark-ms",           "first chance to wakeup read_thread",
