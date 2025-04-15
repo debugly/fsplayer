@@ -42,14 +42,14 @@ typedef struct FF_ASS_Context {
     char *fontsdir;
     char *charenc;
     int original_w, original_h;
-    int bottom_margin;
     int force_changed;
     double scale;
 } FF_ASS_Context;
 
 #define OFFSET(x) offsetof(FF_ASS_Context, x)
 #define FLAGS AV_OPT_FLAG_VIDEO_PARAM
-    
+#define ASS_DEFAULT_FONST_SIZE 18
+
 const AVOption ff_ass_options[] = {
     {"fontsdir",       "set the directory containing the fonts to read",           OFFSET(fontsdir),   AV_OPT_TYPE_STRING,     {.str = NULL},  0, 0, FLAGS },
     {"charenc",      "set input character encoding", OFFSET(charenc),      AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, FLAGS},
@@ -124,8 +124,9 @@ static void set_video_size(FF_ASS_Renderer *s, int w, int h)
     
     ass->original_w = w;
     ass->original_h = h;
-    ass->scale = 1.0;
     
+    ass->scale = 1.0;
+    ass_set_use_margins(ass->renderer, 0);
     ass_set_frame_size(ass->renderer, w, h);
     ass_set_storage_size(ass->renderer, w, h);
     //ass_set_cache_limits(ass->renderer, 3, 0);
@@ -169,12 +170,12 @@ static void draw_ass_bgra(unsigned char *src, int src_w, int src_h,
     #undef COLOR_BLEND
 }
 
-static void draw_single_inset(FFSubtitleBuffer *frame, ASS_Image *img, int insetx, int insety, int bottom_margin)
+static void draw_single_inset(FFSubtitleBuffer *frame, ASS_Image *img, int insetx, int insety)
 {
     if (img->w == 0 || img->h == 0)
         return;
     unsigned char *dst = frame->data;
-    int y = img->dst_y - insety - bottom_margin;
+    int y = img->dst_y - insety;
     if (y < 0) {
         y = 0;
     }
@@ -217,24 +218,13 @@ static int upload_buffer(FF_ASS_Renderer *s, double time_ms, FFSubtitleBuffer **
         SDL_UnlockMutex(ass->mutex);
         return 0;
     }
-    
-    int bm = ass->bottom_margin;
-    int water_mark = ass->original_h * SUBTITLE_MOVE_WATERMARK;
+
     SDL_Rectangle dirtyRect = {0};
     
     {
         ASS_Image *img = imgs;
         while (img) {
-            int y = img->dst_y;
-            if (y > water_mark) {
-                y -= bm;
-                if (y < 0) {
-                    y = 0;
-                } else if (y + img->h > ass->original_h) {
-                    y = ass->original_h - img->h;
-                }
-            }
-            SDL_Rectangle t = {img->dst_x, y, img->w, img->h};
+            SDL_Rectangle t = {img->dst_x, img->dst_y, img->w, img->h};
             dirtyRect = SDL_union_rectangle(dirtyRect, t);
             img = img->next;
         }
@@ -246,17 +236,7 @@ static int upload_buffer(FF_ASS_Renderer *s, double time_ms, FFSubtitleBuffer **
     int cnt = 0;
     while (imgs) {
         ++cnt;
-        int y = imgs->dst_y;
-        if (y > water_mark) {
-            y -= bm;
-            if (y < 0) {
-                y = 0;
-            } else if (y + imgs->h > ass->original_h) {
-                y = ass->original_h - imgs->h;
-            }
-        }
-        int offset = imgs->dst_y - y;
-        draw_single_inset(frame, imgs, dirtyRect.x, dirtyRect.y, offset);
+        draw_single_inset(frame, imgs, dirtyRect.x, dirtyRect.y);
         imgs = imgs->next;
     }
     *buffer = frame;
@@ -373,20 +353,14 @@ static void flush_events(FF_ASS_Renderer *s)
     SDL_UnlockMutex(ass->mutex);
 }
 
-static void update_bottom_margin(FF_ASS_Renderer *s, int b)
+static int get_PlayResY(FF_ASS_Renderer *s)
 {
     FF_ASS_Context *ass = s->priv_data;
-    if (!ass || !ass->renderer) {
-        return;
+    if (!ass) {
+        return 0;
     }
-    //设置后字体会被压缩变形
-    //ass_set_margins(ass->renderer, 0, b, 0, 0);
-    SDL_LockMutex(ass->mutex);
-    if (ass->bottom_margin != b) {
-        ass->bottom_margin = b;
-        ass->force_changed = 1;
-    }
-    SDL_UnlockMutex(ass->mutex);
+    
+    return (ass->track ? ass->track->PlayResY : 0) - ass->scale * ASS_DEFAULT_FONST_SIZE * 2;
 }
 
 static void set_font_scale(FF_ASS_Renderer *s, double scale)
@@ -404,7 +378,7 @@ static void set_font_scale(FF_ASS_Renderer *s, double scale)
     SDL_UnlockMutex(ass->mutex);
 }
 
-static void set_style(ASS_Style *style, char *overrides)
+static void parse_style(ASS_Style *style, char *overrides)
 {
     char *temp = NULL;
     char *ptr = av_strtok(overrides, ",", &temp);
@@ -418,21 +392,50 @@ static void set_style(ASS_Style *style, char *overrides)
         if (!av_strcasecmp(fs, "FontName")) {
             style->FontName = strdup(token);
         } else if (!av_strcasecmp(fs, "PrimaryColour")) {
-            style->PrimaryColour = str_to_uint32_color(token);
+            style->PrimaryColour = fs_str_to_uint32_color(token);
         } else if (!av_strcasecmp(fs, "SecondaryColour")) {
-            style->SecondaryColour = str_to_uint32_color(token);
+            style->SecondaryColour = fs_str_to_uint32_color(token);
         } else if (!av_strcasecmp(fs, "OutlineColour")) {
-            style->OutlineColour = str_to_uint32_color(token);
+            style->OutlineColour = fs_str_to_uint32_color(token);
         } else if (!av_strcasecmp(fs, "BackColour")) {
-            style->BackColour = str_to_uint32_color(token);
+            style->BackColour = fs_str_to_uint32_color(token);
+        } else if (!av_strcasecmp(fs, "Bold")) {
+            style->Bold = atoi(token);
+        } else if (!av_strcasecmp(fs, "Italic")) {
+            style->Italic = atoi(token);
+        } else if (!av_strcasecmp(fs, "Underline")) {
+            style->Underline = atoi(token);
+        } else if (!av_strcasecmp(fs, "StrikeOut")) {
+            style->StrikeOut = atoi(token);
+        } else if (!av_strcasecmp(fs, "ScaleX")) {
+            style->ScaleX = strtod(token, NULL);
+        } else if (!av_strcasecmp(fs, "ScaleY")) {
+            style->ScaleY = strtod(token, NULL);
+        } else if (!av_strcasecmp(fs, "Spacing")) {
+            style->Spacing = strtod(token, NULL);
+        } else if (!av_strcasecmp(fs, "Angle")) {
+            style->Angle = strtod(token, NULL);
+        } else if (!av_strcasecmp(fs, "BorderStyle")) {
+            style->BorderStyle = atoi(token);
         } else if (!av_strcasecmp(fs, "Outline")) {
-            style->Outline = strtof(token, NULL);
+            style->Outline = strtod(token, NULL);
+        } else if (!av_strcasecmp(fs, "Shadow")) {
+            style->Shadow = strtod(token, NULL);
+        } else if (!av_strcasecmp(fs, "Alignment")) {
+            style->Alignment = atoi(token);
+        } else if (!av_strcasecmp(fs, "MarginL")) {
+            style->MarginL = atoi(token);
+        } else if (!av_strcasecmp(fs, "MarginR")) {
+            style->MarginR = atoi(token);
+        } else if (!av_strcasecmp(fs, "MarginV")) {
+            style->MarginV = atoi(token);
+        } else if (!av_strcasecmp(fs, "Encoding")) {
+            style->Encoding = atoi(token);
         } else {
-            av_log(NULL, AV_LOG_WARNING, "todo force style:%s=%s\n",fs,token);
+            av_log(NULL, AV_LOG_ERROR, "todo force style:%s=%s\n",fs,token);
         }
         ptr = av_strtok(NULL, ",", &temp);
     }
-
 }
 
 static void set_force_style(FF_ASS_Renderer *s, char * overrides, int level)
@@ -444,22 +447,23 @@ static void set_force_style(FF_ASS_Renderer *s, char * overrides, int level)
     
     if (level > 0) {
         ASS_Style style = { 0 };
-        style.FontSize = 18;
+        style.Name = "FSPlayer";
+        style.FontSize = ASS_DEFAULT_FONST_SIZE;
         style.ScaleX = 1.;
         style.ScaleY = 1.;
         style.Spacing = 0;
-        set_style(&style, overrides);
+        parse_style(&style, overrides);
         SDL_LockMutex(ass->mutex);
         ass_set_selective_style_override(ass->renderer, &style);
         int set_force_flags = 0;
-        set_force_flags |= ASS_OVERRIDE_BIT_STYLE | ASS_OVERRIDE_BIT_SELECTIVE_FONT_SCALE;
+        set_force_flags |= ASS_OVERRIDE_BIT_STYLE | ASS_OVERRIDE_BIT_SELECTIVE_FONT_SCALE | ASS_OVERRIDE_BIT_MARGINS;
         ass_set_selective_style_override_enabled(ass->renderer, set_force_flags);
         ass_process_force_style(ass->track);
     } else {
         SDL_LockMutex(ass->mutex);
         ASS_Style *defaultStyle = ass->track->styles + ass->track->default_style;
         if (!av_strcasecmp(defaultStyle->Name, "Default")) {
-            set_style(defaultStyle, overrides);
+            parse_style(defaultStyle, overrides);
         }
         ass_set_selective_style_override_enabled(ass->renderer, ASS_OVERRIDE_DEFAULT);
     }
@@ -507,7 +511,7 @@ FF_ASS_Renderer_Format ff_ass_default_format = {
     .process_chunk      = process_chunk,
     .flush_events       = flush_events,
     .upload_buffer      = upload_buffer,
-    .update_bottom_margin= update_bottom_margin,
+    .get_PlayResY       = get_PlayResY,
     .set_font_scale     = set_font_scale,
     .set_force_style    = set_force_style,
     .uninit             = uninit,

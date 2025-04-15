@@ -41,7 +41,7 @@ typedef struct FF_ASS_Renderer_Format {
     void (*process_chunk)(FF_ASS_Renderer *s, char *ass_line, int64_t start, int64_t duration);
     void (*flush_events)(FF_ASS_Renderer *s);
     int  (*upload_buffer)(FF_ASS_Renderer *, double time_ms, FFSubtitleBuffer **buffer, int ignore_change);
-    void (*update_bottom_margin)(FF_ASS_Renderer *s, int b);
+    int  (*get_PlayResY)(FF_ASS_Renderer *s);
     void (*set_font_scale)(FF_ASS_Renderer *, double scale);
     void (*set_force_style)(FF_ASS_Renderer *s, char * style, int level);
     void (*uninit)(FF_ASS_Renderer *);
