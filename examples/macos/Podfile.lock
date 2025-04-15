@@ -9,8 +9,8 @@ EXTERNAL SOURCES:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  FSPlayer: 6ed5544fc12d898f726587f99e5cf2e969dcfd63
+  FSPlayer: 1c1aef3e60d43d1f707baacfd3249d12b7039b8b
 
 PODFILE CHECKSUM: d5ffdce4eb47d3fd95ede5ab3c07bb9e4aab8b89
 
-COCOAPODS: 1.16.1
+COCOAPODS: 1.16.2

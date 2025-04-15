@@ -18,6 +18,7 @@
 #import "MRTextInfoViewController.h"
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #import "MRCocoaBindingUserDefault.h"
+#import "MRInputURLViewController.h"
 
 @interface AppDelegate ()
 
@@ -168,6 +169,12 @@
         [dic setObject:bookmarkArr forKey:@"obj"];
         POST_NOTIFICATION(kPlayExplorerMovieNotificationName_G, self, dic);
     }
+}
+
+- (IBAction)openInputURLViewController:(id)sender
+{
+    MRInputURLViewController *inputVC = [[MRInputURLViewController alloc]init];
+    [self.windowCtrl.window.contentViewController presentViewControllerAsModalWindow:inputVC];
 }
 
 - (IBAction)showPreferencesPanel:(id)sender

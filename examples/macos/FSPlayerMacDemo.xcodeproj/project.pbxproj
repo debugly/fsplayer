@@ -14,6 +14,7 @@
 		C905CF1D2B550C7400D59730 /* MRStatisticalViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF1B2B550C7400D59730 /* MRStatisticalViewController.xib */; };
 		C905CF212B55163C00D59730 /* MRRootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF1F2B55163C00D59730 /* MRRootViewController.m */; };
 		C905CF222B55163C00D59730 /* MRRootViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF202B55163C00D59730 /* MRRootViewController.xib */; };
+		C92F1A242DAE240200540BD5 /* MRTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = C92F1A232DAE240200540BD5 /* MRTextField.m */; };
 		C969BE4B27BDCD27008BC2AD /* MRGlobalNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = C969BE4927BDCD27008BC2AD /* MRGlobalNotification.m */; };
 		C969BE4E27BDD34E008BC2AD /* MRUtil+SystemPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = C969BE4C27BDD34E008BC2AD /* MRUtil+SystemPanel.m */; };
 		C96F5B9B291A052100C79E07 /* MRProgressIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = C96F5B99291A052000C79E07 /* MRProgressIndicator.m */; };
@@ -21,6 +22,8 @@
 		C97674EE2A1F333D00B7627E /* MRTextInfoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */; };
 		C97674EF2A1F333D00B7627E /* MRTextInfoViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C97674ED2A1F333D00B7627E /* MRTextInfoViewController.xib */; };
 		C97DCC0727C867EA0019874F /* MRBaseView.m in Sources */ = {isa = PBXBuildFile; fileRef = C97DCC0627C867EA0019874F /* MRBaseView.m */; };
+		C986F7BA2DADF2C6006D5F4E /* MRInputURLViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C986F7B82DADF2C6006D5F4E /* MRInputURLViewController.m */; };
+		C986F7BB2DADF2C6006D5F4E /* MRInputURLViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C986F7B92DADF2C6006D5F4E /* MRInputURLViewController.xib */; };
 		C99B0F1A29DE76B100E88ECB /* MRRenderViewAuxProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */; };
 		C99B0F9229DE9D2500E88ECB /* MultiRenderSample.m in Sources */ = {isa = PBXBuildFile; fileRef = C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */; };
 		C99B0F9329DE9D2500E88ECB /* MultiRenderSample.xib in Resources */ = {isa = PBXBuildFile; fileRef = C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */; };
@@ -77,6 +80,8 @@
 		C905CF1E2B55163C00D59730 /* MRRootViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRRootViewController.h; sourceTree = "<group>"; };
 		C905CF1F2B55163C00D59730 /* MRRootViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRRootViewController.m; sourceTree = "<group>"; };
 		C905CF202B55163C00D59730 /* MRRootViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MRRootViewController.xib; sourceTree = "<group>"; };
+		C92F1A222DAE240200540BD5 /* MRTextField.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRTextField.h; sourceTree = "<group>"; };
+		C92F1A232DAE240200540BD5 /* MRTextField.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRTextField.m; sourceTree = "<group>"; };
 		C955004627C765A30026AB17 /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
 		C969BE4927BDCD27008BC2AD /* MRGlobalNotification.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRGlobalNotification.m; sourceTree = "<group>"; };
 		C969BE4A27BDCD27008BC2AD /* MRGlobalNotification.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRGlobalNotification.h; sourceTree = "<group>"; };
@@ -91,6 +96,9 @@
 		C97674ED2A1F333D00B7627E /* MRTextInfoViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MRTextInfoViewController.xib; sourceTree = "<group>"; };
 		C97DCC0527C867EA0019874F /* MRBaseView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRBaseView.h; sourceTree = "<group>"; };
 		C97DCC0627C867EA0019874F /* MRBaseView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRBaseView.m; sourceTree = "<group>"; };
+		C986F7B72DADF2C6006D5F4E /* MRInputURLViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRInputURLViewController.h; sourceTree = "<group>"; };
+		C986F7B82DADF2C6006D5F4E /* MRInputURLViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRInputURLViewController.m; sourceTree = "<group>"; };
+		C986F7B92DADF2C6006D5F4E /* MRInputURLViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MRInputURLViewController.xib; sourceTree = "<group>"; };
 		C99B0F1829DE76B100E88ECB /* MRRenderViewAuxProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRRenderViewAuxProxy.h; sourceTree = "<group>"; };
 		C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRRenderViewAuxProxy.m; sourceTree = "<group>"; };
 		C99B0F8F29DE9D2500E88ECB /* MultiRenderSample.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MultiRenderSample.h; sourceTree = "<group>"; };
@@ -187,11 +195,29 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C92F1A1F2DAE239C00540BD5 /* CustomView */ = {
+			isa = PBXGroup;
+			children = (
+				C92F1A222DAE240200540BD5 /* MRTextField.h */,
+				C92F1A232DAE240200540BD5 /* MRTextField.m */,
+				DDB782792757266800382094 /* SHBaseView.h */,
+				DDB7827A2757266900382094 /* SHBaseView.m */,
+				C97DCC0527C867EA0019874F /* MRBaseView.h */,
+				C97DCC0627C867EA0019874F /* MRBaseView.m */,
+				C9FFF21427C864C100284B46 /* MRProgressSlider.h */,
+				C9FFF21327C864C100284B46 /* MRProgressSlider.m */,
+				C96F5B9A291A052100C79E07 /* MRProgressIndicator.h */,
+				C96F5B99291A052000C79E07 /* MRProgressIndicator.m */,
+				C97674EB2A1F333D00B7627E /* MRTextInfoViewController.h */,
+				C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */,
+				C97674ED2A1F333D00B7627E /* MRTextInfoViewController.xib */,
+			);
+			path = CustomView;
+			sourceTree = "<group>";
+		};
 		C98E41692D9A281A0076F2F8 /* ViewController */ = {
 			isa = PBXGroup;
 			children = (
-				DDB782792757266800382094 /* SHBaseView.h */,
-				DDB7827A2757266900382094 /* SHBaseView.m */,
 				DD4EAFFF27310F1C00FBCD3A /* WindowController.h */,
 				DD4EB00027310F1C00FBCD3A /* WindowController.m */,
 				C99B0F1829DE76B100E88ECB /* MRRenderViewAuxProxy.h */,
@@ -214,6 +240,9 @@
 				C9C7E2772B60E37200D5F2E0 /* MRPlaylistViewController.h */,
 				C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */,
 				C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */,
+				C986F7B72DADF2C6006D5F4E /* MRInputURLViewController.h */,
+				C986F7B82DADF2C6006D5F4E /* MRInputURLViewController.m */,
+				C986F7B92DADF2C6006D5F4E /* MRInputURLViewController.xib */,
 				C9C291CC2B6234FB00C42B5C /* MRCocoaBindingUserDefault.h */,
 				C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */,
 				C9C7E27C2B60E54A00D5F2E0 /* MRPlaylistRowView.h */,
@@ -221,15 +250,6 @@
 				C99B0F8F29DE9D2500E88ECB /* MultiRenderSample.h */,
 				C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */,
 				C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */,
-				C97DCC0527C867EA0019874F /* MRBaseView.h */,
-				C97DCC0627C867EA0019874F /* MRBaseView.m */,
-				C9FFF21427C864C100284B46 /* MRProgressSlider.h */,
-				C9FFF21327C864C100284B46 /* MRProgressSlider.m */,
-				C96F5B9A291A052100C79E07 /* MRProgressIndicator.h */,
-				C96F5B99291A052000C79E07 /* MRProgressIndicator.m */,
-				C97674EB2A1F333D00B7627E /* MRTextInfoViewController.h */,
-				C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */,
-				C97674ED2A1F333D00B7627E /* MRTextInfoViewController.xib */,
 			);
 			path = ViewController;
 			sourceTree = "<group>";
@@ -300,6 +320,7 @@
 			children = (
 				DD9B138B22C23A79002D1D79 /* AppDelegate.h */,
 				DD9B138C22C23A79002D1D79 /* AppDelegate.m */,
+				C92F1A1F2DAE239C00540BD5 /* CustomView */,
 				C98E41692D9A281A0076F2F8 /* ViewController */,
 				DD050F9A25A43A1300F01E2F /* DragView */,
 				DD050F9425A43A1300F01E2F /* MRUtil */,
@@ -376,7 +397,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 1410;
-				ORGANIZATIONNAME = "IJK Mac";
+				ORGANIZATIONNAME = FSPlayer;
 				TargetAttributes = {
 					DD9B138722C23A79002D1D79 = {
 						CreatedOnToolsVersion = 10.2.1;
@@ -415,6 +436,7 @@
 				DD9B138F22C23A7A002D1D79 /* Assets.xcassets in Resources */,
 				DD9B139222C23A7A002D1D79 /* MainMenu.xib in Resources */,
 				C905CF1D2B550C7400D59730 /* MRStatisticalViewController.xib in Resources */,
+				C986F7BB2DADF2C6006D5F4E /* MRInputURLViewController.xib in Resources */,
 				C97674EF2A1F333D00B7627E /* MRTextInfoViewController.xib in Resources */,
 				C9C7E2832B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib in Resources */,
 				C905CF222B55163C00D59730 /* MRRootViewController.xib in Resources */,
@@ -483,6 +505,7 @@
 				DD0443E727E7749800CB946B /* MRActionProcessor.m in Sources */,
 				C97423CE2A3AE8BE001F6B54 /* NSString+Ex.m in Sources */,
 				DD9B139522C23A7A002D1D79 /* main.m in Sources */,
+				C92F1A242DAE240200540BD5 /* MRTextField.m in Sources */,
 				C97DCC0727C867EA0019874F /* MRBaseView.m in Sources */,
 				DD4EB00127310F1C00FBCD3A /* WindowController.m in Sources */,
 				C969BE4E27BDD34E008BC2AD /* MRUtil+SystemPanel.m in Sources */,
@@ -501,6 +524,7 @@
 				DD0443E827E7749800CB946B /* MRActionManager.m in Sources */,
 				DD0443E627E7749800CB946B /* MRActionProcessor+Private.m in Sources */,
 				DD050F9E25A43A1300F01E2F /* MRDragView.m in Sources */,
+				C986F7BA2DADF2C6006D5F4E /* MRInputURLViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

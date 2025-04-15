@@ -103,6 +103,7 @@ static BOOL hdrAnimationShown = 0;
         __strongSelf__
         if (theEvent.window == self.view.window && [theEvent keyCode] == kVK_ANSI_Period && theEvent.modifierFlags & NSEventModifierFlagCommand){
             [self onStop];
+            return nil;
         }
         return theEvent;
     }];
@@ -617,8 +618,7 @@ static BOOL hdrAnimationShown = 0;
             }
         }
     }
-    
-    //    [options setFormatOptionIntValue:0 forKey:@"http_persistent"];
+    [options setFormatOptionIntValue:0 forKey:@"http_persistent"];
     //请求m3u8文件里的ts出错后是否继续请求下一个ts，默认是1000
     [options setFormatOptionIntValue:1 forKey:@"max_reload"];
     //set icy update period
@@ -670,19 +670,37 @@ static BOOL hdrAnimationShown = 0;
     //protocolWhitelist need set to httpproxy
     //options.protocolWhitelist = @"httpproxy";
     //[options setFormatOptionValue:@"127.0.0.1:7890" forKey:@"http_proxy"];
-    options.protocolWhitelist = @"ijkhttp1";
+    
     //[options setFormatOptionIntValue:1 forKey:@"use_n516_configure_mov_pkt_buffer"];
 
-//    NSString *cacheDir = [NSFileManager mr_DirWithType:NSCachesDirectory WithPathComponent:@"ijk-cache"];
-//    long timeInterval = [NSDate timeIntervalSinceReferenceDate];
-//    
-//    NSString *cacheFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%ld",timeInterval]];
-//    NSString *mapFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%ld-map.txt",timeInterval]];
-//    
-//    [options setFormatOptionValue:cacheFile forKey:@"cache_file_path"];
-//    [options setFormatOptionValue:mapFile forKey:@"cache_map_path"];
-//    [options setFormatOptionValue:@"1" forKey:@"auto_save_map"];
-//    [options setFormatOptionValue:@"1" forKey:@"parse_cache_map"];
+    int use_cache = 0;
+    if (use_cache == 1) {
+        NSString *urlStr = [url absoluteString];
+        NSString *cacheKey = [urlStr md5Hash];
+        NSString *fileName = [[url path] lastPathComponent];
+        if (fileName.length < 1) {
+            fileName = cacheKey;
+        }
+        NSString *cacheDir = [NSFileManager mr_DirWithType:NSCachesDirectory WithPathComponents:@[@".fsplayer",cacheKey]];
+        NSString *cacheFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.tmp",fileName]];
+        NSString *mapFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-map.tmp",fileName]];
+        
+        [options setFormatOptionValue:cacheFile forKey:@"cache_file_path"];
+        [options setFormatOptionValue:mapFile forKey:@"cache_map_path"];
+        [options setFormatOptionValue:@"1" forKey:@"auto_save_map"];
+        [options setFormatOptionValue:@"1" forKey:@"parse_cache_map"];
+        
+        NSString *cacheUrl = [NSString stringWithFormat:@"ijkio:cache:ffio:%@",url];
+        url = [NSURL URLWithString:cacheUrl];
+        
+        [options setPlayerOptionValue:@"5242880" forKey:@"max-buffer-size"];
+    } else if (use_cache == 2) {
+        NSString *urlStr = [url absoluteString];
+        NSString *cacheUrl = [NSString stringWithFormat:@"cache:%@",url];
+        url = [NSURL URLWithString:cacheUrl];
+        options.protocolWhitelist = @"cache";
+        [options setPlayerOptionValue:@"52428800" forKey:@"max-buffer-size"];
+    }
     
     NSMutableArray *dus = [NSMutableArray array];
     if ([url.scheme isEqualToString:@"file"] && [url.absoluteString.pathExtension isEqualToString:@"m3u8"]) {
@@ -931,6 +949,10 @@ static BOOL hdrAnimationShown = 0;
                         [self retry];
                     } else if (returnCode == NSAlertSecondButtonReturn) {
                         //
+                        self.playCtrlBtn.state = NSControlStateValueOn;
+                        [self enableComputerSleep:YES];
+                        [self toggleTitleBar:YES];
+                        self.playCtrlBtn.image = [NSImage imageNamed:@"play"];
                     }
                 }
             }];
@@ -1429,12 +1451,12 @@ static BOOL hdrAnimationShown = 0;
     p.BackColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault BackColour]);
     p.OutlineColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault OutlineColour]);
     p.Outline = [MRCocoaBindingUserDefault Outline];
-    p.BottomMargin = ([MRCocoaBindingUserDefault subtitle_bottom_margin] - 20) / 100.0;
+    p.BottomMargin = ([MRCocoaBindingUserDefault subtitle_bottom_margin]) / 100.0;
     p.Scale = [MRCocoaBindingUserDefault subtitle_scale];
     
-    strcpy(p.FontsDir, "/Users/matt/Pictures/ijkPro/Fonts");
+    strcpy(p.FontsDir, "/Users/matt/Movies/fonts");
     NSString *name = [MRCocoaBindingUserDefault FontName];
-    //name = @"寒蝉全圆体";
+    name = @"苹方-港";
     if (name) {
         strcpy(p.FontName,[name UTF8String]);
     } else {
@@ -1626,7 +1648,7 @@ static BOOL hdrAnimationShown = 0;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         FSSubtitlePreference p = self.player.subtitlePreference;
-        p.BottomMargin = ([v intValue] - 20) / 100.0;
+        p.BottomMargin = [v intValue] / 100.0;
         self.player.subtitlePreference = p;
     } forKey:@"subtitle_bottom_margin"];
     

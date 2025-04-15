@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="23504" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+    <dependencies>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23504"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner" customClass="MRInputURLViewController">
+            <connections>
+                <outlet property="inputTextFiled" destination="gAO-K7-hSd" id="Arv-rO-nZT"/>
+                <outlet property="view" destination="o4H-nV-KnM" id="uKh-un-Ahc"/>
+            </connections>
+        </customObject>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
+        <customView misplaced="YES" id="o4H-nV-KnM" customClass="MRBaseView">
+            <rect key="frame" x="0.0" y="0.0" width="500" height="56"/>
+            <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+            <subviews>
+                <visualEffectView blendingMode="behindWindow" material="light" state="followsWindowActiveState" translatesAutoresizingMaskIntoConstraints="NO" id="idB-n1-zsH">
+                    <rect key="frame" x="0.0" y="0.0" width="500" height="56"/>
+                    <subviews>
+                        <textField wantsLayer="YES" focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="gAO-K7-hSd" customClass="MRTextField">
+                            <rect key="frame" x="13" y="15" width="474" height="24"/>
+                            <textFieldCell key="cell" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" placeholderString="请输入地址..." id="Ebr-Ci-Ev9">
+                                <font key="font" metaFont="system" size="20"/>
+                                <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                            </textFieldCell>
+                            <connections>
+                                <outlet property="delegate" destination="-2" id="a4J-et-ElN"/>
+                            </connections>
+                        </textField>
+                    </subviews>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="500" id="AFt-Wr-ADn"/>
+                        <constraint firstAttribute="trailing" secondItem="gAO-K7-hSd" secondAttribute="trailing" constant="15" id="Dk6-C9-OOP"/>
+                        <constraint firstItem="gAO-K7-hSd" firstAttribute="leading" secondItem="idB-n1-zsH" secondAttribute="leading" constant="15" id="gHe-zk-FyA"/>
+                        <constraint firstItem="gAO-K7-hSd" firstAttribute="top" secondItem="idB-n1-zsH" secondAttribute="top" constant="17" id="h9m-kK-2Hc"/>
+                        <constraint firstAttribute="bottom" secondItem="gAO-K7-hSd" secondAttribute="bottom" constant="15" id="ows-I0-Tje"/>
+                    </constraints>
+                </visualEffectView>
+            </subviews>
+            <constraints>
+                <constraint firstAttribute="trailing" secondItem="idB-n1-zsH" secondAttribute="trailing" id="8KK-10-mJm"/>
+                <constraint firstItem="idB-n1-zsH" firstAttribute="top" secondItem="o4H-nV-KnM" secondAttribute="top" id="Wsk-Ob-wJh"/>
+                <constraint firstItem="idB-n1-zsH" firstAttribute="leading" secondItem="o4H-nV-KnM" secondAttribute="leading" id="j7q-5s-lUC"/>
+                <constraint firstAttribute="bottom" secondItem="idB-n1-zsH" secondAttribute="bottom" id="zg4-vc-JZ9"/>
+            </constraints>
+            <point key="canvasLocation" x="39" y="-47"/>
+        </customView>
+    </objects>
+</document>

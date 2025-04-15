@@ -7,6 +7,7 @@
 //
 
 #import "MRBaseView.h"
+#import <Carbon/Carbon.h>
 
 @implementation MRBaseView
 
