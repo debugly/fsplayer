@@ -28,7 +28,7 @@
 #include "ff_ffplay_debug.h"
 #include "ijksdl_gpu.h"
 #include "ijksdl/ijksdl_gpu.h"
-#include "ff_subtitle_def_internal.h"
+#include "ff_subtitle_preference.h"
 
 #define FS_SUBTITLE_STREAM_UNDEF -2
 #define FS_SUBTITLE_STREAM_NONE -1
@@ -119,7 +119,7 @@ int ff_sub_init(FFSubtitle **subp, AVDictionary *opts)
     sub->need_update_stream = FS_SUBTITLE_STREAM_UNDEF;
     sub->last_stream = FS_SUBTITLE_STREAM_UNDEF;
     sub->need_update_preference = 0;
-    sub->sp = ijk_subtitle_default_preference();
+    sub->sp = fs_subtitle_default_preference();
     av_dict_copy(&sub->opts, opts, 0);
     
     *subp = sub;

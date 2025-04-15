@@ -29,7 +29,8 @@
 typedef NSView UIView;
 #import <AppKit/AppKit.h>
 #endif
-#import "FSVideoRenderingProtocol.h"
+#import <FSPlayer/FSVideoRenderingProtocol.h>
+#import <FSPlayer/ff_subtitle_preference.h>
 
 typedef NS_ENUM(NSInteger, FSPlayerPlaybackState) {
     FSPlayerPlaybackStateStopped,

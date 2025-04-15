@@ -114,7 +114,7 @@
     self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
     
-    FSSDLSubtitlePreference p = self.player.subtitlePreference;
+    FSSubtitlePreference p = self.player.subtitlePreference;
     p.PrimaryColour = 16776960;
     self.player.subtitlePreference = p;
     self.view.autoresizesSubviews = YES;
@@ -325,7 +325,7 @@
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(mediaIsPreparedToPlayDidChange:)
-                                                 name:FSPlayerIsPreparedToPlayDidChangeNotification
+                                                 name:FSPlayerIsPreparedToPlayNotification
                                                object:_player];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
@@ -341,7 +341,7 @@
 {
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerLoadStateDidChangeNotification object:_player];
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerDidFinishNotification object:_player];
-    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerIsPreparedToPlayDidChangeNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerIsPreparedToPlayNotification object:_player];
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerPlaybackStateDidChangeNotification object:_player];
 }
 

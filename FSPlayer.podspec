@@ -96,8 +96,7 @@ TODO: Add long description of the pod here.
     'ijkmedia/wrapper/apple/FSVideoRenderingProtocol.h',
     'ijkmedia/wrapper/apple/FSPlayerKit.h',
     'ijkmedia/wrapper/apple/FSVideoRenderView.h',
-    'ijkmedia/ijkplayer/ff_subtitle_def.h',
-    'ijkmedia/ijksdl/ijksdl_rectangle.h',
+    'ijkmedia/ijkplayer/ff_subtitle_preference.h',
     'ijkmedia/tools/*.{h}'
   s.exclude_files = 
     'ijkmedia/ijksdl/ijksdl_extra_log.c',

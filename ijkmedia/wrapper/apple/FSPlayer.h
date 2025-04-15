@@ -22,10 +22,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "FSMediaPlayback.h"
-#import "FSMonitor.h"
-#import "FSOptions.h"
-#import "FSVideoRenderingProtocol.h"
+#import <FSPlayer/FSMediaPlayback.h>
+#import <FSPlayer/FSMonitor.h>
+#import <FSPlayer/FSOptions.h>
+#import <FSPlayer/FSVideoRenderingProtocol.h>
 
 // media meta
 #define FS_KEY_FORMAT               @"format"

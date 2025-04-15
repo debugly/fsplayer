@@ -29,7 +29,7 @@
 #include "libavutil/parseutils.h"
 #include "ff_subtitle_def.h"
 #include "ijksdl/ijksdl_gpu.h"
-#include "ff_subtitle_def_internal.h"
+#include "ff_subtitle_preference.h"
 #include "ijksdl/ijksdl_mutex.h"
 
 typedef struct FF_ASS_Context {

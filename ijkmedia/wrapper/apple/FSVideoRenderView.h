@@ -22,7 +22,7 @@
 
 // you can use below mthods, create ijk internal render view.
 
-#import "FSVideoRenderingProtocol.h"
+#import <FSPlayer/FSVideoRenderingProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

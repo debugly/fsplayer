@@ -35,7 +35,6 @@ typedef NSView UIView;
 #else
 #import <UIKit/UIKit.h>
 #endif
-#import "ff_subtitle_def.h"
 
 typedef NS_ENUM(NSInteger, FSScalingMode) {
     FSScalingModeAspectFit,  // Uniform scale until one dimension fits

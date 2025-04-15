@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "ff_subtitle_def_internal.h"
+#include "ff_subtitle_def.h"
 #include <memory.h>
 #include <stdlib.h>
 

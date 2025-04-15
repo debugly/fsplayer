@@ -25,7 +25,7 @@
 #include "ff_packet_list.h"
 #include "ff_ass_renderer.h"
 #include "ijksdl/ijksdl_gpu.h"
-#include "ff_subtitle_def_internal.h"
+#include "ff_subtitle_preference.h"
 
 #define SUB_MAX_KEEP_DU 3.0
 #define A_ASS_IMG_DURATION 0.035
@@ -623,7 +623,7 @@ int subComponent_open(FFSubComponent **cp, int stream_index, AVStream* stream, P
     com->retry_callback = callback;
     com->retry_opaque = opaque;
     com->st_idx = stream_index;
-    com->sp = ijk_subtitle_default_preference();
+    com->sp = fs_subtitle_default_preference();
     com->previous_uploading = -1;
     com->pre_loading = -1;
     com->startTime = startTime;
@@ -690,7 +690,7 @@ void subComponent_update_preference(FFSubComponent *com, FSSubtitlePreference* s
         return;
     }
     
-    if (!isIJKSDLSubtitlePreferenceEqual(&com->sp, sp)) {
+    if (!FSSubtitlePreferenceIsEqual(&com->sp, sp)) {
         com->sp = *sp;
         com->sp_changed = 1;
     }

@@ -169,7 +169,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     }
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_FORMAT, "protocol_whitelist", default_p_whitelist);
     
-    _subtitlePreference = ijk_subtitle_default_preference();
+    _subtitlePreference = fs_subtitle_default_preference();
     // init hud
     _hudCtrl = [FSSDLHudControl new];
 
@@ -2140,7 +2140,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)setSubtitlePreference:(FSSubtitlePreference)subtitlePreference
 {
-    if (!isIJKSDLSubtitlePreferenceEqual(&_subtitlePreference, &subtitlePreference)) {
+    if (!FSSubtitlePreferenceIsEqual(&_subtitlePreference, &subtitlePreference)) {
         _subtitlePreference = subtitlePreference;
         ijkmp_set_subtitle_preference(_mediaPlayer, &subtitlePreference);
     }
