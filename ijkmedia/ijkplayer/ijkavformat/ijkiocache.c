@@ -916,7 +916,7 @@ static int ijkio_cache_sync_read(IjkURLContext *h, unsigned char *buf, int size)
 
     if (c->read_logical_pos >= c->logical_size) {
         c->io_eof_reached = 1;
-        return 0;
+        return AVERROR_EOF;
     }
 
     if (c->async_open > 0) {

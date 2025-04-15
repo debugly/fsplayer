@@ -3906,13 +3906,14 @@ static int read_thread(void *arg)
             int pb_eof = 0;
             int pb_error = 0;
             //monkey_log("av_read_frame failed:%4s\n",av_err2str(ret));
-            if ((ret == AVERROR_EOF || avio_feof(ic->pb)) && !is->eof) {
+            //if ((ret == AVERROR_EOF || avio_feof(ic->pb)) && !is->eof) {
+            if (ret == AVERROR_EOF && !is->eof) {
                 ffp_check_buffering_l(ffp);
                 pb_eof = 1;
                 // check error later
             }
             if (ic->pb && ic->pb->error) {
-                pb_eof = 1;
+                //pb_eof = 1;
                 pb_error = ic->pb->error;
             }
             if (ret == AVERROR_EXIT) {
@@ -3940,9 +3941,10 @@ static int read_thread(void *arg)
                 if (st >= 0) {
                     ff_sub_put_null_packet(is->ffSub, pkt, st);
                 }
-                is->eof = 1;
+                //is->eof = 1;
                 ffp->error = pb_error;
-                av_log(ffp, AV_LOG_ERROR, "av_read_frame error: %s\n", ffp_get_error_string(ffp->error));
+                const char * err_str = av_err2str(ffp->error);
+                av_log(ffp, AV_LOG_ERROR, "av_read_frame error: %s\n", err_str);
                 // break;
             } else {
                 ffp->error = 0;
@@ -3962,76 +3964,84 @@ static int read_thread(void *arg)
 //                    break;
 //            }
             
+            uint32_t ms = 10;
+            if (pb_error == -ENETUNREACH) {
+                ms = 1000;
+            }
             SDL_LockMutex(wait_mutex);
-            SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
+            SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, ms);
             SDL_UnlockMutex(wait_mutex);
-            ffp_statistic_l(ffp);
-            continue;
+            //not continue: when use ijkio cache and the pb_error has error and seek approach to cache end position,need ffp_check_buffering_l also otherwise can't play!
+            //ffp_statistic_l(ffp);
+            //continue;
         } else {
             is->eof = 0;
+            
+            int64_t now = av_gettime_relative() / 1000;
+            if (now - icy_last_update_time > ffp->icy_update_period) {
+                icy_last_update_time = now;
+                int r = ijkmeta_update_icy_from_avformat_context_l(ffp->meta, ic);
+                if (r > 0) {
+                    ffp_notify_msg1(ffp, FFP_MSG_ICY_META_CHANGED);
+                }
+            }
+            
+            if (pkt->flags & AV_PKT_FLAG_DISCONTINUITY) {
+                #warning TESTME
+                if (is->audio_stream >= 0) {
+                    is->audioq.serial++;
+                    //packet_queue_put(&is->audioq, &flush_pkt);
+                }
+                if (is->video_stream >= 0) {
+                    is->videoq.serial++;
+                    //packet_queue_put(&is->videoq, &flush_pkt);
+                }
+            }
+            AVStream *st = ic->streams[pkt->stream_index];
+            /* check if packet is in play range specified by user, then queue, otherwise discard */
+            stream_start_time = st->start_time;
+            pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
+            pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
+                    (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
+                    av_q2d(ic->streams[pkt->stream_index]->time_base) -
+                    (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / AV_TIME_BASE
+                    <= ((double)ffp->duration / AV_TIME_BASE);
+            if (!pkt_in_play_range) {
+                av_packet_unref(pkt);
+            } else {
+                int stream_index = pkt->stream_index;
+                if (stream_index == is->audio_stream) {
+                    packet_queue_put(&is->audioq, pkt);
+                } else if (stream_index == is->video_stream
+                           && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
+                    packet_queue_put(&is->videoq, pkt);
+                } else {
+                    int sub_pending_stream;
+                    int sub_stream = ff_sub_get_current_stream(is->ffSub, &sub_pending_stream);
+                    if (stream_index == sub_stream && sub_pending_stream == -2) {
+                        ff_sub_put_packet(is->ffSub, pkt);
+                    } else if (stream_index == sub_pending_stream) {
+                        ff_sub_put_packet_backup(is->ffSub, pkt);
+                    } else {
+                        av_packet_unref(pkt);
+                    }
+                }
+            }
+            
+            //ffp_statistic_l(ffp);
+
+            if (ffp->ijkmeta_delay_init && !init_ijkmeta &&
+                    (ffp->first_video_frame_rendered || !is->video_st) && (ffp->first_audio_frame_rendered || !is->audio_st)) {
+                ijkmeta_set_avformat_context_l(ffp->meta, ic);
+                init_ijkmeta = 1;
+            }
+
         }
         
         monkey_log("av_read_frame %s : %0.2f\n",pkt->stream_index == is->audio_stream ? "audio" : "video", pkt->pts * av_q2d(ic->streams[pkt->stream_index]->time_base));
         
-        int64_t now = av_gettime_relative() / 1000;
-        if (now - icy_last_update_time > ffp->icy_update_period) {
-            icy_last_update_time = now;
-            int r = ijkmeta_update_icy_from_avformat_context_l(ffp->meta, ic);
-            if (r > 0) {
-                ffp_notify_msg1(ffp, FFP_MSG_ICY_META_CHANGED);
-            }
-        }
-        
-        if (pkt->flags & AV_PKT_FLAG_DISCONTINUITY) {
-        #warning TESTME
-            if (is->audio_stream >= 0) {
-                is->audioq.serial++;
-                //packet_queue_put(&is->audioq, &flush_pkt);
-            }
-            if (is->video_stream >= 0) {
-                is->videoq.serial++;
-                //packet_queue_put(&is->videoq, &flush_pkt);
-            }
-        }
-        AVStream *st = ic->streams[pkt->stream_index];
-        /* check if packet is in play range specified by user, then queue, otherwise discard */
-        stream_start_time = st->start_time;
-        pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
-        pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
-                (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
-                av_q2d(ic->streams[pkt->stream_index]->time_base) -
-                (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / AV_TIME_BASE
-                <= ((double)ffp->duration / AV_TIME_BASE);
-        if (!pkt_in_play_range) {
-            av_packet_unref(pkt);
-        } else {
-            int stream_index = pkt->stream_index;
-            if (stream_index == is->audio_stream) {
-                packet_queue_put(&is->audioq, pkt);
-            } else if (stream_index == is->video_stream
-                       && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
-                packet_queue_put(&is->videoq, pkt);
-            } else {
-                int sub_pending_stream;
-                int sub_stream = ff_sub_get_current_stream(is->ffSub, &sub_pending_stream);
-                if (stream_index == sub_stream && sub_pending_stream == -2) {
-                    ff_sub_put_packet(is->ffSub, pkt);
-                } else if (stream_index == sub_pending_stream) {
-                    ff_sub_put_packet_backup(is->ffSub, pkt);
-                } else {
-                    av_packet_unref(pkt);
-                }
-            }
-        }
-        
         ffp_statistic_l(ffp);
-
-        if (ffp->ijkmeta_delay_init && !init_ijkmeta &&
-                (ffp->first_video_frame_rendered || !is->video_st) && (ffp->first_audio_frame_rendered || !is->audio_st)) {
-            ijkmeta_set_avformat_context_l(ffp->meta, ic);
-            init_ijkmeta = 1;
-        }
-
+        
         if (ffp->packet_buffering) {
             io_tick_counter = SDL_GetTickHR();
             //首帧秒开，每隔50ms检查一次缓冲情况
