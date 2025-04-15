@@ -21,12 +21,13 @@
  */
 
 #include "ijkdict.h"
-#include "ijkutils.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include "libavutil/log.h"
+#include "libavutil/mem.h"
 
 struct IjkAVDictionary {
     int count;
@@ -119,26 +120,26 @@ int ijk_av_dict_set(IjkAVDictionary **pm, const char *key, const char *value,
             if (!newval)
                 goto err_out;
             strlcat(newval, oldval, len);
-            ijk_av_freep(&oldval);
+            av_freep(&oldval);
             strlcat(newval, copy_value, len);
             m->elems[m->count].value = newval;
-            ijk_av_freep(&copy_value);
+            av_freep(&copy_value);
         }
         m->count++;
     } else {
-        ijk_av_freep(&copy_key);
+        av_freep(&copy_key);
     }
     if (!m->count) {
-        ijk_av_freep(&m->elems);
-        ijk_av_freep(pm);
+        av_freep(&m->elems);
+        av_freep(pm);
     }
 
     return 0;
 
 err_out:
     if (m && !m->count) {
-        ijk_av_freep(&m->elems);
-        ijk_av_freep(pm);
+        av_freep(&m->elems);
+        av_freep(pm);
     }
     free(copy_key);
     free(copy_value);
@@ -160,12 +161,12 @@ void ijk_av_dict_free(IjkAVDictionary **pm)
 
     if (m) {
         while (m->count--) {
-            ijk_av_freep(&m->elems[m->count].key);
-            ijk_av_freep(&m->elems[m->count].value);
+            av_freep(&m->elems[m->count].key);
+            av_freep(&m->elems[m->count].value);
         }
-        ijk_av_freep(&m->elems);
+        av_freep(&m->elems);
     }
-    ijk_av_freep(pm);
+    av_freep(pm);
 }
 
 int ijk_av_dict_copy(IjkAVDictionary **dst, const IjkAVDictionary *src, int flags)

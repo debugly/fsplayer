@@ -81,7 +81,7 @@
 
 #endif
 
-#define FS_LOG_TAG "FSMEDIA"
+#define FS_LOG_TAG "FSPlayer"
 
 #define VLOGV(...)  VLOG(FS_LOG_VERBOSE,   FS_LOG_TAG, __VA_ARGS__)
 #define VLOGD(...)  VLOG(FS_LOG_DEBUG,     FS_LOG_TAG, __VA_ARGS__)

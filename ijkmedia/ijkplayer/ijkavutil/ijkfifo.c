@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include "libavutil/mem.h"
+#include "libavutil/macros.h"
 
 static IjkFifoBuffer *fifo_alloc_common(void *buffer, size_t size)
 {
@@ -57,7 +59,7 @@ IjkFifoBuffer *ijk_av_fifo_alloc_array(size_t nmemb, size_t size)
 void ijk_av_fifo_free(IjkFifoBuffer *f)
 {
     if (f) {
-        ijk_av_freep(&f->buffer);
+        av_freep(&f->buffer);
         free(f);
     }
 }

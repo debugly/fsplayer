@@ -29,7 +29,8 @@
 #define FS_REGISTER_DEMUXER(x)                                         \
     {                                                                   \
         extern AVInputFormat ijkff_##x##_demuxer;                       \
-        ijkav_register_input_format(&ijkff_##x##_demuxer);              \
+        int ijkav_register_##x##_demuxer(AVInputFormat *demuxer, int demuxer_size); \
+        ijkav_register_##x##_demuxer(&ijkff_##x##_demuxer, sizeof(AVInputFormat)); \
     }
 
 #define FS_REGISTER_PROTOCOL(x)                                        \
@@ -39,32 +40,115 @@
         ijkav_register_##x##_protocol(&ijkimp_ff_##x##_protocol, sizeof(URLProtocol));  \
     }
 
-static const AVInputFormat *ijkav_find_input_format(const char *iformat_name)
+static void print_all_muxers(void)
 {
-    const AVInputFormat *fmt = NULL;
-    if (!iformat_name)
-        return NULL;
-    void *opaque = NULL;
-    
-    while ((fmt = av_demuxer_iterate(&opaque))) {
-        if (!fmt->name)
-            continue;
-        if (!strcmp(iformat_name, fmt->name))
-            return fmt;
+    printf("---all muxers------------------------\n");
+    void *iter = NULL;
+    const AVOutputFormat *out_fmt;
+    int i = 0;
+    while ((out_fmt = av_muxer_iterate(&iter))) {
+        i++;
+        printf("%s(%s)\n",out_fmt->name,out_fmt->extensions);
     }
-    return NULL;
+    printf("---all muxers:%d\n",i);
 }
 
-static void ijkav_register_input_format(AVInputFormat *iformat)
+static void print_all_demuxers(void)
 {
-    if (ijkav_find_input_format(iformat->name)) {
-        av_log(NULL, AV_LOG_WARNING, "skip     demuxer : %s (duplicated)\n", iformat->name);
-    } else {
-        av_log(NULL, AV_LOG_INFO,    "register demuxer : %s\n", iformat->name);
-        //av_register_input_format(iformat);
+    printf("---all demuxers------------------------\n");
+    void *iter = NULL;
+    const AVInputFormat *in_fmt;
+    int i = 0;
+    while ((in_fmt = av_demuxer_iterate(&iter))) {
+        i++;
+        printf("%s(%s)\n",in_fmt->name,in_fmt->extensions);
     }
+    printf("---all demuxers:%d\n",i);
 }
 
+static int print_all_protocols(int in_out)
+{
+    char *pup = NULL;
+    void **a_pup = (void **)&pup;
+    int i = 0;
+    while (1) {
+        const char *p = avio_enum_protocols(a_pup, in_out);
+        if (p != NULL) {
+            i++;
+            printf("%s ",p);
+        } else {
+            break;
+        }
+    }
+    pup = NULL;
+    printf("\n");
+    return i;
+}
+
+static void print_all_output_protocols(void)
+{
+    printf("---all output protocols------------------------\n");
+    int sum = print_all_protocols(1);
+    printf("---all output protocols:%d\n", sum);
+}
+
+static void print_all_input_protocols(void)
+{
+    printf("---all input protocols------------------------\n");
+    int sum = print_all_protocols(0);
+    printf("---all input protocols:%d\n", sum);
+}
+
+static int print_all_codes(int en_de)
+{
+    void *iterate_data = NULL;
+    const AVCodec *codec = NULL;
+    int i = 0;
+    while (NULL != (codec = av_codec_iterate(&iterate_data))) {
+        
+        const char *type;
+        
+        if (codec->type == AVMEDIA_TYPE_VIDEO) {
+            type = "video";
+        } else if (codec->type == AVMEDIA_TYPE_AUDIO) {
+            type = "audio";
+        } else if (codec->type == AVMEDIA_TYPE_SUBTITLE) {
+            type = "subtile";
+        } else if (codec->type == AVMEDIA_TYPE_DATA) {
+            type = "data";
+        } else if (codec->type == AVMEDIA_TYPE_ATTACHMENT) {
+            type = "attach";
+        } else {
+            type = "unknown";
+        }
+        if (en_de) {
+            if (av_codec_is_encoder(codec)) {
+                i++;
+                printf("%6d %8s %s\n",codec->id, type, codec->name);
+            }
+        } else {
+            if (av_codec_is_decoder(codec)) {
+                i++;
+                printf("%6d %8s %s\n",codec->id, type, codec->name);
+            }
+        }
+    }
+    return i;
+}
+
+static void print_all_encodes(void)
+{
+    printf("---all encoders ------------------------\n");
+    int sum = print_all_codes(1);
+    printf("---all encoders:%d\n", sum);
+}
+
+static void print_all_decodes(void)
+{
+    printf("---all decoders ------------------------\n");
+    int sum = print_all_codes(0);
+    printf("---all decoders:%d\n", sum);
+}
 
 void ijkav_register_all(void)
 {
@@ -74,12 +158,19 @@ void ijkav_register_all(void)
         return;
     initialized = 1;
 
+//    print_all_muxers();
+//    print_all_demuxers();
+//    print_all_output_protocols();
+//    print_all_input_protocols();
+//    print_all_encodes();
+//    print_all_decodes();
+    
     /* protocols */
     av_log(NULL, AV_LOG_INFO, "===== custom modules begin =====\n");
 #ifdef __ANDROID__
     FS_REGISTER_PROTOCOL(ijkmediadatasource);
 #endif
-
+    FS_REGISTER_PROTOCOL(ijkhttp1);
     FS_REGISTER_PROTOCOL(ijkio);
     FS_REGISTER_PROTOCOL(async);
     FS_REGISTER_PROTOCOL(ijktcphook);

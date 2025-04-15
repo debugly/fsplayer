@@ -21,7 +21,6 @@
  */
 #include "libavformat/url.h"
 #include "libavutil/avstring.h"
-#include "ijkplayer/ijkavutil/ijkutils.h"
 #include "ijkiourl.h"
 
 #include <stdint.h>

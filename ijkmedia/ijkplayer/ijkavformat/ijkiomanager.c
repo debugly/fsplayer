@@ -22,11 +22,12 @@
 
 #include "ijkiomanager.h"
 #include "ijkioprotocol.h"
-#include "ijkplayer/ijkavutil/ijkutils.h"
 #include "ijkplayer/ijkavutil/ijktree.h"
 #include "ijkplayer/ijkavutil/ijkstl.h"
 #include "libavutil/log.h"
-
+#include "libavutil/avstring.h"
+#include "libavutil/mem.h"
+#include "libavformat/avio.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -236,7 +237,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
 
         av_log(NULL, AV_LOG_INFO, "cache config info: %s\n", string_line);
 
-        if (ijk_av_strstart(string_line, "tree_index:", (const char **)ptr)) {
+        if (av_strstart(string_line, "tree_index:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -245,7 +246,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
                 }
             }
             tree_index = (int)strtol(*ptr, NULL, 10);
-        } else if (ijk_av_strstart(string_line, "tree_physical_init_pos:", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "tree_physical_init_pos:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -254,7 +255,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
                 }
             }
             tree_physical_init_pos = strtoll(*ptr, NULL, 10);
-        } else if (ijk_av_strstart(string_line, "tree_physical_size:", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "tree_physical_size:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -264,7 +265,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
             }
             tree_physical_size = strtoll(*ptr, NULL, 10);
             app_ctx->last_physical_pos += tree_physical_size;
-        } else if (ijk_av_strstart(string_line, "tree_file_size:", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "tree_file_size:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -273,7 +274,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
                 }
             }
             tree_file_size = strtoll(*ptr, NULL, 10);
-        } else if (ijk_av_strstart(string_line, "tree-info-flush", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "tree-info-flush", (const char **)ptr)) {
             cur_tree_info = calloc(1, sizeof(IjkCacheTreeInfo));
             if (cur_tree_info) {
                 cur_tree_info->physical_init_pos  = tree_physical_init_pos;
@@ -287,7 +288,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
             tree_physical_init_pos = 0;
             tree_physical_size     = 0;
             tree_file_size         = 0;
-        } else if (ijk_av_strstart(string_line, "entry_logical_pos:", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "entry_logical_pos:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -296,7 +297,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
                 }
             }
             entry_logical_pos = strtoll(*ptr, NULL, 10);
-        } else if (ijk_av_strstart(string_line, "entry_physical_pos:", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "entry_physical_pos:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -305,7 +306,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
                 }
             }
             entry_physical_pos = strtoll(*ptr, NULL, 10);
-        } else if (ijk_av_strstart(string_line, "entry_size:", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "entry_size:", (const char **)ptr)) {
             str_len = strlen(*ptr);
             for (int i = 0; i < str_len; i++) {
                 if ((*ptr)[i] < '0' || (*ptr)[i] > '9') {
@@ -314,7 +315,7 @@ static void ijkio_manager_parse_cache_info(IjkIOApplicationContext *app_ctx, cha
                 }
             }
             entry_size = strtoll(*ptr, NULL, 10);
-        } else if (ijk_av_strstart(string_line, "entry-info-flush", (const char **)ptr)) {
+        } else if (av_strstart(string_line, "entry-info-flush", (const char **)ptr)) {
             if (cur_tree_info) {
                 cur_entry = calloc(1, sizeof(IjkCacheEntry));
                 cur_node  = ijk_av_tree_node_alloc();
@@ -446,8 +447,8 @@ fail:
         if (h->ijk_ctx_map) {
             ijk_map_remove(h->ijk_ctx_map, (int64_t)(intptr_t)h->cur_ffmpeg_ctx);
         }
-        ijk_av_freep(&inner->priv_data);
-        ijk_av_freep(&inner);
+        av_freep(&inner->priv_data);
+        av_freep(&inner);
     }
     return -1;
 }
@@ -491,7 +492,7 @@ int64_t ijkio_manager_io_seek(IjkIOManagerContext *h, int64_t offset, int whence
             }
             inner->state = FSURL_STARTED;
         }
-        ret = inner->prot->url_seek(inner, offset, whence & ~FSAVSEEK_FORCE);
+        ret = inner->prot->url_seek(inner, offset, whence & ~AVSEEK_FORCE);
     }
 
     return ret;
@@ -508,8 +509,8 @@ int ijkio_manager_io_close(IjkIOManagerContext *h) {
             ret = inner->prot->url_close(inner);
         }
         ijk_map_remove(h->ijk_ctx_map, (int64_t)(intptr_t)h->cur_ffmpeg_ctx);
-        ijk_av_freep(&inner->priv_data);
-        ijk_av_freep(&inner);
+        av_freep(&inner->priv_data);
+        av_freep(&inner);
     }
 
     return ret;
