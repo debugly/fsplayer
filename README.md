@@ -73,7 +73,7 @@ https://github.com/debugly/FSPlayer-SPM.git
 - integration via Cocoapods:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0-beta-250325144721/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0-beta-250415164559/FSPlayer.spec.json'
 ```
 
 ## Development
