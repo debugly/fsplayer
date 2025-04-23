@@ -1,6 +1,6 @@
 <div align="center">
 <!--   <img alt="fsplayer" src="./primary-wide.png"> -->
-  <h1>fsplayer</h1>
+  <h1>layer</h1>
   <img src="https://github.com/debugly/fsplayer/actions/workflows/apple.yml/badge.svg">
 </div>
 
@@ -64,16 +64,12 @@ fsplayer based on [ijkplayer](https://github.com/bilibili/ijkplayer)
 
 ## Installation
 
-- integration via Swift Package Manger:
-
-```
-https://github.com/debugly/FSPlayer-SPM.git
-```
+- integration via Swift Package Manger: [FSPlayer-SPM.git](https://github.com/debugly/FSPlayer-SPM.git)
 
 - integration via Cocoapods:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0-beta-250415164559/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0/FSPlayer.spec.json'
 ```
 
 ## Development
