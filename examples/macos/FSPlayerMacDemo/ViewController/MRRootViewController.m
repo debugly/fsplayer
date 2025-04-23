@@ -619,7 +619,7 @@ static BOOL hdrAnimationShown = 0;
         }
     }
     [options setFormatOptionIntValue:0 forKey:@"http_persistent"];
-    //请求m3u8文件里的ts出错后是否继续请求下一个ts，默认是1000
+    //请求m3u8文件里的ts出错后是否继续请求下一个ts，默认是3
     [options setFormatOptionIntValue:1 forKey:@"max_reload"];
     //set icy update period
     [options setPlayerOptionValue:@"3500" forKey:@"icy-update-period"];
