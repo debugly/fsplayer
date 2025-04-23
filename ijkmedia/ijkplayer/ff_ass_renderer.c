@@ -386,7 +386,7 @@ static void parse_style(ASS_Style *style, char *overrides)
         char *fs=ptr,*token;
         char *eq = strrchr(fs, '=');
         if (!eq)
-            continue;
+            break;
         *eq = '\0';
         token = eq + 1;
         if (!av_strcasecmp(fs, "FontName")) {
@@ -438,35 +438,25 @@ static void parse_style(ASS_Style *style, char *overrides)
     }
 }
 
-static void set_force_style(FF_ASS_Renderer *s, char * overrides, int level)
+static void set_force_style(FF_ASS_Renderer *s, char * overrides, int bits)
 {
     FF_ASS_Context *ass = s->priv_data;
     if (!ass) {
         return;
     }
     
-    if (level > 0) {
-        ASS_Style style = { 0 };
-        style.Name = "FSPlayer";
-        style.FontSize = ASS_DEFAULT_FONST_SIZE;
-        style.ScaleX = 1.;
-        style.ScaleY = 1.;
-        style.Spacing = 0;
-        parse_style(&style, overrides);
-        SDL_LockMutex(ass->mutex);
-        ass_set_selective_style_override(ass->renderer, &style);
-        int set_force_flags = 0;
-        set_force_flags |= ASS_OVERRIDE_BIT_STYLE | ASS_OVERRIDE_BIT_SELECTIVE_FONT_SCALE | ASS_OVERRIDE_BIT_MARGINS;
-        ass_set_selective_style_override_enabled(ass->renderer, set_force_flags);
-        ass_process_force_style(ass->track);
-    } else {
-        SDL_LockMutex(ass->mutex);
-        ASS_Style *defaultStyle = ass->track->styles + ass->track->default_style;
-        if (!av_strcasecmp(defaultStyle->Name, "Default")) {
-            parse_style(defaultStyle, overrides);
-        }
-        ass_set_selective_style_override_enabled(ass->renderer, ASS_OVERRIDE_DEFAULT);
-    }
+    ASS_Style style = { 0 };
+    style.Name = "FSPlayer";
+    style.FontSize = ASS_DEFAULT_FONST_SIZE;
+    style.ScaleX = 1.;
+    style.ScaleY = 1.;
+    style.Spacing = 0;
+    parse_style(&style, overrides);
+    
+    SDL_LockMutex(ass->mutex);
+    ass_set_selective_style_override(ass->renderer, &style);
+    ass_set_selective_style_override_enabled(ass->renderer, bits);
+    ass_process_force_style(ass->track);
     SDL_UnlockMutex(ass->mutex);
 }
 

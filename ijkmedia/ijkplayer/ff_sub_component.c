@@ -60,7 +60,13 @@ static void apply_preference(FFSubComponent *com)
         com->assRenderer->iformat->set_font_scale(com->assRenderer, com->sp.Scale);
         char style[256] = {0};
         sprintf(style, "FontName=%s,PrimaryColour=&H%08X,SecondaryColour=&H%08X,BackColour=&H%08X,OutlineColour=&H%08X,Outline=%f,MarginV=%d",com->sp.FontName,com->sp.PrimaryColour,com->sp.SecondaryColour,com->sp.BackColour,com->sp.OutlineColour,com->sp.Outline,marginV);
-        com->assRenderer->iformat->set_force_style(com->assRenderer, style, com->sp.ForceOverride);
+        
+        int bits = ASS_OVERRIDE_DEFAULT | ASS_OVERRIDE_BIT_MARGINS;
+        if (com->sp.ForceOverride > 0) {
+            bits |= ASS_OVERRIDE_BIT_STYLE | ASS_OVERRIDE_BIT_SELECTIVE_FONT_SCALE;
+        }
+        
+        com->assRenderer->iformat->set_force_style(com->assRenderer, style, bits);
         com->sp_changed = 0;
     }
 }
