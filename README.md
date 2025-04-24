@@ -1,6 +1,6 @@
 <div align="center">
 <!--   <img alt="fsplayer" src="./primary-wide.png"> -->
-  <h1>layer</h1>
+  <h1>FSPlayer</h1>
   <img src="https://github.com/debugly/fsplayer/actions/workflows/apple.yml/badge.svg">
 </div>
 
