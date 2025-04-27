@@ -2,6 +2,7 @@
 <!--   <img alt="fsplayer" src="./primary-wide.png"> -->
   <h1>FSPlayer</h1>
   <img src="https://github.com/debugly/fsplayer/actions/workflows/apple.yml/badge.svg">
+  <img src="https://img.shields.io/badge/Platform-%20iOS%20macOS%20tvOS%20-blue.svg">
 </div>
 
 [![Stargazers repo roster for @debugly/fsplayer](https://reporoster.com/stars/debugly/fsplayer)](https://github.com/debugly/fsplayer/stargazers)
@@ -113,6 +114,8 @@ self.player.shouldAutoplay = YES;
 更详细的使用[说明文档](https://fsplayer.debugly.cn/manuals/getting-started.html)
 
 ## FSPlayer-Pro
+
+<img src="https://img.shields.io/badge/FSPlayer%20Pro-%F0%9F%91%8D%F0%9F%8F%BB-blue">
 
 FSPlayer-Pro 在 FSPlayer 的基础上提供了更加强劲的功能，将以动态库的形式提供给付费用户。
 
