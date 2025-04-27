@@ -6,110 +6,118 @@
 
 [![Stargazers repo roster for @debugly/fsplayer](https://reporoster.com/stars/debugly/fsplayer)](https://github.com/debugly/fsplayer/stargazers)
 
-## Feature Compare
+## 功能&特点
 
-fsplayer based on [ijkplayer](https://github.com/bilibili/ijkplayer)
+- [x] FFmpeg 6.1.1
+- [x] 支持透传FFmpeg option参数
+- [x] 支持获取下载速度
+- [x] 支持获取预加载进度
+- [x] 获取基本信息（音频：采样率、声道数、时长等，视频：宽、高、fps、时长等）
+- [x] 支持获取首帧解码时间、渲染时间
+- [x] 支持file、http、https、udp、rtmp、rtp、rtsp、bluray、smb等协议
+- [x] 支持设置HTTP超时、错误重试、UA、Cookie、如果是m3u8支持透传给ts请求
+- [x] 支持HLS直播或者点播
+- [x] 支持AV1、uavs3解码器
+- [x] 支持单独播放音频显示内置封面
+- [x] 支持单独播放图片
+- [x] 支持精准 seek
+- [x] 支持软硬解设置
+- [x] 支持多实例播放
+- [x] 支持播放完成（EOF）后，重新seek继续播放
+- [x] 优化了file协议seek后起播慢问题
+- [x] 音视频加密播放
+- [x] 强大的字幕功能
+  - 文本字幕(srt/vtt/ass)
+  - 图形字幕(dvbsub/dvdsub/pgssub/idx+sub)
+  - 同时支持内嵌和外挂
+  - 支持设置字幕延迟
+  - 支持 ASS 字幕的特效
+  - 支持设置文本字幕的样式
+- [x] 支持循环播放
+- [x] 支持切换音轨
+- [x] 支持设置音轨延迟
+- [x] 支持随时截屏（jpg、png、tiff）
+- [x] 支持设置视频显示比例
+- [x] 支持设置旋转角度设置（0,90,180,270）
+- [x] 支持设置视频镜像模式
+- [x] 支持设置视频背景颜色（默认黑色）
+- [x] 支持设置画面饱和度、亮度、对比度
+- [x] 支持同时渲染到多个View上
+- [x] 支持实时获取音频PCM数据
+- [x] 支持自定义渲染View
+- [x] 支持 4K/HDR/HDR10/HDR10+/Dolby Vision，不支持 Dolby Vision P5
+- [x] 智能识别 iso (blury、dvd、普通视频)
+- [x] mpegts 视频快进不花屏
+- [x] 支持网络协议播放 iso 镜像和 BDMV 文件夹
 
-| category                                                | ijkplayer                      | fsplayer                                                                                                                                                                                     |
-| ------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FFmpeg                                                  | ff4.0--ijk0.8.8--20210426--001 | n6.1.1                                                                                                                                                                                       |
-| decoders                                                |                                |                                                                                                                                                                                              |
-| uavs3d decoder                                          | ❌                              | ✅                                                                                                                                                                                            |
-| demuxers                                                |                                |                                                                                                                                                                                              |
-| video-output                                            | OpenGLES2                      | Metal 2,OpenGL 3.3(macOS)                                                                                                                                                                    |
-| audio-output                                            | AudioQueue, AudioUnit          | AudioQueue, AudioUnit                                                                                                                                                                        |
-| subtitle                                                | ❌(parse to text,don't render)  | - text subtitle(srt/vtt/ass)<br/>- image subtitle(dvbsub/dvdsub/pgssub/idx+sub)<br/>- support intenal and external<br/>- text subtitle support force style<br/>- adjust position y and scale |
-| accurate seek                                           | ❌(not good)                    | ✅                                                                                                                                                                                            |
-| seek mpegts video,prevent display pixelation            | ❌                              | ✅                                                                                                                                                                                            |
-| ts inherit m3u8 http control options                    | ❌                              | ✅                                                                                                                                                                                            |
-| local movie after seek, start playing in a split second | ❌                              | ✅                                                                                                                                                                                            |
-| extra audio delay                                       | ❌                              | ✅                                                                                                                                                                                            |
-| extra subtitle delay                                    | ❌                              | ✅                                                                                                                                                                                            |
-| 4k/HDR/HDR10/HDR10+                                     | ❌                              | ✅                                                                                                                                                                                            |
-| bluray:// BDMV(Blu-ray Disc Movie)(iso镜像，蓝光原盘)          | ❌                              | ✅                                                                                                                                                                                            |
-| bluray:// BDMV(文件夹)                                     | ❌                              | ✅                                                                                                                                                                                            |
-| bluray:// 协议嵌套实现播放网络 BMDV                               | ❌                              | ✅                                                                                                                                                                                            |
-| smb://                                                  | ❌                              | ✅                                                                                                                                                                                            |
-| dvd://                                                  | ❌                              | ✅                                                                                                                                                                                            |
-| hardware acceleration                                   | ✅ use video toolbox            | ✅ use ffmpeg built videotoolbox hwaccel                                                                                                                                                      |
-| andorid platform                                        | ✅                              | ❌                                                                                                                                                                                            |
-| ios platform                                            | ✅                              | ✅                                                                                                                                                                                            |
-| macos platform                                          | ❌                              | ✅                                                                                                                                                                                            |
-| tvos platform                                           | ❌                              | ✅                                                                                                                                                                                            |
+正在开发的功能
 
-项目一直在使用 ijkplayer 并且功能完全可以满足的情况下，不要使用 fsplayer，只需要使用我维护的 [ijkplayer](https://github.com/debugly/ijkplayer) 就行，主要是升级了编译工具链，能够正常在最新的安卓15和iOS18上正常运行。
+- [ ] AV1 硬解
+- [ ] 录制视频
+- [ ] 直播回放
+- [ ] 音频播放指定的声道
+- [ ] 音视频可变速变调
+- [ ] 支持透明视频
+- [ ] 画中画
+- [ ] Dolby Vision P5
 
-如果之前使用的 ijkplayer，请参考 [迁移指南](./doc/migration.md) 使用全新的 fsplayer。
+如果之前使用的 ijkplayer，可以轻松迁移到 fsplayer，请参考 [迁移指南](./doc/migration.md) 。
 
-## My Build Environment
+## 构建环境
 
 - macOS Sequoia(15.1)
 - Xcode Version 16.2 (16C5032a)
 - cocoapods 1.16.1
 
-| Platform    | Archs                                  |
+| 最低支持平台    | 架构  |
 | ----------- | -------------------------------------- |
 | iOS 11.0    | arm64、arm64_simulator、x86_64_simulator |
 | macOS 10.11 | arm64、x86_64                           |
 | tvOS 12.0   | arm64、arm64_simulator、x86_64_simulator |
 
-## Latest Changes
+## 更新记录
 
 - [CHANGELOG.md](CHANGELOG.md)
 
-## Donate
+## FSPlayer
 
-- [Donate](./Donate.md)
-- [捐赠](./Donate.md)
+FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，感觉不错可以 [请作者喝咖啡](./Donate.md) 。
 
-## Installation
+- 通过 Swift Package Manger 集成: [FSPlayer-SPM.git](https://github.com/debugly/FSPlayer-SPM.git)
 
-- integration via Swift Package Manger: [FSPlayer-SPM.git](https://github.com/debugly/FSPlayer-SPM.git)
-
-- integration via Cocoapods:
+- 通过 Cocoapods 集成:
 
 ```
 pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.0/FSPlayer.spec.json'
 ```
 
-## Development
-
-if you need change source code, you can use git add submodule, then use cocoapod integrate fsplayer into your workspace by development pod like examples.
-
-how to run examples:
+### 使用
 
 ```
-git clone https://github.com/debugly/fsplayer.git fsplayer
-cd fsplayer
-git checkout -B latest 1.0.0
-git submodule update --init
+FSOptions *options = [FSOptions optionsByDefault];
+//创建播放器
+self.player = [[FSPlayer alloc] initWithContentURL:url withOptions:options];
+//创建播放器渲染view
+NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
+playerView.frame = self.playerContainer.bounds;
+playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+[self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
 
-./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
-./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
-./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
+//加载完毕自动播放
+self.player.shouldAutoplay = YES;
 
-pod install --project-directory=./examples/macos
-pod install --project-directory=./examples/ios
-pod install --project-directory=./examples/tvos
-
-# run iOS demo
-open ./examples/ios/FSPlayerDemo.xcworkspace
-# run macOS demo
-open ./examples/macos/FSPlayerMacDemo.xcworkspace
-# run tvOS demo
-open ./examples/tvos/FSPlayerTVDemo.xcworkspace
+//异步加载
+[self.player prepareToPlay];
 ```
 
-if you want build your FSPlayer.framework, you need enter examples/{plat} folder, then exec `./build-framework.sh`
+更详细的使用[说明文档](https://fsplayer.debugly.cn/manuals/getting-started.html)
 
-## Support
+## FSPlayer-Pro
 
-- Please do not send e-mail to me. Public technical discussion on github is preferred.
-- 请尽量在 github 上公开讨论[技术问题](https://github.com/debugly/fsplayer/issues)，不要以邮件方式私下询问，恕不一一回复。
+FSPlayer-Pro 在 FSPlayer 的基础上提供了更加强劲的功能，将以动态库的形式提供给付费用户。
 
-## License
+- HLS 点播边播边缓存，已经缓存的seek回去播放不再耗流量，速度更快
+- 可无缝切换音轨，避免了普通方式切换后需要seek到当前位置，播放器重新加载短暂没有声音并且黑屏的问题
+- 播放网络 iso 镜像和 BDMV 文件夹时，首帧起播速度提升x倍，Seek 后首帧起播速度提升x倍
 
-```
-Copyright (c) 2021 qianlongxu
-Licensed under LGPLv3
-```
+具体费用和规则请邮件联系：[debugly@icloud.com](mailto:debugly@icloud.com)
