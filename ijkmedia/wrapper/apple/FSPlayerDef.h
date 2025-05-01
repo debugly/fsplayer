@@ -30,7 +30,7 @@ struct FSSize {
 };
 typedef struct FSSize FSSize;
 
-CG_INLINE FSSize
+NS_INLINE FSSize
 FSSizeMake(NSInteger width, NSInteger height)
 {
     FSSize size;
@@ -45,7 +45,7 @@ struct FSSampleAspectRatio {
 };
 typedef struct FSSampleAspectRatio FSSampleAspectRatio;
 
-CG_INLINE FSSampleAspectRatio
+NS_INLINE FSSampleAspectRatio
 FSSampleAspectRatioMake(NSInteger numerator, NSInteger denominator)
 {
     FSSampleAspectRatio sampleAspectRatio;

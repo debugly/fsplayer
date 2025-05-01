@@ -3,10 +3,11 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 53;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1B16843B2DC3B9D600A1BA88 /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
 		55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 55E809E51B145B55003E98A5 /* LaunchScreen.xib */; };
 		C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD02D91434300D768BC /* FSAppDelegate.m */; };
 		C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */; };
@@ -31,14 +32,28 @@
 		E6903F1217EAF70200CFD954 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1117EAF70200CFD954 /* Default.png */; };
 		E6903F1417EAF70200CFD954 /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1317EAF70200CFD954 /* Default@2x.png */; };
 		E6903F1617EAF70200CFD954 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1517EAF70200CFD954 /* Default-568h@2x.png */; };
-		F753E46F92713A49D3CF4E86 /* Pods_FSPlayerDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 156710EE52D85A1D5873E15C /* Pods_FSPlayerDemo.framework */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1B1684362DC3B91900A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 08F8FEAD3A0AE161583FC49F;
+			remoteInfo = "FSPlayer-iOS";
+		};
+		1B1684382DC3B91900A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 4CE44165D565024414A46AA8;
+			remoteInfo = "FSPlayer-macOS";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		156710EE52D85A1D5873E15C /* Pods_FSPlayerDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FSPlayerDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		226FF7AC1A7E64C2B8E3A54A /* Pods-FSPlayerDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerDemo.debug.xcconfig"; path = "Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
 		55E809E51B145B55003E98A5 /* LaunchScreen.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LaunchScreen.xib; sourceTree = "<group>"; };
-		75E33D81B82270292EEB4EBD /* Pods-FSPlayerDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerDemo.release.xcconfig"; path = "Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo.release.xcconfig"; sourceTree = "<group>"; };
 		C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAppDelegate.h; sourceTree = "<group>"; };
 		C9CC8BD02D91434300D768BC /* FSAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSAppDelegate.m; sourceTree = "<group>"; };
 		C9CC8BD22D91438F00D768BC /* Barcode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Barcode.h; sourceTree = "<group>"; };
@@ -83,20 +98,27 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F753E46F92713A49D3CF4E86 /* Pods_FSPlayerDemo.framework in Frameworks */,
+				1B16843B2DC3B9D600A1BA88 /* FSPlayer-iOS.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		43104571B228D6E05432AF05 /* Pods */ = {
+		1B1684322DC3B91900A1BA88 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				226FF7AC1A7E64C2B8E3A54A /* Pods-FSPlayerDemo.debug.xcconfig */,
-				75E33D81B82270292EEB4EBD /* Pods-FSPlayerDemo.release.xcconfig */,
+				1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */,
+				1B1684392DC3B91900A1BA88 /* FSPlayer-macOS.framework */,
 			);
-			path = Pods;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1B16843A2DC3B9D600A1BA88 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		C9CC8BEC2D91438F00D768BC /* ViewController */ = {
@@ -130,14 +152,6 @@
 			path = ViewController;
 			sourceTree = "<group>";
 		};
-		D4AAE92C995B33AE6A135378 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				156710EE52D85A1D5873E15C /* Pods_FSPlayerDemo.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		E67323A01B69E6B800CB9036 /* XCAssets */ = {
 			isa = PBXGroup;
 			children = (
@@ -151,11 +165,11 @@
 		E6903EF317EAF70200CFD954 = {
 			isa = PBXGroup;
 			children = (
+				1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */,
 				E6903F0517EAF70200CFD954 /* FSPlayerDemo */,
 				E6903EFD17EAF70200CFD954 /* Products */,
 				E67323A01B69E6B800CB9036 /* XCAssets */,
-				43104571B228D6E05432AF05 /* Pods */,
-				D4AAE92C995B33AE6A135378 /* Frameworks */,
+				1B16843A2DC3B9D600A1BA88 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -200,11 +214,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = E6903F1917EAF70200CFD954 /* Build configuration list for PBXNativeTarget "FSPlayerDemo" */;
 			buildPhases = (
-				FA469C82FB92C17789D75FCD /* [CP] Check Pods Manifest.lock */,
 				E6903EF817EAF70200CFD954 /* Sources */,
 				E6903EF917EAF70200CFD954 /* Frameworks */,
 				E6903EFA17EAF70200CFD954 /* Resources */,
-				B4817AAC0936B46C5D6FB3B8 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -242,12 +254,37 @@
 			mainGroup = E6903EF317EAF70200CFD954;
 			productRefGroup = E6903EFD17EAF70200CFD954 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 1B1684322DC3B91900A1BA88 /* Products */;
+					ProjectRef = 1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				E6903EFB17EAF70200CFD954 /* FSPlayerDemo */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-iOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684362DC3B91900A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1B1684392DC3B91900A1BA88 /* FSPlayer-macOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-macOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684382DC3B91900A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		E6903EFA17EAF70200CFD954 /* Resources */ = {
@@ -271,49 +308,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		B4817AAC0936B46C5D6FB3B8 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/FSPlayer/FSPlayer.framework",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/FSPlayer.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-FSPlayerDemo/Pods-FSPlayerDemo-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		FA469C82FB92C17789D75FCD /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-FSPlayerDemo-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		E6903EF817EAF70200CFD954 /* Sources */ = {
@@ -451,7 +445,6 @@
 		};
 		E6903F1A17EAF70200CFD954 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 226FF7AC1A7E64C2B8E3A54A /* Pods-FSPlayerDemo.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
@@ -460,6 +453,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 96C96H28CU;
+				ENABLE_BITCODE = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = FSPlayerDemo/FSPlayerDemo.pch;
@@ -484,7 +478,6 @@
 		};
 		E6903F1B17EAF70200CFD954 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 75E33D81B82270292EEB4EBD /* Pods-FSPlayerDemo.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
@@ -493,6 +486,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 96C96H28CU;
+				ENABLE_BITCODE = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = FSPlayerDemo/FSPlayerDemo.pch;
