@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1B16843B2DC3B9D600A1BA88 /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
+		1B1684842DC5034600A1BA88 /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
 		55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 55E809E51B145B55003E98A5 /* LaunchScreen.xib */; };
 		C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD02D91434300D768BC /* FSAppDelegate.m */; };
 		C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */; };
@@ -48,6 +48,13 @@
 			proxyType = 2;
 			remoteGlobalIDString = 4CE44165D565024414A46AA8;
 			remoteInfo = "FSPlayer-macOS";
+		};
+		1B1684822DC5034400A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 46E445F92BD65C0F4498DCC8;
+			remoteInfo = "FSPlayer-tvOS";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -98,7 +105,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1B16843B2DC3B9D600A1BA88 /* FSPlayer-iOS.framework in Frameworks */,
+				1B1684842DC5034600A1BA88 /* FSPlayer-iOS.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -110,6 +117,7 @@
 			children = (
 				1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */,
 				1B1684392DC3B91900A1BA88 /* FSPlayer-macOS.framework */,
+				1B1684832DC5034400A1BA88 /* FSPlayer-tvOS.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -282,6 +290,14 @@
 			name = "FSPlayer-macOS.framework";
 			path = FSPlayer.framework;
 			remoteRef = 1B1684382DC3B91900A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1B1684832DC5034400A1BA88 /* FSPlayer-tvOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-tvOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684822DC5034400A1BA88 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */

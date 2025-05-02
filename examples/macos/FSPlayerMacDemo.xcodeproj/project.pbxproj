@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1B92B1DC2DC38BB800B58436 /* FSPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B92B1D52DC37CDF00B58436 /* FSPlayer.framework */; };
+		1B16847B2DC4EF9A00A1BA88 /* FSPlayer-macOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */; };
 		C905CF172B54C8D300D59730 /* MRAutoTestViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */; };
 		C905CF182B54C8D300D59730 /* MRAutoTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */; };
 		C905CF1C2B550C7400D59730 /* MRStatisticalViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF192B550C7400D59730 /* MRStatisticalViewController.m */; };
@@ -69,12 +69,26 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		1B92B1D42DC37CDF00B58436 /* PBXContainerItemProxy */ = {
+		1B1684752DC4EF9600A1BA88 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 1B92B1D02DC37CDF00B58436 /* FSPlayer.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = 338A25A6F1C2077A347C8946;
-			remoteInfo = FSPlayer;
+			remoteGlobalIDString = 08F8FEAD3A0AE161583FC49F;
+			remoteInfo = "FSPlayer-iOS";
+		};
+		1B1684772DC4EF9600A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B92B1D02DC37CDF00B58436 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 4CE44165D565024414A46AA8;
+			remoteInfo = "FSPlayer-macOS";
+		};
+		1B1684792DC4EF9600A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B92B1D02DC37CDF00B58436 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 46E445F92BD65C0F4498DCC8;
+			remoteInfo = "FSPlayer-tvOS";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -179,7 +193,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1B92B1DC2DC38BB800B58436 /* FSPlayer.framework in Frameworks */,
+				1B16847B2DC4EF9A00A1BA88 /* FSPlayer-macOS.framework in Frameworks */,
 				DD9B13E822C24971002D1D79 /* libz.tbd in Frameworks */,
 				DD9B13D822C240A5002D1D79 /* libiconv.tbd in Frameworks */,
 				DD9B13D622C24095002D1D79 /* libxml2.tbd in Frameworks */,
@@ -206,7 +220,9 @@
 		1B92B1D12DC37CDF00B58436 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1B92B1D52DC37CDF00B58436 /* FSPlayer.framework */,
+				1B1684762DC4EF9600A1BA88 /* FSPlayer-iOS.framework */,
+				1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */,
+				1B16847A2DC4EF9600A1BA88 /* FSPlayer-tvOS.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -438,11 +454,28 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		1B92B1D52DC37CDF00B58436 /* FSPlayer.framework */ = {
+		1B1684762DC4EF9600A1BA88 /* FSPlayer-iOS.framework */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.framework;
+			name = "FSPlayer-iOS.framework";
 			path = FSPlayer.framework;
-			remoteRef = 1B92B1D42DC37CDF00B58436 /* PBXContainerItemProxy */;
+			remoteRef = 1B1684752DC4EF9600A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-macOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684772DC4EF9600A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1B16847A2DC4EF9600A1BA88 /* FSPlayer-tvOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-tvOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684792DC4EF9600A1BA88 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */

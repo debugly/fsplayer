@@ -60,14 +60,14 @@
 #endif
 
 #include <stdbool.h>
-#include "ijkavformat/ijkiomanager.h"
-#include "ijkavformat/ijkioapplication.h"
+#include "ijkmeta.h"
 #include "ff_ffinc.h"
 #include "ff_ffmsg_queue.h"
 #include "ff_ffpipenode.h"
-#include "ijkmeta.h"
-#include "ijkavformat/ijklas.h"
 #include "ff_subtitle_def.h"
+#include "ijkavformat/ijklas.h"
+#include "ijkavformat/ijkiomanager.h"
+#include "ijkavformat/ijkioapplication.h"
 
 #define DEFAULT_HIGH_WATER_MARK_IN_BYTES        (256 * 1024)
 #define SALTATION_RETURN_VALUE 1000

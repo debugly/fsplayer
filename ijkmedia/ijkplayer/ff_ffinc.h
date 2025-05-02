@@ -30,16 +30,15 @@
 #include <assert.h>
 #include "libavutil/avstring.h"
 #include "libavutil/time.h"
-#include "libavformat/avformat.h"
-#include "libavcodec/avfft.h"
-#include "libswscale/swscale.h"
-#include "libavformat/application.h"
 #include "libavutil/base64.h"
 #include "libavutil/error.h"
 #include "libavutil/opt.h"
 #include "libavutil/version.h"
 #include "libswresample/swresample.h"
-
+#include "libavformat/avformat.h"
+#include "libavformat/application.h"
+#include "libavcodec/avfft.h"
+#include "libswscale/swscale.h"
 #include "ijksdl/ijksdl.h"
 
 typedef int (*ijk_inject_callback)(void *opaque, int type, void *data, size_t data_size);

@@ -7,6 +7,14 @@
     {
       "idiom" : "tv",
       "scale" : "2x"
+    },
+    {
+      "idiom" : "tv-marketing",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "tv-marketing",
+      "scale" : "2x"
     }
   ],
   "info" : {

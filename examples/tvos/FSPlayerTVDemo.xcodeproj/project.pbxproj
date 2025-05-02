@@ -3,92 +3,114 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 55;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		712196AB5886A1BCDE5CE8BA /* Pods_FSPlayerTVDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72746AE25473F8C3B13D37AE /* Pods_FSPlayerTVDemo.framework */; };
-		C9B5A9622BFEDC7900F87720 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9B5A9612BFEDC7900F87720 /* AppDelegate.m */; };
-		C9B5A9652BFEDC7900F87720 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9B5A9642BFEDC7900F87720 /* ViewController.m */; };
-		C9B5A9682BFEDC7900F87720 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = C9B5A9672BFEDC7900F87720 /* Base */; };
-		C9B5A96A2BFEDC7A00F87720 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C9B5A9692BFEDC7A00F87720 /* Assets.xcassets */; };
-		C9B5A96D2BFEDC7A00F87720 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = C9B5A96C2BFEDC7A00F87720 /* Base */; };
-		C9B5A96F2BFEDC7A00F87720 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = C9B5A96E2BFEDC7A00F87720 /* main.m */; };
+		1B16844A2DC4B33200A1BA88 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B1684492DC4B33200A1BA88 /* AppDelegate.m */; };
+		1B16844D2DC4B33300A1BA88 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B16844C2DC4B33300A1BA88 /* ViewController.m */; };
+		1B1684502DC4B33300A1BA88 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1B16844E2DC4B33300A1BA88 /* Main.storyboard */; };
+		1B1684522DC4B33400A1BA88 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B1684512DC4B33400A1BA88 /* Assets.xcassets */; };
+		1B1684552DC4B33400A1BA88 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1B1684532DC4B33400A1BA88 /* LaunchScreen.storyboard */; };
+		1B1684572DC4B33400A1BA88 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B1684562DC4B33400A1BA88 /* main.m */; };
+		1B16846A2DC4B5B000A1BA88 /* FSPlayer-tvOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684682DC4B5A400A1BA88 /* FSPlayer-tvOS.framework */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1B1684632DC4B5A400A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 08F8FEAD3A0AE161583FC49F;
+			remoteInfo = "FSPlayer-iOS";
+		};
+		1B1684652DC4B5A400A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 4CE44165D565024414A46AA8;
+			remoteInfo = "FSPlayer-macOS";
+		};
+		1B1684672DC4B5A400A1BA88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 46E445F92BD65C0F4498DCC8;
+			remoteInfo = "FSPlayer-tvOS";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		2ED113A8A58AB79CBA7057DC /* Pods-FSPlayerTVDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerTVDemo.debug.xcconfig"; path = "Target Support Files/Pods-FSPlayerTVDemo/Pods-FSPlayerTVDemo.debug.xcconfig"; sourceTree = "<group>"; };
-		72746AE25473F8C3B13D37AE /* Pods_FSPlayerTVDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FSPlayerTVDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		79E597FB90E0CF5982F51351 /* Pods-FSPlayerTVDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FSPlayerTVDemo.release.xcconfig"; path = "Target Support Files/Pods-FSPlayerTVDemo/Pods-FSPlayerTVDemo.release.xcconfig"; sourceTree = "<group>"; };
-		C9B5A95D2BFEDC7900F87720 /* FSPlayerTVDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FSPlayerTVDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		C9B5A9602BFEDC7900F87720 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
-		C9B5A9612BFEDC7900F87720 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
-		C9B5A9632BFEDC7900F87720 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
-		C9B5A9642BFEDC7900F87720 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
-		C9B5A9672BFEDC7900F87720 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
-		C9B5A9692BFEDC7A00F87720 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		C9B5A96C2BFEDC7A00F87720 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		C9B5A96E2BFEDC7A00F87720 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		1B1684452DC4B33200A1BA88 /* FSPlayerTVDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FSPlayerTVDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1B1684482DC4B33200A1BA88 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		1B1684492DC4B33200A1BA88 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		1B16844B2DC4B33200A1BA88 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
+		1B16844C2DC4B33300A1BA88 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
+		1B16844F2DC4B33300A1BA88 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		1B1684512DC4B33400A1BA88 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1B1684542DC4B33400A1BA88 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		1B1684562DC4B33400A1BA88 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		C9B5A95A2BFEDC7900F87720 /* Frameworks */ = {
+		1B1684422DC4B33200A1BA88 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				712196AB5886A1BCDE5CE8BA /* Pods_FSPlayerTVDemo.framework in Frameworks */,
+				1B16846A2DC4B5B000A1BA88 /* FSPlayer-tvOS.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		687EDAE7B86A86F05D28968F /* Pods */ = {
+		1B16843C2DC4B33200A1BA88 = {
 			isa = PBXGroup;
 			children = (
-				2ED113A8A58AB79CBA7057DC /* Pods-FSPlayerTVDemo.debug.xcconfig */,
-				79E597FB90E0CF5982F51351 /* Pods-FSPlayerTVDemo.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		C9B5A9542BFEDC7900F87720 = {
-			isa = PBXGroup;
-			children = (
-				C9B5A95F2BFEDC7900F87720 /* FSPlayerTVDemo */,
-				C9B5A95E2BFEDC7900F87720 /* Products */,
-				687EDAE7B86A86F05D28968F /* Pods */,
-				CE2CF4B6A9566391BB036476 /* Frameworks */,
+				1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */,
+				1B1684472DC4B33200A1BA88 /* FSPlayerTVDemo */,
+				1B1684462DC4B33200A1BA88 /* Products */,
+				1B1684692DC4B5B000A1BA88 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
-		C9B5A95E2BFEDC7900F87720 /* Products */ = {
+		1B1684462DC4B33200A1BA88 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C9B5A95D2BFEDC7900F87720 /* FSPlayerTVDemo.app */,
+				1B1684452DC4B33200A1BA88 /* FSPlayerTVDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		C9B5A95F2BFEDC7900F87720 /* FSPlayerTVDemo */ = {
+		1B1684472DC4B33200A1BA88 /* FSPlayerTVDemo */ = {
 			isa = PBXGroup;
 			children = (
-				C9B5A9602BFEDC7900F87720 /* AppDelegate.h */,
-				C9B5A9612BFEDC7900F87720 /* AppDelegate.m */,
-				C9B5A9632BFEDC7900F87720 /* ViewController.h */,
-				C9B5A9642BFEDC7900F87720 /* ViewController.m */,
-				C9B5A9662BFEDC7900F87720 /* Main.storyboard */,
-				C9B5A9692BFEDC7A00F87720 /* Assets.xcassets */,
-				C9B5A96B2BFEDC7A00F87720 /* LaunchScreen.storyboard */,
-				C9B5A96E2BFEDC7A00F87720 /* main.m */,
+				1B1684482DC4B33200A1BA88 /* AppDelegate.h */,
+				1B1684492DC4B33200A1BA88 /* AppDelegate.m */,
+				1B16844B2DC4B33200A1BA88 /* ViewController.h */,
+				1B16844C2DC4B33300A1BA88 /* ViewController.m */,
+				1B16844E2DC4B33300A1BA88 /* Main.storyboard */,
+				1B1684512DC4B33400A1BA88 /* Assets.xcassets */,
+				1B1684532DC4B33400A1BA88 /* LaunchScreen.storyboard */,
+				1B1684562DC4B33400A1BA88 /* main.m */,
 			);
 			path = FSPlayerTVDemo;
 			sourceTree = "<group>";
 		};
-		CE2CF4B6A9566391BB036476 /* Frameworks */ = {
+		1B16845E2DC4B5A400A1BA88 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				72746AE25473F8C3B13D37AE /* Pods_FSPlayerTVDemo.framework */,
+				1B1684642DC4B5A400A1BA88 /* FSPlayer-iOS.framework */,
+				1B1684662DC4B5A400A1BA88 /* FSPlayer-macOS.framework */,
+				1B1684682DC4B5A400A1BA88 /* FSPlayer-tvOS.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1B1684692DC4B5B000A1BA88 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -96,138 +118,127 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C9B5A95C2BFEDC7900F87720 /* FSPlayerTVDemo */ = {
+		1B1684442DC4B33200A1BA88 /* FSPlayerTVDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C9B5A9722BFEDC7A00F87720 /* Build configuration list for PBXNativeTarget "FSPlayerTVDemo" */;
+			buildConfigurationList = 1B16845A2DC4B33400A1BA88 /* Build configuration list for PBXNativeTarget "FSPlayerTVDemo" */;
 			buildPhases = (
-				AD4E2BD757FB3168F882B6F1 /* [CP] Check Pods Manifest.lock */,
-				C9B5A9592BFEDC7900F87720 /* Sources */,
-				C9B5A95A2BFEDC7900F87720 /* Frameworks */,
-				C9B5A95B2BFEDC7900F87720 /* Resources */,
-				25F569BFF952A34EEA9B6711 /* [CP] Embed Pods Frameworks */,
+				1B1684412DC4B33200A1BA88 /* Sources */,
+				1B1684422DC4B33200A1BA88 /* Frameworks */,
+				1B1684432DC4B33200A1BA88 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = FSPlayerTVDemo;
-			productName = IJKMediaTVDemo;
-			productReference = C9B5A95D2BFEDC7900F87720 /* FSPlayerTVDemo.app */;
+			productName = FSPlayerTVDemo;
+			productReference = 1B1684452DC4B33200A1BA88 /* FSPlayerTVDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		C9B5A9552BFEDC7900F87720 /* Project object */ = {
+		1B16843D2DC4B33200A1BA88 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1540;
+				LastUpgradeCheck = 1310;
 				TargetAttributes = {
-					C9B5A95C2BFEDC7900F87720 = {
-						CreatedOnToolsVersion = 15.4;
+					1B1684442DC4B33200A1BA88 = {
+						CreatedOnToolsVersion = 13.1;
 					};
 				};
 			};
-			buildConfigurationList = C9B5A9582BFEDC7900F87720 /* Build configuration list for PBXProject "FSPlayerTVDemo" */;
-			compatibilityVersion = "Xcode 14.0";
+			buildConfigurationList = 1B1684402DC4B33200A1BA88 /* Build configuration list for PBXProject "FSPlayerTVDemo" */;
+			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = C9B5A9542BFEDC7900F87720;
-			productRefGroup = C9B5A95E2BFEDC7900F87720 /* Products */;
+			mainGroup = 1B16843C2DC4B33200A1BA88;
+			productRefGroup = 1B1684462DC4B33200A1BA88 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 1B16845E2DC4B5A400A1BA88 /* Products */;
+					ProjectRef = 1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
-				C9B5A95C2BFEDC7900F87720 /* FSPlayerTVDemo */,
+				1B1684442DC4B33200A1BA88 /* FSPlayerTVDemo */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXReferenceProxy section */
+		1B1684642DC4B5A400A1BA88 /* FSPlayer-iOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-iOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684632DC4B5A400A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1B1684662DC4B5A400A1BA88 /* FSPlayer-macOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-macOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684652DC4B5A400A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		1B1684682DC4B5A400A1BA88 /* FSPlayer-tvOS.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			name = "FSPlayer-tvOS.framework";
+			path = FSPlayer.framework;
+			remoteRef = 1B1684672DC4B5A400A1BA88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
 /* Begin PBXResourcesBuildPhase section */
-		C9B5A95B2BFEDC7900F87720 /* Resources */ = {
+		1B1684432DC4B33200A1BA88 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C9B5A96A2BFEDC7A00F87720 /* Assets.xcassets in Resources */,
-				C9B5A96D2BFEDC7A00F87720 /* Base in Resources */,
-				C9B5A9682BFEDC7900F87720 /* Base in Resources */,
+				1B1684552DC4B33400A1BA88 /* LaunchScreen.storyboard in Resources */,
+				1B1684522DC4B33400A1BA88 /* Assets.xcassets in Resources */,
+				1B1684502DC4B33300A1BA88 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		25F569BFF952A34EEA9B6711 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-FSPlayerTVDemo/Pods-FSPlayerTVDemo-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-FSPlayerTVDemo/Pods-FSPlayerTVDemo-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-FSPlayerTVDemo/Pods-FSPlayerTVDemo-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		AD4E2BD757FB3168F882B6F1 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-FSPlayerTVDemo-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
-		C9B5A9592BFEDC7900F87720 /* Sources */ = {
+		1B1684412DC4B33200A1BA88 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C9B5A9652BFEDC7900F87720 /* ViewController.m in Sources */,
-				C9B5A96F2BFEDC7A00F87720 /* main.m in Sources */,
-				C9B5A9622BFEDC7900F87720 /* AppDelegate.m in Sources */,
+				1B16844D2DC4B33300A1BA88 /* ViewController.m in Sources */,
+				1B1684572DC4B33400A1BA88 /* main.m in Sources */,
+				1B16844A2DC4B33200A1BA88 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		C9B5A9662BFEDC7900F87720 /* Main.storyboard */ = {
+		1B16844E2DC4B33300A1BA88 /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
-				C9B5A9672BFEDC7900F87720 /* Base */,
+				1B16844F2DC4B33300A1BA88 /* Base */,
 			);
 			name = Main.storyboard;
 			sourceTree = "<group>";
 		};
-		C9B5A96B2BFEDC7A00F87720 /* LaunchScreen.storyboard */ = {
+		1B1684532DC4B33400A1BA88 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
-				C9B5A96C2BFEDC7A00F87720 /* Base */,
+				1B1684542DC4B33400A1BA88 /* Base */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
@@ -235,13 +246,14 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		C9B5A9702BFEDC7A00F87720 /* Debug */ = {
+		1B1684582DC4B33400A1BA88 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -271,7 +283,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -285,22 +297,22 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 17.5;
+				TVOS_DEPLOYMENT_TARGET = 15.0;
 			};
 			name = Debug;
 		};
-		C9B5A9712BFEDC7A00F87720 /* Release */ = {
+		1B1684592DC4B33400A1BA88 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -330,7 +342,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -338,24 +350,22 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 17.5;
+				TVOS_DEPLOYMENT_TARGET = 15.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
-		C9B5A9732BFEDC7A00F87720 /* Debug */ = {
+		1B16845B2DC4B33400A1BA88 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2ED113A8A58AB79CBA7057DC /* Pods-FSPlayerTVDemo.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 96C96H28CU;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -365,22 +375,21 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayerTVDemo.${DEVELOPMENT_TEAM}";
+				PRODUCT_BUNDLE_IDENTIFIER = com.debugly.FSPlayerTVDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Debug;
 		};
-		C9B5A9742BFEDC7A00F87720 /* Release */ = {
+		1B16845C2DC4B33400A1BA88 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 79E597FB90E0CF5982F51351 /* Pods-FSPlayerTVDemo.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 96C96H28CU;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -390,7 +399,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayerTVDemo.${DEVELOPMENT_TEAM}";
+				PRODUCT_BUNDLE_IDENTIFIER = com.debugly.FSPlayerTVDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 3;
@@ -400,25 +409,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C9B5A9582BFEDC7900F87720 /* Build configuration list for PBXProject "FSPlayerTVDemo" */ = {
+		1B1684402DC4B33200A1BA88 /* Build configuration list for PBXProject "FSPlayerTVDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C9B5A9702BFEDC7A00F87720 /* Debug */,
-				C9B5A9712BFEDC7A00F87720 /* Release */,
+				1B1684582DC4B33400A1BA88 /* Debug */,
+				1B1684592DC4B33400A1BA88 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C9B5A9722BFEDC7A00F87720 /* Build configuration list for PBXNativeTarget "FSPlayerTVDemo" */ = {
+		1B16845A2DC4B33400A1BA88 /* Build configuration list for PBXNativeTarget "FSPlayerTVDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C9B5A9732BFEDC7A00F87720 /* Debug */,
-				C9B5A9742BFEDC7A00F87720 /* Release */,
+				1B16845B2DC4B33400A1BA88 /* Debug */,
+				1B16845C2DC4B33400A1BA88 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = C9B5A9552BFEDC7900F87720 /* Project object */;
+	rootObject = 1B16843D2DC4B33200A1BA88 /* Project object */;
 }
