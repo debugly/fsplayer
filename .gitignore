@@ -35,7 +35,9 @@ xcuserdata
 xcshareddata
 *.xccheckout
 # Cocopods
-examples/macos/Pods
-examples/ios/Pods
-examples/tvos/Pods
+examples/macos/Release
+examples/ios/Release-iphoneos
+examples/ios/Release-iphonesimulator
+examples/tvos/Release-appletvos
+examples/tvos/Release-appletvsimulator
 examples/xcframewrok/FSPlayer.xcframework

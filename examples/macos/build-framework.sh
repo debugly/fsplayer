@@ -19,15 +19,15 @@ cd "$THIS_DIR"
 
 set -e
 
-if [[ ! -d Pods/FSPlayer.xcodeproj ]]; then
-    echo "pod install"
-    pod install
+if [[ ! -d FSPlayer.xcodeproj ]]; then
+    ./generate-fsplayer.sh
 fi
 
 # 1
-WORKSPACE_NAME="FSPlayerMacDemo.xcworkspace"
-TARGET_NAME="FSPlayer"
-WORK_DIR="Pods/Release/${TARGET_NAME}"
+PROJECT_NAME="FSPlayer.xcodeproj"
+TARGET_NAME="FSPlayer-macOS"
+
+WORK_DIR="Release"
 
 # 2
 if [ -d ${WORK_DIR} ]; then
@@ -35,14 +35,14 @@ if [ -d ${WORK_DIR} ]; then
 fi
 
 # 3
+# project方式
 # xcodebuild -showsdks
 # Build the framework for device and simulator with all architectures.
-export MACOSX_DEPLOYMENT_TARGET=10.11
 
-xcodebuild -workspace ${WORKSPACE_NAME} -scheme ${TARGET_NAME} \
+xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
 -configuration Release  \
--destination 'generic/platform=macOS' \
+-sdk macosx -arch x86_64 -arch arm64 \
 BUILD_DIR=. \
 clean build
 
-echo "framework dir: ${WORK_DIR}"
+echo "macos framework dir:$WORK_DIR"

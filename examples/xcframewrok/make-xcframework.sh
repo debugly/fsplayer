@@ -38,15 +38,15 @@ function get_inputs_with_path()
 function get_inputs()
 {
     # add macOS
-    macos_inputs=$(get_inputs_with_path 'macos/Pods/Release')
+    macos_inputs=$(get_inputs_with_path 'macos/Release')
     # add iOS
-    ios_inputs=$(get_inputs_with_path 'ios/Pods/Release-iphoneos')
+    ios_inputs=$(get_inputs_with_path 'ios/Release-iphoneos')
     # add iOS Simulator
-    ios_sim_inputs=$(get_inputs_with_path 'ios/Pods/Release-iphonesimulator')
+    ios_sim_inputs=$(get_inputs_with_path 'ios/Release-iphonesimulator')
     # add tvOS
-    tvos_inputs=$(get_inputs_with_path 'tvos/Pods/Release-appletvos')
+    tvos_inputs=$(get_inputs_with_path 'tvos/Release-appletvos')
     # add tvOS Simulator
-    tvos_sim_inputs=$(get_inputs_with_path 'tvos/Pods/Release-appletvsimulator')
+    tvos_sim_inputs=$(get_inputs_with_path 'tvos/Release-appletvsimulator')
     
     echo "${macos_inputs} ${ios_inputs} ${ios_sim_inputs} ${tvos_inputs} ${tvos_sim_inputs}"
 }

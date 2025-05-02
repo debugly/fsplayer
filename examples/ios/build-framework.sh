@@ -19,17 +19,16 @@ cd "$THIS_DIR"
 
 set -e
 
-if [[ ! -d Pods/FSPlayer.xcodeproj ]]; then
-    echo "pod install"
-    pod install
+if [[ ! -d FSPlayer.xcodeproj ]]; then
+    ./generate-fsplayer.sh
 fi
 
 # 1
-WORKSPACE_NAME="FSPlayerDemo.xcworkspace"
-TARGET_NAME="FSPlayer"
+PROJECT_NAME="FSPlayer.xcodeproj"
+TARGET_NAME="FSPlayer-iOS"
 
-WORK_DIR="Pods/Release/Release-iphoneos"
-SIM_WORK_DIR="Pods/Release/Release-iphonesimulator"
+WORK_DIR="Release-iphoneos"
+SIM_WORK_DIR="Release-iphonesimulator"
 
 # 2
 if [ -d ${WORK_DIR} ]; then
@@ -46,10 +45,15 @@ fi
 # Build the framework for device and simulator with all architectures.
 export IPHONEOS_DEPLOYMENT_TARGET=11.0
 
-xcodebuild -workspace ${WORKSPACE_NAME} -scheme ${TARGET_NAME} \
+xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
 -configuration Release  \
--destination 'generic/platform=iOS' \
--destination 'generic/platform=iOS Simulator' \
+-sdk iphonesimulator -arch x86_64 -arch arm64 \
+BUILD_DIR=. \
+clean build
+
+xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
+-configuration Release  \
+-sdk iphoneos -arch arm64 \
 BUILD_DIR=. \
 clean build
 
