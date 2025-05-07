@@ -44,11 +44,6 @@ jobs:
         ./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
         ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
         ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
-    - name: Pod Install
-      run: |
-        pod install --project-directory=examples/ios
-        pod install --project-directory=examples/macos
-        pod install --project-directory=examples/tvos
     - name: Build iOS Framework
       run: cd examples/ios && ./build-framework.sh
     - name: Build macOS Framework      

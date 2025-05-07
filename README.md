@@ -68,9 +68,8 @@
 
 - macOS Sequoia(15.1)
 - Xcode Version 16.2 (16C5032a)
-- cocoapods 1.16.1
 
-| 最低支持平台    | 架构  |
+| 最低支持平台      | 架构                                     |
 | ----------- | -------------------------------------- |
 | iOS 11.0    | arm64、arm64_simulator、x86_64_simulator |
 | macOS 10.11 | arm64、x86_64                           |
@@ -103,10 +102,8 @@ NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
 playerView.frame = self.playerContainer.bounds;
 playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
-
 //加载完毕自动播放
 self.player.shouldAutoplay = YES;
-
 //异步加载
 [self.player prepareToPlay];
 ```
