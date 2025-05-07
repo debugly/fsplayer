@@ -40,7 +40,6 @@
 		0B4704E0134B9B4C1649847A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8781BDDBD119A599802B73F /* CoreFoundation.framework */; };
 		0B89EA64488588431780DBFD /* ff_ffplay.c in Sources */ = {isa = PBXBuildFile; fileRef = A8E04EE1859AE5F68FF1F49A /* ff_ffplay.c */; };
 		0BD937D5A13771A180D7108E /* ijksdl_vout.c in Sources */ = {isa = PBXBuildFile; fileRef = 391A2916925A4B867CE2E909 /* ijksdl_vout.c */; };
-		0CB0493DC018AADCD634018B /* version.sh in Resources */ = {isa = PBXBuildFile; fileRef = 0CAEB72D5C78D4F8351B4564 /* version.sh */; };
 		0CC99B2212EA91E595973128 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 172457340589870423CCD80B /* OpenGLES.framework */; };
 		0D485B735B090365C0253445 /* ijksdl_mutex.c in Sources */ = {isa = PBXBuildFile; fileRef = DEDE343A5BBFCB779658702B /* ijksdl_mutex.c */; };
 		0E283D2E488F65077344AFBD /* ijk_vout_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 6BE0E8225C6333360432E371 /* ijk_vout_common.h */; };
@@ -167,7 +166,6 @@
 		3D2151470419708AD6F1790C /* FSMediaPlayback.h in Headers */ = {isa = PBXBuildFile; fileRef = 7234EB1BB6EA2FE14A364371 /* FSMediaPlayback.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		3D6B56342CDFBDBC78097A1F /* FSSDLAudioKit.m in Sources */ = {isa = PBXBuildFile; fileRef = 6FEB3B8BBBEBB11345BE141D /* FSSDLAudioKit.m */; };
 		3D73EA0D30C5CD2821AB5693 /* ijksdl_gpu.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CFEB6D68562CE450CCA7D6E /* ijksdl_gpu.h */; };
-		3DFC0A05BE41FF550A3BFC7A /* version.sh in Resources */ = {isa = PBXBuildFile; fileRef = 0CAEB72D5C78D4F8351B4564 /* version.sh */; };
 		3EF7C6F8F102B57CC8323938 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 34D6ED99C78974BFB4A21973 /* libbz2.tbd */; };
 		3EFAB2972AC4072B4211420C /* ijkdict.c in Sources */ = {isa = PBXBuildFile; fileRef = 0D9942725459F404F7585071 /* ijkdict.c */; };
 		3F41E913C850742F07B76075 /* ff_subtitle_ex.c in Sources */ = {isa = PBXBuildFile; fileRef = E424360C0FAB67B8308D057F /* ff_subtitle_ex.c */; };
@@ -650,7 +648,6 @@
 		0A38D00D06574F904AB72AAA /* ff_fferror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_fferror.h; sourceTree = "<group>"; };
 		0A77F5FE69E8E8528440038F /* ijkiomanager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkiomanager.h; sourceTree = "<group>"; };
 		0AA52FF1B66722B121D75388 /* libavfilter.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavfilter.a; path = ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a; sourceTree = SDKROOT; };
-		0CAEB72D5C78D4F8351B4564 /* version.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = version.sh; sourceTree = "<group>"; };
 		0D6EF519D8A9FB057EF0E8AA /* ff_ffplay_def.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ff_ffplay_def.c; sourceTree = "<group>"; };
 		0D9942725459F404F7585071 /* ijkdict.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkdict.c; sourceTree = "<group>"; };
 		0DBFA27E41E713C7218200D2 /* ijksdl_gpu_opengl_fbo_macos.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu_opengl_fbo_macos.h; sourceTree = "<group>"; };
@@ -1177,7 +1174,6 @@
 				0FE52AC061F525B5F9626C29 /* ijkplayer_internal.h */,
 				74DED7DC0CD994EBDAD2F01E /* ijkplayer.c */,
 				9C08CC7ED7EE5E2F8025725D /* ijkplayer.h */,
-				0CAEB72D5C78D4F8351B4564 /* version.sh */,
 				51A4C61A8BFFEA7830E08B17 /* apple */,
 				FD1BF58D7632FA2BEFE053F3 /* ijkavformat */,
 				BF48CB46B739FAE03BA66F98 /* ijkavutil */,
@@ -1406,7 +1402,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_63524C39-2D50-4785-9094-528C4B8C7A5E" /* wrapper */ = {
+		"TEMP_32703B9D-90C3-4470-9E56-E255AB2F3370" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1753,7 +1749,6 @@
 				9DC22CB26EF88A24BC5DC1C1 /* ijkversion.h */,
 				30E4E1E73A10611BF9B7C873 /* Headers */,
 				0C5A6129D9DE2602E9E7E6C9 /* Sources */,
-				45E74FEBD6F791A30E6BD197 /* Resources */,
 				9FE12C69E5035605FCF655E2 /* Frameworks */,
 			);
 			buildRules = (
@@ -1772,7 +1767,6 @@
 				4229956C3263214585136BD9 /* ijkversion.h */,
 				42DB154C7290C850168562A5 /* Headers */,
 				C0A04A33FCDAE75DF2532A1E /* Sources */,
-				F1B40D88176039BB7D5130DA /* Resources */,
 				918B4CF7DD5C549A42E247BB /* Frameworks */,
 			);
 			buildRules = (
@@ -1831,25 +1825,6 @@
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		45E74FEBD6F791A30E6BD197 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				0CB0493DC018AADCD634018B /* version.sh in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F1B40D88176039BB7D5130DA /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				3DFC0A05BE41FF550A3BFC7A /* version.sh in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		4229956C3263214585136BD9 /* ijkversion.h */ = {

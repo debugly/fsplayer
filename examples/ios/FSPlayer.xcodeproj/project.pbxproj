@@ -1402,7 +1402,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_2340B158-1642-4CDF-85C2-B0091F0D1DA6" /* wrapper */ = {
+		"TEMP_34C30949-3E35-48CD-9C39-784B520B27B8" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -2208,7 +2208,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
@@ -2291,7 +2291,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
@@ -2353,7 +2353,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
@@ -2436,7 +2436,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
@@ -2578,7 +2578,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
@@ -2663,7 +2663,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
