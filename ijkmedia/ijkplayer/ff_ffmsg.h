@@ -111,6 +111,7 @@
 #define FFP_PROP_INT64_LOGICAL_FILE_SIZE                20209
 #define FFP_PROP_INT64_SHARE_CACHE_DATA                 20210
 #define FFP_PROP_INT64_IMMEDIATE_RECONNECT              20211
+#define FFP_PROP_INT64_CHANNEL_CONFIG                   30000
 
 //
 #define FFP_MSG_VIDEO_Z_ROTATE_DEGREE                   30001 /* arg1 = degrees */

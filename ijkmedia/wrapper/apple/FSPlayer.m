@@ -2146,4 +2146,16 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     }
 }
 
+# pragma mark set audio channel
+
+- (void)setAudioChannel:(FSAudioChannel)config
+{
+    ijkmp_set_property_int64(_mediaPlayer, FFP_PROP_INT64_CHANNEL_CONFIG, config);
+}
+
+- (FSAudioChannel)getAudioChanne
+{
+    return (int)ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_CHANNEL_CONFIG, FSAudioChannelStereo);
+}
+
 @end

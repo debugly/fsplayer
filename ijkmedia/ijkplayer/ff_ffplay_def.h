@@ -722,6 +722,7 @@ typedef struct FFPlayer {
     
     //icy update
     int64_t icy_update_period;//ms
+    int channel_config;
 } FFPlayer;
 
 #define fftime_to_seconds(ts)      (av_rescale(ts, 1, AV_TIME_BASE))
@@ -861,6 +862,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->ijkio_inject_opaque = NULL;
     ffp_reset_statistic(&ffp->stat);
     ffp_reset_demux_cache_control(&ffp->dcc);
+    ffp->channel_config = 0;
 }
 
 inline static void ffp_notify_msg1(FFPlayer *ffp, int what) {
