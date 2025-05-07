@@ -21,11 +21,9 @@
 // The render pipeline generated from the vertex and fragment shaders in the .metal shader file.
 @property (nonatomic, strong) id<MTLRenderPipelineState> renderPipeline;
 @property (nonatomic, strong) id<MTLBuffer> vertexBuffer;
-#if FS_USE_METAL_2
 // The buffer that contains arguments for the fragment shader.
 @property (nonatomic, strong) id<MTLBuffer> fragmentShaderArgumentBuffer;
 @property (nonatomic, strong) id<MTLArgumentEncoder> argumentEncoder;
-#endif
 @property (nonatomic, strong) id<MTLBuffer> convertMatrixBuff;
 @property (nonatomic, assign) BOOL convertMatrixChanged;
 
@@ -91,7 +89,6 @@
     NSAssert(vertexFunction, @"can't find Vertex Function:vertexShader");
     id<MTLFunction> fragmentFunction = [defaultLibrary newFunctionWithName:self.pipelineMeta.fragmentName];
     NSAssert(vertexFunction, @"can't find Fragment Function:%@",self.pipelineMeta.fragmentName);
-#if FS_USE_METAL_2
     id <MTLArgumentEncoder> argumentEncoder =
         [fragmentFunction newArgumentEncoderWithBufferIndex:FSFragmentBufferLocation0];
     
@@ -102,7 +99,7 @@
     _fragmentShaderArgumentBuffer.label = @"Argument Buffer";
     
     [argumentEncoder setArgumentBuffer:_fragmentShaderArgumentBuffer offset:0];
-#endif
+
     // Configure a pipeline descriptor that is used to create a pipeline state.
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     pipelineStateDescriptor.vertexFunction = vertexFunction;
@@ -117,9 +114,7 @@
     //  went wrong.  (Metal API validation is enabled by default when a debug build is run
     //  from Xcode.)
     NSAssert(pipelineState, @"Failed to create pipeline state: %@", error);
-#if FS_USE_METAL_2
     self.argumentEncoder = argumentEncoder;
-#endif
     self.renderPipeline = pipelineState;
     return YES;
 }
@@ -275,7 +270,6 @@
     }
 }
 
-#if FS_USE_METAL_2
 - (void)setHdrPercentage:(float)hdrPercentage
 {
     if (0.0 <= hdrPercentage && hdrPercentage <= 1.0 && _hdrPercentage != hdrPercentage) {
@@ -335,35 +329,4 @@
                 vertexCount:4]; // 绘制
 }
 
-#else
-
-- (void)uploadTextureWithEncoder:(id<MTLRenderCommandEncoder>)encoder
-                        textures:(NSArray*)textures
-{
-    [self updateVertexIfNeed];
-    // Pass in the parameter data.
-    [encoder setVertexBuffer:self.vertexBuffer
-                      offset:0
-                     atIndex:FSVertexInputIndexVertices]; // 设置顶点缓存
- 
-    for (int i = 0; i < [textures count]; i++) {
-        id<MTLTexture>t = textures[i];
-        [encoder setFragmentTexture:t atIndex:FSFragmentTextureIndexTextureY + i];
-    }
-    
-    [self updateConvertMatrixBufferIfNeed];
-    
-    [encoder setFragmentBuffer:self.convertMatrixBuff
-                        offset:0
-                       atIndex:FSFragmentMatrixIndexConvert];
-    
-    // 设置渲染管道，以保证顶点和片元两个shader会被调用
-    [encoder setRenderPipelineState:self.renderPipeline];
-    
-    // Draw the triangle.
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip
-                vertexStart:0
-                vertexCount:4]; // 绘制
-}
-#endif
 @end
