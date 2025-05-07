@@ -1,0 +1,91 @@
+name: FSPlayer
+options:
+  bundleIdPrefix: com.debugly
+targets:
+  FSPlayer:
+    platform: macOS
+    type: framework
+    deploymentTarget: 10.11
+    sources:
+      - path: ijkmedia
+        excludes:
+          - "ijksdl/ijksdl_extra_log.c"
+          - "ijkplayer/ijkversion.h"
+          - "ijkplayer/ijkavformat/ijkioandroidio.c"
+          - "ijkplayer/android/**/*.*"
+          - "ijksdl/android/**/*.*"
+          - "ijksdl/ijksdl_egl.*"
+          - "ijksdl/ijksdl_container.*"
+          - "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.[hc]"
+          - "ijksdl/ios/*.*"
+          - "wrapper/apple/FSAudioKit.*"
+    settings:
+      PRODUCT_NAME: FSPlayer
+      GENERATE_INFOPLIST_FILE: YES
+      GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) IJK_USE_METAL_2=1"
+      MTL_LANGUAGE_REVISION: Metal20
+      METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources"
+      ALWAYS_SEARCH_USER_PATHS: YES
+      HEADER_SEARCH_PATHS:
+        - "$(inherited)"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ffmpeg/include"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/bluray/include"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdread/include"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ass/include"
+        - "${PROJECT_DIR}/../../ijkmedia"
+        - "${PROJECT_DIR}/../../ijkmedia/ijkplayer"
+      LIBRARY_SEARCH_PATHS:
+        - "$(inherited)"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ass/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/bluray/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dav1d/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdread/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ffmpeg/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/freetype/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/fribidi/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/harfbuzz/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/openssl/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/opus/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/smb2/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/uavs3d/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/unibreak/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib"
+    dependencies:
+      - sdk: AppKit.framework
+      - sdk: AudioUnit.framework
+      - sdk: AudioToolbox.framework
+      - sdk: Metal.framework
+      - sdk: OpenGL.framework
+      - sdk: GLKit.framework
+      - sdk: CoreFoundation.framework
+      - sdk: CoreVideo.framework
+      - sdk: CoreImage.framework
+      - sdk: VideoToolbox.framework
+      - sdk: CoreMedia.framework
+      - sdk: Security.framework
+      - sdk: libz.tbd
+      - sdk: libbz2.tbd
+      - sdk: libiconv.tbd
+      - sdk: liblzma.tbd
+      - sdk: ../../FFToolChain/build/product/macos/universal/ass/lib/libass.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/bluray/lib/libbluray.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/dav1d/lib/libdav1d.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdread.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavcodec.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavdevice.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavformat.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavutil.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libswresample.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libswscale.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/freetype/lib/libfreetype.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/fribidi/lib/libfribidi.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/harfbuzz/lib/libharfbuzz-subset.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/harfbuzz/lib/libharfbuzz.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/openssl/lib/libcrypto.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/openssl/lib/libssl.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/opus/lib/libopus.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/smb2/lib/libsmb2.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/uavs3d/lib/libuavs3d.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/unibreak/lib/libunibreak.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/xml2/lib/libxml2.a

@@ -1,8 +1,0 @@
-install! 'cocoapods', :generate_multiple_pod_projects => true
-project 'FSPlayerMacDemo.xcodeproj'
-
-target 'FSPlayerMacDemo' do
-    use_frameworks!
-    platform :osx, '10.13'
-    pod 'FSPlayer', :path => '../../'
-end

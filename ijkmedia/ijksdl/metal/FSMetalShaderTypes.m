@@ -7,6 +7,8 @@
 //
 
 #import "FSMetalShaderTypes.h"
+#import <CoreVideo/CVPixelBuffer.h>
+#import <Metal/MTLPixelFormat.h>
 
 static mp_format mp_formats[] = {
     {

@@ -6,6 +6,8 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <CoreVideo/CVPixelBuffer.h>
+#import <Metal/MTLTexture.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

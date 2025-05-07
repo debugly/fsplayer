@@ -25,7 +25,7 @@
 #ifndef FFPLAY__FF_FFPIPENODE_FFPLAY_VDEC_H
 #define FFPLAY__FF_FFPIPENODE_FFPLAY_VDEC_H
 
-#include "../ff_ffpipenode.h"
+#include "ff_ffpipenode.h"
 
 struct FFPlayer;
 

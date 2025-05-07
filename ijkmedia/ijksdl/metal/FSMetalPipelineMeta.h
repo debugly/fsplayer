@@ -7,6 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import "FSMetalShaderTypes.h"
+#import <CoreVideo/CVPixelBuffer.h>
 
 NS_ASSUME_NONNULL_BEGIN
 NS_CLASS_AVAILABLE(10_13, 11_0)

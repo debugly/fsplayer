@@ -26,8 +26,8 @@
 #ifndef FSSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
 #define FSSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
 
-#include "../ijksdl_stdinc.h"
-#include "../ijksdl_vout.h"
+#include "ijksdl/ijksdl_stdinc.h"
+#include "ijksdl/ijksdl_vout.h"
 #include "ijksdl_inc_ffmpeg.h"
 
 #import <Foundation/Foundation.h>

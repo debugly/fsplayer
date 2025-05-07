@@ -26,8 +26,8 @@
 #if TARGET_OS_IOS || TARGET_OS_TV
 #import <UIKit/UIKit.h>
 #else
-typedef NSView UIView;
 #import <AppKit/AppKit.h>
+typedef NSView UIView;
 #endif
 #import <FSPlayer/FSVideoRenderingProtocol.h>
 #import <FSPlayer/ff_subtitle_preference.h>

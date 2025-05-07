@@ -53,7 +53,7 @@ typedef struct {
     vector_float4 adjustment;
     FSColorTransferFunc transferFun;
     float hdrPercentage;
-    bool hdr;
+    int hdr;
 } FSConvertMatrix;
 
 typedef enum FSFragmentBufferArguments

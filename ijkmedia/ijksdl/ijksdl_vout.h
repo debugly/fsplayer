@@ -30,7 +30,7 @@
 #include "ijksdl_class.h"
 #include "ijksdl_mutex.h"
 #include "ijksdl_video.h"
-#include "ffmpeg/ijksdl_inc_ffmpeg.h"
+#include "ijksdl/ffmpeg/ijksdl_inc_ffmpeg.h"
 #include "ijksdl_fourcc.h"
 
 typedef struct SDL_VoutOverlay_Opaque SDL_VoutOverlay_Opaque;

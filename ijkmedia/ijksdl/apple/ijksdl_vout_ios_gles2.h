@@ -24,7 +24,7 @@
 
 #include "ijksdl/ijksdl_stdinc.h"
 #include "ijksdl/ijksdl_vout.h"
-#include "../ijksdl_gpu.h"
+#include "ijksdl/ijksdl_gpu.h"
 
 #import "FSVideoRenderingProtocol.h"
 
