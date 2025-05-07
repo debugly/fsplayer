@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 55;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,7 +13,8 @@
 		1B1684522DC4B33400A1BA88 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B1684512DC4B33400A1BA88 /* Assets.xcassets */; };
 		1B1684552DC4B33400A1BA88 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1B1684532DC4B33400A1BA88 /* LaunchScreen.storyboard */; };
 		1B1684572DC4B33400A1BA88 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B1684562DC4B33400A1BA88 /* main.m */; };
-		1B16846A2DC4B5B000A1BA88 /* FSPlayer-tvOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684682DC4B5A400A1BA88 /* FSPlayer-tvOS.framework */; };
+		C969F90B2DCAFB8600EB31DF /* FSPlayer-tvOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684682DC4B5A400A1BA88 /* FSPlayer-tvOS.framework */; };
+		C969F90C2DCAFB8600EB31DF /* FSPlayer-tvOS.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684682DC4B5A400A1BA88 /* FSPlayer-tvOS.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +41,20 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		C969F90D2DCAFB8600EB31DF /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C969F90C2DCAFB8600EB31DF /* FSPlayer-tvOS.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		1B1684452DC4B33200A1BA88 /* FSPlayerTVDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FSPlayerTVDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B1684482DC4B33200A1BA88 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -58,7 +73,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1B16846A2DC4B5B000A1BA88 /* FSPlayer-tvOS.framework in Frameworks */,
+				C969F90B2DCAFB8600EB31DF /* FSPlayer-tvOS.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +140,7 @@
 				1B1684412DC4B33200A1BA88 /* Sources */,
 				1B1684422DC4B33200A1BA88 /* Frameworks */,
 				1B1684432DC4B33200A1BA88 /* Resources */,
+				C969F90D2DCAFB8600EB31DF /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -150,7 +166,7 @@
 				};
 			};
 			buildConfigurationList = 1B1684402DC4B33200A1BA88 /* Build configuration list for PBXProject "FSPlayerTVDemo" */;
-			compatibilityVersion = "Xcode 13.0";
+			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -375,7 +391,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.debugly.FSPlayerTVDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayerTVDemo.${DEVELOPMENT_TEAM}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 3;
@@ -399,7 +415,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.debugly.FSPlayerTVDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayerTVDemo.${DEVELOPMENT_TEAM}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 3;

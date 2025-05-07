@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 51;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -40,7 +40,6 @@
 		0B4704E0134B9B4C1649847A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8781BDDBD119A599802B73F /* CoreFoundation.framework */; };
 		0B89EA64488588431780DBFD /* ff_ffplay.c in Sources */ = {isa = PBXBuildFile; fileRef = A8E04EE1859AE5F68FF1F49A /* ff_ffplay.c */; };
 		0BD937D5A13771A180D7108E /* ijksdl_vout.c in Sources */ = {isa = PBXBuildFile; fileRef = 391A2916925A4B867CE2E909 /* ijksdl_vout.c */; };
-		0CB0493DC018AADCD634018B /* version.sh in Resources */ = {isa = PBXBuildFile; fileRef = 0CAEB72D5C78D4F8351B4564 /* version.sh */; };
 		0CC99B2212EA91E595973128 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 172457340589870423CCD80B /* OpenGLES.framework */; };
 		0D485B735B090365C0253445 /* ijksdl_mutex.c in Sources */ = {isa = PBXBuildFile; fileRef = DEDE343A5BBFCB779658702B /* ijksdl_mutex.c */; };
 		0E283D2E488F65077344AFBD /* ijk_vout_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 6BE0E8225C6333360432E371 /* ijk_vout_common.h */; };
@@ -167,7 +166,6 @@
 		3D2151470419708AD6F1790C /* FSMediaPlayback.h in Headers */ = {isa = PBXBuildFile; fileRef = 7234EB1BB6EA2FE14A364371 /* FSMediaPlayback.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		3D6B56342CDFBDBC78097A1F /* FSSDLAudioKit.m in Sources */ = {isa = PBXBuildFile; fileRef = 6FEB3B8BBBEBB11345BE141D /* FSSDLAudioKit.m */; };
 		3D73EA0D30C5CD2821AB5693 /* ijksdl_gpu.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CFEB6D68562CE450CCA7D6E /* ijksdl_gpu.h */; };
-		3DFC0A05BE41FF550A3BFC7A /* version.sh in Resources */ = {isa = PBXBuildFile; fileRef = 0CAEB72D5C78D4F8351B4564 /* version.sh */; };
 		3EF7C6F8F102B57CC8323938 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 34D6ED99C78974BFB4A21973 /* libbz2.tbd */; };
 		3EFAB2972AC4072B4211420C /* ijkdict.c in Sources */ = {isa = PBXBuildFile; fileRef = 0D9942725459F404F7585071 /* ijkdict.c */; };
 		3F41E913C850742F07B76075 /* ff_subtitle_ex.c in Sources */ = {isa = PBXBuildFile; fileRef = E424360C0FAB67B8308D057F /* ff_subtitle_ex.c */; };
@@ -563,7 +561,6 @@
 		DBFA94D42784AED2D47C1D77 /* ijksdl_vout_overlay_ffmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = FFAC1AECFBBCCB29B5CE0D91 /* ijksdl_vout_overlay_ffmpeg.h */; };
 		DC51404E843C6EEA58D4C5C7 /* ijkioprotocol.c in Sources */ = {isa = PBXBuildFile; fileRef = 1531AEFFABA9D6842E493365 /* ijkioprotocol.c */; };
 		DD0751E955DB4F36C68DDF61 /* FSMetalFBO.m in Sources */ = {isa = PBXBuildFile; fileRef = C31CC986D4C8527B52E4C5A1 /* FSMetalFBO.m */; };
-		DD3F5C33C859B119BE85D225 /* version.sh in Resources */ = {isa = PBXBuildFile; fileRef = 0CAEB72D5C78D4F8351B4564 /* version.sh */; };
 		DD430BA377F7F425AA247DDB /* libiconv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 38106D47EA34678554FC85E5 /* libiconv.tbd */; };
 		DD714DDC1344EE3B5D186E92 /* ijksdl_aout_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = A2CB0793025718B7A7979C8B /* ijksdl_aout_internal.h */; };
 		DD9F954BCBED71EB26BCC71F /* FSMonitor.h in Headers */ = {isa = PBXBuildFile; fileRef = B180A32668A77C8FAFA339A4 /* FSMonitor.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -651,7 +648,6 @@
 		0A38D00D06574F904AB72AAA /* ff_fferror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_fferror.h; sourceTree = "<group>"; };
 		0A77F5FE69E8E8528440038F /* ijkiomanager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkiomanager.h; sourceTree = "<group>"; };
 		0AA52FF1B66722B121D75388 /* libavfilter.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavfilter.a; path = ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a; sourceTree = SDKROOT; };
-		0CAEB72D5C78D4F8351B4564 /* version.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = version.sh; sourceTree = "<group>"; };
 		0D6EF519D8A9FB057EF0E8AA /* ff_ffplay_def.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ff_ffplay_def.c; sourceTree = "<group>"; };
 		0D9942725459F404F7585071 /* ijkdict.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkdict.c; sourceTree = "<group>"; };
 		0DBFA27E41E713C7218200D2 /* ijksdl_gpu_opengl_fbo_macos.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu_opengl_fbo_macos.h; sourceTree = "<group>"; };
@@ -1178,7 +1174,6 @@
 				0FE52AC061F525B5F9626C29 /* ijkplayer_internal.h */,
 				74DED7DC0CD994EBDAD2F01E /* ijkplayer.c */,
 				9C08CC7ED7EE5E2F8025725D /* ijkplayer.h */,
-				0CAEB72D5C78D4F8351B4564 /* version.sh */,
 				51A4C61A8BFFEA7830E08B17 /* apple */,
 				FD1BF58D7632FA2BEFE053F3 /* ijkavformat */,
 				BF48CB46B739FAE03BA66F98 /* ijkavutil */,
@@ -1407,7 +1402,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_FD32A62C-9D01-4816-B0FA-18D8F2677D36" /* wrapper */ = {
+		"TEMP_2340B158-1642-4CDF-85C2-B0091F0D1DA6" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1754,7 +1749,6 @@
 				9DC22CB26EF88A24BC5DC1C1 /* ijkversion.h */,
 				30E4E1E73A10611BF9B7C873 /* Headers */,
 				0C5A6129D9DE2602E9E7E6C9 /* Sources */,
-				45E74FEBD6F791A30E6BD197 /* Resources */,
 				9FE12C69E5035605FCF655E2 /* Frameworks */,
 			);
 			buildRules = (
@@ -1773,7 +1767,6 @@
 				4229956C3263214585136BD9 /* ijkversion.h */,
 				42DB154C7290C850168562A5 /* Headers */,
 				C0A04A33FCDAE75DF2532A1E /* Sources */,
-				F1B40D88176039BB7D5130DA /* Resources */,
 				918B4CF7DD5C549A42E247BB /* Frameworks */,
 			);
 			buildRules = (
@@ -1792,7 +1785,6 @@
 				895BE60D35AEE7019087CB19 /* ijkversion.h */,
 				DA8C76FADF03517B8C8D310F /* Headers */,
 				ADD5E1BA7F56E207BACE58B0 /* Sources */,
-				47FCE68F41F35DAF7DA39ED0 /* Resources */,
 				E3C11E02C0A4A15EE7544451 /* Frameworks */,
 			);
 			buildRules = (
@@ -1810,12 +1802,13 @@
 		6B2BEE680A403D281E45DA2A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 				};
 			};
 			buildConfigurationList = 51D464E92E5A7EF8EE2C2C4C /* Build configuration list for PBXProject "FSPlayer" */;
-			compatibilityVersion = "Xcode 10.0";
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -1832,33 +1825,6 @@
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		45E74FEBD6F791A30E6BD197 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				0CB0493DC018AADCD634018B /* version.sh in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		47FCE68F41F35DAF7DA39ED0 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				DD3F5C33C859B119BE85D225 /* version.sh in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F1B40D88176039BB7D5130DA /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				3DFC0A05BE41FF550A3BFC7A /* version.sh in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		4229956C3263214585136BD9 /* ijkversion.h */ = {
@@ -2242,6 +2208,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MARKETING_VERSION = 1.0.0;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
@@ -2324,6 +2291,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
 				);
+				MARKETING_VERSION = 1.0.0;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
@@ -2331,6 +2299,10 @@
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -2381,6 +2353,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MARKETING_VERSION = 1.0.0;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
@@ -2463,6 +2436,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
 				);
+				MARKETING_VERSION = 1.0.0;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
@@ -2470,6 +2444,10 @@
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -2600,6 +2578,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
 				);
+				MARKETING_VERSION = 1.0.0;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
@@ -2684,6 +2663,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
 				);
+				MARKETING_VERSION = 1.0.0;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";

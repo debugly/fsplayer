@@ -3,12 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 53;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1B1684842DC5034600A1BA88 /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
 		55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 55E809E51B145B55003E98A5 /* LaunchScreen.xib */; };
+		C969F9192DCB053B00EB31DF /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
+		C969F91A2DCB053B00EB31DF /* FSPlayer-iOS.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD02D91434300D768BC /* FSAppDelegate.m */; };
 		C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */; };
 		C9CC8BEE2D91438F00D768BC /* FSDemoMainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BDE2D91438F00D768BC /* FSDemoMainViewController.xib */; };
@@ -58,6 +59,20 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		C969F91B2DCB053B00EB31DF /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C969F91A2DCB053B00EB31DF /* FSPlayer-iOS.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
 		55E809E51B145B55003E98A5 /* LaunchScreen.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LaunchScreen.xib; sourceTree = "<group>"; };
@@ -105,7 +120,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1B1684842DC5034600A1BA88 /* FSPlayer-iOS.framework in Frameworks */,
+				C969F9192DCB053B00EB31DF /* FSPlayer-iOS.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,6 +240,7 @@
 				E6903EF817EAF70200CFD954 /* Sources */,
 				E6903EF917EAF70200CFD954 /* Frameworks */,
 				E6903EFA17EAF70200CFD954 /* Resources */,
+				C969F91B2DCB053B00EB31DF /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -476,7 +492,10 @@
 				INFOPLIST_FILE = "FSPlayerDemo/FSPlayerDemo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = FSPlayer;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(LD_RUNPATH_SEARCH_PATHS_$(IS_MACCATALYST))",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.10.2;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM;
@@ -509,7 +528,10 @@
 				INFOPLIST_FILE = "FSPlayerDemo/FSPlayerDemo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = FSPlayer;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(LD_RUNPATH_SEARCH_PATHS_$(IS_MACCATALYST))",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.10.2;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM;

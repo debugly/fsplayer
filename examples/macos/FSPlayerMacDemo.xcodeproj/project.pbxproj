@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1B16847B2DC4EF9A00A1BA88 /* FSPlayer-macOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */; };
 		C905CF172B54C8D300D59730 /* MRAutoTestViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */; };
 		C905CF182B54C8D300D59730 /* MRAutoTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */; };
 		C905CF1C2B550C7400D59730 /* MRStatisticalViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF192B550C7400D59730 /* MRStatisticalViewController.m */; };
@@ -17,6 +16,8 @@
 		C92F1A242DAE240200540BD5 /* MRTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = C92F1A232DAE240200540BD5 /* MRTextField.m */; };
 		C969BE4B27BDCD27008BC2AD /* MRGlobalNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = C969BE4927BDCD27008BC2AD /* MRGlobalNotification.m */; };
 		C969BE4E27BDD34E008BC2AD /* MRUtil+SystemPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = C969BE4C27BDD34E008BC2AD /* MRUtil+SystemPanel.m */; };
+		C969F8F22DCAF64100EB31DF /* FSPlayer-macOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */; };
+		C969F8F32DCAF64100EB31DF /* FSPlayer-macOS.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C96F5B9B291A052100C79E07 /* MRProgressIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = C96F5B99291A052000C79E07 /* MRProgressIndicator.m */; };
 		C97423CE2A3AE8BE001F6B54 /* NSString+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = C97423CD2A3AE8BE001F6B54 /* NSString+Ex.m */; };
 		C97674EE2A1F333D00B7627E /* MRTextInfoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */; };
@@ -91,6 +92,20 @@
 			remoteInfo = "FSPlayer-tvOS";
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C969F8F42DCAF64100EB31DF /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C969F8F32DCAF64100EB31DF /* FSPlayer-macOS.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1B92B1D02DC37CDF00B58436 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
@@ -193,7 +208,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1B16847B2DC4EF9A00A1BA88 /* FSPlayer-macOS.framework in Frameworks */,
 				DD9B13E822C24971002D1D79 /* libz.tbd in Frameworks */,
 				DD9B13D822C240A5002D1D79 /* libiconv.tbd in Frameworks */,
 				DD9B13D622C24095002D1D79 /* libxml2.tbd in Frameworks */,
@@ -208,6 +222,7 @@
 				DD9B13C422C24040002D1D79 /* CoreMedia.framework in Frameworks */,
 				DD9B13C222C24037002D1D79 /* CoreGraphics.framework in Frameworks */,
 				DD9B13C022C2402D002D1D79 /* GLKit.framework in Frameworks */,
+				C969F8F22DCAF64100EB31DF /* FSPlayer-macOS.framework in Frameworks */,
 				DD9B13BE22C24026002D1D79 /* AVFoundation.framework in Frameworks */,
 				DD9B13BC22C2401F002D1D79 /* libbz2.tbd in Frameworks */,
 				DD9B13BA22C24017002D1D79 /* libc++.tbd in Frameworks */,
@@ -400,6 +415,7 @@
 				DD9B138422C23A79002D1D79 /* Sources */,
 				DD9B138522C23A79002D1D79 /* Frameworks */,
 				DD9B138622C23A79002D1D79 /* Resources */,
+				C969F8F42DCAF64100EB31DF /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
