@@ -23,7 +23,7 @@ FMN="FSPlayer"
 
 function get_inputs_with_path()
 {
-    fmwk="${1}/$FMN/$FMN.framework"
+    fmwk="${1}/$FMN.framework"
     inputs=""
     if [[ -d $fmwk ]]; then
         inputs="$inputs -framework $fmwk"
@@ -54,7 +54,6 @@ function get_inputs()
 function do_make_xcframework() {
     cd ..
     local XC_XCFRMK_DIR='xcframewrok'
-    mkdir -p "$XC_XCFRMK_DIR"
     inputs="$(get_inputs)"
     output=$XC_XCFRMK_DIR/${FMN}.xcframework
     rm -rf "$output"

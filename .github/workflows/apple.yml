@@ -45,15 +45,15 @@ jobs:
         ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
         ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
     - name: Build iOS Framework
-      run: cd examples/ios && ./build-framework.sh
+      run:  ./examples/ios/build-framework.sh
     - name: Build macOS Framework      
-      run: cd examples/macos && ./build-framework.sh
+      run: ./examples/macos/build-framework.sh
     - name: Build tvOS Framework
-      run: cd examples/tvos && ./build-framework.sh
+      run: ./examples/tvos/build-framework.sh
     - name: Make xcframework
-      run: cd examples/xcframewrok && ./make-xcframework.sh
+      run: ./examples/xcframewrok/make-xcframework.sh
     - name: Make podspec
-      run: cd examples/xcframewrok && ./make-podspec.sh "${{ env.TAG }}"
+      run: ./examples/xcframewrok/make-podspec.sh "${{ env.TAG }}"
     - name: Make Distribution Resources
       run: |
         mkdir dist
