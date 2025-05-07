@@ -1,3 +1,10 @@
+tag 1.0.1
+--------------------------------
+
+- fix dash file error "unterminated entity reference" #7
+- example abandon CocoaPods
+- support choose audio channel(left,right,stereo)
+
 tag 1.0.0
 --------------------------------
 
