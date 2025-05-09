@@ -191,7 +191,6 @@
 				1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */,
 				E6903F0517EAF70200CFD954 /* FSPlayerDemo */,
 				E6903EFD17EAF70200CFD954 /* Products */,
-				E67323A01B69E6B800CB9036 /* XCAssets */,
 				1B16843A2DC3B9D600A1BA88 /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -210,6 +209,7 @@
 				C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */,
 				C9CC8BD02D91434300D768BC /* FSAppDelegate.m */,
 				C9CC8BEC2D91438F00D768BC /* ViewController */,
+				E67323A01B69E6B800CB9036 /* XCAssets */,
 				E6903F0617EAF70200CFD954 /* Supporting Files */,
 			);
 			path = FSPlayerDemo;
