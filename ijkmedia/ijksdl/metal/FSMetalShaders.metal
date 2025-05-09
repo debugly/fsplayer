@@ -150,6 +150,19 @@ float3 rgb_adjust(float3 rgb,float4 rgbAdjustment) {
 
 // mark -hdr helps
 
+constant matrix_float3x3 RGB2020_TO_XYZ = matrix_float3x3(
+                                            0.6370, 0.1446, 0.1689,
+                                            0.2627, 0.6780, 0.0593,
+                                            0.0000, 0.0281, 1.0610);
+
+constant matrix_float3x3 XYZ_TO_RGB709 = matrix_float3x3(
+                                            3.2410, -1.5374, -0.4986,
+                                            -0.9692, 1.8760, 0.0416,
+                                            0.0556, -0.2040, 1.0570);
+
+constant matrix_float3x3 RGB2020_TO_RGB709 = RGB2020_TO_XYZ * XYZ_TO_RGB709;
+
+
 // [arib b67 eotf
 float arib_b67_inverse_oetf(float x)
 {
@@ -178,6 +191,7 @@ float ootf_1_2(float x)
 {
     return x < 0.0 ? x : pow(x, 1.2);
 }
+
 float arib_b67_eotf(float x)
 {
     return ootf_1_2(arib_b67_inverse_oetf(x));
@@ -219,19 +233,44 @@ float3 st_2084_eotf_vec(float3 v)
 
 // st 2084 eotf]
 
-// [tonemap hable
-float hableF(float inVal)
+// Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
+float tonemap_ACES(float x)
 {
-    //fix xcode error:Too many arguments provided to function-like macro invocation
-    float a = 0.15;
-    float b = 0.50;
-    float c = 0.10;
-    float d = 0.20;
-    float e = 0.02;
-    float f = 0.30;
-    return (inVal * (inVal * a + b * c) + d * e) / (inVal * (inVal * a + b) + d * f) - e / f;
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return (x * (a * x + b)) / (x * (c * x + d) + e);
 }
-// tonemap hable]
+
+// Hable 2010, "Filmic Tonemapping Operators"
+float tonemap_Uncharted2(float x)
+{
+    const float A = 0.15;
+    const float B = 0.50;
+    const float C = 0.10;
+    const float D = 0.20;
+    const float E = 0.02;
+    const float F = 0.30;
+    
+    return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
+}
+
+#define current_tonemap_func tonemap_Uncharted2
+
+float3 tonemap(float3 x)
+{
+#define FFMAX(a,b) ((a) > (b) ? (a) : (b))
+#define FFMAX3(a,b,c) FFMAX(FFMAX(a,b),c)
+    
+    float sig = FFMAX(FFMAX3(x.r, x.g, x.b), 1e-6);
+    float sig_orig = sig;
+    float peak = 20.0;
+    sig = current_tonemap_func(sig) / current_tonemap_func(peak);
+    x = x * sig / sig_orig;
+    return x;
+}
 
 float mobius(float in, float j, float peak)
 {
@@ -249,7 +288,7 @@ float mobius(float in, float j, float peak)
 // [bt709
 float rec_1886_inverse_eotf(float x)
 {
-    return x < 0.0 ? 0.0 : pow(x, 1.0 / 2.4);
+    return x < 0.0 ? 0.0 : pow(x, 1.0 / 2.2);
 }
 
 float3 rec_1886_inverse_eotf_vec(float3 v)
@@ -262,7 +301,7 @@ float3 rec_1886_inverse_eotf_vec(float3 v)
 
 float rec_1886_eotf(float x)
 {
-    return x < 0.0 ? 0.0 : pow(x, 2.4);
+    return x < 0.0 ? 0.0 : pow(x, 2.2);
 }
 
 float3 rec_1886_eotf_vec(float3 v)
@@ -273,9 +312,6 @@ float3 rec_1886_eotf_vec(float3 v)
     return float3(r, g, b);
 }
 
-#define FFMAX(a,b) ((a) > (b) ? (a) : (b))
-#define FFMAX3(a,b,c) FFMAX(FFMAX(a,b),c)
-
 // bt709]
 // mark -hdr helps
 
@@ -283,8 +319,9 @@ float3 hdr2sdr(float3 rgb_2020,float x,float hdrPercentage,FSColorTransferFunc t
 {
     //已经使用矩阵转为RGB了，这里的RGB是经过 伽马 校正的，因此是曲线的
     if (x > 0 && x <= hdrPercentage) {
-        float3 myFragColor;
+        
         // 1、HDR 非线性电信号转为 HDR 线性光信号（EOTF）
+        float3 myFragColor;
         float peak_luminance = 50.0;
         if (transferFun == FSColorTransferFuncPQ) {
             float to_linear_scale = 10000.0 / peak_luminance;
@@ -297,23 +334,15 @@ float3 hdr2sdr(float3 rgb_2020,float x,float hdrPercentage,FSColorTransferFunc t
         }
         
         // 2、HDR 线性光信号做颜色空间转换（Color Space Converting）
-        // color-primaries REC_2020 to REC_709
-        matrix_float3x3 rgb2xyz2020 = matrix_float3x3(0.6370, 0.1446, 0.1689,
-                                                      0.2627, 0.6780, 0.0593,
-                                                      0.0000, 0.0281, 1.0610);
-        matrix_float3x3 xyz2rgb709 = matrix_float3x3(3.2410, -1.5374, -0.4986,
-                                                     -0.9692, 1.8760, 0.0416,
-                                                     0.0556, -0.2040, 1.0570);
         
-        myFragColor *= rgb2xyz2020 * xyz2rgb709;
-        
+        // RGB → XYZ：将源 RGB 颜色转换到 CIE XYZ 中间颜色空间
+        // XYZ → RGB：将 XYZ 颜色转换到目标 RGB 颜色空间
+        // 这两个步骤可以合并为一个矩阵运算：RGB_target = M * RGB_source，其中 M 是组合变换矩阵。
+        myFragColor = myFragColor * RGB2020_TO_RGB709;
+    
         // 3、HDR 线性光信号色调映射为 SDR 线性光信号（Tone Mapping）
-        float sig = FFMAX(FFMAX3(myFragColor.r, myFragColor.g, myFragColor.b), 1e-6);
-        float sig_orig = sig;
-        float peak = 10.0;
-        sig = hableF(sig) / hableF(peak);
-        myFragColor *= sig / sig_orig;
-        
+        myFragColor = tonemap(myFragColor);
+
         // 4、SDR 线性光信号转 SDR 非线性电信号（OETF）
         myFragColor = rec_1886_inverse_eotf_vec(myFragColor);
         return myFragColor;

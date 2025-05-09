@@ -41,11 +41,17 @@ static const char g_shader_hdr[] = FS_GLES_STRING(
     uniform int transferFun;
     uniform float hdrPercentage;
                                                    
-    #define FF_MAX(a,b) ((a) > (b) ? (a) : (b))
-    #define FF_MAX3(a,b,c) FF_MAX(FF_MAX(a,b),c)
     #define FF_FLT_MAX 3.402823466e+38
     #define FF_FLT_MIN 1.175494351e-38
-                                                   
+                                        
+    const mat3 RGB2020_TO_XYZ = mat3(0.6370, 0.1446, 0.1689,
+                                  0.2627, 0.6780, 0.0593,
+                                  0.0000, 0.0281, 1.0610);
+    const mat3 XYZ_TO_RGB709 = mat3(3.2410, -1.5374, -0.4986,
+                                 -0.9692, 1.8760, 0.0416,
+                                 0.0556, -0.2040, 1.0570);
+    const mat3 RGB2020_TO_RGB709 = RGB2020_TO_XYZ * XYZ_TO_RGB709;
+                                                  
     // [arib b67 eotf
     const float ARIB_B67_A = 0.17883277;
     const float ARIB_B67_B = 0.28466892;
@@ -86,29 +92,52 @@ static const char g_shader_hdr[] = FS_GLES_STRING(
     }
     // st 2084 eotf]
 
-    // [tonemap hable
-    float hableF(float inVal)
+    // Hable 2010, "Filmic Tonemapping Operators"
+    float tonemap_Uncharted2(float x)
     {
-        //fix xcode error:Too many arguments provided to function-like macro invocation
-        float a = 0.15;
-        float b = 0.50;
-        float c = 0.10;
-        float d = 0.20;
-        float e = 0.02;
-        float f = 0.30;
-        return (inVal * (inVal * a + b * c) + d * e) / (inVal * (inVal * a + b) + d * f) - e / f;
+        const float A = 0.15;
+        const float B = 0.50;
+        const float C = 0.10;
+        const float D = 0.20;
+        const float E = 0.02;
+        const float F = 0.30;
+        
+        return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
     }
-    // tonemap hable]
 
+    #define current_tonemap_func tonemap_Uncharted2
+                                                  
+    // tonemap hable]
+    vec3 tonemap(vec3 x)
+    {
+        #define FFMAX(a,b) ((a) > (b) ? (a) : (b))
+        #define FFMAX3(a,b,c) FFMAX(FFMAX(a,b),c)
+          
+        float sig = FFMAX(FFMAX3(x.r, x.g, x.b), 1e-6);
+        float sig_orig = sig;
+        float peak = 20.0;
+        sig = current_tonemap_func(sig) / current_tonemap_func(peak);
+        x = x * sig / sig_orig;
+        return x;
+    }
+                                                  
     // [bt709
     float rec_1886_inverse_eotf(float x)
     {
-        return x < 0.0 ? 0.0 : pow(x, 1.0 / 2.4);
+        return x < 0.0 ? 0.0 : pow(x, 1.0 / 2.2);
     }
 
+    vec3 rec_1886_inverse_eotf_vec(vec3 v)
+    {
+       float r = rec_1886_inverse_eotf(v.x);
+       float g = rec_1886_inverse_eotf(v.y);
+       float b = rec_1886_inverse_eotf(v.z);
+       return vec3(r, g, b);
+    }
+                                                  
     float rec_1886_eotf(float x)
     {
-        return x < 0.0 ? 0.0 : pow(x, 2.4);
+        return x < 0.0 ? 0.0 : pow(x, 2.2);
     }
     // bt709]
                       
@@ -164,24 +193,17 @@ static const char g_shader_hdr[] = FS_GLES_STRING(
             }
 
             // 2、HDR 线性光信号做颜色空间转换（Color Space Converting）
-            // color-primaries REC_2020 to REC_709
-            mat3 rgb2xyz2020 = mat3(0.6370, 0.1446, 0.1689,
-                                   0.2627, 0.6780, 0.0593,
-                                   0.0000, 0.0281, 1.0610);
-            mat3 xyz2rgb709 = mat3(3.2410, -1.5374, -0.4986,
-                                  -0.9692, 1.8760, 0.0416,
-                                  0.0556, -0.2040, 1.0570);
-            myFragColor *= rgb2xyz2020 * xyz2rgb709;
+            // RGB → XYZ：将源 RGB 颜色转换到 CIE XYZ 中间颜色空间
+            // XYZ → RGB：将 XYZ 颜色转换到目标 RGB 颜色空间
+            // 这两个步骤可以合并为一个矩阵运算：RGB_target = M * RGB_source，其中 M 是组合变换矩阵。
+            myFragColor = myFragColor * RGB2020_TO_RGB709;
 
             // 3、HDR 线性光信号色调映射为 SDR 线性光信号（Tone Mapping）
-            float sig = FF_MAX(FF_MAX3(myFragColor.r, myFragColor.g, myFragColor.b), 1e-6);
-            float sig_orig = sig;
-            float peak = 10.0;
-            sig = hableF(sig) / hableF(peak);
-            myFragColor *= sig / sig_orig;
+            myFragColor = tonemap(myFragColor);
 
             // 4、SDR 线性光信号转 SDR 非线性电信号（OETF）
-            myFragColor = vec3(rec_1886_inverse_eotf(myFragColor.r), rec_1886_inverse_eotf(myFragColor.g), rec_1886_inverse_eotf(myFragColor.b));
+            myFragColor = rec_1886_inverse_eotf_vec(myFragColor);
+            
         } else {
             myFragColor = rgb10bit;
         }
