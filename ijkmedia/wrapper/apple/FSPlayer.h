@@ -98,12 +98,6 @@ typedef enum FSLogLevel {
     FS_LOG_SILENT  = 8,
 } FSLogLevel;
 
-typedef enum FSAudioChannel {
-    FSAudioChannelStereo = 0,
-    FSAudioChannelRight = 1,
-    FSAudioChannelLeft = 2
-} FSAudioChannel;
-
 NS_ASSUME_NONNULL_BEGIN
 @interface FSPlayer : NSObject <FSMediaPlayback>
 
@@ -171,14 +165,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark KVO properties
 @property (nonatomic, readonly) FSMonitor *monitor;
-
-- (void)exchangeSelectedStream:(int)streamIdx;
-// FS_VAL_TYPE__VIDEO, FS_VAL_TYPE__AUDIO, FS_VAL_TYPE__SUBTITLE
-- (void)closeCurrentStream:(NSString *)streamType;
-- (void)enableAccurateSeek:(BOOL)open;
-- (void)stepToNextFrame;
-- (FSAudioChannel)getAudioChanne;
-- (void)setAudioChannel:(FSAudioChannel)config;
 
 @end
 NS_ASSUME_NONNULL_END

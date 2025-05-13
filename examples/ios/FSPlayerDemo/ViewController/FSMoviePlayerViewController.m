@@ -219,6 +219,40 @@
     [self.mediaControl continueDragMediaSlider];
 }
 
+- (IBAction)onRecord:(UIButton *)sender
+{
+    if (sender.isSelected) {
+        int error = [self.player stopRecord];
+        NSLog(@"停止录制:%d", error);
+    } else {
+        // 获取Caches目录路径
+        NSArray<NSString *> *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        NSString *cacheDirectory = [paths firstObject];
+        // 获取当前时间戳（毫秒级）
+        NSDate *now = [NSDate date];
+        long long timestamp = (long long)([now timeIntervalSince1970] * 1000);
+        NSString *extension = [[self.player.contentURL lastPathComponent] pathExtension];
+        if (!extension) {
+            extension = [[self.player getInputFormatExtensions] firstObject];
+        }
+        if (!extension) {
+            extension = @"mkv";
+        }
+        // 格式化为字符串
+        NSString *fileName = [NSString stringWithFormat:@"%lld.%@", timestamp, extension];
+        // 构建完整文件路径
+        NSString *filePath = [cacheDirectory stringByAppendingPathComponent:fileName];
+        int error = [self.player startRecord:filePath];
+        if (error) {
+            NSLog(@"开始录制:%d",error);
+        } else {
+            NSLog(@"开始录制:%@",filePath);
+        }
+    }
+    
+    [sender setSelected:!sender.isSelected];
+}
+
 - (void)loadStateDidChange:(NSNotification*)notification
 {
     //    MPMovieLoadStateUnknown        = 0,

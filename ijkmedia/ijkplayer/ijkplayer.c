@@ -878,3 +878,35 @@ void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSubtitlePreference* sp)
     assert(mp);
     ffp_set_subtitle_preference(mp->ffplayer, sp);
 }
+
+const char * ijkmp_get_iformat_extensions(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    const char *r = NULL;
+    pthread_mutex_lock(&mp->mutex);
+    r = ffp_get_iformat_extensions(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+    return r;
+}
+
+int ijkmp_start_record(IjkMediaPlayer *mp,const char *file_name)
+{
+    assert(mp);
+    MPTRACE("ijkmp_startRecord()\n");
+    pthread_mutex_lock(&mp->mutex);
+    int retval = ffp_start_record(mp->ffplayer, file_name);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_startRecord()=%d\n", retval);
+    return retval;
+}
+
+int ijkmp_stop_record(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    MPTRACE("ijkmp_stopRecord()\n");
+    pthread_mutex_lock(&mp->mutex);
+    int retval = ffp_stop_record(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_stopRecord()=%d\n", retval);
+    return retval;
+}

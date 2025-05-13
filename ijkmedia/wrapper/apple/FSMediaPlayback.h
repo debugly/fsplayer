@@ -54,6 +54,12 @@ typedef NS_ENUM(NSInteger, FSFinishReason) {
     FSFinishReasonUserExited
 };
 
+typedef enum FSAudioChannel {
+    FSAudioChannelStereo = 0,
+    FSAudioChannelRight = 1,
+    FSAudioChannelLeft = 2
+} FSAudioChannel;
+
 // -----------------------------------------------------------------------------
 // Thumbnails
 
@@ -127,6 +133,17 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 @property(nonatomic) FSSubtitlePreference subtitlePreference;
 //load spped (byte)
 - (int64_t)currentDownloadSpeed;
+
+- (void)exchangeSelectedStream:(int)streamIdx;
+// FS_VAL_TYPE__VIDEO, FS_VAL_TYPE__AUDIO, FS_VAL_TYPE__SUBTITLE
+- (void)closeCurrentStream:(NSString *)streamType;
+- (void)enableAccurateSeek:(BOOL)open;
+- (void)stepToNextFrame;
+- (FSAudioChannel)getAudioChanne;
+- (void)setAudioChannel:(FSAudioChannel)config;
+- (NSArray <NSString *> *)getInputFormatExtensions;
+- (int)startRecord:(NSString *)filePath;
+- (int)stopRecord;
 
 #pragma mark Notifications
 

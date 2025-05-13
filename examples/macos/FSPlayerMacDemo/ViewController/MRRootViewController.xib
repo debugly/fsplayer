@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="32700.99.1234" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="23504" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="22690"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23504"/>
         <capability name="Image references" minToolsVersion="12.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -37,21 +37,21 @@
                     <rect key="frame" x="0.0" y="0.0" width="1507" height="708"/>
                     <subviews>
                         <visualEffectView blendingMode="behindWindow" material="light" state="followsWindowActiveState" translatesAutoresizingMaskIntoConstraints="NO" id="O2b-xJ-MKI">
-                            <rect key="frame" x="0.0" y="0.0" width="1507" height="81"/>
+                            <rect key="frame" x="0.0" y="0.0" width="1507" height="87"/>
                             <subviews>
                                 <stackView distribution="fill" orientation="vertical" alignment="leading" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" translatesAutoresizingMaskIntoConstraints="NO" id="SB6-Ls-gvk">
-                                    <rect key="frame" x="0.0" y="0.0" width="1507" height="81"/>
+                                    <rect key="frame" x="0.0" y="0.0" width="1507" height="87"/>
                                     <subviews>
                                         <stackView autoresizesSubviews="NO" orientation="horizontal" alignment="centerY" spacing="35" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tGS-Jt-lVp">
-                                            <rect key="frame" x="0.0" y="28" width="1507" height="53"/>
+                                            <rect key="frame" x="0.0" y="28" width="1507" height="59"/>
                                             <edgeInsets key="edgeInsets" left="10" right="10" top="0.0" bottom="0.0"/>
                                             <beginningViews>
                                                 <imageView wantsLayer="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="BbD-SI-ndY">
-                                                    <rect key="frame" x="10" y="19.5" width="22.5" height="15"/>
+                                                    <rect key="frame" x="10" y="22.5" width="22.5" height="15"/>
                                                     <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" image="volume.3.fill" catalog="system" id="zgx-SG-NWH"/>
                                                 </imageView>
                                                 <slider verticalHuggingPriority="750" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Dh7-HG-7bK">
-                                                    <rect key="frame" x="65" y="18" width="478" height="17"/>
+                                                    <rect key="frame" x="65" y="21" width="478" height="17"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" relation="lessThanOrEqual" constant="100" id="ZjE-lG-yT6"/>
                                                     </constraints>
@@ -61,8 +61,8 @@
                                                         <binding destination="OCk-Q5-1dK" name="value" keyPath="values.volume" id="1Nd-cY-qY3"/>
                                                     </connections>
                                                 </slider>
-                                                <textField focusRingType="none" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="F43-uk-XPX" userLabel="seek cost">
-                                                    <rect key="frame" x="574" y="19" width="33" height="16"/>
+                                                <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="F43-uk-XPX" userLabel="seek cost">
+                                                    <rect key="frame" x="574" y="22" width="33" height="16"/>
                                                     <textFieldCell key="cell" lineBreakMode="clipping" title="seek" id="dyo-UA-0rK">
                                                         <font key="font" usesAppearanceFont="YES"/>
                                                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
@@ -72,7 +72,7 @@
                                             </beginningViews>
                                             <middleViews>
                                                 <button autoresizesSubviews="NO" verticalHuggingPriority="750" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Hmu-Gg-IRy">
-                                                    <rect key="frame" x="640" y="1" width="52" height="52"/>
+                                                    <rect key="frame" x="640" y="4" width="52" height="52"/>
                                                     <buttonCell key="cell" type="bevel" bezelStyle="rounded" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="770-Df-4UU">
                                                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                         <font key="font" metaFont="system"/>
@@ -87,7 +87,7 @@
                                                     </connections>
                                                 </button>
                                                 <button autoresizesSubviews="NO" wantsLayer="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0Ir-lY-KBW">
-                                                    <rect key="frame" x="727" y="1" width="52" height="52"/>
+                                                    <rect key="frame" x="727" y="4" width="52" height="52"/>
                                                     <buttonCell key="cell" type="bevel" bezelStyle="regularSquare" imagePosition="only" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="C8e-NX-d9x">
                                                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES" changeBackground="YES" changeGray="YES"/>
                                                         <font key="font" metaFont="system"/>
@@ -98,7 +98,7 @@
                                                     </connections>
                                                 </button>
                                                 <button autoresizesSubviews="NO" verticalHuggingPriority="750" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="RKb-4D-CqM">
-                                                    <rect key="frame" x="814" y="1" width="52" height="52"/>
+                                                    <rect key="frame" x="814" y="4" width="52" height="52"/>
                                                     <buttonCell key="cell" type="bevel" bezelStyle="rounded" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="rYs-Lt-hbM">
                                                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                         <font key="font" metaFont="system"/>
@@ -114,19 +114,29 @@
                                                 </button>
                                             </middleViews>
                                             <endViews>
-                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="PKH-49-No0">
-                                                    <rect key="frame" x="1414" y="15" width="24" height="24"/>
-                                                    <buttonCell key="cell" type="bevel" bezelStyle="rounded" imagePosition="overlaps" alignment="center" imageScaling="proportionallyDown" inset="2" id="A2G-cL-cJZ">
-                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <button verticalHuggingPriority="750" id="bWo-PE-hcl">
+                                                    <rect key="frame" x="1364" y="22" width="15" height="15"/>
+                                                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                    <buttonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" image="record.circle" catalog="system" imagePosition="only" alignment="center" alternateImage="record.circle.fill" imageScaling="proportionallyDown" inset="2" id="ZEa-Mv-0WL">
+                                                        <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
                                                         <font key="font" metaFont="system"/>
-                                                        <imageReference key="image" image="info" symbolScale="large"/>
+                                                    </buttonCell>
+                                                    <connections>
+                                                        <action selector="onToggleRecord:" target="-2" id="iW4-Yp-rhx"/>
+                                                    </connections>
+                                                </button>
+                                                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="PKH-49-No0">
+                                                    <rect key="frame" x="1414" y="18" width="24" height="24"/>
+                                                    <buttonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" image="info" imagePosition="only" alignment="center" alternateImage="info_hover" imageScaling="proportionallyDown" inset="2" id="A2G-cL-cJZ">
+                                                        <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
+                                                        <font key="font" metaFont="system"/>
                                                     </buttonCell>
                                                     <connections>
                                                         <action selector="onToggleHUD:" target="-2" id="jaf-71-OJc"/>
                                                     </connections>
                                                 </button>
                                                 <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="db2-qU-bhl">
-                                                    <rect key="frame" x="1473" y="15" width="24" height="24"/>
+                                                    <rect key="frame" x="1473" y="18" width="24" height="24"/>
                                                     <buttonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" image="menu" imagePosition="only" alignment="center" alternateImage="menu_hover" imageScaling="proportionallyDown" inset="2" id="tt6-4c-ttp">
                                                         <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
                                                         <font key="font" metaFont="system"/>
@@ -145,8 +155,10 @@
                                                 <integer value="1000"/>
                                                 <integer value="1000"/>
                                                 <integer value="1000"/>
+                                                <integer value="1000"/>
                                             </visibilityPriorities>
                                             <customSpacing>
+                                                <real value="3.4028234663852886e+38"/>
                                                 <real value="3.4028234663852886e+38"/>
                                                 <real value="3.4028234663852886e+38"/>
                                                 <real value="3.4028234663852886e+38"/>
@@ -160,7 +172,7 @@
                                         <stackView distribution="fillProportionally" orientation="horizontal" alignment="centerY" spacing="5" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vbZ-O1-33f">
                                             <rect key="frame" x="0.0" y="0.0" width="1507" height="20"/>
                                             <subviews>
-                                                <textField focusRingType="none" horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lHe-K3-Qqv">
+                                                <textField horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lHe-K3-Qqv">
                                                     <rect key="frame" x="8" y="2" width="44" height="16"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" constant="40" id="eVi-UB-yod"/>
@@ -177,7 +189,7 @@
                                                         <constraint firstAttribute="height" constant="20" id="DmD-lr-GN1"/>
                                                     </constraints>
                                                 </customView>
-                                                <textField focusRingType="none" horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Lzk-4D-4ek">
+                                                <textField horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Lzk-4D-4ek">
                                                     <rect key="frame" x="1455" y="2" width="44" height="16"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" constant="40" id="moD-6P-cmd"/>
@@ -263,11 +275,14 @@
     </objects>
     <resources>
         <image name="info" width="24" height="24"/>
+        <image name="info_hover" width="24" height="24"/>
         <image name="menu" width="24" height="24"/>
         <image name="menu_hover" width="24" height="24"/>
         <image name="next" width="52" height="52"/>
         <image name="play" width="52" height="52"/>
         <image name="previous" width="52" height="52"/>
+        <image name="record.circle" catalog="system" width="15" height="15"/>
+        <image name="record.circle.fill" catalog="system" width="15" height="15"/>
         <image name="volume.3.fill" catalog="system" width="22" height="15"/>
     </resources>
 </document>

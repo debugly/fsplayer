@@ -723,6 +723,9 @@ typedef struct FFPlayer {
     //icy update
     int64_t icy_update_period;//ms
     int channel_config;
+    
+    //record
+    void * recordor;
 } FFPlayer;
 
 #define fftime_to_seconds(ts)      (av_rescale(ts, 1, AV_TIME_BASE))

@@ -2158,4 +2158,27 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     return (int)ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_CHANNEL_CONFIG, FSAudioChannelStereo);
 }
 
+- (NSArray <NSString *> *)getInputFormatExtensions
+{
+    const char *exts = ijkmp_get_iformat_extensions(_mediaPlayer);
+    if (exts) {
+        return [[NSString stringWithCString:exts encoding:NSUTF8StringEncoding] componentsSeparatedByString:@","];
+    }
+    return nil;
+}
+
+# pragma mark record video
+
+- (int)startRecord:(NSString *)filePath
+{
+    if (!_mediaPlayer)
+        return -1000;
+    return ijkmp_start_record(_mediaPlayer, [filePath UTF8String]);
+}
+
+- (int)stopRecord
+{
+    return ijkmp_stop_record(_mediaPlayer);
+}
+
 @end

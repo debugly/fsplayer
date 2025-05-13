@@ -111,6 +111,7 @@
 
 // static const AVOption ffp_context_options[] = ...
 #include "ff_ffplay_options.h"
+#include "ff_recordor.h"
 
 #define FSVERSION_GET_MAJOR(x)     ((x >> 16) & 0xFF)
 #define FSVERSION_GET_MINOR(x)     ((x >>  8) & 0xFF)
@@ -587,7 +588,8 @@ static void stream_close(FFPlayer *ffp)
     /* free all pictures */
     frame_queue_destory(&is->pictq);
     frame_queue_destory(&is->sampq);
-
+    
+    ffp_stop_record(ffp);
     SDL_DestroyCond(is->audio_accurate_seek_cond);
     SDL_DestroyCond(is->video_accurate_seek_cond);
     SDL_DestroyCond(is->continue_read_thread);
@@ -4030,6 +4032,9 @@ static int read_thread(void *arg)
             if (!pkt_in_play_range) {
                 av_packet_unref(pkt);
             } else {
+                if (0 != ff_write_recordor(ffp->recordor, pkt)) {
+                    ffp_stop_record(ffp);
+                }
                 int stream_index = pkt->stream_index;
                 if (stream_index == is->audio_stream) {
                     packet_queue_put(&is->audioq, pkt);
@@ -5676,4 +5681,51 @@ void ffp_set_subtitle_preference(FFPlayer *ffp, FSSubtitlePreference* sp)
     if (r && ffp->is && ffp->is->paused) {
         ffp->is->force_refresh_sub_changed = 1;
     }
+}
+
+const char * ffp_get_iformat_extensions(FFPlayer *ffp)
+{
+    if (!ffp || !ffp->is) {
+        return NULL;
+    }
+    VideoState *is = ffp->is;
+    if (!is->ic || !is->ic->iformat) {
+        return NULL;
+    }
+    const char *iname = is->ic->iformat->name;
+    void *iter = NULL;
+    const AVInputFormat *in_fmt;
+    int i = 0;
+    while ((in_fmt = av_demuxer_iterate(&iter))) {
+        i++;
+        if (!strcmp(in_fmt->name, iname)) {
+            return in_fmt->extensions;
+        }
+    }
+    return NULL;
+}
+
+int ffp_start_record(FFPlayer *ffp, const char *file_name)
+{
+    if (!ffp || !file_name) {
+        return -1;
+    }
+    int r = 0;
+    VideoState *is = ffp->is;
+    if (ffp->recordor) {
+        return -2;
+    }
+    r = ff_create_recordor(&ffp->recordor, file_name, is->ic, is->audio_stream, is->video_stream);
+    if (r) {
+        return r;
+    }
+    r = ff_start_recordor(ffp->recordor);
+    return r;
+}
+
+int ffp_stop_record(FFPlayer *ffp)
+{
+    int r = ff_stop_recordor(ffp->recordor);
+    ff_destroy_recordor(&ffp->recordor);
+    return r;
 }

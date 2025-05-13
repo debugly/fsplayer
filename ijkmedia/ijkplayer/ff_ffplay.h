@@ -119,4 +119,10 @@ void      ffp_set_enable_accurate_seek(FFPlayer *ffp,int open);
 void      ffp_step_to_next_frame(FFPlayer *ffp);
 /* set subtitle preference*/
 void      ffp_set_subtitle_preference(FFPlayer *ffp, FSSubtitlePreference* sp);
+/* get current input format extensions*/
+const char * ffp_get_iformat_extensions(FFPlayer *ffp);
+/* record */
+int       ffp_start_record(FFPlayer *ffp, const char *file_name);
+int       ffp_stop_record(FFPlayer *ffp);
+
 #endif
