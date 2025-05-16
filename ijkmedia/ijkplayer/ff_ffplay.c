@@ -5710,17 +5710,20 @@ int ffp_start_record(FFPlayer *ffp, const char *file_name)
     if (!ffp || !file_name) {
         return -1;
     }
-    int r = 0;
+    
     VideoState *is = ffp->is;
-    if (ffp->recordor) {
+    if (!is || !is->ic || is->paused || is->abort_request) {
         return -2;
     }
-    r = ff_create_recordor(&ffp->recordor, file_name, is->ic, is->audio_stream, is->video_stream);
-    if (r) {
-        return r;
+    if (ffp->recordor) {
+        return -3;
     }
-    r = ff_start_recordor(ffp->recordor);
-    return r;
+    int ret = ff_create_recordor(&ffp->recordor, file_name, is->ic, is->audio_stream, is->video_stream);
+    if (ret) {
+        return ret;
+    }
+    ret = ff_start_recordor(ffp->recordor);
+    return ret;
 }
 
 int ffp_stop_record(FFPlayer *ffp)
