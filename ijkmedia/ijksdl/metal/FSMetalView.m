@@ -38,7 +38,6 @@ typedef CGRect NSRect;
 @property (assign) int hdrAnimationFrameCount;
 @property (atomic, strong) NSLock *pilelineLock;
 @property (assign) BOOL needCleanBackgroundColor;
-@property (assign) BOOL drawableSizeChanged;
 
 @end
 
@@ -90,7 +89,6 @@ typedef CGRect NSRect;
     self.autoResizeDrawable = YES;
     // important;then use draw method drive rendering.
     self.enableSetNeedsDisplay = NO;
-    self.delegate = self;
     self.paused = YES;
 #if TARGET_OS_OSX
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(windowDidEndLiveResize:) name:NSWindowDidEndLiveResizeNotification object:nil];
@@ -548,9 +546,9 @@ typedef CGRect NSRect;
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    if (self.drawableSizeChanged) {
+    
+    if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
         [self setNeedsRefreshCurrentPic];
-        self.drawableSizeChanged = NO;
     }
 }
 
@@ -734,8 +732,4 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 }
 #endif
 
-- (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size
-{
-    self.drawableSizeChanged = YES;
-}
 @end
