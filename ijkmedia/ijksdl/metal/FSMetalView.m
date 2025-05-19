@@ -58,6 +58,8 @@ typedef CGRect NSRect;
 #endif
 @synthesize showHdrAnimation = _showHdrAnimation;
 
+@synthesize displayDelegate = _displayDelegate;
+
 - (void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -647,6 +649,10 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     }
     //not dispatch to main thread, use current sub thread (ff_vout) draw
     [self draw];
+    
+    if (self.displayDelegate) {
+        [self.displayDelegate videoRenderingDidDisplay:self attach:attach];
+    }
     
     return YES;
 }

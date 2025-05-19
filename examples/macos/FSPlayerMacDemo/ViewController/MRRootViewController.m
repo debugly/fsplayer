@@ -27,7 +27,7 @@
 static NSString* lastPlayedKey = @"__lastPlayedKey";
 static BOOL hdrAnimationShown = 0;
 
-@interface MRRootViewController ()<MRDragViewDelegate,SHBaseViewDelegate,NSMenuDelegate>
+@interface MRRootViewController ()<MRDragViewDelegate,SHBaseViewDelegate,NSMenuDelegate,FSVideoRenderingDelegate>
 
 @property (nonatomic, weak) IBOutlet NSView *playerContainer;
 @property (nonatomic, weak) IBOutlet NSView *siderBarContainer;
@@ -734,6 +734,7 @@ static BOOL hdrAnimationShown = 0;
     //playerView.preventDisplay = YES;
     //test
     [playerView setBackgroundColor:0 g:0 b:0];
+    [playerView setDisplayDelegate:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
     
@@ -882,6 +883,11 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerCouldNotFindCodec:(NSNotification *)notifi
 {
     NSLog(@"找不到解码器，联系开发小帅锅：%@",notifi.userInfo);
+}
+
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach
+{
+    //NSLog(@"当前帧：%@",attach);
 }
 
 - (void)applyLockScreenRatio

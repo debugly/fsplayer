@@ -45,7 +45,7 @@ typedef NS_ENUM(NSInteger, FSScalingMode) {
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @interface FSOverlayAttach : NSObject
 
-//video frame normal size not alignmetn,maybe not equal to currentVideoPic's size.
+//{w,h} is video frame normal size not alignmetn,maybe not equal to {pixelW,pixelH}.
 @property(nonatomic) int w;
 @property(nonatomic) int h;
 //cvpixebuffer pixel memory size;
@@ -130,6 +130,8 @@ typedef enum : NSUInteger {
     FSSnapshotTypeEffect_Subtitle_Origin //keep original video size,with subtitle and video effect
 } FSSnapshotType;
 
+@protocol FSVideoRenderingDelegate;
+
 @protocol FSVideoRenderingProtocol <NSObject>
 
 @property(nonatomic) FSScalingMode scalingMode;
@@ -166,6 +168,14 @@ typedef enum : NSUInteger {
 
 @optional;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
+
+@property(nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
+
+@end
+
+@protocol FSVideoRenderingDelegate <NSObject>
+
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach;
 
 @end
 

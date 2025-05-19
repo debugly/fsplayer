@@ -21,6 +21,10 @@
 #import "FSCommon.h"
 #import "FSDemoHistory.h"
 
+@interface FSVideoViewController ()<FSVideoRenderingDelegate>
+
+@end
+
 @implementation FSVideoViewController
 
 - (void)dealloc
@@ -110,7 +114,8 @@
     self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
-//    self.player.view.frame = CGRectMake(0, 0, 414, 232);
+    //设置代理，拿到当前渲染帧
+    [self.player.view setDisplayDelegate:self];
     self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
     
@@ -152,6 +157,11 @@
 {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
+}
+
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach
+{
+    //NSLog(@"当前帧：%@",attach);
 }
 
 #pragma mark IBAction
