@@ -128,7 +128,7 @@ typedef CGRect NSRect;
     }
 }
 
-- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach
+- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize
 {
     if (_scalingMode == FSScalingModeFill) {
         return CGSizeMake(1.0, 1.0);
@@ -150,7 +150,6 @@ typedef CGRect NSRect;
     
     float darRatio = self.darPreference.ratio;
     
-    CGSize drawableSize = self.drawableSize;
     //when video's z rotate degrees is 90 odd multiple
     if (abs(zDegrees) / 90 % 2 == 1) {
         //need swap user's ratio
@@ -283,7 +282,7 @@ typedef CGRect NSRect;
         float nW = (subTexture.width * hRatio / viewport.width);
         subRect = CGRectMake(-nW, -1, 2.0 * nW, 2.0);
     }
-
+    
     [self.subPipeline updateSubtitleVertexIfNeed:subRect];
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
     [self.pilelineLock unlock];
@@ -331,8 +330,9 @@ typedef CGRect NSRect;
     if (attach.subTexture && ![self setupSubPipelineIfNeed]) {
         return;
     }
+    CGSize viewport = self.drawableSize;
     
-    CGSize ratio = [self computeNormalizedVerticesRatio:attach];
+    CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:viewport];
     
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     
@@ -346,7 +346,7 @@ typedef CGRect NSRect;
     // Create a render command encoder.
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
     
-    [renderEncoder pushDebugGroup:@"encodePicture"];
+    //[renderEncoder pushDebugGroup:@"encodePicture"];
     
     float hdrPer = 1.0;
     if (self.showHdrAnimation && [self.picturePipeline isHDR]) {
@@ -368,7 +368,7 @@ typedef CGRect NSRect;
             hdrPer = 0.5;
         }
     }
-    CGSize viewport = self.drawableSize;
+    
     [self encodePicture:attach
           renderEncoder:renderEncoder
                viewport:viewport
@@ -380,7 +380,7 @@ typedef CGRect NSRect;
                     viewport:viewport
                      texture:attach.subTexture];
     }
-    [renderEncoder popDebugGroup];
+    //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
     // Schedule a present once the framebuffer is complete using the current drawable.
     id <CAMetalDrawable> currentDrawable = self.currentDrawable;
@@ -391,6 +391,7 @@ typedef CGRect NSRect;
     [commandBuffer presentDrawable:currentDrawable];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
+//    [commandBuffer waitUntilScheduled];
 }
 
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
@@ -493,8 +494,7 @@ typedef CGRect NSRect;
     }
     
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    CGSize viewport = self.drawableSize;
-    
+   
     if (![self setupPipelineIfNeed:attach.videoPicture]) {
         return NULL;
     }
@@ -503,10 +503,11 @@ typedef CGRect NSRect;
         return NULL;
     }
     
+    CGSize viewport = self.drawableSize;
     return [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
         CVPixelBufferRef pixelBuffer = attach.videoPicture;
         if (pixelBuffer) {
-            CGSize ratio = [self computeNormalizedVerticesRatio:attach];
+            CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:viewport];
             [self encodePicture:attach
                   renderEncoder:renderEncoder
                        viewport:viewport
@@ -620,7 +621,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
             CFRelease(textureRef);
         }
     }
-
+    
     CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
     
     return result;
@@ -645,6 +646,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     if (CGSizeEqualToSize(CGSizeZero, self.drawableSize)) {
         return NO;
     }
+    
     //not dispatch to main thread, use current sub thread (ff_vout) draw
     [self draw];
     
@@ -703,7 +705,6 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 }
 
 #if TARGET_OS_OSX
-
 - (NSView *)hitTest:(NSPoint)point
 {
     for (NSView *sub in [self subviews]) {
