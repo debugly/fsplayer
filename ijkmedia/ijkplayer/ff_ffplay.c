@@ -940,10 +940,13 @@ static void video_refresh(FFPlayer *opaque, double *remaining_time)
     double time;
     
     //applay subtitle preference changed when the palyer was paused.
-    if (is->paused && is->force_refresh_sub_changed) {
+    if (is->paused && (is->force_refresh_sub_changed || is->force_refresh_pic)) {
         is->force_refresh_sub_changed = 0;
+        is->force_refresh_pic = 0;
         video_display2(ffp);
         return;
+    } else {
+        is->force_refresh_pic = 0;
     }
     
     if (!is->paused && get_master_sync_type(is) == AV_SYNC_EXTERNAL_CLOCK && is->realtime)
@@ -4256,7 +4259,7 @@ static int video_refresh_thread(void *arg)
         if (remaining_time > 0.0)
             av_usleep((int)(int64_t)(remaining_time * 1000000.0));
         remaining_time = REFRESH_RATE;
-        if (is->show_mode != SHOW_MODE_NONE && (!is->paused || is->force_refresh || is->step_on_seeking || is->force_refresh_sub_changed))
+        if (is->show_mode != SHOW_MODE_NONE && (!is->paused || is->force_refresh || is->step_on_seeking || is->force_refresh_sub_changed || is->force_refresh_pic))
             video_refresh(ffp, &remaining_time);
     }
     //clean GLView's attach,because the attach retained sub_overlay;
@@ -5731,4 +5734,18 @@ int ffp_stop_record(FFPlayer *ffp)
     int r = ff_stop_recordor(ffp->recordor);
     ff_destroy_recordor(&ffp->recordor);
     return r;
+}
+
+void ffp_refresh_picture(FFPlayer *ffp)
+{
+    if (!ffp) {
+        return;
+    }
+    
+    VideoState *is = ffp->is;
+    if (!is) {
+        return;
+    }
+    
+    is->force_refresh_pic = is->paused;
 }

@@ -274,6 +274,7 @@ typedef struct VideoState {
     const AVInputFormat *iformat;
     int abort_request;
     int force_refresh_sub_changed;//changed sub prefercence or close sub.
+    int force_refresh_pic;//changed sub prefercence or close sub.
     int force_refresh;
     int paused;
     int last_paused;

@@ -910,3 +910,11 @@ int ijkmp_stop_record(IjkMediaPlayer *mp)
     MPTRACE("ijkmp_stopRecord()=%d\n", retval);
     return retval;
 }
+
+void ijkmp_refresh_picture(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    pthread_mutex_lock(&mp->mutex);
+    ffp_refresh_picture(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+}

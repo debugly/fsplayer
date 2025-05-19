@@ -136,6 +136,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
 @synthesize darPreference = _darPreference;
 @synthesize preventDisplay;
 @synthesize showHdrAnimation = _showHdrAnimation;
+@synthesize displayDelegate = _displayDelegate;
 
 - (void)destroyRender
 {
@@ -458,6 +459,10 @@ static void unlock_gl(NSOpenGLContext *ctx)
                             withTarget:self
                             withObject:attach
                          waitUntilDone:NO];
+    
+    if (self.displayDelegate) {
+        [self.displayDelegate videoRenderingDidDisplay:self attach:attach];
+    }
     return YES;
 }
 

@@ -158,6 +158,15 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
     _view = _glView = glView;
     ijkmp_ios_set_glview(_mediaPlayer, glView);
+    
+    __weak typeof(self) wself = self;
+    if ([glView respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
+        [glView registerRefreshCurrentPicObserver:^{
+            __strong typeof(wself) self = wself;
+            ijkmp_refresh_picture(self->_mediaPlayer);
+        }];
+    }
+    
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
     //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_FORMAT,"safe", 0);
     //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_PLAYER,"protocol_whitelist","ffconcat,file,http,https");

@@ -168,6 +168,7 @@ typedef enum : NSUInteger {
 
 @optional;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
+- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block;
 
 @property(nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
 

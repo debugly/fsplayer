@@ -38,6 +38,7 @@ typedef CGRect NSRect;
 @property (assign) int hdrAnimationFrameCount;
 @property (atomic, strong) NSLock *pilelineLock;
 @property (assign) BOOL needCleanBackgroundColor;
+@property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
 
 @end
 
@@ -61,7 +62,6 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
     CFRelease(_pictureTextureCache);
 }
 
@@ -90,9 +90,6 @@ typedef CGRect NSRect;
     // important;then use draw method drive rendering.
     self.enableSetNeedsDisplay = NO;
     self.paused = YES;
-#if TARGET_OS_OSX
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(windowDidEndLiveResize:) name:NSWindowDidEndLiveResizeNotification object:nil];
-#endif
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
     return YES;
@@ -391,7 +388,6 @@ typedef CGRect NSRect;
     [commandBuffer presentDrawable:currentDrawable];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
-//    [commandBuffer waitUntilScheduled];
 }
 
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
@@ -555,34 +551,21 @@ typedef CGRect NSRect;
 
 #else
 
-- (void)windowDidEndLiveResize:(NSNotification *)notifi
-{
-    if (notifi.object == self.window) {
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
 - (void)resizeWithOldSuperviewSize:(NSSize)oldSize
 {
-    //call super is needed, otherwise some device [self bounds] is not right.
     [super resizeWithOldSuperviewSize:oldSize];
-    if (!self.window.inLiveResize) {
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
-- (void)viewDidChangeBackingProperties
-{
-    [super viewDidChangeBackingProperties];
-    //多显示器间切换，drawable还没来得及自动改变，因此先手动调整好；避免由于viewport不对导致字幕显示过大或过小。
-    self.drawableSize = [self convertSizeToBacking:self.bounds.size];
     [self setNeedsRefreshCurrentPic];
 }
+
 #endif
 
 - (void)setNeedsRefreshCurrentPic
 {
-    [self draw];
+    if (self.refreshCurrentPicBlock) {
+        self.refreshCurrentPicBlock();
+    } else {
+        [self draw];
+    }
 }
 
 mp_format * mp_get_metal_format(uint32_t cvpixfmt);
@@ -625,6 +608,11 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
     
     return result;
+}
+
+- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block
+{
+    self.refreshCurrentPicBlock = block;
 }
 
 - (BOOL)displayAttach:(FSOverlayAttach *)attach

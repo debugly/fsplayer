@@ -124,5 +124,5 @@ const char * ffp_get_iformat_extensions(FFPlayer *ffp);
 /* record */
 int       ffp_start_record(FFPlayer *ffp, const char *file_name);
 int       ffp_stop_record(FFPlayer *ffp);
-
+void      ffp_refresh_picture(FFPlayer *ffp);
 #endif
