@@ -342,6 +342,9 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 status = -1;
                 goto abort_end;
             }
+            if (0 != ff_write_recordor(ffp->recordor, d->pkt)) {
+                ffp_stop_record(ffp);
+            }
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -4035,9 +4038,6 @@ static int read_thread(void *arg)
             if (!pkt_in_play_range) {
                 av_packet_unref(pkt);
             } else {
-                if (0 != ff_write_recordor(ffp->recordor, pkt)) {
-                    ffp_stop_record(ffp);
-                }
                 int stream_index = pkt->stream_index;
                 if (stream_index == is->audio_stream) {
                     packet_queue_put(&is->audioq, pkt);
