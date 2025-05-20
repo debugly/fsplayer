@@ -111,7 +111,7 @@
 
 // static const AVOption ffp_context_options[] = ...
 #include "ff_ffplay_options.h"
-#include "ff_recordor.h"
+#include "ff_recorder.h"
 
 #define FSVERSION_GET_MAJOR(x)     ((x >> 16) & 0xFF)
 #define FSVERSION_GET_MINOR(x)     ((x >>  8) & 0xFF)
@@ -342,9 +342,11 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 status = -1;
                 goto abort_end;
             }
-            if (0 != ff_write_recordor(ffp->recordor, d->pkt)) {
-                ffp_stop_record(ffp);
+            
+            if (ffp->recording) {
+                ff_write_recorder(ffp->recorder, d->pkt);
             }
+            
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -5718,22 +5720,34 @@ int ffp_start_record(FFPlayer *ffp, const char *file_name)
     if (!is || !is->ic || is->paused || is->abort_request) {
         return -2;
     }
-    if (ffp->recordor) {
+    
+    if (ffp->recording) {
         return -3;
     }
-    int ret = ff_create_recordor(&ffp->recordor, file_name, is->ic, is->audio_stream, is->video_stream);
+
+    int ret = ff_create_recorder(&ffp->recorder, file_name, is->ic, is->audio_stream, is->video_stream);
     if (ret) {
         return ret;
     }
-    ret = ff_start_recordor(ffp->recordor);
+    ret = ff_start_recorder(ffp->recorder);
+    if (!ret) {
+        ffp->recording = 1;
+    } else {
+        ffp_stop_record(ffp);
+    }
     return ret;
 }
 
 int ffp_stop_record(FFPlayer *ffp)
 {
-    int r = ff_stop_recordor(ffp->recordor);
-    ff_destroy_recordor(&ffp->recordor);
-    return r;
+    VideoState *is = ffp->is;
+    if (!is) {
+        return -1;
+    }
+    ffp->recording = 0;
+    ff_stop_recorder(ffp->recorder);
+    ff_destroy_recorder(&ffp->recorder);
+    return 0;
 }
 
 void ffp_refresh_picture(FFPlayer *ffp)
