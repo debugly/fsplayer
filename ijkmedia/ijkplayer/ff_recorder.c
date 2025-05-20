@@ -197,7 +197,7 @@ end:
         avformat_free_context(fsr->ofmt_ctx);
         fsr->ofmt_ctx = NULL;
     }
-    
+    packet_queue_destroy(&fsr->packetq);
     return r;
 }
 
@@ -252,7 +252,9 @@ void ff_destroy_recorder(void **ffr)
     }
     FSRecorder *fsr = (FSRecorder *)*ffr;
     if (fsr) {
-        SDL_WaitThread(fsr->write_tid, NULL);
+        if (fsr->write_tid) {
+            SDL_WaitThread(fsr->write_tid, NULL);
+        }
         av_freep(ffr);
     }
 }
