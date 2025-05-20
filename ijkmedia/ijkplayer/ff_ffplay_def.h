@@ -728,7 +728,6 @@ typedef struct FFPlayer {
     //record
     int recording;
     void * recorder;
-    pthread_mutex_t record_mutex;
 } FFPlayer;
 
 #define fftime_to_seconds(ts)      (av_rescale(ts, 1, AV_TIME_BASE))
