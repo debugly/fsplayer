@@ -30,7 +30,7 @@ typedef struct FSRecorder {
     SDL_Thread *write_tid;
     SDL_Thread _write_tid;
     PacketQueue packetq;
-    int is_first_video_key;
+    int has_key_video_frame;
     
     int is_audio_first;
     int is_video_first;
@@ -194,7 +194,6 @@ static int write_thread(void *arg)
         goto end;
     }
     
-    int old_serial = 0;
     while (fsr->packetq.abort_request == 0) {
         int serial = 0;
         int get_pkt = packet_queue_get(&fsr->packetq, pkt, 1, &serial);
@@ -243,45 +242,29 @@ end:
     return r;
 }
 
-static int ff_write_recorder(FSRecorder *fsr, struct AVPacket *packet)
+int ff_write_recorder(void *ffr, struct AVPacket *packet)
 {
-    if (!fsr) {
+    if (!ffr) {
         return -1;
     }
-     
+    
+    FSRecorder *fsr = (FSRecorder *)ffr;
+    
+    if (!fsr->has_key_video_frame) {
+        if (packet->flags & AV_PKT_FLAG_KEY) {
+            fsr->has_key_video_frame = 1;
+        }
+    }
+    
+    if (!fsr->has_key_video_frame) {
+        return -1;
+    }
+    
     AVPacket *pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
     av_new_packet(pkt, 0);
     av_packet_ref(pkt, packet);
    
     return packet_queue_put(&fsr->packetq, pkt);
-}
-
-int ff_write_video_recorder(void *ffr, struct AVPacket *packet, struct AVPacket *key_frame)
-{
-    if (!ffr) {
-        return -1;
-    }
-    
-    FSRecorder *fsr = (FSRecorder *)ffr;
-    if (!fsr->is_first_video_key) {
-        if (packet->flags & AV_PKT_FLAG_KEY) {
-            //
-        } else if(key_frame) {
-            ff_write_recorder(fsr, key_frame);
-        }
-        fsr->is_first_video_key = 1;
-    }
-    return ff_write_recorder(fsr, packet);
-}
-
-int ff_write_audio_recorder(void *ffr, struct AVPacket *packet)
-{
-    if (!ffr) {
-        return -1;
-    }
-    
-    FSRecorder *fsr = (FSRecorder *)ffr;
-    return ff_write_recorder(fsr, packet);
 }
 
 void ff_stop_recorder(void *ffr)

@@ -32,8 +32,7 @@ struct AVFormatContext;
 
 int ff_create_recorder(void **out_ffr, const char *file_name, const struct AVFormatContext *ifmt_ctx, int audio_stream, int video_stream);
 int ff_start_recorder(void *ffr);
-int ff_write_video_recorder(void *ffr, struct AVPacket *packet, struct AVPacket *key_frame);
-int ff_write_audio_recorder(void *ffr, struct AVPacket *packet);
+int ff_write_recorder(void *ffr, struct AVPacket *packet);
 void ff_stop_recorder(void *ffr);
 void ff_destroy_recorder(void **ffr);
 

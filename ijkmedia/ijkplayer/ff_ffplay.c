@@ -343,22 +343,8 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 goto abort_end;
             }
             
-            if (d->avctx->codec_type == AVMEDIA_TYPE_VIDEO && d->pkt->flags & AV_PKT_FLAG_KEY) {
-                if (!ffp->pre_video_key_pkt) {
-                    ffp->pre_video_key_pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
-                    av_new_packet(ffp->pre_video_key_pkt, 0);
-                } else {
-                    av_packet_unref(ffp->pre_video_key_pkt);
-                }
-                av_packet_ref(ffp->pre_video_key_pkt, d->pkt);
-            }
-            
             if (ffp->recording) {
-                if (d->avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
-                    ff_write_video_recorder(ffp->recorder, d->pkt, ffp->pre_video_key_pkt);
-                } else {
-                    ff_write_audio_recorder(ffp->recorder, d->pkt);
-                }
+                ff_write_recorder(ffp->recorder, d->pkt);
             }
             
             int send = avcodec_send_packet(d->avctx, d->pkt);
@@ -609,10 +595,6 @@ static void stream_close(FFPlayer *ffp)
     frame_queue_destory(&is->sampq);
     
     ffp_stop_record(ffp);
-    if (ffp->pre_video_key_pkt) {
-        av_packet_unref(ffp->pre_video_key_pkt);
-        av_packet_free(&ffp->pre_video_key_pkt);
-    }
     SDL_DestroyCond(is->audio_accurate_seek_cond);
     SDL_DestroyCond(is->video_accurate_seek_cond);
     SDL_DestroyCond(is->continue_read_thread);
