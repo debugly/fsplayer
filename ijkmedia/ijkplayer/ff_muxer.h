@@ -32,7 +32,8 @@ struct AVFormatContext;
 
 int ff_create_muxer(void **out_ffr, const char *file_name, const struct AVFormatContext *ifmt_ctx, int audio_stream, int video_stream);
 int ff_start_muxer(void *ffr);
-int ff_write_muxer(void *ffr, struct AVPacket *packet);
+int ff_write_audio_muxer(void *ffr, struct AVPacket *packet);
+int ff_write_video_muxer(void *ffr, struct AVPacket *packet);
 void ff_stop_muxer(void *ffr);
 int ff_destroy_muxer(void **ffr);
 

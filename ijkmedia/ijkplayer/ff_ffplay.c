@@ -345,7 +345,11 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
             }
             
             if (ffp->movie_mixing) {
-                ff_write_muxer(ffp->movie_muxer, d->pkt);
+                if (d->avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+                    ff_write_video_muxer(ffp->movie_muxer, d->pkt);
+                } else if (d->avctx->codec_type == AVMEDIA_TYPE_AUDIO) {
+                    ff_write_audio_muxer(ffp->movie_muxer, d->pkt);
+                }
             }
             
             int send = avcodec_send_packet(d->avctx, d->pkt);

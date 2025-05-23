@@ -252,7 +252,35 @@ end:
     return r;
 }
 
-int ff_write_muxer(void *ffr, struct AVPacket *packet)
+static int ff_write_muxer(FSMuxer *fsr, struct AVPacket *packet)
+{
+    if (!fsr) {
+        return -1;
+    }
+    
+    AVPacket *pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
+    av_new_packet(pkt, 0);
+    av_packet_ref(pkt, packet);
+   
+    return packet_queue_put(&fsr->packetq, pkt);
+}
+
+int ff_write_audio_muxer(void *ffr, struct AVPacket *packet)
+{
+    if (!ffr) {
+        return -1;
+    }
+    
+    FSMuxer *fsr = (FSMuxer *)ffr;
+    
+    if (!fsr->has_key_video_frame) {
+        return -1;
+    }
+    
+    return ff_write_muxer(fsr, packet);
+}
+
+int ff_write_video_muxer(void *ffr, struct AVPacket *packet)
 {
     if (!ffr) {
         return -1;
@@ -270,11 +298,7 @@ int ff_write_muxer(void *ffr, struct AVPacket *packet)
         return -1;
     }
     
-    AVPacket *pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
-    av_new_packet(pkt, 0);
-    av_packet_ref(pkt, packet);
-   
-    return packet_queue_put(&fsr->packetq, pkt);
+    return ff_write_muxer(fsr, packet);
 }
 
 void ff_stop_muxer(void *ffr)
