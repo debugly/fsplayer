@@ -20,11 +20,11 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
-#include "ff_recorder.h"
+#include "ff_muxer.h"
 #include "ff_ffplay_def.h"
 #include "ff_packet_list.h"
 
-typedef struct FSRecorder {
+typedef struct FSMuxer {
     const AVFormatContext *ifmt_ctx;
     AVFormatContext *ofmt_ctx;
     SDL_Thread *write_tid;
@@ -36,9 +36,9 @@ typedef struct FSRecorder {
     int is_video_first;
     int64_t audio_start_pts;
     int64_t video_start_pts;
-} FSRecorder;
+} FSMuxer;
 
-int ff_create_recorder(void **out_ffr, const char *file_name, const AVFormatContext *ifmt_ctx, int audio_stream, int video_stream)
+int ff_create_muxer(void **out_ffr, const char *file_name, const AVFormatContext *ifmt_ctx, int audio_stream, int video_stream)
 {
     int r = 0;
     
@@ -52,7 +52,7 @@ int ff_create_recorder(void **out_ffr, const char *file_name, const AVFormatCont
     //vp9 only supported in MP4.
     //Unable to choose an output format for '1747121836247.mkv'; use a standard extension for the filename or specify the format manually.
     
-    FSRecorder *fsr = mallocz(sizeof(FSRecorder));
+    FSMuxer *fsr = mallocz(sizeof(FSMuxer));
     
     if (packet_queue_init(&fsr->packetq) < 0)
         goto end;
@@ -107,12 +107,12 @@ end:
     return r;
 }
 
-static int do_write_recorder(void *ffr, AVPacket *pkt)
+static int do_write_muxer(void *ffr, AVPacket *pkt)
 {
     if (!ffr) {
         return 0;
     }
-    FSRecorder *fsr = (FSRecorder *)ffr;
+    FSMuxer *fsr = (FSMuxer *)ffr;
     int ret = 0;
     
     if (pkt == NULL) {
@@ -156,7 +156,7 @@ static int do_write_recorder(void *ffr, AVPacket *pkt)
             pkt->dts = pkt->dts - fsr->video_start_pts;
         }
     }
-    
+
     // 写入一个AVPacket到输出文件
     if ((ret = av_interleaved_write_frame(fsr->ofmt_ctx, pkt)) < 0) {
         av_log(NULL, AV_LOG_ERROR, "recrod Error muxing packet\n");
@@ -168,7 +168,7 @@ static int do_write_recorder(void *ffr, AVPacket *pkt)
 
 static int write_thread(void *arg)
 {
-    FSRecorder *fsr = (FSRecorder *)arg;
+    FSMuxer *fsr = (FSMuxer *)arg;
     
     AVPacket *pkt = av_packet_alloc();
     
@@ -207,7 +207,7 @@ static int write_thread(void *arg)
             
         }
         
-        do_write_recorder(fsr, pkt);
+        do_write_muxer(fsr, pkt);
     }
 end:
     av_packet_free(&pkt);
@@ -224,13 +224,13 @@ end:
     return r;
 }
 
-int ff_start_recorder(void *ffr)
+int ff_start_muxer(void *ffr)
 {
     if (!ffr) {
         return -1;
     }
     int r = 0;
-    FSRecorder *fsr = (FSRecorder *)ffr;
+    FSMuxer *fsr = (FSMuxer *)ffr;
     packet_queue_start(&fsr->packetq);
     fsr->write_tid = SDL_CreateThreadEx(&fsr->_write_tid, write_thread, fsr, "fsrecord");
     if (!fsr->write_tid) {
@@ -242,13 +242,13 @@ end:
     return r;
 }
 
-int ff_write_recorder(void *ffr, struct AVPacket *packet)
+int ff_write_muxer(void *ffr, struct AVPacket *packet)
 {
     if (!ffr) {
         return -1;
     }
     
-    FSRecorder *fsr = (FSRecorder *)ffr;
+    FSMuxer *fsr = (FSMuxer *)ffr;
     
     if (!fsr->has_key_video_frame) {
         if (packet->flags & AV_PKT_FLAG_KEY) {
@@ -267,23 +267,23 @@ int ff_write_recorder(void *ffr, struct AVPacket *packet)
     return packet_queue_put(&fsr->packetq, pkt);
 }
 
-void ff_stop_recorder(void *ffr)
+void ff_stop_muxer(void *ffr)
 {
     if (!ffr) {
         return;
     }
     
-    FSRecorder *fsr = (FSRecorder *)ffr;
+    FSMuxer *fsr = (FSMuxer *)ffr;
     packet_queue_abort(&fsr->packetq);
     return;
 }
 
-void ff_destroy_recorder(void **ffr)
+void ff_destroy_muxer(void **ffr)
 {
     if (!ffr || !*ffr) {
         return;
     }
-    FSRecorder *fsr = (FSRecorder *)*ffr;
+    FSMuxer *fsr = (FSMuxer *)*ffr;
     if (fsr) {
         if (fsr->write_tid) {
             SDL_WaitThread(fsr->write_tid, NULL);

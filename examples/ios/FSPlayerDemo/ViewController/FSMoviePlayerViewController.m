@@ -290,7 +290,7 @@ static NSString *recordVideoPath = nil;
 - (IBAction)onRecord:(UIButton *)sender
 {
     if (sender.isSelected) {
-        int error = [self.player stopRecord];
+        int error = [self.player stopFastRecord];
         NSLog(@"停止录制:%d", error);
         if (!error) {
             [self saveToPhotosAlbum];
@@ -315,7 +315,7 @@ static NSString *recordVideoPath = nil;
         NSString *fileName = [NSString stringWithFormat:@"%lld.%@", timestamp, extension];
         // 构建完整文件路径
         NSString *filePath = [cacheDirectory stringByAppendingPathComponent:fileName];
-        int error = [self.player startRecord:filePath];
+        int error = [self.player startFastRecord:filePath];
         if (error) {
             NSLog(@"开始录制:%d",error);
         } else {

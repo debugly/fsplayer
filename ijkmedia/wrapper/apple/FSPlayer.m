@@ -2178,16 +2178,16 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 # pragma mark record video
 
-- (int)startRecord:(NSString *)filePath
+- (int)startFastRecord:(NSString *)filePath
 {
     if (!_mediaPlayer)
         return -1000;
-    return ijkmp_start_record(_mediaPlayer, [filePath UTF8String]);
+    return ijkmp_start_fast_record(_mediaPlayer, [filePath UTF8String]);
 }
 
-- (int)stopRecord
+- (int)stopFastRecord
 {
-    return ijkmp_stop_record(_mediaPlayer);
+    return ijkmp_stop_fast_record(_mediaPlayer);
 }
 
 @end

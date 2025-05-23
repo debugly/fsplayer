@@ -142,8 +142,8 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 - (FSAudioChannel)getAudioChanne;
 - (void)setAudioChannel:(FSAudioChannel)config;
 - (NSArray <NSString *> *)getInputFormatExtensions;
-- (int)startRecord:(NSString *)filePath;
-- (int)stopRecord;
+- (int)startFastRecord:(NSString *)filePath;
+- (int)stopFastRecord;
 
 #pragma mark Notifications
 

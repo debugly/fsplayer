@@ -111,7 +111,7 @@
 
 // static const AVOption ffp_context_options[] = ...
 #include "ff_ffplay_options.h"
-#include "ff_recorder.h"
+#include "ff_muxer.h"
 
 #define FSVERSION_GET_MAJOR(x)     ((x >> 16) & 0xFF)
 #define FSVERSION_GET_MINOR(x)     ((x >>  8) & 0xFF)
@@ -343,8 +343,8 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 goto abort_end;
             }
             
-            if (ffp->recording) {
-                ff_write_recorder(ffp->recorder, d->pkt);
+            if (ffp->movie_mixing) {
+                ff_write_muxer(ffp->movie_muxer, d->pkt);
             }
             
             int send = avcodec_send_packet(d->avctx, d->pkt);
@@ -594,7 +594,7 @@ static void stream_close(FFPlayer *ffp)
     frame_queue_destory(&is->pictq);
     frame_queue_destory(&is->sampq);
     
-    ffp_stop_record(ffp);
+    ffp_stop_mux(ffp);
     SDL_DestroyCond(is->audio_accurate_seek_cond);
     SDL_DestroyCond(is->video_accurate_seek_cond);
     SDL_DestroyCond(is->continue_read_thread);
@@ -5710,7 +5710,7 @@ const char * ffp_get_iformat_extensions(FFPlayer *ffp)
     return NULL;
 }
 
-int ffp_start_record(FFPlayer *ffp, const char *file_name)
+int ffp_start_mux(FFPlayer *ffp, const char *file_name)
 {
     if (!ffp || !file_name) {
         return -1;
@@ -5721,32 +5721,32 @@ int ffp_start_record(FFPlayer *ffp, const char *file_name)
         return -2;
     }
     
-    if (ffp->recording) {
+    if (ffp->movie_mixing) {
         return -3;
     }
 
-    int ret = ff_create_recorder(&ffp->recorder, file_name, is->ic, is->audio_stream, is->video_stream);
+    int ret = ff_create_muxer(&ffp->movie_muxer, file_name, is->ic, is->audio_stream, is->video_stream);
     if (ret) {
         return ret;
     }
-    ret = ff_start_recorder(ffp->recorder);
+    ret = ff_start_muxer(ffp->movie_muxer);
     if (!ret) {
-        ffp->recording = 1;
+        ffp->movie_mixing = 1;
     } else {
-        ffp_stop_record(ffp);
+        ffp_stop_mux(ffp);
     }
     return ret;
 }
 
-int ffp_stop_record(FFPlayer *ffp)
+int ffp_stop_mux(FFPlayer *ffp)
 {
     VideoState *is = ffp->is;
     if (!is) {
         return -1;
     }
-    ffp->recording = 0;
-    ff_stop_recorder(ffp->recorder);
-    ff_destroy_recorder(&ffp->recorder);
+    ffp->movie_mixing = 0;
+    ff_stop_muxer(ffp->movie_muxer);
+    ff_destroy_muxer(&ffp->movie_muxer);
     return 0;
 }
 

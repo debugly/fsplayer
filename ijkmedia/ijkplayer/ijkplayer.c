@@ -889,25 +889,25 @@ const char * ijkmp_get_iformat_extensions(IjkMediaPlayer *mp)
     return r;
 }
 
-int ijkmp_start_record(IjkMediaPlayer *mp,const char *file_name)
+int ijkmp_start_fast_record(IjkMediaPlayer *mp,const char *file_name)
 {
     assert(mp);
-    MPTRACE("ijkmp_startRecord()\n");
+    MPTRACE("ijkmp_startFastRecord()\n");
     pthread_mutex_lock(&mp->mutex);
-    int retval = ffp_start_record(mp->ffplayer, file_name);
+    int retval = ffp_start_mux(mp->ffplayer, file_name);
     pthread_mutex_unlock(&mp->mutex);
-    MPTRACE("ijkmp_startRecord()=%d\n", retval);
+    MPTRACE("ijkmp_startFastRecord()=%d\n", retval);
     return retval;
 }
 
-int ijkmp_stop_record(IjkMediaPlayer *mp)
+int ijkmp_stop_fast_record(IjkMediaPlayer *mp)
 {
     assert(mp);
-    MPTRACE("ijkmp_stopRecord()\n");
+    MPTRACE("ijkmp_stopFastRecord()\n");
     pthread_mutex_lock(&mp->mutex);
-    int retval = ffp_stop_record(mp->ffplayer);
+    int retval = ffp_stop_mux(mp->ffplayer);
     pthread_mutex_unlock(&mp->mutex);
-    MPTRACE("ijkmp_stopRecord()=%d\n", retval);
+    MPTRACE("ijkmp_stopFastRecord()=%d\n", retval);
     return retval;
 }
 

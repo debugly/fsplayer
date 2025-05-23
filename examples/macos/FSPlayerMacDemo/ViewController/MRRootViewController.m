@@ -1282,7 +1282,7 @@ static BOOL hdrAnimationShown = 0;
 - (IBAction)onToggleRecord:(NSButton *)sender
 {
     if (sender.state == NSControlStateValueOff) {
-        int error = [self.player stopRecord];
+        int error = [self.player stopFastRecord];
         NSLog(@"停止录制:%d", error);
     } else {
         // 获取Caches目录路径
@@ -1302,7 +1302,7 @@ static BOOL hdrAnimationShown = 0;
         NSString *fileName = [NSString stringWithFormat:@"%lld.%@", timestamp, extension];
         // 构建完整文件路径
         NSString *filePath = [cacheDirectory stringByAppendingPathComponent:fileName];
-        int error = [self.player startRecord:filePath];
+        int error = [self.player startFastRecord:filePath];
         if (error) {
             NSLog(@"开始录制:%d",error);
         } else {
