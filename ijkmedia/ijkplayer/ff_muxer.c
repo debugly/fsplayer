@@ -44,9 +44,16 @@ int ff_create_muxer(void **out_ffr, const char *file_name, const AVFormatContext
     
     if (!file_name || !strlen(file_name)) { // 没有路径
         r = -1;
-        av_log(NULL, AV_LOG_ERROR, "recrod filename is invalid");
+        av_log(NULL, AV_LOG_ERROR, "recrod filename is invalid\n");
         goto end;
     }
+    
+    if (audio_stream == -1 && video_stream == -1) {
+        r = -2;
+        av_log(NULL, AV_LOG_ERROR, "recrod stream is invalid\n");
+        goto end;
+    }
+    
     //file_name extension is important!!
     //Could not find tag for codec flv1 in stream #1, codec not currently supported in container
     //vp9 only supported in MP4.
@@ -54,9 +61,11 @@ int ff_create_muxer(void **out_ffr, const char *file_name, const AVFormatContext
     
     FSMuxer *fsr = mallocz(sizeof(FSMuxer));
     
-    if (packet_queue_init(&fsr->packetq) < 0)
+    if (packet_queue_init(&fsr->packetq) < 0){
+        r = -3;
         goto end;
-    
+    }
+
     // 初始化一个用于输出的AVFormatContext结构体
     avformat_alloc_output_context2(&fsr->ofmt_ctx, NULL, NULL, file_name);
     
@@ -65,6 +74,7 @@ int ff_create_muxer(void **out_ffr, const char *file_name, const AVFormatContext
         av_log(NULL, AV_LOG_ERROR, "recrod check your file extention %s\n", file_name);
         goto end;
     }
+    
     for (int i = 0; i < ifmt_ctx->nb_streams; i++) {
         if (i == audio_stream || i == video_stream) {
             AVStream *in_stream = ifmt_ctx->streams[i];
@@ -232,7 +242,7 @@ int ff_start_muxer(void *ffr)
     int r = 0;
     FSMuxer *fsr = (FSMuxer *)ffr;
     packet_queue_start(&fsr->packetq);
-    fsr->write_tid = SDL_CreateThreadEx(&fsr->_write_tid, write_thread, fsr, "fsrecord");
+    fsr->write_tid = SDL_CreateThreadEx(&fsr->_write_tid, write_thread, fsr, "fsmux");
     if (!fsr->write_tid) {
         av_log(NULL, AV_LOG_FATAL, "recrod SDL_CreateThread(): %s\n", SDL_GetError());
         r = -7;
