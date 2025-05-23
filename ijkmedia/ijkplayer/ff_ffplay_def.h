@@ -728,6 +728,7 @@ typedef struct FFPlayer {
     //record
     int recording;
     void * recorder;
+    AVPacket *pre_video_key_pkt;
 } FFPlayer;
 
 #define fftime_to_seconds(ts)      (av_rescale(ts, 1, AV_TIME_BASE))
