@@ -911,6 +911,28 @@ int ijkmp_stop_fast_record(IjkMediaPlayer *mp)
     return retval;
 }
 
+int ijkmp_start_exact_record(IjkMediaPlayer *mp,const char *file_name)
+{
+    assert(mp);
+    MPTRACE("ijkmp_startExactRecord()\n");
+    pthread_mutex_lock(&mp->mutex);
+    int retval = ffp_start_recorder(mp->ffplayer, file_name);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_startExactRecord()=%d\n", retval);
+    return retval;
+}
+
+int ijkmp_stop_exact_record(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    MPTRACE("ijkmp_stopExactRecord()\n");
+    pthread_mutex_lock(&mp->mutex);
+    int retval = ffp_stop_recorder(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_stopExactRecord()=%d\n", retval);
+    return retval;
+}
+
 void ijkmp_refresh_picture(IjkMediaPlayer *mp)
 {
     assert(mp);

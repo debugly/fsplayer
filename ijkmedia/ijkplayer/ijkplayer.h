@@ -240,6 +240,8 @@ void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSubtitlePreference* sp)
 const char * ijkmp_get_iformat_extensions(IjkMediaPlayer *mp);
 int  ijkmp_start_fast_record(IjkMediaPlayer *mp, const char *file_name);
 int  ijkmp_stop_fast_record(IjkMediaPlayer *mp);
+int ijkmp_start_exact_record(IjkMediaPlayer *mp,const char *file_name);
+int  ijkmp_stop_exact_record(IjkMediaPlayer *mp);
 void ijkmp_refresh_picture(IjkMediaPlayer *mp);
 
 #endif

@@ -144,6 +144,8 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 - (NSArray <NSString *> *)getInputFormatExtensions;
 - (int)startFastRecord:(NSString *)filePath;
 - (int)stopFastRecord;
+- (int)startExactRecord:(NSString *)filePath;
+- (int)stopExactRecord;
 
 #pragma mark Notifications
 

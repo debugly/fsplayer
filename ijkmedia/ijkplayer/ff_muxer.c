@@ -278,16 +278,18 @@ void ff_stop_muxer(void *ffr)
     return;
 }
 
-void ff_destroy_muxer(void **ffr)
+int ff_destroy_muxer(void **ffr)
 {
     if (!ffr || !*ffr) {
-        return;
+        return -1;
     }
+    int r = 0;
     FSMuxer *fsr = (FSMuxer *)*ffr;
     if (fsr) {
         if (fsr->write_tid) {
-            SDL_WaitThread(fsr->write_tid, NULL);
+            SDL_WaitThread(fsr->write_tid, &r);
         }
         av_freep(ffr);
     }
+    return r;
 }

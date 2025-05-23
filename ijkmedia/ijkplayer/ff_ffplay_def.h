@@ -728,6 +728,9 @@ typedef struct FFPlayer {
     //record
     int movie_mixing;
     void * movie_muxer;
+    
+    int movie_recording;
+    void * movie_recorder;
 } FFPlayer;
 
 #define fftime_to_seconds(ts)      (av_rescale(ts, 1, AV_TIME_BASE))

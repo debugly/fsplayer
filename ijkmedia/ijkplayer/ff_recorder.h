@@ -1,5 +1,5 @@
 /*
-* ff_muxer.h
+* ff_recorder.h
 *
 * Copyright (c) 2025 debugly <qianlongxu@gmail.com>
 *
@@ -20,20 +20,20 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
-/* fast record video */
+/* record video */
 
-#ifndef ff_muxer_h
-#define ff_muxer_h
+#ifndef ff_recorder_h
+#define ff_recorder_h
 
 #include <stdio.h>
 struct FFPlayer;
-struct AVPacket;
+struct AVFrame;
 struct AVFormatContext;
 
-int ff_create_muxer(void **out_ffr, const char *file_name, const struct AVFormatContext *ifmt_ctx, int audio_stream, int video_stream);
-int ff_start_muxer(void *ffr);
-int ff_write_muxer(void *ffr, struct AVPacket *packet);
-void ff_stop_muxer(void *ffr);
-int ff_destroy_muxer(void **ffr);
+int ff_create_recorder(void **out_ffr, const char *file_name, const struct AVFormatContext *ifmt_ctx);
+int ff_start_recorder(void *ffr);
+int ff_write_recorder(void *ffr, struct AVFrame *frame);
+void ff_stop_recorder(void *ffr);
+int ff_destroy_recorder(void **ffr);
 
-#endif /* ff_muxer_h */
+#endif /* ff_recorder_h */

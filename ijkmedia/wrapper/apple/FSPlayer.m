@@ -2190,4 +2190,16 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     return ijkmp_stop_fast_record(_mediaPlayer);
 }
 
+- (int)startExactRecord:(NSString *)filePath
+{
+    if (!_mediaPlayer)
+        return -1000;
+    return ijkmp_start_exact_record(_mediaPlayer, [filePath UTF8String]);
+}
+
+- (int)stopExactRecord
+{
+    return ijkmp_stop_exact_record(_mediaPlayer);
+}
+
 @end

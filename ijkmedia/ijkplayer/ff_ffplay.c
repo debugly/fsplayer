@@ -112,6 +112,7 @@
 // static const AVOption ffp_context_options[] = ...
 #include "ff_ffplay_options.h"
 #include "ff_muxer.h"
+#include "ff_recorder.h"
 
 #define FSVERSION_GET_MAJOR(x)     ((x >> 16) & 0xFF)
 #define FSVERSION_GET_MINOR(x)     ((x >>  8) & 0xFF)
@@ -595,6 +596,7 @@ static void stream_close(FFPlayer *ffp)
     frame_queue_destory(&is->sampq);
     
     ffp_stop_mux(ffp);
+    ffp_stop_recorder(ffp);
     SDL_DestroyCond(is->audio_accurate_seek_cond);
     SDL_DestroyCond(is->video_accurate_seek_cond);
     SDL_DestroyCond(is->continue_read_thread);
@@ -5717,7 +5719,7 @@ int ffp_start_mux(FFPlayer *ffp, const char *file_name)
     }
     
     VideoState *is = ffp->is;
-    if (!is || !is->ic || is->paused || is->abort_request) {
+    if (!is || !is->ic || !ffp->prepared || is->paused || is->abort_request) {
         return -2;
     }
     
@@ -5746,8 +5748,46 @@ int ffp_stop_mux(FFPlayer *ffp)
     }
     ffp->movie_mixing = 0;
     ff_stop_muxer(ffp->movie_muxer);
-    ff_destroy_muxer(&ffp->movie_muxer);
-    return 0;
+    return ff_destroy_muxer(&ffp->movie_muxer);
+}
+
+int ffp_start_recorder(FFPlayer *ffp, const char *file_name)
+{
+    if (!ffp || !file_name) {
+        return -1;
+    }
+    
+    VideoState *is = ffp->is;
+    if (!is || !is->ic || !ffp->prepared || is->paused || is->abort_request) {
+        return -2;
+    }
+    
+    if (ffp->movie_recording) {
+        return -3;
+    }
+
+    int ret = ff_create_recorder(&ffp->movie_recorder, file_name, is->ic);
+    if (ret) {
+        return ret;
+    }
+    ret = ff_start_recorder(ffp->movie_recorder);
+    if (!ret) {
+        ffp->movie_recording = 1;
+    } else {
+        ffp_stop_recorder(ffp);
+    }
+    return ret;
+}
+
+int ffp_stop_recorder(FFPlayer *ffp)
+{
+    VideoState *is = ffp->is;
+    if (!is) {
+        return -1;
+    }
+    ffp->movie_recording = 0;
+    ff_stop_recorder(ffp->movie_recorder);
+    return ff_destroy_recorder(&ffp->movie_recorder);
 }
 
 void ffp_refresh_picture(FFPlayer *ffp)

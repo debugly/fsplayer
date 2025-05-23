@@ -1279,10 +1279,30 @@ static BOOL hdrAnimationShown = 0;
     [self showPlayerSettingsSideBar];
 }
 
+static BOOL useExact = NO;
+
+- (int)startRecord:(NSString *)filePath
+{
+    if (useExact) {
+        return [self.player startExactRecord:filePath];
+    } else {
+        return [self.player startFastRecord:filePath];
+    }
+}
+
+- (int)stopRecord
+{
+    if (useExact) {
+        return [self.player stopExactRecord];
+    } else {
+        return [self.player stopFastRecord];
+    }
+}
+
 - (IBAction)onToggleRecord:(NSButton *)sender
 {
     if (sender.state == NSControlStateValueOff) {
-        int error = [self.player stopFastRecord];
+        int error = [self stopRecord];
         NSLog(@"停止录制:%d", error);
     } else {
         // 获取Caches目录路径
