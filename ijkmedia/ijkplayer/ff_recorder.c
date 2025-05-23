@@ -177,8 +177,13 @@ static int write_thread(void *arg)
         }
     }
     
+    AVDictionary *opts = NULL;
+    // 设置 movflags 为 faststart
+    if (strcmp(fsr->ofmt_ctx->oformat->name, "mp4") == 0 || strcmp(fsr->ofmt_ctx->oformat->name, "mov") == 0) {
+        av_dict_set(&opts, "movflags", "faststart", 0);
+    }
     // 写视频文件头
-    if (avformat_write_header(fsr->ofmt_ctx, NULL) < 0) {
+    if (avformat_write_header(fsr->ofmt_ctx, &opts) < 0) {
         r = -9;
         av_log(NULL, AV_LOG_ERROR, "recrod Error occurred when opening output file\n");
         goto end;
