@@ -31,9 +31,10 @@ typedef struct FSRecorder {
     SDL_Thread _write_tid;
     PacketQueue packetq;
 
-    int is_first;
-    int64_t start_pts;
-    int64_t start_dts;
+    int is_audio_first;
+    int is_video_first;
+    int64_t audio_start_pts;
+    int64_t video_start_pts;
 } FSRecorder;
 
 int ff_create_recorder(void **out_ffr, const char *file_name, const AVFormatContext *ifmt_ctx, int audio_stream, int video_stream)
@@ -63,7 +64,6 @@ int ff_create_recorder(void **out_ffr, const char *file_name, const AVFormatCont
         av_log(NULL, AV_LOG_ERROR, "recrod check your file extention %s\n", file_name);
         goto end;
     }
-     
     for (int i = 0; i < ifmt_ctx->nb_streams; i++) {
         if (i == audio_stream || i == video_stream) {
             AVStream *in_stream = ifmt_ctx->streams[i];
@@ -81,6 +81,14 @@ int ff_create_recorder(void **out_ffr, const char *file_name, const AVFormatCont
                 goto end;
             }
             out_stream->codecpar->codec_tag = 0;
+            // 设置start_time
+            out_stream->start_time = AV_NOPTS_VALUE;
+            out_stream->index = i;
+            if (in_stream->codecpar->extradata_size) {
+                out_stream->codecpar->extradata = malloc(in_stream->codecpar->extradata_size);
+                memcpy(out_stream->codecpar->extradata, in_stream->codecpar->extradata, in_stream->codecpar->extradata_size);
+                out_stream->codecpar->extradata_size = in_stream->codecpar->extradata_size;
+            }
 //            if (fsr->ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
 //                out_stream->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 //            }
@@ -123,17 +131,28 @@ static int do_write_recorder(void *ffr, AVPacket *pkt)
     pkt->duration = av_rescale_q(pkt->duration, in_stream->time_base, out_stream->time_base);
     pkt->pos = -1;
     
-    if (!fsr->is_first) { // 录制的第一帧
-        fsr->is_first = 1;
-        fsr->start_pts = pkt->pts;
-        fsr->start_dts = pkt->dts;
-        fsr->is_first = 1;
-        pkt->pts = 0;
-        pkt->dts = 0;
-    } else {
-        // 设置了 stream 和 ofmt_ctx 的 start_time都没作用。
-        pkt->pts = pkt->pts - fsr->start_pts;
-        pkt->dts = pkt->dts - fsr->start_dts;
+    if (AVMEDIA_TYPE_AUDIO == in_stream->codecpar->codec_type) {
+        if (!fsr->is_audio_first) { // 录制的第一帧
+            fsr->is_audio_first = 1;
+            fsr->audio_start_pts = pkt->pts;
+            pkt->pts = 0;
+            pkt->dts = 0;
+        } else {
+            // 设置了 stream 和 ofmt_ctx 的 start_time都没作用。
+            pkt->pts = pkt->pts - fsr->audio_start_pts;
+            pkt->dts = pkt->dts - fsr->audio_start_pts;
+        }
+    } else if (AVMEDIA_TYPE_VIDEO == in_stream->codecpar->codec_type) {
+        if (!fsr->is_video_first) { // 录制的第一帧
+            fsr->is_video_first = 1;
+            fsr->video_start_pts = pkt->pts;
+            pkt->pts = 0;
+            pkt->dts = 0;
+        } else {
+            // 设置了 stream 和 ofmt_ctx 的 start_time都没作用。
+            pkt->pts = pkt->pts - fsr->video_start_pts;
+            pkt->dts = pkt->dts - fsr->video_start_pts;
+        }
     }
     
     // 写入一个AVPacket到输出文件
