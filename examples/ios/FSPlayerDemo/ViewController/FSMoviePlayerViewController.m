@@ -20,6 +20,7 @@
 #import "FSMediaControl.h"
 #import "FSCommon.h"
 #import "FSDemoHistory.h"
+#import <Photos/Photos.h>
 
 @interface FSVideoViewController ()<FSVideoRenderingDelegate>
 
@@ -229,11 +230,73 @@
     [self.mediaControl continueDragMediaSlider];
 }
 
+- (void)checkPhotoLibraryPermissions:(void(^)(BOOL granted))completion
+{
+    PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatus];
+    
+    switch (status) {
+        case PHAuthorizationStatusAuthorized:
+        {
+            completion(YES);
+        }
+            
+            break;
+        case PHAuthorizationStatusNotDetermined:
+        {
+            [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+                completion(status == PHAuthorizationStatusAuthorized);
+            }];
+        }
+            break;
+        default:
+        {
+            completion(NO);
+        }
+            break;
+    }
+}
+
+- (void)saveVideoWithAuthorization:(NSURL *)videoURL completion:(void(^)(BOOL success, NSError *error))completion {
+    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+        PHAssetCreationRequest *request = [PHAssetCreationRequest creationRequestForAsset];
+        [request addResourceWithType:PHAssetResourceTypeVideo fileURL:videoURL options:nil];
+    } completionHandler:^(BOOL success, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(success, error);
+        });
+    }];
+}
+
+- (void)saveToPhotosAlbum
+{
+    [self checkPhotoLibraryPermissions:^(BOOL granted) {
+        if (granted) {
+            [self saveVideoWithAuthorization:[NSURL URLWithString:recordVideoPath] completion:^(BOOL success, NSError *error) {
+                [[NSFileManager defaultManager] removeItemAtPath:recordVideoPath error:NULL];
+                if (error) {
+                    NSLog(@"保存到相册失败：%@",error);
+                } else {
+                    NSLog(@"保存到相册成功");
+                }
+            }];
+        } else {
+            [[NSFileManager defaultManager] removeItemAtPath:recordVideoPath error:NULL];
+        }
+    }];
+}
+
+static NSString *recordVideoPath = nil;
+
 - (IBAction)onRecord:(UIButton *)sender
 {
     if (sender.isSelected) {
         int error = [self.player stopRecord];
         NSLog(@"停止录制:%d", error);
+        if (!error) {
+            [self saveToPhotosAlbum];
+        } else {
+            [[NSFileManager defaultManager] removeItemAtPath:recordVideoPath error:NULL];
+        }
     } else {
         // 获取Caches目录路径
         NSArray<NSString *> *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
@@ -257,6 +320,7 @@
             NSLog(@"开始录制:%d",error);
         } else {
             NSLog(@"开始录制:%@",filePath);
+            recordVideoPath = filePath;
         }
     }
     

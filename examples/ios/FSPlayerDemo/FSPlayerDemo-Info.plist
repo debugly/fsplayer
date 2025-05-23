@@ -41,11 +41,9 @@
 	<array>
 		<string>armv7</string>
 	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>save record video</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>save record video</string>
 </dict>
 </plist>

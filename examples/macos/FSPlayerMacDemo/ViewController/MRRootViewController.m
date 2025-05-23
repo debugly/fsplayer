@@ -1298,7 +1298,6 @@ static BOOL hdrAnimationShown = 0;
         if (!extension) {
             extension = @"mkv";
         }
-        extension = @"mkv";
         // 格式化为字符串
         NSString *fileName = [NSString stringWithFormat:@"%lld.%@", timestamp, extension];
         // 构建完整文件路径
