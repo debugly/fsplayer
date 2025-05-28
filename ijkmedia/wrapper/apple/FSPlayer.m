@@ -163,7 +163,9 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     if ([glView respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
         [glView registerRefreshCurrentPicObserver:^{
             __strong typeof(wself) self = wself;
-            ijkmp_refresh_picture(self->_mediaPlayer);
+            if (self->_mediaPlayer) {
+                ijkmp_refresh_picture(self->_mediaPlayer);
+            }
         }];
     }
     
@@ -601,6 +603,8 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 #endif
     [self setScreenOn:NO];
     [self destroyHud];
+    //clean refresh observer
+    [_glView registerRefreshCurrentPicObserver:NULL];
     [self performSelectorInBackground:@selector(shutdownWaitStop:) withObject:self];
 }
 
