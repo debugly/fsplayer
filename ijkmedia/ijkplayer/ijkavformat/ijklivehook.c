@@ -21,6 +21,7 @@
  */
 
 #include "libavformat/avformat.h"
+#include "libavformat/demux.h"
 #include "libavformat/url.h"
 #include "libavutil/avstring.h"
 #include "libavutil/opt.h"
@@ -307,14 +308,14 @@ static const AVClass ijklivehook_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-AVInputFormat ijkff_ijklivehook_demuxer = {
-    .name           = "ijklivehook",
-    .long_name      = "Live Hook Controller",
-    .flags          = AVFMT_NOFILE | AVFMT_TS_DISCONT,
+FFInputFormat ijkff_ijklivehook_demuxer = {
+    .p.name           = "ijklivehook",
+    .p.long_name      = "Live Hook Controller",
+    .p.flags          = AVFMT_NOFILE | AVFMT_TS_DISCONT,
+    .p.priv_class     = &ijklivehook_class,
     .priv_data_size = sizeof(Context),
     .read_probe     = ijklivehook_probe,
     .read_header2   = ijklivehook_read_header,
     .read_packet    = ijklivehook_read_packet,
     .read_close     = ijklivehook_read_close,
-    .priv_class     = &ijklivehook_class,
 };

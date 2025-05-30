@@ -23,14 +23,15 @@
  */
 
 #include "libavformat/avformat.h"
+#include "libavformat/demux.h"
 #include "libavformat/url.h"
 #include "libavformat/version.h"
 
 #define FS_REGISTER_DEMUXER(x)                                         \
     {                                                                   \
-        extern AVInputFormat ijkff_##x##_demuxer;                       \
-        int ijkav_register_##x##_demuxer(AVInputFormat *demuxer, int demuxer_size); \
-        ijkav_register_##x##_demuxer(&ijkff_##x##_demuxer, sizeof(AVInputFormat)); \
+        extern FFInputFormat ijkff_##x##_demuxer;                       \
+        int ijkav_register_##x##_demuxer(FFInputFormat *demuxer, int demuxer_size); \
+        ijkav_register_##x##_demuxer(&ijkff_##x##_demuxer, sizeof(FFInputFormat)); \
     }
 
 #define FS_REGISTER_PROTOCOL(x)                                        \

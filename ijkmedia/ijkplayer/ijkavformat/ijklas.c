@@ -20,6 +20,7 @@
 #include "libavutil/dict.h"
 #include "libavutil/time.h"
 #include "libavformat/avformat.h"
+#include "libavformat/demux.h"
 #include "libavformat/url.h"
 #include "libavformat/avio_internal.h"
 #include "libavformat/id3v2.h"
@@ -2112,18 +2113,18 @@ static const AVClass las_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-AVInputFormat ijkff_las_demuxer = {
-    .name           = "las",
-    .long_name      = "Live Adaptive Streaming",
-    .priv_class     = &las_class,
+FFInputFormat ijkff_las_demuxer = {
+    .p.name           = "las",
+    .p.long_name      = "Live Adaptive Streaming",
+    .p.priv_class     = &las_class,
+    .p.flags          = AVFMT_NOFILE,
+    .p.extensions     = "las",
     .priv_data_size = sizeof(LasContext),
     .read_probe     = las_probe,
     .read_header    = las_read_header,
     .read_packet    = las_read_packet,
     .read_close     = las_close,
     .read_seek      = las_read_seek,
-    .extensions     = "las",
-    .flags          = AVFMT_NOFILE
 };
 
 
