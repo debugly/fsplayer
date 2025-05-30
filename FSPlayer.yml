@@ -53,6 +53,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/bluray/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dav1d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdread/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdnav/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ffmpeg/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/freetype/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/fribidi/lib"
@@ -84,6 +85,7 @@ targets:
       - sdk: ../../FFToolChain/build/product/macos/universal/bluray/lib/libbluray.a
       - sdk: ../../FFToolChain/build/product/macos/universal/dav1d/lib/libdav1d.a
       - sdk: ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdread.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdnav.a
       - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavcodec.a
       - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavdevice.a
       - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a
