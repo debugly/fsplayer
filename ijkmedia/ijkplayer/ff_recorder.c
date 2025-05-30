@@ -144,8 +144,9 @@ static int ff_init_recorder(FSRecorder *fsr, const char *output_file, const AVFo
     fsr->audio_codec_ctx->codec_id = audio_codec->id;
     fsr->audio_codec_ctx->codec_type = AVMEDIA_TYPE_AUDIO;
     fsr->audio_codec_ctx->sample_rate = audio_cfg->sample_rate;
-    fsr->audio_codec_ctx->channels = audio_cfg->channels;
-    fsr->audio_codec_ctx->channel_layout = av_get_default_channel_layout(audio_cfg->channels);
+    fsr->audio_codec_ctx->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
+//    fsr->audio_codec_ctx->channels = audio_cfg->channels;
+//    fsr->audio_codec_ctx->channel_layout = av_get_default_channel_layout(audio_cfg->channels);
     fsr->audio_codec_ctx->sample_fmt = audio_cfg->sample_fmt;
     fsr->audio_codec_ctx->time_base = audio_cfg->time_base;
     av_opt_set_int(fsr->audio_codec_ctx, "bitrate", 128000, 0); // AAC 码率
@@ -333,7 +334,7 @@ static int avframe_is_video(const AVFrame *frame) {
     }
     
     // 音频帧判断：有采样数和声道布局，且采样格式有效
-    if (frame->nb_samples > 0 && frame->channel_layout != 0 &&
+    if (frame->nb_samples > 0 && frame->ch_layout.nb_channels != 0 &&
         frame->format >= 0 && frame->format < AV_SAMPLE_FMT_NB) {
         return 0;
     }
