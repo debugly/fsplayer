@@ -171,7 +171,6 @@ void ijkav_register_all(void)
     FS_REGISTER_PROTOCOL(ijkmediadatasource);
 #endif
     FS_REGISTER_PROTOCOL(ijkio);
-    FS_REGISTER_PROTOCOL(async);
     FS_REGISTER_PROTOCOL(ijktcphook);
     FS_REGISTER_PROTOCOL(ijkhttphook);
     FS_REGISTER_PROTOCOL(ijksegment);
