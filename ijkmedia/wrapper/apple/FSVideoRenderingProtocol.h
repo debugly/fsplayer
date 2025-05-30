@@ -68,11 +68,6 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 static inline uint32_t ijk_ass_color_to_int(UIColor *color) {
 #if TARGET_OS_OSX
-    if (@available(macOS 10.13, *)) {
-        if (color.type != NSColorSpaceModelRGB) {
-            
-        }
-    }
     if (![color.colorSpaceName isEqualToString:NSDeviceRGBColorSpace] && ![color.colorSpaceName isEqualToString:NSCalibratedRGBColorSpace]) {
         color = [color colorUsingColorSpaceName:NSDeviceRGBColorSpace];
     }
