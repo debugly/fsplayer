@@ -1814,7 +1814,7 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
                                             "ffplay_buffer", buffersrc_args, NULL,
                                             graph)) < 0)
         goto fail;
-
+    //not sure set par is necessory
     par->hw_frames_ctx = frame->hw_frames_ctx;
     ret = av_buffersrc_parameters_set(filt_src, par);
     if (ret < 0)
