@@ -184,6 +184,10 @@ typedef struct Clock {
     char name[10];
 } Clock;
 
+typedef struct FrameData {
+    int64_t pkt_pos;
+} FrameData;
+
 /* Common struct for handling all types of decoded data and allocated render buffers. */
 typedef struct Frame {
     AVFrame *frame;

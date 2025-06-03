@@ -352,6 +352,16 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 }
             }
             
+            if (d->pkt->buf && !d->pkt->opaque_ref) {
+                FrameData *fd;
+
+                d->pkt->opaque_ref = av_buffer_allocz(sizeof(*fd));
+                if (!d->pkt->opaque_ref)
+                    return AVERROR(ENOMEM);
+                fd = (FrameData*)d->pkt->opaque_ref->data;
+                fd->pkt_pos = d->pkt->pos;
+            }
+
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -2183,8 +2193,9 @@ static int audio_thread(void *arg)
                 if (!(af = frame_queue_peek_writable(&is->sampq)))
                     goto the_end;
 
+                FrameData *fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
                 af->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
-                af->pos = frame->pkt_pos;
+                af->pos = fd ? fd->pkt_pos : -1;
                 af->frame_serial = is->auddec.pkt_serial;
                 af->duration = av_q2d((AVRational){frame->nb_samples, frame->sample_rate});
 
@@ -2221,7 +2232,7 @@ static int ffplay_video_thread(void *arg)
     AVRational tb = is->video_st->time_base;
     AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
     int convert_frame_count = 0;
-
+    FrameData *fd;
 #if CONFIG_VIDEO_AVFILTER
     AVFilterGraph *graph = NULL;
     AVFilterContext *filt_out = NULL, *filt_in = NULL;
@@ -2300,9 +2311,10 @@ static int ffplay_video_thread(void *arg)
                 is->frame_last_filter_delay = 0;
             tb = av_buffersink_get_time_base(filt_out);
 #endif
+            fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
             duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
             pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
-            ret = queue_picture(ffp, frame, pts, duration, frame->pkt_pos, is->viddec.pkt_serial);
+            ret = queue_picture(ffp, frame, pts, duration, fd ? fd->pkt_pos : -1, is->viddec.pkt_serial);
             av_frame_unref(frame);
 #if CONFIG_VIDEO_AVFILTER
             if (is->videoq.serial != is->viddec.pkt_serial)
@@ -3127,7 +3139,8 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
 
     if (ffp->fast)
         avctx->flags2 |= AV_CODEC_FLAG2_FAST;
-
+    //for AVPacket opaque_ref
+    avctx->flags |= AV_CODEC_FLAG_COPY_OPAQUE;
     opts = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, st, (AVCodec *)codec);
     if (!av_dict_get(opts, "threads", NULL, 0))
         av_dict_set(&opts, "threads", "auto", 0);
