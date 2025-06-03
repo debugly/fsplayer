@@ -1561,7 +1561,21 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->bmp->fps = ffp->stat.vfps_probe;
         if (ffp->autorotate) {
             //fill video ratate degrees
-            vp->bmp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
+            AVFrameSideData *sd = av_frame_get_side_data(src_frame, AV_FRAME_DATA_DISPLAYMATRIX);
+            if (sd && sd->size >= 36) {
+//                For example, if the jpeg contains exif information
+//                and the rotation direction is included in the exif,
+//                the displaymatrix will be set on the side_data of the frame when decoding.
+//                However, when ffplay is used to play the image,
+//                only the side data in the stream will be determined.
+//                It does not check whether the frame also contains rotation information,
+//                causing it to play in the wrong direction
+                int32_t *displaymatrix = (int32_t *)sd->data;
+                int degrees = get_degree_with_displaymatrix(displaymatrix);
+                vp->bmp->auto_z_rotate_degrees = - degrees;
+            } else {
+                vp->bmp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
+            }
         }
         
         frame_queue_push(&is->pictq);
@@ -1823,8 +1837,20 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 } while (0)
 
     if (ffp->autorotate) {
-        int32_t *displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
-        double theta  = get_rotation(displaymatrix);
+        double theta = 0.0;
+        int32_t *displaymatrix = NULL;
+        AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_DISPLAYMATRIX);
+        if (sd)
+            displaymatrix = (int32_t *)sd->data;
+        if (!displaymatrix) {
+            const AVPacketSideData *sideData = av_packet_side_data_get(is->video_st->codecpar->coded_side_data, is->video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
+            int32_t *displaymatrix = NULL;
+            if (sideData && sideData->size >= 36) {
+                displaymatrix = (int32_t *)sideData->data;
+            }
+            //displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+        }
+        theta = get_rotation(displaymatrix);
 
         if (fabs(theta - 90) < 1.0) {
             INSERT_FILT("transpose", "clock");
