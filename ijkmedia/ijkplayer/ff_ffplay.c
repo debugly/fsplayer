@@ -1142,7 +1142,7 @@ display:
             
             av_bprint_init(&buf, 0, AV_BPRINT_SIZE_AUTOMATIC);
                         av_bprintf(&buf,
-                                  "%7.2f %s:%7.3f fd=%4d aq=%5dKB vq=%5dKB sq=%5dB   \r",
+                                  "%7.2f %s:%7.3f fd=%4d aq=%5dKB vq=%5dKB sq=%5dB \r",
                                   get_master_clock_with_delay(is),
                                   (is->audio_st && is->video_st) ? "A-V" : (is->video_st ? "M-V" : (is->audio_st ? "M-A" : "   ")),
                                   av_diff,
