@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -660,7 +660,7 @@
 		08A62647BB432ACC1A8E7A5A /* FSSDLGLView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSSDLGLView.h; sourceTree = "<group>"; };
 		08E620742D013A45727CB13C /* ff_ffmsg_queue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_ffmsg_queue.h; sourceTree = "<group>"; };
 		08F4B7C3627EF8378FD3D95A /* ff_frame_queue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_frame_queue.h; sourceTree = "<group>"; };
-		08F8FEAD3A0AE161583FC49F /* FSPlayer-iOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "FSPlayer-iOS.framework"; path = FSPlayer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		08F8FEAD3A0AE161583FC49F /* FSPlayer-iOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "FSPlayer-iOS.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A38D00D06574F904AB72AAA /* ff_fferror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_fferror.h; sourceTree = "<group>"; };
 		0A77F5FE69E8E8528440038F /* ijkiomanager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkiomanager.h; sourceTree = "<group>"; };
 		0AA52FF1B66722B121D75388 /* libavfilter.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavfilter.a; path = ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a; sourceTree = SDKROOT; };
@@ -724,12 +724,12 @@
 		4157E6D8F6649FB619F2E6B3 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		44238225AF876657DF999A0E /* ijkavformat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkavformat.h; sourceTree = "<group>"; };
 		447E1FA12B8FE9A0FA9A964E /* image_convert.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = image_convert.c; sourceTree = "<group>"; };
-		46E445F92BD65C0F4498DCC8 /* FSPlayer-tvOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "FSPlayer-tvOS.framework"; path = FSPlayer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		46E445F92BD65C0F4498DCC8 /* FSPlayer-tvOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "FSPlayer-tvOS.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4876B72A99B044517DDEA373 /* FSMetalRenderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSMetalRenderer.m; sourceTree = "<group>"; };
 		4A3E6C9374E8CF63E7E42B5A /* opt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = opt.h; sourceTree = "<group>"; };
 		4AF610A51551AD6319BEA895 /* ijkmeta.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkmeta.c; sourceTree = "<group>"; };
 		4C0F71B4F29BD31FB2D22127 /* ijkioprotocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkioprotocol.h; sourceTree = "<group>"; };
-		4CE44165D565024414A46AA8 /* FSPlayer-macOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "FSPlayer-macOS.framework"; path = FSPlayer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		4CE44165D565024414A46AA8 /* FSPlayer-macOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "FSPlayer-macOS.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D638915838D56872598C602 /* renderer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = renderer.c; sourceTree = "<group>"; };
 		4ED2CEF7D47F1A93FC713997 /* ff_ffplay_def.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_ffplay_def.h; sourceTree = "<group>"; };
 		50B264094733B2E8AA2A09AA /* ijkthreadpool.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkthreadpool.h; sourceTree = "<group>"; };
@@ -1431,6 +1431,13 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
+		"TEMP_8F04355B-778A-4D02-8FD9-8F9A51038A4C" /* wrapper */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = wrapper;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -1835,6 +1842,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 51D464E92E5A7EF8EE2C2C4C /* Build configuration list for PBXProject "FSPlayer" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -1872,7 +1881,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd ${PROJECT_DIR}/../../ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h\n";
+			shellScript = "cd ${PROJECT_DIR}/../../ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h";
 		};
 		895BE60D35AEE7019087CB19 /* ijkversion.h */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1908,7 +1917,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd ${PROJECT_DIR}/../../ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h\n";
+			shellScript = "cd ${PROJECT_DIR}/../../ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -2242,7 +2251,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
@@ -2323,35 +2332,10 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-l\"opus\"",
-					"-l\"crypto\"",
-					"-l\"ssl\"",
-					"-l\"dav1d\"",
-					"-l\"dvdread\"",
-					"-l\"dvdnav\"",
-					"-l\"freetype\"",
-					"-l\"fribidi\"",
-					"-l\"harfbuzz\"",
-					"-l\"harfbuzz-subset\"",
-					"-l\"unibreak\"",
-					"-l\"ass\"",
-					"-l\"uavs3d\"",
-					"-l\"avcodec\"",
-					"-l\"avdevice\"",
-					"-l\"avfilter\"",
-					"-l\"avformat\"",
-					"-l\"avutil\"",
-					"-l\"swresample\"",
-					"-l\"swscale\"",
-					"-l\"smb2\"",
-					"-l\"xml2\"",
-					"-l\"bluray\"",
-				);
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
@@ -2409,7 +2393,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
@@ -2490,35 +2474,10 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-l\"opus\"",
-					"-l\"crypto\"",
-					"-l\"ssl\"",
-					"-l\"dav1d\"",
-					"-l\"dvdread\"",
-					"-l\"dvdnav\"",
-					"-l\"freetype\"",
-					"-l\"fribidi\"",
-					"-l\"harfbuzz\"",
-					"-l\"harfbuzz-subset\"",
-					"-l\"unibreak\"",
-					"-l\"ass\"",
-					"-l\"uavs3d\"",
-					"-l\"avcodec\"",
-					"-l\"avdevice\"",
-					"-l\"avfilter\"",
-					"-l\"avformat\"",
-					"-l\"avutil\"",
-					"-l\"swresample\"",
-					"-l\"swscale\"",
-					"-l\"smb2\"",
-					"-l\"xml2\"",
-					"-l\"bluray\"",
-				);
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
@@ -2655,35 +2614,10 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-l\"opus\"",
-					"-l\"crypto\"",
-					"-l\"ssl\"",
-					"-l\"dav1d\"",
-					"-l\"dvdread\"",
-					"-l\"dvdnav\"",
-					"-l\"freetype\"",
-					"-l\"fribidi\"",
-					"-l\"harfbuzz\"",
-					"-l\"harfbuzz-subset\"",
-					"-l\"unibreak\"",
-					"-l\"ass\"",
-					"-l\"uavs3d\"",
-					"-l\"avcodec\"",
-					"-l\"avdevice\"",
-					"-l\"avfilter\"",
-					"-l\"avformat\"",
-					"-l\"avutil\"",
-					"-l\"swresample\"",
-					"-l\"swscale\"",
-					"-l\"smb2\"",
-					"-l\"xml2\"",
-					"-l\"bluray\"",
-				);
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
@@ -2763,35 +2697,10 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-l\"opus\"",
-					"-l\"crypto\"",
-					"-l\"ssl\"",
-					"-l\"dav1d\"",
-					"-l\"dvdread\"",
-					"-l\"dvdnav\"",
-					"-l\"freetype\"",
-					"-l\"fribidi\"",
-					"-l\"harfbuzz\"",
-					"-l\"harfbuzz-subset\"",
-					"-l\"unibreak\"",
-					"-l\"ass\"",
-					"-l\"uavs3d\"",
-					"-l\"avcodec\"",
-					"-l\"avdevice\"",
-					"-l\"avfilter\"",
-					"-l\"avformat\"",
-					"-l\"avutil\"",
-					"-l\"swresample\"",
-					"-l\"swscale\"",
-					"-l\"smb2\"",
-					"-l\"xml2\"",
-					"-l\"bluray\"",
-				);
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
