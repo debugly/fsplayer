@@ -1780,9 +1780,8 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     AVFilterContext *filt_src = NULL, *filt_out = NULL, *last_filter = NULL;
     AVCodecParameters *codecpar = is->video_st->codecpar;
     AVRational fr = av_guess_frame_rate(is->ic, is->video_st, NULL);
-    AVDictionaryEntry *e = NULL;
-
-    while ((e = av_dict_get(ffp->sws_dict, "", e, AV_DICT_IGNORE_SUFFIX))) {
+    const AVDictionaryEntry *e = NULL;
+    while ((e = av_dict_iterate(ffp->sws_dict, e))) {
         if (!strcmp(e->key, "sws_flags")) {
             av_strlcatf(sws_flags_str, sizeof(sws_flags_str), "%s=%s:", "flags", e->value);
         } else
@@ -1897,7 +1896,7 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
     int sample_rates[2] = { 0, -1 };
     AVFilterContext *filt_asrc = NULL, *filt_asink = NULL;
     char aresample_swr_opts[512] = "";
-    AVDictionaryEntry *e = NULL;
+    const AVDictionaryEntry *e = NULL;
     AVBPrint bp;
     char asrc_args[256];
     int ret;
@@ -1911,8 +1910,7 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
     is->agraph->nb_threads = filter_nbthreads;
 
     av_bprint_init(&bp, 0, AV_BPRINT_SIZE_AUTOMATIC);
-    
-    while ((e = av_dict_get(ffp->swr_opts, "", e, AV_DICT_IGNORE_SUFFIX)))
+    while ((e = av_dict_iterate(ffp->swr_opts, e)))
         av_strlcatf(aresample_swr_opts, sizeof(aresample_swr_opts), "%s=%s:", e->key, e->value);
     
     if (strlen(aresample_swr_opts))
