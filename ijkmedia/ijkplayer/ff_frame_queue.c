@@ -60,7 +60,7 @@ int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int keep_la
     return 0;
 }
 
-void frame_queue_destory(FrameQueue *f)
+void frame_queue_destroy(FrameQueue *f)
 {
     int i;
     for (i = 0; i < f->max_size; i++) {

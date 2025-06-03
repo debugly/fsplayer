@@ -580,8 +580,8 @@ static void stream_close(FFPlayer *ffp)
     packet_queue_destroy(&is->audioq);
 
     /* free all pictures */
-    frame_queue_destory(&is->pictq);
-    frame_queue_destory(&is->sampq);
+    frame_queue_destroy(&is->pictq);
+    frame_queue_destroy(&is->sampq);
     
     ffp_stop_mux(ffp);
     ffp_stop_recorder(ffp);

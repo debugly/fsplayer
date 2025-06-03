@@ -173,7 +173,7 @@ int ff_sub_destroy(FFSubtitle **subp)
     
     packet_queue_destroy(&sub->packetq);
     packet_queue_destroy(&sub->packetq2);
-    frame_queue_destory(&sub->frameq);
+    frame_queue_destroy(&sub->frameq);
     
     sub->delay = 0.0f;
     sub->current_pts = 0.0f;

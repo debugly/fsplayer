@@ -27,7 +27,7 @@
 
 void frame_queue_unref_item(Frame *vp);
 int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int keep_last);
-void frame_queue_destory(FrameQueue *f);
+void frame_queue_destroy(FrameQueue *f);
 void frame_queue_signal(FrameQueue *f);
 Frame *frame_queue_peek(FrameQueue *f);
 Frame *frame_queue_peek_next(FrameQueue *f);
