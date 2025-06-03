@@ -41,7 +41,7 @@
         ijkav_register_##x##_protocol(&ijkimp_ff_##x##_protocol, sizeof(URLProtocol));  \
     }
 
-static void print_all_muxers(void)
+av_unused static void print_all_muxers(void)
 {
     printf("---all muxers------------------------\n");
     void *iter = NULL;
@@ -54,7 +54,7 @@ static void print_all_muxers(void)
     printf("---all muxers:%d\n",i);
 }
 
-static void print_all_demuxers(void)
+av_unused static void print_all_demuxers(void)
 {
     printf("---all demuxers------------------------\n");
     void *iter = NULL;
@@ -67,7 +67,7 @@ static void print_all_demuxers(void)
     printf("---all demuxers:%d\n",i);
 }
 
-static int print_all_protocols(int in_out)
+av_unused static int print_all_protocols(int in_out)
 {
     char *pup = NULL;
     void **a_pup = (void **)&pup;
@@ -86,21 +86,21 @@ static int print_all_protocols(int in_out)
     return i;
 }
 
-static void print_all_output_protocols(void)
+av_unused static void print_all_output_protocols(void)
 {
     printf("---all output protocols------------------------\n");
     int sum = print_all_protocols(1);
     printf("---all output protocols:%d\n", sum);
 }
 
-static void print_all_input_protocols(void)
+av_unused static void print_all_input_protocols(void)
 {
     printf("---all input protocols------------------------\n");
     int sum = print_all_protocols(0);
     printf("---all input protocols:%d\n", sum);
 }
 
-static int print_all_codes(int en_de)
+av_unused static int print_all_codes(int en_de)
 {
     void *iterate_data = NULL;
     const AVCodec *codec = NULL;
@@ -137,14 +137,14 @@ static int print_all_codes(int en_de)
     return i;
 }
 
-static void print_all_encodes(void)
+av_unused static void print_all_encodes(void)
 {
     printf("---all encoders ------------------------\n");
     int sum = print_all_codes(1);
     printf("---all encoders:%d\n", sum);
 }
 
-static void print_all_decodes(void)
+av_unused static void print_all_decodes(void)
 {
     printf("---all decoders ------------------------\n");
     int sum = print_all_codes(0);
