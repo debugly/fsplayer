@@ -68,9 +68,6 @@ inline static int msg_queue_put_private(MessageQueue *q, AVMessage *msg)
     if (q->abort_request)
         return -1;
 
-#ifdef FFP_MERGE
-    msg1 = av_malloc(sizeof(AVMessage));
-#else
     msg1 = q->recycle_msg;
     if (msg1) {
         q->recycle_msg = msg1->next;
@@ -84,7 +81,6 @@ inline static int msg_queue_put_private(MessageQueue *q, AVMessage *msg)
     if (!(total_count % 10)) {
         av_log(NULL, AV_LOG_DEBUG, "msg-recycle \t%d + \t%d = \t%d\n", q->recycle_count, q->alloc_count, total_count);
     }
-#endif
 #endif
     if (!msg1)
         return -1;
@@ -188,12 +184,8 @@ inline static void msg_queue_flush(MessageQueue *q)
     SDL_LockMutex(q->mutex);
     for (msg = q->first_msg; msg != NULL; msg = msg1) {
         msg1 = msg->next;
-#ifdef FFP_MERGE
-        av_freep(&msg);
-#else
         msg->next = q->recycle_msg;
         q->recycle_msg = msg;
-#endif
     }
     q->last_msg = NULL;
     q->first_msg = NULL;
@@ -264,12 +256,8 @@ inline static int msg_queue_get(MessageQueue *q, AVMessage *msg, int block)
             q->nb_messages--;
             *msg = *msg1;
             msg1->obj = NULL;
-#ifdef FFP_MERGE
-            av_free(msg1);
-#else
             msg1->next = q->recycle_msg;
             q->recycle_msg = msg1;
-#endif
             ret = 1;
             break;
         } else if (!block) {
@@ -297,13 +285,9 @@ inline static void msg_queue_remove(MessageQueue *q, int what)
 
             if (msg->what == what) {
                 *p_msg = msg->next;
-#ifdef FFP_MERGE
-                av_free(msg);
-#else
                 msg_free_res(msg);
                 msg->next = q->recycle_msg;
                 q->recycle_msg = msg;
-#endif
                 q->nb_messages--;
             } else {
                 last_msg = msg;

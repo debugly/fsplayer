@@ -396,15 +396,6 @@ abort_end:
     return status;
 }
 
-// FFP_MERGE: fill_rectangle
-// FFP_MERGE: fill_border
-// FFP_MERGE: ALPHA_BLEND
-// FFP_MERGE: RGBA_IN
-// FFP_MERGE: YUVA_IN
-// FFP_MERGE: YUVA_OUT
-// FFP_MERGE: BPP
-// FFP_MERGE: blend_subrect
-
 static void free_picture(Frame *vp)
 {
     if (vp->bmp) {
@@ -450,11 +441,6 @@ static int ff_apply_subtitle_stream_change(FFPlayer *ffp)
     }
     return r;
 }
-
-// FFP_MERGE: realloc_texture
-// FFP_MERGE: calculate_display_rect
-// FFP_MERGE: upload_texture
-// FFP_MERGE: video_image_display
 
 static void video_image_display2(FFPlayer *ffp)
 {
@@ -511,9 +497,6 @@ static void video_image_display2(FFPlayer *ffp)
     }
 }
 
-// FFP_MERGE: compute_mod
-// FFP_MERGE: video_audio_display
-
 static void stream_component_close(FFPlayer *ffp, int stream_index)
 {
     VideoState *is = ffp->is;
@@ -534,15 +517,6 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
         av_freep(&is->audio_buf1);
         is->audio_buf1_size = 0;
         is->audio_buf = NULL;
-
-#ifdef FFP_MERGE
-        if (is->rdft) {
-            av_rdft_end(is->rdft);
-            av_freep(&is->rdft_data);
-            is->rdft = NULL;
-            is->rdft_bits = 0;
-        }
-#endif
         break;
     case AVMEDIA_TYPE_VIDEO:
         decoder_abort(&is->viddec, &is->pictq);
@@ -617,11 +591,6 @@ static void stream_close(FFPlayer *ffp)
     ffp->is = NULL;
     av_log(NULL, AV_LOG_INFO, "stream_close did close\n");
 }
-
-// FFP_MERGE: do_exit
-// FFP_MERGE: sigterm_handler
-// FFP_MERGE: video_open
-// FFP_MERGE: video_display
 
 /* display the current picture, if any */
 static void video_display2(FFPlayer *ffp)
@@ -788,11 +757,6 @@ static void stream_toggle_pause_l(FFPlayer *ffp, int pause_on)
     if (is->paused && !pause_on) {
         is->frame_timer += av_gettime_relative() / 1000000.0 - is->vidclk.last_updated;
 
-#ifdef FFP_MERGE
-        if (is->read_pause_return != AVERROR(ENOSYS)) {
-            is->vidclk.paused = 0;
-        }
-#endif
         set_clock(&is->vidclk, get_clock(&is->vidclk), is->vidclk.clock_serial);
         set_clock(&is->audclk, get_clock(&is->audclk), is->audclk.clock_serial);
     } else {
@@ -844,9 +808,6 @@ static void toggle_pause(FFPlayer *ffp, int pause_on)
     toggle_pause_l(ffp, pause_on);
     SDL_UnlockMutex(ffp->is->play_mutex);
 }
-
-// FFP_MERGE: toggle_mute
-// FFP_MERGE: update_volume
 
 static void step_to_next_frame_l(FFPlayer *ffp)
 {
@@ -1158,12 +1119,7 @@ display:
                 aqsize = is->audioq.size;
             if (is->video_st)
                 vqsize = is->videoq.size;
-#ifdef FFP_MERGE
-            if (is->subtitle_st)
-                sqsize = is->subtitleq.size;
-#else
             sqsize = 0;
-#endif
             av_diff = 0;
             if (is->audio_st && is->video_st)
                 av_diff = get_clock_with_delay(&is->audclk) - get_clock_with_delay(&is->vidclk);
@@ -1196,32 +1152,16 @@ static void alloc_picture(FFPlayer *ffp, int src_format)
 {
     VideoState *is = ffp->is;
     Frame *vp;
-#ifdef FFP_MERGE
-    int sdl_format;
-#endif
-
     vp = &is->pictq.queue[is->pictq.windex];
 
     free_picture(vp);
 
-#ifdef FFP_MERGE
-    video_open(is, vp);
-#endif
     vp->bmp = SDL_Vout_CreateOverlay(vp->width,
                                      vp->height,
                                      src_format,
                                    ffp->vout);
-#ifdef FFP_MERGE
-    if (vp->format == AV_PIX_FMT_YUV420P)
-        sdl_format = SDL_PIXELFORMAT_YV12;
-    else
-        sdl_format = SDL_PIXELFORMAT_ARGB8888;
-
-    if (realloc_texture(&vp->bmp, sdl_format, vp->width, vp->height, SDL_BLENDMODE_NONE, 0) < 0)
-#else
     /* RV16, RV32 contains only one plane */
     if (!vp->bmp || (!vp->bmp->is_private && vp->bmp->pitches[0] < vp->width))
-#endif
     {
         /* SDL allocates a buffer smaller than requested if the video
          * overlay hardware is unable to support the requested size. */
@@ -1383,9 +1323,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         return -1;
 
     vp->sar = src_frame->sample_aspect_ratio;
-#ifdef FFP_MERGE
-    vp->uploaded = 0;
-#endif
     
     //TODO: windows and android plat.
     //软解时，上层指定了明确的overlay-format时需要转格式
@@ -1541,14 +1478,12 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         /* get a pointer on the bitmap */
         SDL_VoutLockYUVOverlay(vp->bmp);
 
-#ifdef FFP_MERGE
-#if CONFIG_AVFILTER
+#if CONFIG_VIDEO_AVFILTER
         // FIXME use direct rendering
         av_image_copy(data, linesize, (const uint8_t **)src_frame->data, src_frame->linesize,
                         src_frame->format, vp->width, vp->height);
 #else
         // sws_getCachedContext(...);
-#endif
 #endif
         // FIXME: set swscale options
         if (SDL_VoutFillFrameYUVOverlay(vp->bmp, src_frame) < 0) {
@@ -1572,9 +1507,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             vp->bmp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
         }
         
-#ifdef FFP_MERGE
-        av_frame_move_ref(vp->frame, src_frame);
-#endif
         frame_queue_push(&is->pictq);
         /*
          paused player firstly,then seek stream,because frame queue is full,waiting readable slot;
@@ -3159,10 +3091,6 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     }
     if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
         av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
-#ifdef FFP_MERGE
-        ret =  AVERROR_OPTION_NOT_FOUND;
-        goto fail;
-#endif
     }
 
     is->eof = 0;
@@ -3315,9 +3243,6 @@ static int stream_has_enough_packets(AVStream *st, int stream_id, PacketQueue *q
     return stream_id < 0 ||
            queue->abort_request ||
            (st->disposition & AV_DISPOSITION_ATTACHED_PIC) ||
-#ifdef FFP_MERGE
-           queue->nb_packets > MIN_FRAMES && (!queue->duration || av_q2d(st->time_base) * queue->duration > 1.0);
-#endif
            queue->nb_packets > min_frames;
 }
 
@@ -3486,10 +3411,6 @@ static int read_thread(void *arg)
 
     if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
         av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
-#ifdef FFP_MERGE
-        ret = AVERROR_OPTION_NOT_FOUND;
-        goto fail;
-#endif
     }
     is->ic = ic;
     //ic->debug |= FF_FDEBUG_TS;
@@ -3548,11 +3469,6 @@ static int read_thread(void *arg)
     is->max_frame_duration = 10.0;
     av_log(ffp, AV_LOG_INFO, "max_frame_duration: %.3f\n", is->max_frame_duration);
 
-#ifdef FFP_MERGE
-    if (!window_title && (t = av_dict_get(ic->metadata, "title", NULL, 0)))
-        window_title = av_asprintf("%s - %s", t->value, input_filename);
-
-#endif
     /* if seeking requested, we execute it */
     if (ffp->start_time != AV_NOPTS_VALUE) {
         int64_t timestamp;
@@ -3618,15 +3534,6 @@ static int read_thread(void *arg)
                                 NULL, 0);
 
     is->show_mode = ffp->show_mode;
-#ifdef FFP_MERGE // bbc: dunno if we need this
-    if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
-        AVStream *st = ic->streams[st_index[AVMEDIA_TYPE_VIDEO]];
-        AVCodecParameters *codecpar = st->codecpar;
-        AVRational sar = av_guess_sample_aspect_ratio(ic, st, NULL);
-        if (codecpar->width)
-            set_default_window_size(codecpar->width, codecpar->height, sar);
-    }
-#endif
 
     /* open the streams */
     ret = -1;
@@ -3735,15 +3642,6 @@ static int read_thread(void *arg)
     for (;;) {
         if (is->abort_request)
             break;
-#ifdef FFP_MERGE
-        if (is->paused != is->last_paused) {
-            is->last_paused = is->paused;
-            if (is->paused)
-                is->read_pause_return = av_read_pause(ic);
-            else
-                av_read_play(ic);
-        }
-#endif
 #if CONFIG_RTSP_DEMUXER || CONFIG_MMSH_PROTOCOL
         if (is->paused &&
                 (!strcmp(ic->iformat->name, "rtsp") ||
@@ -3812,10 +3710,6 @@ static int read_thread(void *arg)
             is->viddec.after_seek_frame = 1;
             is->queue_attachments_req = 1;
             is->eof = 0;
-#ifdef FFP_MERGE
-            if (is->paused)
-                step_to_next_frame(is);
-#endif
             completed = 0;
             SDL_LockMutex(ffp->is->play_mutex);
             if (ffp->auto_resume) {
@@ -3886,11 +3780,7 @@ static int read_thread(void *arg)
 
         /* if the queue are full, no need to read more */
         if (ffp->infinite_buffer < 1 && !is->seek_req &&
-#ifdef FFP_MERGE
-              (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE)
-#else
-               (is->audioq.size + is->videoq.size + ff_sub_frame_cache_remaining(is->ffSub) > max_buffer_size(ffp)
-#endif
+            (is->audioq.size + is->videoq.size + ff_sub_frame_cache_remaining(is->ffSub) > max_buffer_size(ffp)
             || (   stream_has_enough_packets(is->audio_st, is->audio_stream, &is->audioq, MIN_FRAMES)
                 && stream_has_enough_packets(is->video_st, is->video_stream, &is->videoq, MIN_FRAMES)
                 && ff_sub_has_enough_packets(is->ffSub, MIN_FRAMES)))) {
@@ -4244,24 +4134,6 @@ fail:
     return NULL;
 }
 
-// FFP_MERGE: stream_cycle_channel
-// FFP_MERGE: toggle_full_screen
-// FFP_MERGE: toggle_audio_display
-// FFP_MERGE: refresh_loop_wait_event
-// FFP_MERGE: event_loop
-// FFP_MERGE: opt_width
-// FFP_MERGE: opt_height
-// FFP_MERGE: opt_format
-// FFP_MERGE: opt_sync
-// FFP_MERGE: opt_seek
-// FFP_MERGE: opt_duration
-// FFP_MERGE: opt_show_mode
-// FFP_MERGE: opt_input_file
-// FFP_MERGE: opt_codec
-// FFP_MERGE: dummy
-// FFP_MERGE: options
-// FFP_MERGE: show_usage
-// FFP_MERGE: show_help_default
 static int video_refresh_thread(void *arg)
 {
     FFPlayer *ffp = arg;
@@ -4280,8 +4152,6 @@ static int video_refresh_thread(void *arg)
     ff_sub_desctoy_objs(is->ffSub);
     return 0;
 }
-
-// FFP_MERGE: main
 
 /*****************************************************************************
  * end last line in ffplay.c
@@ -4377,8 +4247,6 @@ void ffp_global_uninit(void)
 {
     if (!g_ffmpeg_global_inited)
         return;
-
-    // FFP_MERGE: uninit_opts
 
     avformat_network_deinit();
 

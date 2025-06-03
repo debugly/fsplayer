@@ -47,7 +47,6 @@
 #include "libavutil/samplefmt.h"
 #include "libavutil/time.h"
 #include "libavformat/avformat.h"
-// FFP_MERGE: #include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
 #include "libavutil/opt.h"
 #include "libavcodec/avfft.h"
@@ -88,9 +87,6 @@
 #define DEFAULT_QUEUE_SIZE (5 * 1024 * 1024)
 #define MAX_QUEUE_SIZE     (50 * 1024 * 1024)
 #define MAX_ACCURATE_SEEK_TIMEOUT (5000)
-#ifdef FFP_MERGE
-#define MIN_FRAMES 25
-#endif
 #define DEFAULT_MIN_FRAMES  50000
 #define MIN_MIN_FRAMES      2
 #define MAX_MIN_FRAMES      50000
@@ -135,14 +131,6 @@
 #define SAMPLE_ARRAY_SIZE (8 * 65536)
 
 #define MIN_PKT_DURATION 15
-
-#ifdef FFP_MERGE
-#define CURSOR_HIDE_DELAY 1000000
-
-#define USE_ONEPASS_SUBTITLE_RENDER 1
-
-static unsigned sws_flags = SWS_BICUBIC;
-#endif
 
 #define MAX_DEVIATION 200000   // 200ms
 #define FS_EXCHANGE_DECODER_FLAG -1000
@@ -205,11 +193,7 @@ typedef struct Frame {
     double pts;           /* presentation timestamp for the frame */
     double duration;      /* estimated duration of the frame */
     int64_t pos;          /* byte position of the frame in the input file */
-#ifdef FFP_MERGE
-    SDL_Texture *bmp;
-#else
     SDL_VoutOverlay *bmp;
-#endif
     int allocated;
     int width;
     int height;
@@ -284,9 +268,6 @@ typedef struct VideoState {
     int64_t seek_pos;
     int64_t seek_rel;
     
-#ifdef FFP_MERGE
-    int read_pause_return;
-#endif
     AVFormatContext *ic;
     int realtime;
 
@@ -338,18 +319,7 @@ typedef struct VideoState {
     int16_t sample_array[SAMPLE_ARRAY_SIZE];
     int sample_array_index;
     int last_i_start;
-#ifdef FFP_MERGE
-    RDFTContext *rdft;
-    int rdft_bits;
-    FFTSample *rdft_data;
-    int xpos;
-#endif
     double last_vis_time;
-#ifdef FFP_MERGE
-    SDL_Texture *vis_texture;
-    SDL_Texture *sub_texture;
-#endif
-
     double frame_timer;
     double frame_last_returned_time;
     double frame_last_filter_delay;
@@ -413,66 +383,6 @@ typedef struct VideoState {
     FFSubtitle *ffSub;
     ijk_custom_avio_protocol * ijk_io;
 } VideoState;
-
-/* options specified by the user */
-#ifdef FFP_MERGE
-static AVInputFormat *file_iformat;
-static const char *input_filename;
-static const char *window_title;
-static int default_width  = 640;
-static int default_height = 480;
-static int screen_width  = 0;
-static int screen_height = 0;
-static int audio_disable;
-static int video_disable;
-static int subtitle_disable;
-static const char* wanted_stream_spec[AVMEDIA_TYPE_NB] = {0};
-static int seek_by_bytes = -1;
-static int display_disable;
-static int show_status = -1;
-static int av_sync_type = AV_SYNC_AUDIO_MASTER;
-static int64_t start_time = AV_NOPTS_VALUE;
-static int64_t duration = AV_NOPTS_VALUE;
-static int fast = 0;
-static int genpts = 0;
-static int lowres = 0;
-static int decoder_reorder_pts = -1;
-static int autoexit;
-static int exit_on_keydown;
-static int exit_on_mousedown;
-static int loop = 1;
-static int framedrop = -1;
-static int infinite_buffer = -1;
-static enum ShowMode show_mode = SHOW_MODE_NONE;
-static const char *audio_codec_name;
-static const char *subtitle_codec_name;
-static const char *video_codec_name;
-double rdftspeed = 0.02;
-static int64_t cursor_last_shown;
-static int cursor_hidden = 0;
-#if CONFIG_VIDEO_AVFILTER
-static const char **vfilters_list = NULL;
-static int nb_vfilters = 0;
-#endif
-#if CONFIG_AUDIO_AVFILTER
-static char *afilters = NULL;
-#endif
-static int autorotate = 1;
-static int find_stream_info = 1;
-
-/* current context */
-static int is_full_screen;
-static int64_t audio_callback_time;
-
-static AVPacket flush_pkt;
-static AVPacket eof_pkt;
-
-#define FF_ALLOC_EVENT   (SDL_USEREVENT)
-#define FF_QUIT_EVENT    (SDL_USEREVENT + 2)
-
-static SDL_Window *window;
-static SDL_Renderer *renderer;
-#endif
 
 /*****************************************************************************
  * end at line 330 in ffplay.c
@@ -562,19 +472,7 @@ typedef struct FFPlayer {
     AVDictionary *swr_preset_opts;
 
     /* ffplay options specified by the user */
-#ifdef FFP_MERGE
-    AVInputFormat *file_iformat;
-#endif
     char *input_filename;
-#ifdef FFP_MERGE
-    const char *window_title;
-    int fs_screen_width;
-    int fs_screen_height;
-    int default_width;
-    int default_height;
-    int screen_width;
-    int screen_height;
-#endif
     int audio_disable;
     int video_disable;
     int subtitle_disable;
@@ -590,10 +488,6 @@ typedef struct FFPlayer {
     int lowres;
     int decoder_reorder_pts;
     int autoexit;
-#ifdef FFP_MERGE
-    int exit_on_keydown;
-    int exit_on_mousedown;
-#endif
     int loop;
     int framedrop;
     int64_t seek_at_start;
@@ -603,10 +497,6 @@ typedef struct FFPlayer {
     char *audio_codec_name;
     char *video_codec_name;
     double rdftspeed;
-#ifdef FFP_MERGE
-    int64_t cursor_last_shown;
-    int cursor_hidden;
-#endif
 #if CONFIG_VIDEO_AVFILTER
     const char **vfilters_list;
     int nb_vfilters;
@@ -619,14 +509,7 @@ typedef struct FFPlayer {
     int find_stream_info;
     unsigned sws_flags;
 
-    /* current context */
-#ifdef FFP_MERGE
-    int is_full_screen;
-#endif
     int64_t audio_callback_time;
-#ifdef FFP_MERGE
-    SDL_Surface *screen;
-#endif
 
     /* extra fields */
     SDL_Aout *aout;

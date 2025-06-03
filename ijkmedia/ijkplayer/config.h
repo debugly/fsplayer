@@ -38,10 +38,6 @@
 #define CONFIG_VIDEO_AVFILTER 0
 
 
-#ifdef FFP_MERGE
-#undef FFP_MERGE
-#endif
-
 #ifdef FFP_SUB
 #undef FFP_SUB
 #endif

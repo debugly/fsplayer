@@ -60,21 +60,16 @@
 
 static const AVOption ffp_context_options[] = {
     // original options in ffplay.c
-    // FFP_MERGE: x, y, s, fs
     { "an",                             "disable audio",
         OPTION_OFFSET(audio_disable),   OPTION_INT(0, 0, 1) },
     { "vn",                             "disable video",
         OPTION_OFFSET(video_disable),   OPTION_INT(0, 0, 1) },
-    // FFP_MERGE: sn, ast, vst, sst
-    // TODO: ss
     { "nodisp",                         "disable graphical display",
         OPTION_OFFSET(display_disable), OPTION_INT(0, 0, 1) },
     { "volume",                         "set startup volume 0=min 100=max",
         OPTION_OFFSET(startup_volume),   OPTION_INT(100, 0, 100) },
-    // FFP_MERGE: f, pix_fmt, stats
     { "fast",                           "non spec compliant optimizations",
         OPTION_OFFSET(fast),            OPTION_INT(0, 0, 1) },
-    // FFP_MERGE: genpts, drp, lowres, sync, autoexit, exitonkeydown, exitonmousedown
     { "loop",                           "set number of times the playback shall be looped",
         OPTION_OFFSET(loop),            OPTION_INT(1, INT_MIN, INT_MAX) },
     { "infbuf",                         "don't limit the input buffer size (useful with realtime streams)",
@@ -85,7 +80,6 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(seek_at_start),       OPTION_INT64(0, 0, INT_MAX) },
     { "subtitle",                       "decode subtitle stream",
         OPTION_OFFSET(subtitle),        OPTION_INT(1, 0, 1) },
-    // FFP_MERGE: window_title
 #if CONFIG_AUDIO_AVFILTER
     { "af",                             "audio filters",
         OPTION_OFFSET(afilters),        OPTION_STR(NULL) },
@@ -96,9 +90,6 @@ static const AVOption ffp_context_options[] = {
 #endif
     { "rdftspeed",                      "rdft speed, in msecs",
         OPTION_OFFSET(rdftspeed),       OPTION_INT(0, 0, INT_MAX) },
-    // FFP_MERGE: showmode, default, i, codec, acodec, scodec, vcodec
-    // TODO: autorotate
-
     { "find_stream_info",               "read and decode the streams to fill missing information with heuristics" ,
         OPTION_OFFSET(find_stream_info),    OPTION_INT(1, 0, 1) },
 

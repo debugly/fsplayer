@@ -230,14 +230,11 @@ int frame_queue_is_full(FrameQueue *f)
     return frame_queue_nb_remaining(f) >= f->max_size;
 }
 
-/* return last shown position */
-#ifdef FFP_MERGE
-static int64_t frame_queue_last_pos(FrameQueue *f)
+int64_t frame_queue_last_pos(FrameQueue *f)
 {
     Frame *fp = &f->queue[f->rindex];
-    if (f->rindex_shown && fp->serial == f->pktq->serial)
+    if (f->rindex_shown && fp->frame_serial == f->pktq->serial)
         return fp->pos;
     else
         return -1;
 }
-#endif
