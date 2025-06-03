@@ -190,7 +190,7 @@ typedef struct Clock {
     double pts_drift;     /* clock base minus time at which we updated the clock */
     double last_updated;
     double speed;
-    int serial;           /* clock is based on a packet with this serial */
+    int clock_serial;           /* clock is based on a packet with this serial */
     int paused;
     int *queue_serial;    /* pointer to the current packet queue serial, used for obsolete clock detection */
     float extra_delay;   /* user can set the delay*/

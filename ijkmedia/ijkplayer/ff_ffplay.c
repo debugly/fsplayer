@@ -633,7 +633,7 @@ static void video_display2(FFPlayer *ffp)
 
 static double _get_clock_apply_delay(Clock *c, int apply)
 {
-    if (*c->queue_serial != c->serial)
+    if (*c->queue_serial != c->clock_serial)
         return NAN;
     if (c->paused) {
         return c->pts + (apply ? c->extra_delay : 0);
@@ -658,7 +658,7 @@ static void set_clock_at(Clock *c, double pts, int serial, double time)
     c->pts = pts;
     c->last_updated = time;
     c->pts_drift = c->pts - time;
-    c->serial = serial;
+    c->clock_serial = serial;
 #ifdef FFP_SHOW_SYNC_CLOCK
     av_log(NULL,AV_LOG_INFO,"set %s clock %f\n",c->name,c->pts);
 #endif
@@ -682,7 +682,7 @@ float get_clock_extral_delay(Clock *c)
 
 static void set_clock_speed(Clock *c, double speed)
 {
-    set_clock(c, get_clock(c), c->serial);
+    set_clock(c, get_clock(c), c->clock_serial);
     c->speed = speed;
 }
 
@@ -700,7 +700,7 @@ static void sync_clock_to_slave(Clock *c, Clock *slave)
     double clock = get_clock(c);
     double slave_clock = get_clock(slave);
     if (!isnan(slave_clock) && (isnan(clock) || fabs(clock - slave_clock) > AV_NOSYNC_THRESHOLD))
-        set_clock(c, slave_clock, slave->serial);
+        set_clock(c, slave_clock, slave->clock_serial);
 }
 
 static int get_master_sync_type(VideoState *is) {
@@ -793,11 +793,11 @@ static void stream_toggle_pause_l(FFPlayer *ffp, int pause_on)
             is->vidclk.paused = 0;
         }
 #endif
-        set_clock(&is->vidclk, get_clock(&is->vidclk), is->vidclk.serial);
-        set_clock(&is->audclk, get_clock(&is->audclk), is->audclk.serial);
+        set_clock(&is->vidclk, get_clock(&is->vidclk), is->vidclk.clock_serial);
+        set_clock(&is->audclk, get_clock(&is->audclk), is->audclk.clock_serial);
     } else {
     }
-    set_clock(&is->extclk, get_clock(&is->extclk), is->extclk.serial);
+    set_clock(&is->extclk, get_clock(&is->extclk), is->extclk.clock_serial);
     if (is->step && (is->pause_req || is->buffering_on)) {
         is->paused = is->vidclk.paused = is->extclk.paused = pause_on;
     } else {
@@ -828,8 +828,8 @@ static void toggle_pause_l(FFPlayer *ffp, int pause_on)
     //we konw the get_clock return pts after pause.
     //during the period from last update clock to the current pause event, no one has updated the clock (pts),so after pause get_positon is on average 50ms slow(my test movie,audio pts update every 100ms)
     if ((is->pause_req && !pause_on) || (!is->pause_req && pause_on)) {
-        set_clock(&is->vidclk, get_clock(&is->vidclk), is->vidclk.serial);
-        set_clock(&is->audclk, get_clock(&is->audclk), is->audclk.serial);
+        set_clock(&is->vidclk, get_clock(&is->vidclk), is->vidclk.clock_serial);
+        set_clock(&is->audclk, get_clock(&is->audclk), is->audclk.clock_serial);
     }
     
     is->pause_req = pause_on;
@@ -1701,7 +1701,7 @@ static int get_video_frame(FFPlayer *ffp, AVFrame *frame)
                 double diff = dpts - get_master_clock_with_delay(is);
                 if (!isnan(diff) && fabs(diff) < AV_NOSYNC_THRESHOLD &&
                     diff - is->frame_last_filter_delay < 0 &&
-                    is->viddec.pkt_serial == is->vidclk.serial &&
+                    is->viddec.pkt_serial == is->vidclk.clock_serial &&
                     is->videoq.nb_packets) {
                     is->frame_drops_early++;
                     is->continuous_frame_drops_early++;
@@ -4194,7 +4194,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
 
     init_clock(&is->vidclk, &is->videoq.serial, "video");
     init_clock(&is->audclk, &is->audioq.serial, "audio");
-    init_clock(&is->extclk, &is->extclk.serial, "etx");
+    init_clock(&is->extclk, &is->extclk.clock_serial, "etx");
     is->audio_clock_serial = -1;
     is->audio_clock = NAN;
     if (ffp->startup_volume < 0)
