@@ -1776,6 +1776,14 @@ fail:
 #endif
 
 #if CONFIG_VIDEO_AVFILTER
+
+static enum AVColorSpace sdl_supported_color_spaces[] = {
+    AVCOL_SPC_BT709,
+    AVCOL_SPC_BT470BG,
+    AVCOL_SPC_SMPTE170M,
+    AVCOL_SPC_UNSPECIFIED,
+};
+
 static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoState *is, const char *vfilters, AVFrame *frame)
 {
     static const enum AVPixelFormat pix_fmts[] = { AV_PIX_FMT_YUV420P, AV_PIX_FMT_BGRA, AV_PIX_FMT_NONE };
@@ -1829,6 +1837,9 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
         goto fail;
 
     if ((ret = av_opt_set_int_list(filt_out, "pix_fmts", pix_fmts,  AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN)) < 0)
+        goto fail;
+
+    if ((ret = av_opt_set_int_list(filt_out, "color_spaces", sdl_supported_color_spaces,  AVCOL_SPC_UNSPECIFIED, AV_OPT_SEARCH_CHILDREN)) < 0)
         goto fail;
 
     last_filter = filt_out;
