@@ -3537,7 +3537,7 @@ static int read_thread(void *arg)
     if (ffp->genpts)
         ic->flags |= AVFMT_FLAG_GENPTS;
 
-    av_format_inject_global_side_data(ic);
+    //av_format_inject_global_side_data(ic);
     
     if (ffp->find_stream_info) {
         AVDictionary **opts;
