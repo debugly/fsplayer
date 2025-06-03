@@ -27,7 +27,13 @@ jobs:
       run: |
         grep -m 1 VERSION_NAME= version.sh | awk -F = '{printf "VERSION=%s",$2}' | xargs > constants.env
         echo "RELEAE_DATE=$(TZ=UTC-8 date +'%y%m%d%H%M%S')" >> constants.env
-        echo "TAG="$(grep "VERSION" constants.env | cut -d'=' -f2)"-beta-"$(grep "RELEAE_DATE" constants.env | cut -d'=' -f2) >> constants.env
+        branch=$(git branch --show-current)
+        if [[ "$branch" == "master" || "$branch" == "main" ]]; then
+          edition=beta
+        else
+          edition=$branch
+        fi
+        echo "TAG="$(grep "VERSION" constants.env | cut -d'=' -f2)"-${edition}-"$(grep "RELEAE_DATE" constants.env | cut -d'=' -f2) >> constants.env
         cat constants.env
     - name: Prepare Normal Version
       if: ${{ inputs.beta == false }}
