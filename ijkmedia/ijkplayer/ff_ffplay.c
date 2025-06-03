@@ -2528,11 +2528,11 @@ reload:
         (wanted_nb_samples       != af->frame->nb_samples && !is->swr_ctx)) {
         AVDictionary *swr_opts = NULL;
         swr_free(&is->swr_ctx);
-        swr_alloc_set_opts2(&is->swr_ctx,
+        int ret = swr_alloc_set_opts2(&is->swr_ctx,
                             &is->audio_tgt.ch_layout, is->audio_tgt.fmt, is->audio_tgt.freq,
                             &af->frame->ch_layout, af->frame->format, af->frame->sample_rate,
                             0, NULL);
-        if (!is->swr_ctx) {
+        if (ret < 0) {
             av_log(NULL, AV_LOG_ERROR,
                    "swr_alloc_set_opts2 failed!\n");
             return -1;

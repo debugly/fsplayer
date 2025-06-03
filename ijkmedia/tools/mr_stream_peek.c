@@ -137,11 +137,11 @@ static int audio_decode_frame(MRStreamPeeker *sp)
         swr_free(&sp->swr_ctx);
         AVChannelLayout layout;
         av_channel_layout_default(&layout, MRNBChannels);
-        swr_alloc_set_opts2(&sp->swr_ctx,
+        int ret = swr_alloc_set_opts2(&sp->swr_ctx,
                             &layout, MRSampleFormat, MRSampleRate,
                             &frame->ch_layout, frame->format, frame->sample_rate,
                             0, NULL);
-        if (!sp->swr_ctx) {
+        if (ret < 0) {
             av_log(NULL, AV_LOG_ERROR,
                    "swr_alloc_set_opts2 failed!\n");
             return -1;
