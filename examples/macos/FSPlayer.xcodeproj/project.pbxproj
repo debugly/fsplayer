@@ -762,7 +762,7 @@
 		6FEB3B8BBBEBB11345BE141D /* FSSDLAudioKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSSDLAudioKit.m; sourceTree = "<group>"; };
 		71A9606E983D16433F097B15 /* ijkplayer_ios.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ijkplayer_ios.m; sourceTree = "<group>"; };
 		7234EB1BB6EA2FE14A364371 /* FSMediaPlayback.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSMediaPlayback.h; sourceTree = "<group>"; };
-		72A4B441F144C7F178891855 /* libdvdnav.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdvdnav.a; path = ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdnav.a; sourceTree = SDKROOT; };
+		72A4B441F144C7F178891855 /* libdvdnav.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdvdnav.a; path = ../../FFToolChain/build/product/macos/universal/dvdnav/lib/libdvdnav.a; sourceTree = SDKROOT; };
 		72B1FE3CFF913D2BC228A2AE /* ijksdl_class.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_class.h; sourceTree = "<group>"; };
 		74DED7DC0CD994EBDAD2F01E /* ijkplayer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkplayer.c; sourceTree = "<group>"; };
 		75259AD9ACE248881A1D75CF /* FSMediaPlayback.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSMediaPlayback.m; sourceTree = "<group>"; };
@@ -1431,7 +1431,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_7836F290-636B-4E55-8AA2-27EB511E861C" /* wrapper */ = {
+		"TEMP_535C3C6C-24B5-43B9-92F6-15FCEED5F27A" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -2225,8 +2225,6 @@
 					"${PROJECT_DIR}/../../ijkmedia",
 					"${PROJECT_DIR}/../../ijkmedia/ijkplayer",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ass/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -2285,15 +2283,11 @@
 				"HEADER_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ass/include",
 				);
 				"HEADER_SEARCH_PATHS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ass/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -2308,6 +2302,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/fribidi/lib",
@@ -2325,6 +2320,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/fribidi/lib",
@@ -2339,7 +2335,7 @@
 				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
@@ -2371,8 +2367,6 @@
 					"${PROJECT_DIR}/../../ijkmedia",
 					"${PROJECT_DIR}/../../ijkmedia/ijkplayer",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ass/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -2431,15 +2425,11 @@
 				"HEADER_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ass/include",
 				);
 				"HEADER_SEARCH_PATHS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ass/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -2454,6 +2444,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/fribidi/lib",
@@ -2471,6 +2462,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/fribidi/lib",
@@ -2485,7 +2477,7 @@
 				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
@@ -2574,15 +2566,11 @@
 				"HEADER_SEARCH_PATHS[sdk=appletvos*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ass/include",
 				);
 				"HEADER_SEARCH_PATHS[sdk=appletvsimulator*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ass/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -2596,6 +2584,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/fribidi/lib",
@@ -2613,6 +2602,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/fribidi/lib",
@@ -2627,7 +2617,7 @@
 				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
@@ -2659,15 +2649,11 @@
 				"HEADER_SEARCH_PATHS[sdk=appletvos*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ass/include",
 				);
 				"HEADER_SEARCH_PATHS[sdk=appletvsimulator*]" = (
 					"$(inherited)",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ffmpeg/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/bluray/include",
-					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdread/include",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ass/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -2681,6 +2667,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/fribidi/lib",
@@ -2698,6 +2685,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/bluray/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dav1d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdread/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdnav/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ffmpeg/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/freetype/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/fribidi/lib",
@@ -2712,7 +2700,7 @@
 				MARKETING_VERSION = 1.0.1;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;

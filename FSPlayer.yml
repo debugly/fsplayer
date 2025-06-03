@@ -6,7 +6,7 @@ targets:
     platform: macOS
     type: framework
     deploymentTarget: 10.11
-    preBuildScripts: 
+    preBuildScripts:
       - script: cd ${PROJECT_DIR}/../../ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
         name: ijkversion.h
     sources:
@@ -44,8 +44,6 @@ targets:
         - "${PROJECT_DIR}/../../ijkmedia"
         - "${PROJECT_DIR}/../../ijkmedia/ijkplayer"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ffmpeg/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/bluray/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/dvdread/include"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/ass/include"
       LIBRARY_SEARCH_PATHS:
         - "$(inherited)"
@@ -85,7 +83,7 @@ targets:
       - sdk: ../../FFToolChain/build/product/macos/universal/bluray/lib/libbluray.a
       - sdk: ../../FFToolChain/build/product/macos/universal/dav1d/lib/libdav1d.a
       - sdk: ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdread.a
-      - sdk: ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdnav.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/dvdnav/lib/libdvdnav.a
       - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavcodec.a
       - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavdevice.a
       - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a
@@ -147,7 +145,7 @@ targets:
       METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework"
       ALWAYS_SEARCH_USER_PATHS: YES
       ENABLE_BITCODE: NO
-      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
+      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"dvdnav" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
       HEADER_SEARCH_PATHS:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../ijkmedia"
@@ -155,14 +153,10 @@ targets:
       HEADER_SEARCH_PATHS[sdk=iphoneos*]:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ffmpeg/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/bluray/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdread/include"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ass/include"
       HEADER_SEARCH_PATHS[sdk=iphonesimulator*]:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ffmpeg/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/bluray/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdread/include"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ass/include"
       LIBRARY_SEARCH_PATHS[sdk=iphoneos*]:
         - "$(inherited)"
@@ -170,6 +164,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/bluray/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dav1d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdread/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/dvdnav/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/ffmpeg/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/freetype/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/fribidi/lib"
@@ -186,6 +181,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/bluray/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dav1d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdread/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/dvdnav/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ffmpeg/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/freetype/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/fribidi/lib"
@@ -253,7 +249,7 @@ targets:
       METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework"
       ALWAYS_SEARCH_USER_PATHS: YES
       ENABLE_BITCODE: NO
-      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
+      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"dvdnav" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
       HEADER_SEARCH_PATHS:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../ijkmedia"
@@ -261,14 +257,10 @@ targets:
       HEADER_SEARCH_PATHS[sdk=appletvos*]:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ffmpeg/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/bluray/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdread/include"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ass/include"
       HEADER_SEARCH_PATHS[sdk=appletvsimulator*]:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ffmpeg/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/bluray/include"
-        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdread/include"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ass/include"
       LIBRARY_SEARCH_PATHS[sdk=appletvos*]:
         - "$(inherited)"
@@ -276,6 +268,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/bluray/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dav1d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdread/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/dvdnav/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/ffmpeg/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/freetype/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/fribidi/lib"
@@ -292,6 +285,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/bluray/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dav1d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdread/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/dvdnav/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ffmpeg/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/freetype/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/fribidi/lib"
