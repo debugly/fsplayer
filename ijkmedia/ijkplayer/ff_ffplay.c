@@ -3140,7 +3140,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     const AVCodec *codec = NULL;
     const char *forced_codec_name = NULL;
     AVDictionary *opts = NULL;
-    AVDictionaryEntry *t = NULL;
+    const AVDictionaryEntry *t = NULL;
     int sample_rate;
     AVChannelLayout ch_layout = { 0 };
     int ret = 0;
@@ -3229,8 +3229,8 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
         goto fail;
     }
-    if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
-        av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
+    if ((t = av_dict_iterate(opts, NULL))) {
+        av_log(NULL, AV_LOG_ERROR, "codec Option %s not found.\n", t->key);
     }
 
     is->eof = 0;
@@ -3459,7 +3459,7 @@ static int read_thread(void *arg)
     int64_t stream_start_time;
     int completed = 0;
     int pkt_in_play_range = 0;
-    AVDictionaryEntry *t;
+    const AVDictionaryEntry *t;
     SDL_mutex *wait_mutex = SDL_CreateMutex();
     int scan_all_pmts_set = 0;
     int64_t pkt_ts;
@@ -3538,9 +3538,8 @@ static int read_thread(void *arg)
     ffp_notify_str2(ffp, FFP_MSG_OPEN_INPUT, ic->iformat->name);
     if (scan_all_pmts_set)
         av_dict_set(&ffp->format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
-
-    if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
-        av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
+    if ((t = av_dict_iterate(ffp->format_opts, NULL))) {
+        av_log(NULL, AV_LOG_ERROR, "format Option %s not found.\n", t->key);
     }
     is->ic = ic;
     //ic->debug |= FF_FDEBUG_TS;
