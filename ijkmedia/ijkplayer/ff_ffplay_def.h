@@ -497,14 +497,7 @@ typedef struct FFPlayer {
     char *audio_codec_name;
     char *video_codec_name;
     double rdftspeed;
-#if CONFIG_VIDEO_AVFILTER
-    const char **vfilters_list;
-    int nb_vfilters;
-    char *vfilter0;
-#endif
-#if CONFIG_AUDIO_AVFILTER
-    char *afilters;
-#endif
+
     int autorotate;
     int find_stream_info;
     unsigned sws_flags;
@@ -570,10 +563,19 @@ typedef struct FFPlayer {
     SDL_SpeedSampler vdps_sampler;
 
     /* filters */
+#if CONFIG_VIDEO_AVFILTER
+    const char **vfilters_list;
+    int nb_vfilters;
+    char *vfilter0;
     SDL_mutex  *vf_mutex;
-    SDL_mutex  *af_mutex;
     int         vf_changed;
+#endif
+#if CONFIG_AUDIO_AVFILTER
+    char *afilters;
+    SDL_mutex  *af_mutex;
     int         af_changed;
+#endif
+    
     float       pf_playback_rate;
     int         pf_playback_rate_changed;
     float       pf_playback_volume;
@@ -662,9 +664,13 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     av_freep(&ffp->vfilters_list);
     ffp->nb_vfilters            = 0;
     ffp->vfilter0               = NULL;
+    SDL_DestroyMutexP(&ffp->vf_mutex);
+    ffp->vf_changed             = 0;
 #endif
 #if CONFIG_AUDIO_AVFILTER
     ffp->afilters               = NULL;
+    SDL_DestroyMutexP(&ffp->af_mutex);
+    ffp->af_changed             = 0;
 #endif
     
     ffp->autorotate             = 1;
@@ -737,8 +743,6 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     SDL_SpeedSamplerReset(&ffp->vdps_sampler);
 
     /* filters */
-    ffp->vf_changed                     = 0;
-    ffp->af_changed                     = 0;
     ffp->pf_playback_rate               = 1.0f;
     ffp->pf_playback_rate_changed       = 0;
     ffp->pf_playback_volume             = 1.0f;

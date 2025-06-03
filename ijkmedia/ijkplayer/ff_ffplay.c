@@ -1537,13 +1537,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         /* get a pointer on the bitmap */
         SDL_VoutLockYUVOverlay(vp->bmp);
 
-#if CONFIG_VIDEO_AVFILTER
-        // FIXME use direct rendering
-        av_image_copy(data, linesize, (const uint8_t **)src_frame->data, src_frame->linesize,
-                        src_frame->format, vp->width, vp->height);
-#else
-        // sws_getCachedContext(...);
-#endif
         // FIXME: set swscale options
         if (SDL_VoutFillFrameYUVOverlay(vp->bmp, src_frame) < 0) {
             av_log(NULL, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
@@ -1783,6 +1776,10 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     AVCodecParameters *codecpar = is->video_st->codecpar;
     AVRational fr = av_guess_frame_rate(is->ic, is->video_st, NULL);
     const AVDictionaryEntry *e = NULL;
+    AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
+    if (!par)
+        return AVERROR(ENOMEM);
+
     while ((e = av_dict_iterate(ffp->sws_dict, e))) {
         if (!strcmp(e->key, "sws_flags")) {
             av_strlcatf(sws_flags_str, sizeof(sws_flags_str), "%s=%s:", "flags", e->value);
@@ -1808,6 +1805,11 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
                                             graph)) < 0)
         goto fail;
 
+    par->hw_frames_ctx = frame->hw_frames_ctx;
+    ret = av_buffersrc_parameters_set(filt_src, par);
+    if (ret < 0)
+        goto fail;
+    
     ret = avfilter_graph_create_filter(&filt_out,
                                        avfilter_get_by_name("buffersink"),
                                        "ffplay_buffersink", NULL, NULL, graph);
@@ -1854,16 +1856,21 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
         theta = get_rotation(displaymatrix);
 
         if (fabs(theta - 90) < 1.0) {
-            INSERT_FILT("transpose", "clock");
+            INSERT_FILT("transpose", displaymatrix[3] > 0 ? "cclock_flip" : "clock");
         } else if (fabs(theta - 180) < 1.0) {
-            INSERT_FILT("hflip", NULL);
-            INSERT_FILT("vflip", NULL);
+            if (displaymatrix[0] < 0)
+                INSERT_FILT("hflip", NULL);
+            if (displaymatrix[4] < 0)
+                INSERT_FILT("vflip", NULL);
         } else if (fabs(theta - 270) < 1.0) {
-            INSERT_FILT("transpose", "cclock");
+            INSERT_FILT("transpose", displaymatrix[3] < 0 ? "clock_flip" : "cclock");
         } else if (fabs(theta) > 1.0) {
             char rotate_buf[64];
             snprintf(rotate_buf, sizeof(rotate_buf), "%f*PI/180", theta);
             INSERT_FILT("rotate", rotate_buf);
+        } else {
+            if (displaymatrix && displaymatrix[4] < 0)
+                INSERT_FILT("vflip", NULL);
         }
     }
 
@@ -1945,6 +1952,8 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
         goto end;
 
     if (force_output_format) {
+        av_bprint_clear(&bp);
+        av_channel_layout_describe_bprint(&is->audio_tgt.ch_layout, &bp);
         sample_rates   [0] = is->audio_tgt.freq;
         if ((ret = av_opt_set_int(filt_asink, "all_channel_counts", 0, AV_OPT_SEARCH_CHILDREN)) < 0)
             goto end;
@@ -4389,9 +4398,12 @@ FFPlayer *ffp_create(void)
         return NULL;
 
     msg_queue_init(&ffp->msg_queue);
+#if CONFIG_AUDIO_AVFILTER
     ffp->af_mutex = SDL_CreateMutex();
+#endif
+#if CONFIG_VIDEO_AVFILTER
     ffp->vf_mutex = SDL_CreateMutex();
-
+#endif
     ffp_reset_internal(ffp);
     ffp->av_class = &ffp_context_class;
     ffp->meta = ijkmeta_create();
@@ -4425,9 +4437,6 @@ void ffp_destroy(FFPlayer *ffp)
     las_stat_destroy(&ffp->las_player_statistic);
 
     ffp_reset_internal(ffp);
-
-    SDL_DestroyMutexP(&ffp->af_mutex);
-    SDL_DestroyMutexP(&ffp->vf_mutex);
 
     msg_queue_destroy(&ffp->msg_queue);
 
