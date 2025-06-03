@@ -5192,7 +5192,12 @@ int ffp_get_video_rotate_degrees(FFPlayer *ffp)
     VideoState *is = ffp->is;
     if (!is)
         return 0;
-    int32_t *displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+    const AVPacketSideData *sideData = av_packet_side_data_get(is->video_st->codecpar->coded_side_data, is->video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
+    int32_t *displaymatrix = NULL;
+    if (sideData && sideData->size == 36) {
+        displaymatrix = (int32_t *)sideData->data;
+    }
+    //displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
     int theta  = abs((int)((int64_t)round(fabs(get_rotation(displaymatrix))) % 360));
     switch (theta) {
         case 0:
