@@ -1178,6 +1178,63 @@ static void alloc_picture(FFPlayer *ffp, int src_format)
     SDL_UnlockMutex(is->pictq.mutex);
 }
 
+static double get_rotation(int32_t *displaymatrix)
+{
+    double theta = 0;
+    if (displaymatrix)
+        theta = -round(av_display_rotation_get((int32_t*) displaymatrix));
+
+    theta -= 360*floor(theta/360 + 0.9/360);
+
+    if (fabs(theta - 90*round(theta/90)) > 2)
+        av_log(NULL, AV_LOG_WARNING, "Odd rotation angle.\n"
+               "If you want to help, upload a sample "
+               "of this file to https://streams.videolan.org/upload/ "
+               "and contact the ffmpeg-devel mailing list. (ffmpeg-devel@ffmpeg.org)");
+
+    return theta;
+}
+
+static int get_degree_with_rotation(double rotation)
+{
+    int degree = abs((int)((int64_t)round(fabs(rotation)) % 360));
+    switch (degree) {
+        case 0:
+        case 90:
+        case 180:
+        case 270:
+            break;
+        case 360:
+            degree = 0;
+            break;
+        default:
+            ALOGW("Unknown rotate degress: %d\n", degree);
+            degree = 0;
+            break;
+    }
+
+    return degree;
+}
+
+static int get_degree_with_displaymatrix(int32_t *displaymatrix)
+{
+    double rotation = get_rotation(displaymatrix);
+    return get_degree_with_rotation(rotation);
+}
+
+static int get_z_rotate_degrees(AVStream *video_st)
+{
+    if (!video_st)
+        return 0;
+    const AVPacketSideData *sideData = av_packet_side_data_get(video_st->codecpar->coded_side_data, video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
+    int32_t *displaymatrix = NULL;
+    if (sideData && sideData->size >= 36) {
+        displaymatrix = (int32_t *)sideData->data;
+    }
+    //displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+    return get_degree_with_displaymatrix(displaymatrix);
+}
+
 static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
 {
     VideoState *is = ffp->is;
@@ -1651,23 +1708,6 @@ static int get_video_frame(FFPlayer *ffp, AVFrame *frame)
     }
 
     return got_picture;
-}
-
-static double get_rotation(int32_t *displaymatrix)
-{
-    double theta = 0;
-    if (displaymatrix)
-        theta = -round(av_display_rotation_get((int32_t*) displaymatrix));
-
-    theta -= 360*floor(theta/360 + 0.9/360);
-
-    if (fabs(theta - 90*round(theta/90)) > 2)
-        av_log(NULL, AV_LOG_WARNING, "Odd rotation angle.\n"
-               "If you want to help, upload a sample "
-               "of this file to https://streams.videolan.org/upload/ "
-               "and contact the ffmpeg-devel mailing list. (ffmpeg-devel@ffmpeg.org)");
-
-    return theta;
 }
 
 #if CONFIG_AUDIO_AVFILTER || CONFIG_VIDEO_AVFILTER
@@ -2155,8 +2195,6 @@ static int ffplay_video_thread(void *arg)
     enum AVPixelFormat last_format = -2;
     int last_serial = -1;
     int last_vfilter_idx = 0;
-#else
-    ffp_notify_msg2(ffp, FFP_MSG_VIDEO_ROTATION_CHANGED, ffp_get_video_rotate_degrees(ffp));
 #endif
 
     if (!frame) {
@@ -3218,6 +3256,16 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
             avctx->skip_loop_filter = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
             avctx->skip_idct        = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
         }
+            
+        if (is->video_st && is->video_st->codecpar) {
+            //recode video z rotate degrees
+            int deg = get_z_rotate_degrees(is->video_st);
+            ffp->vout->z_rotate_degrees = deg;
+            ffp_notify_msg2(ffp, FFP_MSG_VIDEO_Z_ROTATE_DEGREE, deg);
+            AVCodecParameters *codecpar = is->video_st->codecpar;
+            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, codecpar->width, codecpar->height);
+            ffp_notify_msg3(ffp, FFP_MSG_SAR_CHANGED, codecpar->sample_aspect_ratio.num, codecpar->sample_aspect_ratio.den);
+        }
         _ijkmeta_set_stream(ffp, avctx->codec_type, stream_index);
         break;
     default:
@@ -3614,15 +3662,6 @@ static int read_thread(void *arg)
 
     if (!ffp->render_wait_start && !ffp->start_on_prepared)
         toggle_pause(ffp, 1);
-    if (is->video_st && is->video_st->codecpar) {
-        //recode video z rotate degrees
-        int deg = ffp_get_video_rotate_degrees(ffp);
-        ffp->vout->z_rotate_degrees = deg;
-        ffp_notify_msg2(ffp, FFP_MSG_VIDEO_Z_ROTATE_DEGREE, deg);
-        AVCodecParameters *codecpar = is->video_st->codecpar;
-        ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, codecpar->width, codecpar->height);
-        ffp_notify_msg3(ffp, FFP_MSG_SAR_CHANGED, codecpar->sample_aspect_ratio.num, codecpar->sample_aspect_ratio.den);
-    }
     ffp->prepared = true;
     ffp_notify_msg1(ffp, FFP_MSG_PREPARED);
     if (!ffp->render_wait_start && !ffp->start_on_prepared) {
@@ -5053,36 +5092,6 @@ void ffp_set_playback_volume(FFPlayer *ffp, float volume)
         return;
     ffp->pf_playback_volume = volume;
     ffp->pf_playback_volume_changed = 1;
-}
-
-int ffp_get_video_rotate_degrees(FFPlayer *ffp)
-{
-    VideoState *is = ffp->is;
-    if (!is)
-        return 0;
-    const AVPacketSideData *sideData = av_packet_side_data_get(is->video_st->codecpar->coded_side_data, is->video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
-    int32_t *displaymatrix = NULL;
-    if (sideData && sideData->size == 36) {
-        displaymatrix = (int32_t *)sideData->data;
-    }
-    //displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
-    int theta  = abs((int)((int64_t)round(fabs(get_rotation(displaymatrix))) % 360));
-    switch (theta) {
-        case 0:
-        case 90:
-        case 180:
-        case 270:
-            break;
-        case 360:
-            theta = 0;
-            break;
-        default:
-            ALOGW("Unknown rotate degress: %d\n", theta);
-            theta = 0;
-            break;
-    }
-
-    return theta;
 }
 
 //return value :

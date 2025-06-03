@@ -35,7 +35,7 @@
 #define FFP_MSG_SAR_CHANGED                 401     /* arg1 = sar.num, arg2 = sar.den */
 #define FFP_MSG_VIDEO_RENDERING_START       402
 #define FFP_MSG_AUDIO_RENDERING_START       403
-#define FFP_MSG_VIDEO_ROTATION_CHANGED      404     /* arg1 = degree */
+#define FFP_MSG_VIDEO_ROTATION_CHANGED      404     /* arg1 = degree,deprecated from 1.0.2 */
 #define FFP_MSG_AUDIO_DECODED_START         405
 #define FFP_MSG_VIDEO_DECODED_START         406
 #define FFP_MSG_OPEN_INPUT                  407
