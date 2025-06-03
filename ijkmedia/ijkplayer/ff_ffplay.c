@@ -3232,7 +3232,6 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     if ((t = av_dict_iterate(opts, NULL))) {
         av_log(NULL, AV_LOG_ERROR, "codec Option %s not found.\n", t->key);
     }
-
     is->eof = 0;
     st->discard = AVDISCARD_DEFAULT;
     switch (avctx->codec_type) {
