@@ -185,7 +185,6 @@ typedef struct AudioParams {
 } AudioParams;
 
 typedef struct Clock {
-    char name[10];
     double pts;           /* clock base */
     double pts_drift;     /* clock base minus time at which we updated the clock */
     double last_updated;
@@ -194,6 +193,7 @@ typedef struct Clock {
     int paused;
     int *queue_serial;    /* pointer to the current packet queue serial, used for obsolete clock detection */
     float extra_delay;   /* user can set the delay*/
+    char name[10];
 } Clock;
 
 /* Common struct for handling all types of decoded data and allocated render buffers. */
