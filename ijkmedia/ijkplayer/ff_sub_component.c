@@ -181,7 +181,7 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
         com->pre_loading += A_ASS_IMG_DURATION;
         sp->pts = pts;
         sp->duration = A_ASS_IMG_DURATION;
-        sp->serial = serial;
+        sp->frame_serial = serial;
         sp->width  = com->sub_width;
         sp->height = com->sub_height;
         sp->shown = 0;
@@ -230,7 +230,7 @@ static int decode_a_frame(FFSubComponent *com, Decoder *d, AVSubtitle *pkt)
                 ff_ass_flush_events(com->assRenderer);
                 while (frame_queue_nb_remaining(com->frameq) > 0) {
                     Frame *af = frame_queue_peek_readable(com->frameq);
-                    if (af && af->serial != d->pkt_serial) {
+                    if (af && af->frame_serial != d->pkt_serial) {
                         frame_queue_next(com->frameq);
                     } else {
                         break;
@@ -402,7 +402,7 @@ static int subtitle_thread(void *arg)
                             pre->duration = sp->pts - pre->pts;
                         }
                     }
-                    sp->serial = serial;
+                    sp->frame_serial = serial;
                     sp->width  = com->sub_width;
                     sp->height = com->sub_height;
                     sp->shown = 0;
@@ -452,8 +452,8 @@ static int subComponent_packet_from_frame_queue(FFSubComponent *com, float pts, 
         }
         
         //drop old serial subs
-        if (sp->serial != serial) {
-            av_log(NULL, AV_LOG_ERROR,"sub stream drop old serial frame:%d\n",sp->serial);
+        if (sp->frame_serial != serial) {
+            av_log(NULL, AV_LOG_ERROR,"sub stream drop old serial frame:%d\n",sp->frame_serial);
             frame_queue_next(com->frameq);
             continue;
         }

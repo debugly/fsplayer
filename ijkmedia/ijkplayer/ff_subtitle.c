@@ -198,7 +198,7 @@ int ff_sub_drop_old_frames(FFSubtitle *sub)
     int serial = sub->packetq.serial;
     while (frame_queue_nb_remaining(&sub->frameq) > 0) {
         Frame *sp = frame_queue_peek(&sub->frameq);
-        if (sp->serial != serial) {
+        if (sp->frame_serial != serial) {
             frame_queue_next(&sub->frameq);
             count++;
             continue;

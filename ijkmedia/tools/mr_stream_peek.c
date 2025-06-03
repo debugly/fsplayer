@@ -109,7 +109,7 @@ static int audio_decode_frame(MRStreamPeeker *sp)
                 av_usleep(10);
             }
         } else {
-            if (af->serial != sp->pktq.serial) {
+            if (af->frame_serial != sp->pktq.serial) {
                 frame_queue_next(&sp->frameq);
                 continue;
             } else {
@@ -204,7 +204,7 @@ static int audio_decode_frame(MRStreamPeeker *sp)
     if (!isnan(af->pts))
         sp->audio_clock = af->pts;
     
-    sp->audio_clock_serial = af->serial;
+    sp->audio_clock_serial = af->frame_serial;
 
 //    if (file_pcm_l == NULL) {
 //        file_pcm_l = fopen("/Users/matt/Library/Containers/2E018519-4C6C-4E16-B3B1-9F3ED37E67E5/Data/tmp/3.pcm", "wb+");

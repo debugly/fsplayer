@@ -273,7 +273,7 @@ static int sub_component_thread(void *arg)
                     sp->pos = frame->pkt_pos;
                     sp->pts = pts;
                     sp->duration = duration;
-                    sp->serial = sc->decoder.pkt_serial;
+                    sp->frame_serial = sc->decoder.pkt_serial;
                     sp->sar = frame->sample_aspect_ratio;
                     av_frame_move_ref(sp->frame, frame);
                     frame_queue_push(sc->frameq);
@@ -293,7 +293,7 @@ static int sub_component_thread(void *arg)
                         return 0;
                     sp->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
                     sp->pos = frame->pkt_pos;
-                    sp->serial = sc->decoder.pkt_serial;
+                    sp->frame_serial = sc->decoder.pkt_serial;
                     sp->duration = av_q2d((AVRational){frame->nb_samples, frame->sample_rate});
                     av_frame_move_ref(sp->frame, frame);
                     frame_queue_push(sc->frameq);
@@ -319,7 +319,7 @@ static int sub_component_thread(void *arg)
                         if (sp->sub.pts != AV_NOPTS_VALUE)
                             pts = sp->sub.pts / (double)AV_TIME_BASE;
                         sp->pts = pts;
-                        sp->serial = serial;
+                        sp->frame_serial = serial;
                         sp->width  = sc->decoder.avctx->width;
                         sp->height = sc->decoder.avctx->height;
                         sp->shown = 0;

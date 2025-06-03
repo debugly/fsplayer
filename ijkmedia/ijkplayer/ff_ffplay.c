@@ -497,9 +497,9 @@ static void video_image_display2(FFPlayer *ffp)
             ffp_notify_msg1(ffp, FFP_MSG_VIDEO_RENDERING_START);
         }
 
-        if (is->latest_video_seek_load_serial == vp->serial) {
+        if (is->latest_video_seek_load_serial == vp->frame_serial) {
             int latest_video_seek_load_serial = __atomic_exchange_n(&(is->latest_video_seek_load_serial), -1, memory_order_seq_cst);
-            if (latest_video_seek_load_serial == vp->serial) {
+            if (latest_video_seek_load_serial == vp->frame_serial) {
                 ffp->stat.latest_seek_load_duration = (av_gettime() - is->latest_seek_load_start_at) / 1000;
                 if (ffp->av_sync_type == AV_SYNC_VIDEO_MASTER) {
                     ffp_notify_msg2(ffp, FFP_MSG_VIDEO_SEEK_RENDERING_START, 1);
@@ -926,7 +926,7 @@ static double compute_target_delay(FFPlayer *ffp, double delay, VideoState *is)
 }
 
 static double vp_duration(VideoState *is, Frame *vp, Frame *nextvp) {
-    if (vp->serial == nextvp->serial) {
+    if (vp->frame_serial == nextvp->frame_serial) {
         double duration = nextvp->pts - vp->pts;
         if (isnan(duration) || duration <= 0 || duration > is->max_frame_duration)
             return vp->duration;
@@ -1012,13 +1012,13 @@ retry:
             vp = frame_queue_peek(&is->pictq);
 
             //when fast seek,we want update video frame,no drop frame. but we can't identify seek is continuously.
-            if (vp->serial != is->videoq.serial) {
+            if (vp->frame_serial != is->videoq.serial) {
                 frame_queue_next(&is->pictq);
                 ff_sub_drop_old_frames(is->ffSub);
                 goto retry;
             }
 
-            if (lastvp->serial != vp->serial)
+            if (lastvp->frame_serial != vp->frame_serial)
                 is->frame_timer = av_gettime_relative() / 1000000.0;
 
             if (is->paused && !is->step_on_seeking)
@@ -1031,7 +1031,7 @@ retry:
             if (!is->step_on_seeking && !is->step && get_master_sync_type(is) == AV_SYNC_AUDIO_MASTER && !is->audio_accurate_seek_req) {
                 if (is->audio_stream >= 0 && isnan(get_master_clock(is)) && is->auddec.finished != is->audioq.serial && vp->pts > 0 && is->audioq.duration > 1) {
                     av_usleep(1000);
-                    av_log(NULL,AV_LOG_DEBUG,"wait master clock,video pts is:%0.3f,serial:%d\n", vp->pts, vp->serial);
+                    av_log(NULL,AV_LOG_DEBUG,"wait master clock,video pts is:%0.3f,serial:%d\n", vp->pts, vp->frame_serial);
                     goto display;
                 }
             }
@@ -1048,7 +1048,7 @@ retry:
                     av_log(NULL,AV_LOG_INFO,"video is later,drop video:%0.3f,audio clk:%0.3f\n", vp->pts, get_clock_with_delay(&is->audclk));
                     SDL_LockMutex(is->pictq.mutex);
                     if (!isnan(vp->pts))
-                        update_video_pts(is, vp->pts, vp->pos, vp->serial);
+                        update_video_pts(is, vp->pts, vp->pos, vp->frame_serial);
                     SDL_UnlockMutex(is->pictq.mutex);
                     frame_queue_next(&is->pictq);
                     goto retry;
@@ -1057,7 +1057,7 @@ retry:
                 else if (ffp->stat.vmdiff > AV_SYNC_THRESHOLD_MIN*2) {
                     SDL_LockMutex(is->pictq.mutex);
                     if (!isnan(vp->pts))
-                        update_video_pts(is, lastvp->pts, lastvp->pos, lastvp->serial);
+                        update_video_pts(is, lastvp->pts, lastvp->pos, lastvp->frame_serial);
                     SDL_UnlockMutex(is->pictq.mutex);
                     
                     av_log(NULL,AV_LOG_DEBUG,"vmdiff is %0.3f, repeat video:%0.3f,audio clk:%0.3f\n", ffp->stat.vmdiff, lastvp->pts, get_clock_with_delay(&is->audclk));
@@ -1079,7 +1079,7 @@ retry:
 
             SDL_LockMutex(is->pictq.mutex);
             if (!isnan(vp->pts))
-                update_video_pts(is, vp->pts, vp->pos, vp->serial);
+                update_video_pts(is, vp->pts, vp->pos, vp->frame_serial);
             SDL_UnlockMutex(is->pictq.mutex);
 
             if (!is->step_on_seeking && frame_queue_nb_remaining(&is->pictq) > 1) {
@@ -1562,7 +1562,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->pts = pts;
         vp->duration = duration;
         vp->pos = pos;
-        vp->serial = serial;
+        vp->frame_serial = serial;
         vp->sar = src_frame->sample_aspect_ratio;
         vp->bmp->sar_num = vp->sar.num;
         vp->bmp->sar_den = vp->sar.den;
@@ -2178,13 +2178,13 @@ static int audio_thread(void *arg)
 
                 af->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
                 af->pos = frame->pkt_pos;
-                af->serial = is->auddec.pkt_serial;
+                af->frame_serial = is->auddec.pkt_serial;
                 af->duration = av_q2d((AVRational){frame->nb_samples, frame->sample_rate});
 
                 av_frame_move_ref(af->frame, frame);
                 frame_queue_push(&is->sampq);
-                if (is->audioq.serial != af->serial) {
-                    ALOGD("push old audio frame:%d\n",af->serial);
+                if (is->audioq.serial != af->frame_serial) {
+                    ALOGD("push old audio frame:%d\n",af->frame_serial);
                 }
 #if CONFIG_AUDIO_AVFILTER
                 if (is->audioq.serial != is->auddec.pkt_serial)
@@ -2472,7 +2472,7 @@ reload:
             return -1;
         frame_queue_next(&is->sampq);
         //skip old audio frames.
-    } while (af->serial != is->audioq.serial);
+    } while (af->frame_serial != is->audioq.serial);
     
     if (frame_queue_nb_remaining(&is->sampq) > 1) {
         Frame *next_af = frame_queue_peek_next(&is->sampq);
@@ -2600,7 +2600,7 @@ reload:
         is->audio_clock = af->pts + (double) af->frame->nb_samples / af->frame->sample_rate;
     else
         is->audio_clock = NAN;
-    is->audio_clock_serial = af->serial;
+    is->audio_clock_serial = af->frame_serial;
 #ifdef FFP_SHOW_AUDIO_DELAY
     {
         static double last_clock;
@@ -3840,7 +3840,7 @@ static int read_thread(void *arg)
                  */
                 while (frame_queue_nb_remaining(&is->sampq) > 0) {
                     Frame *af = frame_queue_peek_readable(&is->sampq);
-                    if (af && af->serial != is->audioq.serial) {
+                    if (af && af->frame_serial != is->audioq.serial) {
                         frame_queue_next(&is->sampq);
                     } else {
                         break;

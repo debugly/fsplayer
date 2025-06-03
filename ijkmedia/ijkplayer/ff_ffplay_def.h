@@ -201,7 +201,7 @@ typedef struct Frame {
     AVFrame *frame;
     AVSubtitle sub;
     FFSubtitleBuffer *sub_list[SUB_REF_MAX_LEN];
-    int serial;
+    int frame_serial;
     double pts;           /* presentation timestamp for the frame */
     double duration;      /* estimated duration of the frame */
     int64_t pos;          /* byte position of the frame in the input file */
