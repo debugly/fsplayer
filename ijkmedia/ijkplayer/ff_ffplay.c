@@ -4660,27 +4660,26 @@ static void ffp_show_version_int(FFPlayer *ffp, const char *module, unsigned ver
 }
 
 #if CONFIG_VIDEO_AVFILTER
-static void *grow_array(void *array, int elem_size, int *size, int new_size)
+static int grow_array(void **array, int elem_size, int *size, int new_size)
 {
     if (new_size >= INT_MAX / elem_size) {
         av_log(NULL, AV_LOG_ERROR, "Array too big.\n");
-        return NULL;
+        return AVERROR(ERANGE);
     }
     if (*size < new_size) {
-        uint8_t *tmp = av_realloc_array(array, new_size, elem_size);
-        if (!tmp) {
-            av_log(NULL, AV_LOG_ERROR, "Could not alloc buffer.\n");
-            return NULL;
-        }
+        uint8_t *tmp = av_realloc_array(*array, new_size, elem_size);
+        if (!tmp)
+            return AVERROR(ENOMEM);
         memset(tmp + *size*elem_size, 0, (new_size-*size) * elem_size);
         *size = new_size;
-        return tmp;
+        *array = tmp;
+        return 0;
     }
-    return array;
+    return 0;
 }
 
 #define GROW_ARRAY(array, nb_elems)\
-    array = grow_array(array, sizeof(*array), &nb_elems, nb_elems + 1)
+    grow_array((void**)&array, sizeof(*array), &nb_elems, nb_elems + 1)
 
 static void resetVideoFilter(FFPlayer *ffp, const char *filter) {
     if (filter) {
