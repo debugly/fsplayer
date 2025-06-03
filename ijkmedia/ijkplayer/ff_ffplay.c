@@ -3001,19 +3001,16 @@ static int check_stream_specifier(AVFormatContext *s, AVStream *st, const char *
     return ret;
 }
 
-static AVDictionary *filter_codec_opts(AVDictionary *opts, enum AVCodecID codec_id,
-                                AVFormatContext *s, AVStream *st,const AVCodec *codec)
+static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
+                      AVFormatContext *s, AVStream *st, const AVCodec *codec,
+                      AVDictionary **dst, AVDictionary **opts_used)
 {
     AVDictionary    *ret = NULL;
-    AVDictionaryEntry *t = NULL;
+    const AVDictionaryEntry *t = NULL;
     int            flags = s->oformat ? AV_OPT_FLAG_ENCODING_PARAM
                                       : AV_OPT_FLAG_DECODING_PARAM;
     char          prefix = 0;
     const AVClass    *cc = avcodec_get_class();
-
-    if (!codec)
-        codec            = s->oformat ? avcodec_find_encoder(codec_id)
-                                      : avcodec_find_decoder(codec_id);
 
     switch (st->codecpar->codec_type) {
     case AVMEDIA_TYPE_VIDEO:
@@ -3029,35 +3026,80 @@ static AVDictionary *filter_codec_opts(AVDictionary *opts, enum AVCodecID codec_
         flags  |= AV_OPT_FLAG_SUBTITLE_PARAM;
         break;
     default:
+        av_log(NULL, AV_LOG_DEBUG, "filter_codec_opts igore media type:%d\n",st->codecpar->codec_type);
         break;
     }
 
-    while ((t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX))) {
+    while ((t = av_dict_iterate(opts, t))) {
         const AVClass *priv_class;
         char *p = strchr(t->key, ':');
+        int used = 0;
 
         /* check stream specification in opt name */
-        if (p)
-            switch (check_stream_specifier(s, st, p + 1)) {
-            case  1: *p = 0; break;
-            case  0:         continue;
-            default:         return NULL;
-            }
+        if (p) {
+            int err = check_stream_specifier(s, st, p + 1);
+            if (err < 0) {
+                av_dict_free(&ret);
+                return err;
+            } else if (!err)
+                continue;
+
+            *p = 0;
+        }
 
         if (av_opt_find(&cc, t->key, NULL, flags, AV_OPT_SEARCH_FAKE_OBJ) ||
             !codec ||
             ((priv_class = codec->priv_class) &&
-                        av_opt_find(&priv_class, t->key, NULL, flags,
-                                    AV_OPT_SEARCH_FAKE_OBJ)))
+             av_opt_find(&priv_class, t->key, NULL, flags,
+                         AV_OPT_SEARCH_FAKE_OBJ))) {
             av_dict_set(&ret, t->key, t->value, 0);
-        else if (t->key[0] == prefix &&
+            used = 1;
+        } else if (t->key[0] == prefix &&
                  av_opt_find(&cc, t->key + 1, NULL, flags,
-                             AV_OPT_SEARCH_FAKE_OBJ))
+                             AV_OPT_SEARCH_FAKE_OBJ)) {
             av_dict_set(&ret, t->key + 1, t->value, 0);
+            used = 1;
+        }
 
         if (p)
             *p = ':';
+
+        if (used && opts_used)
+            av_dict_set(opts_used, t->key, "", 0);
     }
+
+    *dst = ret;
+    return 0;
+}
+
+static int setup_find_stream_info_opts(AVFormatContext *s,
+                                AVDictionary *local_codec_opts,
+                                AVDictionary ***dst)
+{
+    int ret;
+    AVDictionary **opts;
+
+    *dst = NULL;
+
+    if (!s->nb_streams)
+        return 0;
+
+    opts = av_calloc(s->nb_streams, sizeof(*opts));
+    if (!opts)
+        return AVERROR(ENOMEM);
+
+    for (int i = 0; i < s->nb_streams; i++) {
+        ret = filter_codec_opts(local_codec_opts, s->streams[i]->codecpar->codec_id,
+                                s, s->streams[i], NULL, &opts[i], NULL);
+        if (ret < 0)
+            goto fail;
+    }
+    *dst = opts;
+    return 0;
+fail:
+    for (int i = 0; i < s->nb_streams; i++)
+        av_dict_free(&opts[i]);
+    av_freep(&opts);
     return ret;
 }
 
@@ -3141,7 +3183,9 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         avctx->flags2 |= AV_CODEC_FLAG2_FAST;
     //for AVPacket opaque_ref
     avctx->flags |= AV_CODEC_FLAG_COPY_OPAQUE;
-    opts = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, st, (AVCodec *)codec);
+    ret = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, st, (AVCodec *)codec, &opts, NULL);
+    if (ret < 0)
+        goto fail;
     if (!av_dict_get(opts, "threads", NULL, 0))
         av_dict_set(&opts, "threads", "auto", 0);
     if (stream_lowres)
@@ -3358,26 +3402,6 @@ static int is_realtime(AVFormatContext *s)
     return 0;
 }
 
-static AVDictionary **setup_find_stream_info_opts(AVFormatContext *s,
-                                                  AVDictionary *codec_opts)
-{
-   int i;
-   AVDictionary **opts;
-
-   if (!s->nb_streams)
-       return NULL;
-   opts = av_mallocz(s->nb_streams * sizeof(*opts));
-   if (!opts) {
-       av_log(NULL, AV_LOG_ERROR,
-              "Could not alloc memory for stream options.\n");
-       return NULL;
-   }
-   for (i = 0; i < s->nb_streams; i++)
-       opts[i] = filter_codec_opts(codec_opts, s->streams[i]->codecpar->codec_id,
-                                   s, s->streams[i], NULL);
-   return opts;
-}
-
 int ffp_apply_subtitle_preference(FFPlayer *ffp);
 
 static void auto_decide_buffer_size(FFPlayer *ffp)
@@ -3514,17 +3538,18 @@ static int read_thread(void *arg)
         ic->flags |= AVFMT_FLAG_GENPTS;
 
     av_format_inject_global_side_data(ic);
-    //
-    //AVDictionary **opts;
-    //int orig_nb_streams;
-    //opts = setup_find_stream_info_opts(ic, ffp->codec_opts);
-    //orig_nb_streams = ic->nb_streams;
-
-
+    
     if (ffp->find_stream_info) {
-        AVDictionary **opts = setup_find_stream_info_opts(ic, ffp->codec_opts);
+        AVDictionary **opts;
         int orig_nb_streams = ic->nb_streams;
 
+        err = setup_find_stream_info_opts(ic, ffp->codec_opts, &opts);
+        if (err < 0) {
+            av_log(NULL, AV_LOG_ERROR,
+                   "Error setting up avformat_find_stream_info() options\n");
+            ret = err;
+            goto fail;
+        }
         do {
             if (av_stristart(is->filename, "data:", NULL) && orig_nb_streams > 0) {
                 for (i = 0; i < orig_nb_streams; i++) {
