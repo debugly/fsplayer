@@ -31,6 +31,7 @@
 
 #include "ijkavformat.h"
 #include "libavformat/application.h"
+#include "../ff_version.h"
 
 typedef struct {
     AVClass         *class;

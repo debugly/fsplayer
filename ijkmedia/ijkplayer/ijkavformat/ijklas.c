@@ -31,6 +31,7 @@
 #include "cJSON.h"
 
 #include "ijklas.h"
+#include "../ff_version.h"
 
 #define LAS_ERROR_BASE                        (-30000)
 #define LAS_ERROR_MUTEX_CREATE                (-1 + LAS_ERROR_BASE)
@@ -2142,5 +2143,3 @@ AVInputFormat ijkff_las_demuxer = {
     .flags          = AVFMT_NOFILE
 };
 #endif
-
-
