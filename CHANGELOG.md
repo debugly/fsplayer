@@ -2,6 +2,9 @@ tag 1.0.2
 --------------------------------
 
 - use FFmpeg 7.1.1
+- openssl use 3.5.0
+- add dvdnav dependency
+- fix some hls/ts can’t use videotoolbox accel
 
 tag 1.0.1
 --------------------------------
