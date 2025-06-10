@@ -37,6 +37,7 @@
 		09944116D959C3D509481C38 /* ijksdl_aout.h in Headers */ = {isa = PBXBuildFile; fileRef = F2912E4091750E38758D1320 /* ijksdl_aout.h */; };
 		09B8C7C571E3C431D118BE85 /* ijkthreadpool.h in Headers */ = {isa = PBXBuildFile; fileRef = 50B264094733B2E8AA2A09AA /* ijkthreadpool.h */; };
 		0A1467895E42DD23B5AF064B /* ff_subtitle_def.h in Headers */ = {isa = PBXBuildFile; fileRef = 9687942A50FD07DDA90B1B3D /* ff_subtitle_def.h */; };
+		0AA73039C73BF1C2628F2886 /* ff_version.h in Headers */ = {isa = PBXBuildFile; fileRef = 7FA55B40D46A3A97218D22FB /* ff_version.h */; };
 		0B4704E0134B9B4C1649847A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8781BDDBD119A599802B73F /* CoreFoundation.framework */; };
 		0B89EA64488588431780DBFD /* ff_ffplay.c in Sources */ = {isa = PBXBuildFile; fileRef = A8E04EE1859AE5F68FF1F49A /* ff_ffplay.c */; };
 		0BD937D5A13771A180D7108E /* ijksdl_vout.c in Sources */ = {isa = PBXBuildFile; fileRef = 391A2916925A4B867CE2E909 /* ijksdl_vout.c */; };
@@ -92,6 +93,7 @@
 		1DE5ED7219FC19B63665961E /* liblzma.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FEAC7CD076A0966ADDB44992 /* liblzma.tbd */; };
 		1ED70B2F6562FA273F0D37E6 /* ijksdl_rectangle.c in Sources */ = {isa = PBXBuildFile; fileRef = DABFB84FE68CDAE31357B49B /* ijksdl_rectangle.c */; };
 		1EF4336ADE75D7E7BEA39732 /* libuavs3d.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F02A012453A2B105CE54E3CF /* libuavs3d.a */; };
+		1F7E9EDBD8277DF5D061688A /* ff_version.c in Sources */ = {isa = PBXBuildFile; fileRef = D0495E814AFEC698599C0081 /* ff_version.c */; };
 		20865C7D5B2DA968FD1BD5DA /* ijktree.h in Headers */ = {isa = PBXBuildFile; fileRef = 83F22F5B31A4A925B83EDFFD /* ijktree.h */; };
 		20A5BF82B5A481642D73E2D0 /* ijksdl_audio.h in Headers */ = {isa = PBXBuildFile; fileRef = 02935DD0940C766E7AF696E8 /* ijksdl_audio.h */; };
 		20D84A13D826A3616384DFE3 /* ffpipeline_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = 60D43DDAB47F56FB878E62EE /* ffpipeline_ios.h */; };
@@ -219,6 +221,7 @@
 		4F82C6D160A295C73D157040 /* shader.c in Sources */ = {isa = PBXBuildFile; fileRef = 54D1E6D9384AE55C037A1BA5 /* shader.c */; };
 		508716244366AF718AA6F8DF /* FSMetalShaderTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = F7ED481C0E8305064B22E487 /* FSMetalShaderTypes.h */; };
 		51257110C03E059CFE7BA432 /* mr_stream_component.c in Sources */ = {isa = PBXBuildFile; fileRef = C928D168492CF64A048CC4FC /* mr_stream_component.c */; };
+		516AB99F0744870E704C73A7 /* ff_version.c in Sources */ = {isa = PBXBuildFile; fileRef = D0495E814AFEC698599C0081 /* ff_version.c */; };
 		517FD29BE21FD436483F45CD /* ijksdl_error.h in Headers */ = {isa = PBXBuildFile; fileRef = FCB0EEB688F1BC2A2E80E8AD /* ijksdl_error.h */; };
 		51AA8CA695239868B6E6824A /* ijksdl_error.h in Headers */ = {isa = PBXBuildFile; fileRef = FCB0EEB688F1BC2A2E80E8AD /* ijksdl_error.h */; };
 		51CA37E4300B75D0BA9E02E6 /* ijksdl.h in Headers */ = {isa = PBXBuildFile; fileRef = FD33AED81CA17C6FD77DFF85 /* ijksdl.h */; };
@@ -271,6 +274,7 @@
 		60BE17CA7865EBD24B00DC62 /* FSSDLThread.h in Headers */ = {isa = PBXBuildFile; fileRef = 15C3BC2A828498DD1B7B6C25 /* FSSDLThread.h */; };
 		60C420B9A38299631746D5DF /* ffpipenode_ffplay_vdec.c in Sources */ = {isa = PBXBuildFile; fileRef = 34872FB56CD9D6EFF5557FD0 /* ffpipenode_ffplay_vdec.c */; };
 		6247C65780A521FF75C18714 /* mr_stream_peek.c in Sources */ = {isa = PBXBuildFile; fileRef = 37BF316F65B4B9053D071B79 /* mr_stream_peek.c */; };
+		63182A41810B02C86617DDB9 /* ff_version.h in Headers */ = {isa = PBXBuildFile; fileRef = 7FA55B40D46A3A97218D22FB /* ff_version.h */; };
 		63612E6FABCD38C9303892F5 /* ijklas.h in Headers */ = {isa = PBXBuildFile; fileRef = E5C1512FBB9C6E3EA8C1D642 /* ijklas.h */; };
 		6399669FF20B730F65CC48AC /* FSMetalShaderTypes.m in Sources */ = {isa = PBXBuildFile; fileRef = 5657AAB51FD46844E2673BC5 /* FSMetalShaderTypes.m */; };
 		6400831ACA544B520F2F685A /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A659279C79F418778FCD503C /* CoreMedia.framework */; };
@@ -328,6 +332,7 @@
 		783E5EB990BF5B4C9372A822 /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = BCD06D3753B19EEE191DD24A /* cJSON.c */; };
 		7860981379F0898927258D59 /* FSMetalPipelineMeta.m in Sources */ = {isa = PBXBuildFile; fileRef = 89B51B8E3BA318A6704B8C8D /* FSMetalPipelineMeta.m */; };
 		7866D344D90423B431615304 /* ijklas.c in Sources */ = {isa = PBXBuildFile; fileRef = CE8097515198F64EC935EB4E /* ijklas.c */; };
+		78B0A7DC5E471E34DDA55059 /* ff_version.h in Headers */ = {isa = PBXBuildFile; fileRef = 7FA55B40D46A3A97218D22FB /* ff_version.h */; };
 		799368B58F976F9157D73D07 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4157E6D8F6649FB619F2E6B3 /* CoreVideo.framework */; };
 		7A8119DF65F5998A96586332 /* ijksdl_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = FC4F47DC3C8BDD75C6A9F31D /* ijksdl_ios.h */; };
 		7AF0895E8C0A452FF07D607F /* FSSDLHudViewCell.h in Headers */ = {isa = PBXBuildFile; fileRef = 78CE6D335FFB5AD4F666643F /* FSSDLHudViewCell.h */; };
@@ -437,6 +442,7 @@
 		A51B8A4D35FCB4133CC9B55E /* FSKVOController.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C9AF853543A4F0F87B4FD52 /* FSKVOController.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A5D8E5558AA94A4F4DA67CC4 /* mr_stream_component.h in Headers */ = {isa = PBXBuildFile; fileRef = CFC7209809C49836D6A737F6 /* mr_stream_component.h */; };
 		A644016FCF83EC7B72D7DB6B /* ijksdl_aout_ios_audiounit.m in Sources */ = {isa = PBXBuildFile; fileRef = 596F764246B87A7FEA3E911C /* ijksdl_aout_ios_audiounit.m */; };
+		A67FDC16EFD5E5F5B2377F76 /* ff_version.c in Sources */ = {isa = PBXBuildFile; fileRef = D0495E814AFEC698599C0081 /* ff_version.c */; };
 		A6BE491CE4A5849DCA8129CB /* ijksdl_video.h in Headers */ = {isa = PBXBuildFile; fileRef = 0ED173EEA49D038B72B9D6EB /* ijksdl_video.h */; };
 		A6D5BDD19FB9CB053B681228 /* ffpipeline_ffplay.c in Sources */ = {isa = PBXBuildFile; fileRef = 1F561DDF6D467DFC96258B25 /* ffpipeline_ffplay.c */; };
 		A701D344551876B0543E52D2 /* FSSDLThread.m in Sources */ = {isa = PBXBuildFile; fileRef = 9318C7F778A9C2BC1469188D /* FSSDLThread.m */; };
@@ -774,6 +780,7 @@
 		7CA7900C3042987F1FAC3A04 /* FSMetalShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = FSMetalShaders.metal; sourceTree = "<group>"; };
 		7CB73973197D6350BFA7880D /* ff_packet_list.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ff_packet_list.c; sourceTree = "<group>"; };
 		7CFEB6D68562CE450CCA7D6E /* ijksdl_gpu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu.h; sourceTree = "<group>"; };
+		7FA55B40D46A3A97218D22FB /* ff_version.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_version.h; sourceTree = "<group>"; };
 		80810754AAEF7BA6EB13C041 /* ijksdl_log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_log.h; sourceTree = "<group>"; };
 		8127C30FE5205117319B776E /* ijkiourl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkiourl.h; sourceTree = "<group>"; };
 		8331A17C52C17287F7B64966 /* ijksdl_gpu_opengl_renderer_macos.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu_opengl_renderer_macos.h; sourceTree = "<group>"; };
@@ -848,6 +855,7 @@
 		CEA1746B39702033219F7993 /* ff_ffplay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_ffplay.h; sourceTree = "<group>"; };
 		CFC7209809C49836D6A737F6 /* mr_stream_component.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mr_stream_component.h; sourceTree = "<group>"; };
 		D0462C59F3814D912DCAEEE5 /* ijkplayer_ios.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkplayer_ios.h; sourceTree = "<group>"; };
+		D0495E814AFEC698599C0081 /* ff_version.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ff_version.c; sourceTree = "<group>"; };
 		D14DE0D6D16D19A9BBA77611 /* ijkutils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkutils.h; sourceTree = "<group>"; };
 		D184E28BA5D1EA07127DF484 /* ijkthreadpool.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkthreadpool.c; sourceTree = "<group>"; };
 		D19D336CBA2A3BF1F0B0CFCF /* FSSDLHudControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSSDLHudControl.m; sourceTree = "<group>"; };
@@ -1199,6 +1207,8 @@
 				DA0B611FE2E875BF9CB4477B /* ff_subtitle_preference.h */,
 				894AECCD59D87D6F89468827 /* ff_subtitle.c */,
 				61B70C5A17B37A3C784A0228 /* ff_subtitle.h */,
+				D0495E814AFEC698599C0081 /* ff_version.c */,
+				7FA55B40D46A3A97218D22FB /* ff_version.h */,
 				4AF610A51551AD6319BEA895 /* ijkmeta.c */,
 				E1B63734416DDB49F28C18CD /* ijkmeta.h */,
 				0FE52AC061F525B5F9626C29 /* ijkplayer_internal.h */,
@@ -1431,7 +1441,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_98813D65-0092-426B-9599-C785E0C9898C" /* wrapper */ = {
+		"TEMP_33AB1FC1-5696-42A7-9A6A-831BC8E5560F" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1494,6 +1504,7 @@
 				0A1467895E42DD23B5AF064B /* ff_subtitle_def.h in Headers */,
 				5969EA9D1710A08BB6482C3B /* ff_subtitle_ex.h in Headers */,
 				397571B12E4648AFDF9EDE3A /* ff_subtitle_preference.h in Headers */,
+				0AA73039C73BF1C2628F2886 /* ff_version.h in Headers */,
 				6DF4FBEF3007FED35E48D9C4 /* ffpipeline_ffplay.h in Headers */,
 				20D84A13D826A3616384DFE3 /* ffpipeline_ios.h in Headers */,
 				2FFEF1917235DBF56FB74225 /* ffpipenode_ffplay_vdec.h in Headers */,
@@ -1603,6 +1614,7 @@
 				1917023C31A7101E6648C976 /* ff_subtitle_def.h in Headers */,
 				650AB7F79724CB1C319EC1A7 /* ff_subtitle_ex.h in Headers */,
 				0874747B51511C3262CDD28B /* ff_subtitle_preference.h in Headers */,
+				78B0A7DC5E471E34DDA55059 /* ff_version.h in Headers */,
 				32C9B5E05DB4A7537C636835 /* ffpipeline_ffplay.h in Headers */,
 				C654BF55125F2258FE1E76BE /* ffpipeline_ios.h in Headers */,
 				1BA833B3331573076368B3B3 /* ffpipenode_ffplay_vdec.h in Headers */,
@@ -1713,6 +1725,7 @@
 				81E5798E8B0B39EAE26DBF1E /* ff_subtitle_def.h in Headers */,
 				0832383E3F56F3C21EB12025 /* ff_subtitle_ex.h in Headers */,
 				72D603177E657A1C63F49009 /* ff_subtitle_preference.h in Headers */,
+				63182A41810B02C86617DDB9 /* ff_version.h in Headers */,
 				9C74D0D213C545488A92D389 /* ffpipeline_ffplay.h in Headers */,
 				2D6C0D61B0228E230148AA55 /* ffpipeline_ios.h in Headers */,
 				55927701976D12164371394A /* ffpipenode_ffplay_vdec.h in Headers */,
@@ -1967,6 +1980,7 @@
 				5ECC933E096490A479935A9E /* ff_subtitle.c in Sources */,
 				BC5E8211E7C3A2F4A440124D /* ff_subtitle_def.c in Sources */,
 				521453D50564A29DD95259C9 /* ff_subtitle_ex.c in Sources */,
+				1F7E9EDBD8277DF5D061688A /* ff_version.c in Sources */,
 				A6D5BDD19FB9CB053B681228 /* ffpipeline_ffplay.c in Sources */,
 				2930C80FC10D86D06C382F7C /* ffpipeline_ios.c in Sources */,
 				60C420B9A38299631746D5DF /* ffpipenode_ffplay_vdec.c in Sources */,
@@ -2061,6 +2075,7 @@
 				E22C5E80948B61AA66A2C311 /* ff_subtitle.c in Sources */,
 				5818AD8800AB5B2CA573CAC8 /* ff_subtitle_def.c in Sources */,
 				3F41E913C850742F07B76075 /* ff_subtitle_ex.c in Sources */,
+				A67FDC16EFD5E5F5B2377F76 /* ff_version.c in Sources */,
 				1AB998AC5984FA67F833E17A /* ffpipeline_ffplay.c in Sources */,
 				E1EB77506D642972E8FBB708 /* ffpipeline_ios.c in Sources */,
 				313C8B975C5A1538E8085149 /* ffpipenode_ffplay_vdec.c in Sources */,
@@ -2159,6 +2174,7 @@
 				A8562BC39038801FC9FA9A9C /* ff_subtitle.c in Sources */,
 				EC637F94F97E0EE5A9A309A0 /* ff_subtitle_def.c in Sources */,
 				93FFF798D532B57C727F25A0 /* ff_subtitle_ex.c in Sources */,
+				516AB99F0744870E704C73A7 /* ff_version.c in Sources */,
 				AB69065AB5DADDEC53F0BEA5 /* ffpipeline_ffplay.c in Sources */,
 				B44578067BBBF8DD5977D748 /* ffpipeline_ios.c in Sources */,
 				D2995063AB7C620A25819957 /* ffpipenode_ffplay_vdec.c in Sources */,

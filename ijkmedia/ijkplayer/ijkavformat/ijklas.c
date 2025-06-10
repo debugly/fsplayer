@@ -2113,6 +2113,7 @@ static const AVClass las_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
+#if IS_FFMPEG_7
 FFInputFormat ijkff_las_demuxer = {
     .p.name           = "las",
     .p.long_name      = "Live Adaptive Streaming",
@@ -2126,5 +2127,20 @@ FFInputFormat ijkff_las_demuxer = {
     .read_close     = las_close,
     .read_seek      = las_read_seek,
 };
+#else
+AVInputFormat ijkff_las_demuxer = {
+    .name           = "las",
+    .long_name      = "Live Adaptive Streaming",
+    .priv_class     = &las_class,
+    .priv_data_size = sizeof(LasContext),
+    .read_probe     = las_probe,
+    .read_header    = las_read_header,
+    .read_packet    = las_read_packet,
+    .read_close     = las_close,
+    .read_seek      = las_read_seek,
+    .extensions     = "las",
+    .flags          = AVFMT_NOFILE
+};
+#endif
 
 

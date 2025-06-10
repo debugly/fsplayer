@@ -26,6 +26,11 @@
 #include "libavformat/demux.h"
 #include "libavformat/url.h"
 #include "libavformat/version.h"
+#include "../ff_version.h"
+
+#if IS_LESS_THAN_FFMPEG_7
+#define FFInputFormat AVInputFormat
+#endif
 
 #define FS_REGISTER_DEMUXER(x)                                         \
     {                                                                   \

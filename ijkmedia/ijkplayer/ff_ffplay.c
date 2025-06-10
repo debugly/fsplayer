@@ -52,7 +52,7 @@
 #include "libavutil/opt.h"
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
-
+#include "ff_version.h"
 #if CONFIG_AUDIO_AVFILTER || CONFIG_VIDEO_AVFILTER
 # include "libavcodec/avcodec.h"
 # include "libavfilter/avfilter.h"
@@ -348,17 +348,16 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     ff_write_audio_muxer(ffp->movie_muxer, d->pkt);
                 }
             }
-            
+#if IS_FFMPEG_6
             if (d->pkt->buf && !d->pkt->opaque_ref) {
                 FrameData *fd;
-
                 d->pkt->opaque_ref = av_buffer_allocz(sizeof(*fd));
                 if (!d->pkt->opaque_ref)
                     return AVERROR(ENOMEM);
                 fd = (FrameData*)d->pkt->opaque_ref->data;
                 fd->pkt_pos = d->pkt->pos;
             }
-
+#endif
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -1235,12 +1234,15 @@ static int get_z_rotate_degrees(AVStream *video_st)
 {
     if (!video_st)
         return 0;
-    const AVPacketSideData *sideData = av_packet_side_data_get(video_st->codecpar->coded_side_data, video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
     int32_t *displaymatrix = NULL;
+#if IS_FFMPEG_5
+    displaymatrix = (int32_t *)av_stream_get_side_data(video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+#else
+    const AVPacketSideData *sideData = av_packet_side_data_get(video_st->codecpar->coded_side_data, video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
     if (sideData && sideData->size >= 36) {
         displaymatrix = (int32_t *)sideData->data;
     }
-    //displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+#endif
     return get_degree_with_displaymatrix(displaymatrix);
 }
 
@@ -2202,10 +2204,13 @@ static int audio_thread(void *arg)
 #endif
                 if (!(af = frame_queue_peek_writable(&is->sampq)))
                     goto the_end;
-
+#if IS_FFMPEG_6
                 FrameData *fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
-                af->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
                 af->pos = fd ? fd->pkt_pos : -1;
+#else
+                af->pos = frame->pkt_pos;
+#endif
+                af->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
                 af->frame_serial = is->auddec.pkt_serial;
                 af->duration = av_q2d((AVRational){frame->nb_samples, frame->sample_rate});
 
@@ -2321,10 +2326,16 @@ static int ffplay_video_thread(void *arg)
                 is->frame_last_filter_delay = 0;
             tb = av_buffersink_get_time_base(filt_out);
 #endif
+#if IS_FFMPEG_6
             fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
+            int64_t pos = fd ? fd->pkt_pos : -1;
+#else
+            int64_t pos = frame->pkt_pos;
+#endif
             duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
             pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
-            ret = queue_picture(ffp, frame, pts, duration, fd ? fd->pkt_pos : -1, is->viddec.pkt_serial);
+            
+            ret = queue_picture(ffp, frame, pts, duration, pos, is->viddec.pkt_serial);
             av_frame_unref(frame);
 #if CONFIG_VIDEO_AVFILTER
             if (is->videoq.serial != is->viddec.pkt_serial)
@@ -3039,8 +3050,11 @@ static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
         av_log(NULL, AV_LOG_DEBUG, "filter_codec_opts igore media type:%d\n",st->codecpar->codec_type);
         break;
     }
-
+#if IS_FFMPEG_6
     while ((t = av_dict_iterate(opts, t))) {
+#else
+    while ((t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX))) {
+#endif
         const AVClass *priv_class;
         char *p = strchr(t->key, ':');
         int used = 0;
@@ -3191,8 +3205,10 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
 
     if (ffp->fast)
         avctx->flags2 |= AV_CODEC_FLAG2_FAST;
+#if IS_FFMPEG_6
     //for AVPacket opaque_ref
     avctx->flags |= AV_CODEC_FLAG_COPY_OPAQUE;
+#endif
     ret = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, st, (AVCodec *)codec, &opts, NULL);
     if (ret < 0)
         goto fail;
@@ -3229,7 +3245,11 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
         goto fail;
     }
+#if IS_FFMPEG_6
     if ((t = av_dict_iterate(opts, NULL))) {
+#else
+    if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
+#endif
         av_log(NULL, AV_LOG_ERROR, "codec Option %s not found.\n", t->key);
     }
     is->eof = 0;
@@ -3537,7 +3557,11 @@ static int read_thread(void *arg)
     ffp_notify_str2(ffp, FFP_MSG_OPEN_INPUT, ic->iformat->name);
     if (scan_all_pmts_set)
         av_dict_set(&ffp->format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
+#if IS_FFMPEG_6
     if ((t = av_dict_iterate(ffp->format_opts, NULL))) {
+#else
+    if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
+#endif
         av_log(NULL, AV_LOG_ERROR, "format Option %s not found.\n", t->key);
     }
     is->ic = ic;
