@@ -607,7 +607,9 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     [_hudTimer invalidate];
     _hudTimer = nil;
     //clean refresh observer
-    [_glView registerRefreshCurrentPicObserver:NULL];
+    if ([_glView respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
+        [_glView registerRefreshCurrentPicObserver:NULL];
+    }
     [self performSelectorInBackground:@selector(shutdownWaitStop:) withObject:self];
 }
 
