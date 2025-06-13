@@ -964,13 +964,13 @@ static BOOL hdrAnimationShown = 0;
             }];
         } else if (FSFinishReasonPlaybackEnded == reason) {
             NSLog(@"播放结束");
-            if ([[MRUtil pictureType] containsObject:[[self.playingUrl lastPathComponent] pathExtension]]) {
+            
+            if ([[MRUtil pictureType] containsObject:[[[self.playingUrl lastPathComponent] pathExtension] lowercaseString]]) {
 //                [self stopPlay];
             } else {
                 NSString *key = [[self.playingUrl absoluteString] md5Hash];
-                [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
-                self.playingUrl = nil;
                 [self playNext:nil];
+                [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
             }
         }
     }
@@ -1131,6 +1131,13 @@ static BOOL hdrAnimationShown = 0;
 
 - (void)appendToPlayList:(NSArray *)bookmarkArr append:(BOOL)append
 {
+    if (!append) {
+        self.lastSubIdx = -1;
+        [self onStop];
+        [self.subtitles removeAllObjects];
+        [self.playList removeAllObjects];
+    }
+    
     NSMutableArray *videos = [NSMutableArray array];
     NSMutableArray *subtitles = [NSMutableArray array];
     
@@ -1168,12 +1175,6 @@ static BOOL hdrAnimationShown = 0;
         return;
     }
     
-    if (!append) {
-        self.lastSubIdx = -1;
-        [self onStop];
-        [self.subtitles removeAllObjects];
-        [self.playList removeAllObjects];
-    }
     
     [self.subtitles addObjectsFromArray:subtitles];
     [self.playList addObjectsFromArray:videos];
