@@ -209,7 +209,7 @@ static BOOL hdrAnimationShown = 0;
     
     if ([movies count] > 0) {
         // 追加到列表，开始播放
-        [self appendToPlayList:movies reset:YES];
+        [self appendToPlayList:movies append:NO];
     }
 }
 
@@ -1129,7 +1129,7 @@ static BOOL hdrAnimationShown = 0;
     return t;
 }
 
-- (void)appendToPlayList:(NSArray *)bookmarkArr reset:(BOOL)reset
+- (void)appendToPlayList:(NSArray *)bookmarkArr append:(BOOL)append
 {
     NSMutableArray *videos = [NSMutableArray array];
     NSMutableArray *subtitles = [NSMutableArray array];
@@ -1168,7 +1168,7 @@ static BOOL hdrAnimationShown = 0;
         return;
     }
     
-    if (reset) {
+    if (!append) {
         self.lastSubIdx = -1;
         [self onStop];
         [self.subtitles removeAllObjects];
@@ -1182,7 +1182,7 @@ static BOOL hdrAnimationShown = 0;
 
 #pragma mark - 拖拽
 
-- (void)handleDragFileList:(nonnull NSArray<NSURL *> *)fileUrls
+- (void)handleDragFileList:(nonnull NSArray<NSURL *> *)fileUrls append:(BOOL)append
 {
     NSMutableArray *bookmarkArr = [NSMutableArray array];
     for (NSURL *url in fileUrls) {
@@ -1193,16 +1193,7 @@ static BOOL hdrAnimationShown = 0;
         }
     }
     
-    //拖拽进来视频文件时先清空原先的列表
-    BOOL reset = NO;
-    for (NSDictionary *dic in bookmarkArr) {
-        if ([dic[@"type"] intValue] == 0) {
-            reset = YES;
-            break;
-        }
-    }
-    
-    [self appendToPlayList:bookmarkArr reset:reset];
+    [self appendToPlayList:bookmarkArr append:append];
 }
 
 - (NSDragOperation)acceptDragOperation:(NSArray<NSURL *> *)list

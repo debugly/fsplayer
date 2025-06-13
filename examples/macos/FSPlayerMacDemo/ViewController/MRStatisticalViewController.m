@@ -1020,7 +1020,7 @@ static BOOL hdrAnimationShown = 0;
 }
 #pragma mark - 拖拽
 
-- (void)handleDragFileList:(nonnull NSArray<NSURL *> *)fileUrls
+- (void)handleDragFileList:(nonnull NSArray<NSURL *> *)fileUrls append:(BOOL)append
 {
     NSMutableArray *bookmarkArr = [NSMutableArray array];
     for (NSURL *url in fileUrls) {

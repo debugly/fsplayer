@@ -12,7 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol MRDragViewDelegate <NSObject>
 
 - (NSDragOperation)acceptDragOperation:(NSArray <NSURL *> *)list;
-- (void)handleDragFileList:(NSArray <NSURL *> *)fileUrls;
+//默认追加，按下option替换
+- (void)handleDragFileList:(NSArray <NSURL *> *)fileUrls append:(BOOL)append;
 
 @end
 

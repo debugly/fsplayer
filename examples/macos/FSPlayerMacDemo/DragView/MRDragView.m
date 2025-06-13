@@ -84,8 +84,8 @@
 - (BOOL)prepareForDragOperation:(id<NSDraggingInfo>)sender
 {
     NSArray * list = [self draggedFileList:sender];
-    if (list.count && self.delegate && [self.delegate respondsToSelector:@selector(handleDragFileList:)]) {
-        [self.delegate handleDragFileList:list];
+    if (list.count && self.delegate && [self.delegate respondsToSelector:@selector(handleDragFileList:append:)]) {
+        [self.delegate handleDragFileList:list append:sender.draggingSourceOperationMask != NSDragOperationGeneric];
     }
     return YES;
 }

@@ -155,6 +155,9 @@
     int begin = -1;
     int end = -1;
     
+    //第一行是host
+    NSString *host = nil;
+    
     for (int i = 0; i < lines.count; i++) {
         NSString *path = lines[i];
         if (!path || [path length] == 0) {
@@ -168,8 +171,12 @@
             end = (int)preLines.count;
             break;
         }
+        if (!host) {
+            host = path;
+            continue;
+        }
         path = [path stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        [preLines addObject:path];
+        [preLines addObject:[host stringByAppendingString:path]];
     }
     
     if (begin == -1) {
