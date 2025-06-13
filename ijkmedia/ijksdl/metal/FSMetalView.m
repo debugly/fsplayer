@@ -406,6 +406,11 @@ typedef CGRect NSRect;
     float width  = (float)CVPixelBufferGetWidth(pixelBuffer);
     float height = (float)CVPixelBufferGetHeight(pixelBuffer);
     
+    //keep video AVRational
+    if (attach.sarNum > 0 && attach.sarDen > 0) {
+        width = 1.0 * attach.sarNum / attach.sarDen * width;
+    }
+    
     float darRatio = self.darPreference.ratio;
     
     int zDegrees = 0;
