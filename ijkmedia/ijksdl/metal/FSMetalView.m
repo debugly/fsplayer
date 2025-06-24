@@ -62,7 +62,10 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
-    CFRelease(_pictureTextureCache);
+    if (_pictureTextureCache) {
+        CFRelease(_pictureTextureCache);
+        _pictureTextureCache = NULL;
+    }
 }
 
 - (BOOL)prepareMetal
