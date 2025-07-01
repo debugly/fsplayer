@@ -1441,7 +1441,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_33AB1FC1-5696-42A7-9A6A-831BC8E5560F" /* wrapper */ = {
+		"TEMP_AA0B18AE-052D-4D31-82B7-E965E94B8E7A" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);

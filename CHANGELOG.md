@@ -4,7 +4,7 @@ tag 1.0.2
 - upgrade FFmpeg to 7.1.1
 - upgrade openssl to 3.5.0
 - add dvdnav dependency
-- fix some hls/ts can’t use videotoolbox accel
+- fix some hls/ts can’t use videotoolbox accel bug
 - fix shutdown crash when use OpenGL backend
 - fix snapshot not keep video rational bug when use metal backend 
 

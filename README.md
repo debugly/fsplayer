@@ -9,23 +9,23 @@
 
 ## 功能&特点
 
-- [x] FFmpeg 6.1.1
-- [x] 支持透传FFmpeg option参数
+- [x] FFmpeg 7.1.1
+- [x] 支持透传 FFmpeg option 参数
 - [x] 支持获取下载速度
 - [x] 支持获取预加载进度
 - [x] 获取基本信息（音频：采样率、声道数、时长等，视频：宽、高、fps、时长等）
 - [x] 支持获取首帧解码时间、渲染时间
-- [x] 支持file、http、https、udp、rtmp、rtp、rtsp、bluray、smb等协议
-- [x] 支持设置HTTP超时、错误重试、UA、Cookie、如果是m3u8支持透传给ts请求
-- [x] 支持HLS直播或者点播
-- [x] 支持AV1、uavs3解码器
+- [x] 支持 file、http、https、udp、rtmp、rtp、rtsp、bluray、smb 等协议
+- [x] 支持设置 HTTP 超时、错误重试、UA、Cookie、如果是 m3u8 支持透传给 ts 请求
+- [x] 支持 HLS 直播或者点播
+- [x] 支持 AV1、uavs3 解码器
 - [x] 支持单独播放音频显示内置封面
 - [x] 支持单独播放图片
 - [x] 支持精准 seek
 - [x] 支持软硬解设置
 - [x] 支持多实例播放
 - [x] 支持播放完成（EOF）后，重新seek继续播放
-- [x] 优化了file协议seek后起播慢问题
+- [x] 优化了 file 协议 seek 后起播慢问题
 - [x] 音视频加密播放
 - [x] 强大的字幕功能
   - 文本字幕(srt/vtt/ass)
@@ -43,9 +43,9 @@
 - [x] 支持设置视频镜像模式
 - [x] 支持设置视频背景颜色（默认黑色）
 - [x] 支持设置画面饱和度、亮度、对比度
-- [x] 支持同时渲染到多个View上
-- [x] 支持实时获取音频PCM数据
-- [x] 支持自定义渲染View
+- [x] 支持同时渲染到多个 View上
+- [x] 支持实时获取音频 PCM 数据
+- [x] 支持自定义渲染 View
 - [x] 支持 4K/HDR/HDR10/HDR10+/Dolby Vision，不支持 Dolby Vision P5
 - [x] 智能识别 iso (blury、dvd、普通视频)
 - [x] mpegts 视频快进不花屏
@@ -56,10 +56,10 @@
 - [x] 双声道音频可强制指定声道播放
 - [x] 获取当前显示的视频帧
 - [x] 录制视频
+- [x] AV1 硬解
 
 正在开发的功能
 
-- [ ] AV1 硬解
 - [ ] 直播回放
 - [ ] 音视频可变速变调
 - [ ] 支持透明视频
@@ -70,8 +70,8 @@
 
 ## 构建环境
 
-- macOS Sequoia(15.1)
-- Xcode Version 16.2 (16C5032a)
+- macOS Sequoia(15.5)
+- Xcode Version 16.4 (16F6)
 
 | 最低支持平台      | 架构                                     |
 | ----------- | -------------------------------------- |
@@ -92,7 +92,7 @@ FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，�
 - 通过 Cocoapods 集成:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.1/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.2/FSPlayer.spec.json'
 ```
 
 ### 使用
@@ -116,12 +116,10 @@ self.player.shouldAutoplay = YES;
 
 ## FSPlayer-Pro
 
-<img src="https://img.shields.io/badge/FSPlayer%20Pro-%F0%9F%91%8D%F0%9F%8F%BB-blue">
+在 FSPlayer 的基础上提供了更加强劲的功能，以动态库的形式提供。
 
-FSPlayer-Pro 在 FSPlayer 的基础上提供了更加强劲的功能，将以动态库的形式提供给付费用户。
-
-- HLS 点播边播边缓存，已经缓存的seek回去播放不再耗流量，速度更快
+- HLS 点播边播边缓存，已经缓存的 seek 回去播放不再耗流量，起播速度更快
 - 可无缝切换音轨，避免了普通方式切换后需要seek到当前位置，播放器重新加载短暂没有声音并且黑屏的问题
 - 播放网络 iso 镜像和 BDMV 文件夹时，首帧起播速度提升x倍，Seek 后首帧起播速度提升x倍
 
-具体费用和规则请邮件联系：[debugly@icloud.com](mailto:debugly@icloud.com)
+邮件联系：[debugly@icloud.com](mailto:debugly@icloud.com)
