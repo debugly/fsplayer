@@ -608,14 +608,12 @@ static BOOL hdrAnimationShown = 0;
     //    [options setPlayerOptionIntValue:1 forKey:@"nodisp"];
     
     [options setPlayerOptionIntValue:[MRCocoaBindingUserDefault copy_hw_frame] forKey:@"copy_hw_frame"];
-    if ([url isFileURL]) {
-        //图片不使用 cvpixelbufferpool
-        NSString *ext = [[[url path] pathExtension] lowercaseString];
-        if ([[MRUtil pictureType] containsObject:ext]) {
-            [options setPlayerOptionIntValue:0      forKey:@"enable-cvpixelbufferpool"];
-            if ([@"gif" isEqualToString:ext]) {
-                [options setPlayerOptionIntValue:-1      forKey:@"loop"];
-            }
+    //图片不使用 cvpixelbufferpool
+    NSString *ext = [[[url path] pathExtension] lowercaseString];
+    if ([[MRUtil pictureType] containsObject:ext]) {
+        [options setPlayerOptionIntValue:0      forKey:@"enable-cvpixelbufferpool"];
+        if ([@"gif" isEqualToString:ext] || [@"webp" isEqualToString:ext]) {
+            [options setPlayerOptionIntValue:-1      forKey:@"loop"];
         }
     }
     [options setFormatOptionIntValue:0 forKey:@"http_persistent"];
