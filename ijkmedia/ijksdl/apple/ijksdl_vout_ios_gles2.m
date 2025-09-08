@@ -155,7 +155,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         attach.sarNum = overlay->sar_num;
         attach.sarDen = overlay->sar_den;
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
-        
+        attach.hasAlpha = overlay->has_alpha;
         attach.videoPicture = CVPixelBufferRetain(videoPic);
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];

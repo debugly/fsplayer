@@ -28,7 +28,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (BOOL)matchPixelBuffer:(CVPixelBufferRef)pixelBuffer;
 - (void)updateColorAdjustment:(vector_float4)c;
 
-- (BOOL)createRenderPipelineIfNeed:(CVPixelBufferRef)pixelBuffer;
+- (BOOL)createRenderPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend;
 - (void)uploadTextureWithEncoder:(id<MTLRenderCommandEncoder>)encoder
                         textures:(NSArray*)textures;
 @end

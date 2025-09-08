@@ -57,6 +57,8 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) int sarDen;
 //degrees
 @property(nonatomic) int autoZRotate;
+@property(nonatomic) int hasAlpha;
+
 @property(nonatomic) CVPixelBufferRef videoPicture;
 @property(nonatomic) NSArray *videoTextures;
 

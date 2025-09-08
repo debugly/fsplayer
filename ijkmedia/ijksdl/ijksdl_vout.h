@@ -51,6 +51,7 @@ struct SDL_VoutOverlay {
     int sar_den;
     //for auto rotate video
     int auto_z_rotate_degrees;
+    int has_alpha;
     SDL_Class               *opaque_class;
     SDL_VoutOverlay_Opaque  *opaque;
 

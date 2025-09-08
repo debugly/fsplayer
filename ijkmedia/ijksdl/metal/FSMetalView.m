@@ -207,7 +207,7 @@ typedef CGRect NSRect;
     return subPipeline != nil;
 }
 
-- (BOOL)setupPipelineIfNeed:(CVPixelBufferRef)pixelBuffer
+- (BOOL)setupPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend
 {
     if (!pixelBuffer) {
         return NO;
@@ -221,7 +221,7 @@ typedef CGRect NSRect;
     }
     
     FSMetalRenderer *picturePipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:self.colorPixelFormat];
-    BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer];
+    BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
     
     if (!created) {
         ALOGI("create RenderPipeline failed.");
@@ -323,7 +323,7 @@ typedef CGRect NSRect;
         return;
     }
     
-    if (![self setupPipelineIfNeed:attach.videoPicture]) {
+    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
         return;
     }
     
@@ -439,7 +439,7 @@ typedef CGRect NSRect;
     
     CGSize viewport = CGSizeMake(floorf(width), floorf(height));
     
-    if (![self setupPipelineIfNeed:attach.videoPicture]) {
+    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
         return NULL;
     }
     
@@ -499,7 +499,7 @@ typedef CGRect NSRect;
     
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
    
-    if (![self setupPipelineIfNeed:attach.videoPicture]) {
+    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
         return NULL;
     }
     

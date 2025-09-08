@@ -58,7 +58,7 @@
     return [self.pipelineMeta metaMatchedCVPixelbuffer:pixelBuffer];
 }
 
-- (BOOL)createRenderPipelineIfNeed:(CVPixelBufferRef)pixelBuffer
+- (BOOL)createRenderPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend
 {
     if (self.renderPipeline) {
         return YES;
@@ -106,7 +106,16 @@
     pipelineStateDescriptor.fragmentFunction = fragmentFunction;
     pipelineStateDescriptor.colorAttachments[0].pixelFormat = _colorPixelFormat; // 设置颜色格式
     pipelineStateDescriptor.sampleCount = 1;
-    
+    // 启用混合
+    if (blend) {
+        pipelineStateDescriptor.colorAttachments[0].blendingEnabled = YES;
+        // 设置混合因子（经典Alpha混合公式）
+        pipelineStateDescriptor.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+        pipelineStateDescriptor.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        pipelineStateDescriptor.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+        pipelineStateDescriptor.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    }
+
     id<MTLRenderPipelineState> pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
                                                                                       error:&error]; // 创建图形渲染管道，耗性能操作不宜频繁调用
     // Pipeline State creation could fail if the pipeline descriptor isn't set up properly.
