@@ -83,7 +83,7 @@
 
 - [CHANGELOG.md](CHANGELOG.md)
 
-## FSPlayer
+## 集成
 
 FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，感觉不错可以 [请作者喝咖啡](./Donate.md) 。
 
@@ -95,7 +95,7 @@ FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，�
 pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.2/FSPlayer.spec.json'
 ```
 
-### 使用
+### 调用
 
 ```
 FSOptions *options = [FSOptions optionsByDefault];
@@ -113,6 +113,22 @@ self.player.shouldAutoplay = YES;
 ```
 
 更详细的使用[说明文档](https://fsplayer.debugly.cn/manuals/getting-started.html)
+
+## 编译
+
+源码完全开放，可以自己编译：
+
+```bash
+# Build iOS Framework
+./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
+./examples/ios/build-framework.sh
+#Build macOS Framework
+./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
+./examples/macos/build-framework.sh
+#Build tvOS Framework
+./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
+./examples/tvos/build-framework.sh
+```
 
 ## FSPlayer-Pro
 
