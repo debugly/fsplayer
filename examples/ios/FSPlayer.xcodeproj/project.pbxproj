@@ -412,6 +412,7 @@
 		96025B38F95AAECC9203D0AF /* ijkmeta.h in Headers */ = {isa = PBXBuildFile; fileRef = E1B63734416DDB49F28C18CD /* ijkmeta.h */; };
 		975AFCDAD5D662230681EF44 /* FSMetalFBO.h in Headers */ = {isa = PBXBuildFile; fileRef = 92AF575DF04E8F2D043CD678 /* FSMetalFBO.h */; };
 		97724A3CCCA47DB0B5712086 /* ff_sub_component.h in Headers */ = {isa = PBXBuildFile; fileRef = 1FA530D40BCAE1E13EC094AB /* ff_sub_component.h */; };
+		98243F052DEE7900271D9AFA /* libwebp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8FB743876B658F24F5527065 /* libwebp.a */; };
 		98A6CDDD55132A5A5D07FD23 /* FSSDLAudioQueueController.h in Headers */ = {isa = PBXBuildFile; fileRef = 879902127B9DF2E588A54417 /* FSSDLAudioQueueController.h */; };
 		98D71C1141E1D32667F24212 /* ff_packet_list.c in Sources */ = {isa = PBXBuildFile; fileRef = 7CB73973197D6350BFA7880D /* ff_packet_list.c */; };
 		990A6832C0E880BC6BEE20AF /* FSMediaPlayback.h in Headers */ = {isa = PBXBuildFile; fileRef = 7234EB1BB6EA2FE14A364371 /* FSMediaPlayback.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -419,6 +420,7 @@
 		9979F0299C55C152015A6B40 /* ijksdl_vout.c in Sources */ = {isa = PBXBuildFile; fileRef = 391A2916925A4B867CE2E909 /* ijksdl_vout.c */; };
 		9AB948F72E982329948CA684 /* cJSON.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A46FB3D548884261DFA3E97 /* cJSON.h */; };
 		9ADCC59DE6D97F0CA124EFB8 /* ijksdl_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = DA94EF3EFF1A9B47E7BF1AF4 /* ijksdl_timer.c */; };
+		9B4071090E8BC6B62B9F74F9 /* libsharpyuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D9D59C39EC385026FEFF77DC /* libsharpyuv.a */; };
 		9B9D560ED293AA13ECAE28D9 /* FSSDLHudViewCell.h in Headers */ = {isa = PBXBuildFile; fileRef = 78CE6D335FFB5AD4F666643F /* FSSDLHudViewCell.h */; };
 		9BB60DD9DED4863934C0ADEE /* mr_stream_component.c in Sources */ = {isa = PBXBuildFile; fileRef = C928D168492CF64A048CC4FC /* mr_stream_component.c */; };
 		9C4F637AFC06896E76573643 /* ijksdl.h in Headers */ = {isa = PBXBuildFile; fileRef = FD33AED81CA17C6FD77DFF85 /* ijksdl.h */; };
@@ -523,6 +525,7 @@
 		C6FD16000B326661C5793F52 /* libdvdnav.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A4B441F144C7F178891855 /* libdvdnav.a */; };
 		C77611B4771FE6F76210EE37 /* ijksdl_inc_ffmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = B018C5D3FCCBF55618C96874 /* ijksdl_inc_ffmpeg.h */; };
 		C7C2503B471DED0B4807ACA1 /* libdvdread.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2AFB18442EA4E27F8B4A0363 /* libdvdread.a */; };
+		C7DD253720097E54F731EB84 /* libwebpdecoder.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2165B0BF6999CED1A24412CA /* libwebpdecoder.a */; };
 		C89D271DB0599C005285E9AA /* FSSDLThread.h in Headers */ = {isa = PBXBuildFile; fileRef = 15C3BC2A828498DD1B7B6C25 /* FSSDLThread.h */; };
 		C8AE148892CFD2CE35D0AE47 /* ff_ffinc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9A115404585C995F5DDEA12E /* ff_ffinc.h */; };
 		C8E0A6E7138E831E58CDCE03 /* FSMetalFBO.h in Headers */ = {isa = PBXBuildFile; fileRef = 92AF575DF04E8F2D043CD678 /* FSMetalFBO.h */; };
@@ -618,6 +621,7 @@
 		EC6C0B6F107266D0F24E1C9C /* ff_recorder_frame_queue.h in Headers */ = {isa = PBXBuildFile; fileRef = 9054EF156BEEE7C8E54DEAEE /* ff_recorder_frame_queue.h */; };
 		ECA8DE933441ECBE36ABD727 /* mr_stream_component.c in Sources */ = {isa = PBXBuildFile; fileRef = C928D168492CF64A048CC4FC /* mr_stream_component.c */; };
 		EE63E643182D89683162A3E8 /* FSMetalRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = E301E6AADF5C8D606B510E7A /* FSMetalRenderer.h */; };
+		EF60BD9202149ADB463ACE05 /* libwebpdemux.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FA0C9041AFE16DD14EB3D263 /* libwebpdemux.a */; };
 		EF9979B6B97C61B1B1640784 /* FSKVOController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D461F9AA9B923AC5C2E2A83 /* FSKVOController.m */; };
 		EFA61540B0C7B26F2CA45909 /* ijk_vout_common.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F8064804517F9CB5053FAC9 /* ijk_vout_common.m */; };
 		EFFA3DA8FD031A70AC987698 /* image_convert.c in Sources */ = {isa = PBXBuildFile; fileRef = 447E1FA12B8FE9A0FA9A964E /* image_convert.c */; };
@@ -690,6 +694,7 @@
 		1FA530D40BCAE1E13EC094AB /* ff_sub_component.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_sub_component.h; sourceTree = "<group>"; };
 		206BF8303DB64A8128D30205 /* ijkfifo.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkfifo.c; sourceTree = "<group>"; };
 		2085ED7C6124896E520239EE /* ijksdl_timer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_timer.h; sourceTree = "<group>"; };
+		2165B0BF6999CED1A24412CA /* libwebpdecoder.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libwebpdecoder.a; path = ../../FFToolChain/build/product/macos/universal/webp/lib/libwebpdecoder.a; sourceTree = SDKROOT; };
 		2169B1515B78E0CE9DF57A2D /* FSNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSNotificationManager.m; sourceTree = "<group>"; };
 		255AAD990C0339CAF72423CD /* FSMetalView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSMetalView.m; sourceTree = "<group>"; };
 		2594333E62C5B87F29ABB6E0 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
@@ -801,6 +806,7 @@
 		8E74367FBE0F349693A09665 /* libopus.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libopus.a; path = ../../FFToolChain/build/product/macos/universal/opus/lib/libopus.a; sourceTree = SDKROOT; };
 		8F3652AA69A563B660AEDF66 /* libharfbuzz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libharfbuzz.a; path = ../../FFToolChain/build/product/macos/universal/harfbuzz/lib/libharfbuzz.a; sourceTree = SDKROOT; };
 		8F8064804517F9CB5053FAC9 /* ijk_vout_common.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ijk_vout_common.m; sourceTree = "<group>"; };
+		8FB743876B658F24F5527065 /* libwebp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libwebp.a; path = ../../FFToolChain/build/product/macos/universal/webp/lib/libwebp.a; sourceTree = SDKROOT; };
 		9054EF156BEEE7C8E54DEAEE /* ff_recorder_frame_queue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_recorder_frame_queue.h; sourceTree = "<group>"; };
 		906DC03CA84F019226DFDD35 /* FSVideoRenderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSVideoRenderView.h; sourceTree = "<group>"; };
 		9121BCA81DF52C01310E13FB /* ijksdl_gles2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gles2.h; sourceTree = "<group>"; };
@@ -868,6 +874,7 @@
 		D77B7CAFDE3601558A3DD738 /* renderer_pixfmt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = renderer_pixfmt.h; sourceTree = "<group>"; };
 		D82AC892D013E94F64831EDA /* ijklivehook.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijklivehook.c; sourceTree = "<group>"; };
 		D8A97D1C4F60A2401AED6F4C /* ijksegment.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijksegment.c; sourceTree = "<group>"; };
+		D9D59C39EC385026FEFF77DC /* libsharpyuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsharpyuv.a; path = ../../FFToolChain/build/product/macos/universal/webp/lib/libsharpyuv.a; sourceTree = SDKROOT; };
 		DA0B611FE2E875BF9CB4477B /* ff_subtitle_preference.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_subtitle_preference.h; sourceTree = "<group>"; };
 		DA94EF3EFF1A9B47E7BF1AF4 /* ijksdl_timer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijksdl_timer.c; sourceTree = "<group>"; };
 		DABFB84FE68CDAE31357B49B /* ijksdl_rectangle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijksdl_rectangle.c; sourceTree = "<group>"; };
@@ -908,6 +915,7 @@
 		F7ED481C0E8305064B22E487 /* FSMetalShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSMetalShaderTypes.h; sourceTree = "<group>"; };
 		F8781BDDBD119A599802B73F /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		F94B265F33E064EF0B1FD3D1 /* ijksdl_thread_ios.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_thread_ios.h; sourceTree = "<group>"; };
+		FA0C9041AFE16DD14EB3D263 /* libwebpdemux.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libwebpdemux.a; path = ../../FFToolChain/build/product/macos/universal/webp/lib/libwebpdemux.a; sourceTree = SDKROOT; };
 		FC4F47DC3C8BDD75C6A9F31D /* ijksdl_ios.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_ios.h; sourceTree = "<group>"; };
 		FCB0EEB688F1BC2A2E80E8AD /* ijksdl_error.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_error.h; sourceTree = "<group>"; };
 		FD33AED81CA17C6FD77DFF85 /* ijksdl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl.h; sourceTree = "<group>"; };
@@ -1003,6 +1011,10 @@
 				1EF4336ADE75D7E7BEA39732 /* libuavs3d.a in Frameworks */,
 				33B14EA5BD32262B6510FC1D /* libunibreak.a in Frameworks */,
 				22C742FF8CE487E1BF12A9D5 /* libxml2.a in Frameworks */,
+				9B4071090E8BC6B62B9F74F9 /* libsharpyuv.a in Frameworks */,
+				98243F052DEE7900271D9AFA /* libwebp.a in Frameworks */,
+				C7DD253720097E54F731EB84 /* libwebpdecoder.a in Frameworks */,
+				EF60BD9202149ADB463ACE05 /* libwebpdemux.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1102,12 +1114,16 @@
 				38106D47EA34678554FC85E5 /* libiconv.tbd */,
 				FEAC7CD076A0966ADDB44992 /* liblzma.tbd */,
 				8E74367FBE0F349693A09665 /* libopus.a */,
+				D9D59C39EC385026FEFF77DC /* libsharpyuv.a */,
 				5DF4B82D3481857016666347 /* libsmb2.a */,
 				F17F8A2FEA8C6BD562323325 /* libssl.a */,
 				8916AF32818702FB5F812D2D /* libswresample.a */,
 				8BA540C30206FA4F55DF1A5E /* libswscale.a */,
 				F02A012453A2B105CE54E3CF /* libuavs3d.a */,
 				BAE860F9C71D52FAF0FBAE5B /* libunibreak.a */,
+				8FB743876B658F24F5527065 /* libwebp.a */,
+				2165B0BF6999CED1A24412CA /* libwebpdecoder.a */,
+				FA0C9041AFE16DD14EB3D263 /* libwebpdemux.a */,
 				F467F61959DAEB52E2F3E5EA /* libxml2.a */,
 				DF8338E74AA8E67AC0A08407 /* libz.tbd */,
 				3298CB07A9E9DBDCA349190D /* Metal.framework */,
@@ -1441,7 +1457,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_C659FEB4-DE59-4D06-90F8-4976910C7C06" /* wrapper */ = {
+		"TEMP_CD1FA34F-13F6-4769-B68B-1268EF98C236" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -2265,6 +2281,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/webp/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MARKETING_VERSION = 1.0.2;
@@ -2407,6 +2424,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/webp/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MARKETING_VERSION = 1.0.2;

@@ -62,6 +62,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/uavs3d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/unibreak/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/xml2/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/macos/universal/webp/lib"
     dependencies:
       - sdk: AppKit.framework
       - sdk: AudioUnit.framework
@@ -102,6 +103,10 @@ targets:
       - sdk: ../../FFToolChain/build/product/macos/universal/uavs3d/lib/libuavs3d.a
       - sdk: ../../FFToolChain/build/product/macos/universal/unibreak/lib/libunibreak.a
       - sdk: ../../FFToolChain/build/product/macos/universal/xml2/lib/libxml2.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/webp/lib/libsharpyuv.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/webp/lib/libwebp.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/webp/lib/libwebpdecoder.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/webp/lib/libwebpdemux.a
   FSPlayer-iOS:
     platform: iOS
     supportedDestinations: [iOS]
