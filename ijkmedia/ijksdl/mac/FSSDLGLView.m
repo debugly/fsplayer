@@ -291,8 +291,38 @@ static void unlock_gl(NSOpenGLContext *ctx)
     [super setFrame:frame];
 }
 
+//Thread 0
+//0   libsystem_kernel.dylib          0xfffea036d1fa      mach_msg_trap
+//1   IOKit                           0xfffe5511b817      io_connect_method
+//2   IOKit                           0xfffe5511b644      IOConnectCallMethod
+//3   IOKit                           0xfffe5511c777      IOConnectCallStructMethod
+//4   IOAccelerator                   0xfffe846ae55c      IOAccelGLContextClearDrawable
+//5   libGPUSupportMercury.dylib      0xfffe817770f5      gldAttachDrawable
+//6   GLEngine                        0xfffe64c071e7      gliAttachDrawableWithOptions
+//7   OpenGL                          0xfffe64bd9038      CGLClearDrawable
+//8   AppKit                          0xfffe4af51ddb      -[NSOpenGLContext update]
+//9   AppKit                          0xfffe4afde2a4      -[NSOpenGLView _invalidateGStatesForTree]
+//10  AppKit                          0xfffe4ac761fc      -[NSView(NSInternal) geometryInWindowDidChange]
+//11  AppKit                          0xfffe4b539869      NSViewHierarchyNoteGeometryInWindowDidChange
+//12  AppKit                          0xfffe4ac6e96f      -[NSView _invalidateFocus]
+//13  AppKit                          0xfffe4ac70787      -[NSView removeFromSuperview]
+//14  MRMoviePlayerKit                0x10425e2c6         -[MRMoviePlayer stop] (MRMoviePlayer.m:913)
+//
+//Thread 14 Crashed:
+//0   AppleIntelKBLGraphicsGLDriver   0x119abbfec         updateBindingTable<T>
+//1   AppleIntelKBLGraphicsGLDriver   0x119ab926e         GenContext::ProgramPipeline
+//2   AppleIntelKBLGraphicsGLDriver   0x119ab4232         glrIntelRenderVertexArray
+//3   GLEngine                        0xfffe64ca7676      glDrawArrays_ACC_GL3Exec
+//4   IJKMediaPlayerKit               0x1015679e9         IJK_GLES2_Renderer_drawArrays (renderer.c:849)
+//5   IJKMediaPlayerKit               0x101560999         -[IJKSDLGLView doUploadVideoPicture:] (IJKSDLGLView.m:372)
+//6   IJKMediaPlayerKit               0x101560bbd         -[IJKSDLGLView doDisplayVideoPicAndSubtitle:] (IJKSDLGLView.m:414)
+
 - (void)reshape
 {
+    //fix crash：when removeFromSuperview triggered reshape we not refrsh
+    if (!self.superview) {
+        return;
+    }
     [super reshape];
     [self resetViewPort];
 }
