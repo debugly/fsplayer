@@ -2198,4 +2198,11 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     return ijkmp_stop_exact_record(_mediaPlayer);
 }
 
+- (float)currentVMDiff
+{
+    if (!_mediaPlayer)
+        return 0;
+    return ijkmp_get_property_float(_mediaPlayer, FFP_PROP_FLOAT_VMDIFF, .0f);
+}
+
 @end

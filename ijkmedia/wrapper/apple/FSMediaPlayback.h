@@ -146,7 +146,8 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 - (int)stopFastRecord;
 - (int)startExactRecord:(NSString *)filePath;
 - (int)stopExactRecord;
-
+//get video - master diff
+- (float)currentVMDiff;
 #pragma mark Notifications
 
 #ifdef __cplusplus
