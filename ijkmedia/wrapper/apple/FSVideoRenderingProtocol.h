@@ -59,11 +59,11 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) int autoZRotate;
 @property(nonatomic) int hasAlpha;
 
-@property(nonatomic) CVPixelBufferRef videoPicture;
-@property(nonatomic) NSArray *videoTextures;
+@property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
+@property(nonatomic) NSArray * _Nullable videoTextures;
 
-@property(nonatomic) SDL_TextureOverlay *overlay;
-@property(nonatomic) id subTexture;
+@property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
+@property(nonatomic) id _Nullable subTexture;
 
 @end
 
