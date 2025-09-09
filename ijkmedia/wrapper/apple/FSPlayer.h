@@ -26,6 +26,7 @@
 #import <FSPlayer/FSMonitor.h>
 #import <FSPlayer/FSOptions.h>
 #import <FSPlayer/FSVideoRenderingProtocol.h>
+#import <FSPlayer/FSAudioRenderingProtocol.h>
 
 // media meta
 #define FS_KEY_FORMAT               @"format"
@@ -107,6 +108,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions * _Nullable)options
                withGLView:(UIView<FSVideoRenderingProtocol> *)glView;
+
+- (id)initWithMoreContent:(NSURL *)aUrl
+              withOptions:(FSOptions * _Nullable)options
+        withViewRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)viewRendering
+       withAudioRendering:(id<FSAudioRenderingProtocol>)audioRendering;
 
 - (void)prepareToPlay;
 - (void)play;

@@ -29,13 +29,12 @@
 #include "ijksdl/ijksdl_inc_internal.h"
 #include "ijksdl/ijksdl_thread.h"
 #include "ijksdl/ijksdl_aout_internal.h"
-#import "FSSDLAudioUnitController.h"
-#import "FSSDLAudioQueueController.h"
+#import "FSAudioRendering.h"
 
 #define SDL_IOS_AUDIO_MAX_CALLBACKS_PER_SEC 15
 
 struct SDL_Aout_Opaque {
-    __strong FSSDLAudioQueueController *aoutController;
+    __strong id<FSAudioRenderingProtocol> aoutController;
 };
 
 static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_AudioSpec *obtained)
@@ -44,16 +43,49 @@ static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_Aud
     SDLTRACE("aout_open_audio()\n");
     SDL_Aout_Opaque *opaque = aout->opaque;
     NSError * error = nil;
-    opaque->aoutController = [[FSSDLAudioQueueController alloc] initWithAudioSpec:desired err:&error];
+    
+    FSAudioSpec *spec = [[FSAudioSpec alloc] init];
+    spec.freq = desired->freq;
+    spec.format = desired->format;
+    spec.channels = desired->channels;
+    spec.silence = desired->silence;
+    spec.samples = desired->samples;
+    spec.padding = desired->padding;
+    spec.size = desired->size;
+    spec.callback = desired->callback;
+    spec.userdata = desired->userdata;
+    
     if (!opaque->aoutController) {
+        opaque->aoutController = [FSAudioRendering createAudioQueueRendering];
+    }
+    
+    if (![opaque->aoutController isSupportAudioSpec:spec err:&error]) {
         ALOGE("aout_open_audio:%d,%s",error.code,[error.userInfo[NSLocalizedDescriptionKey] UTF8String]);
         return -1;
     }
 
-    if (obtained)
-        *obtained = opaque->aoutController.spec;
-
+    if (obtained) {
+        SDL_AudioSpec out_Spec;
+        out_Spec.freq = spec.freq;
+        out_Spec.format = spec.format;
+        out_Spec.channels = spec.channels;
+        out_Spec.silence = spec.silence;
+        out_Spec.samples = spec.samples;
+        out_Spec.padding = spec.padding;
+        out_Spec.size = spec.size;
+        out_Spec.callback = spec.callback;
+        out_Spec.userdata = spec.userdata;
+        *obtained = out_Spec;
+    }
     return 0;
+}
+
+static void aout_set_controller(SDL_Aout *aout, void *aoutController)
+{
+    SDL_Aout_Opaque *opaque = aout->opaque;
+    if (opaque->aoutController != aoutController) {
+        opaque->aoutController = (__bridge id<FSAudioRenderingProtocol>)(aoutController);
+    }
 }
 
 static void aout_pause_audio(SDL_Aout *aout, int pause_on)
@@ -144,5 +176,6 @@ SDL_Aout *SDL_AoutIos_CreateForAudioUnit(void)
     aout->func_set_playback_volume = aout_set_playback_volume;
     aout->func_get_latency_seconds = auout_get_latency_seconds;
     aout->func_get_audio_persecond_callbacks = aout_get_persecond_callbacks;
+    aout->func_set_controller = aout_set_controller;
     return aout;
 }

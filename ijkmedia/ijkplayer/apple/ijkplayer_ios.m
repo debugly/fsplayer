@@ -46,6 +46,10 @@ IjkMediaPlayer *ijkmp_ios_create(int (*msg_loop)(void*))
     if (!mp->ffplayer->pipeline)
     goto fail;
     
+    mp->ffplayer->aout = ffpipeline_open_audio_output(mp->ffplayer->pipeline, mp->ffplayer);
+    if (!mp->ffplayer->aout)
+    goto fail;
+    
     return mp;
     
 fail:
@@ -60,7 +64,22 @@ static void ijkmp_ios_set_glview_l(IjkMediaPlayer *mp, UIView<FSVideoRenderingPr
     assert(mp->ffplayer->vout);
     
     SDL_VoutIos_SetGLView(mp->ffplayer->vout, glView);
-    mp->ffplayer->gpu = SDL_CreateGPU_WithContext(glView.context);
+    SDL_GPU *gpu = SDL_CreateGPU_WithContext(glView.context);
+    if (gpu) {
+        mp->ffplayer->gpu = gpu;
+    } else {
+        mp->ffplayer->subtitle_mix = 0;
+        ALOGE("video rendering not provide gpu context,subtile feature will be disabled");
+    }
+}
+
+static void ijkmp_ios_set_audio_controller_l(IjkMediaPlayer *mp, id<FSAudioRenderingProtocol> audioRendering)
+{
+    assert(mp);
+    assert(mp->ffplayer);
+    assert(mp->ffplayer->aout);
+    
+    SDL_AoutSetController(mp->ffplayer->aout, (__bridge void*)audioRendering);
 }
 
 void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView)
@@ -71,4 +90,14 @@ void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* 
     ijkmp_ios_set_glview_l(mp, glView);
     pthread_mutex_unlock(&mp->mutex);
     MPTRACE("ijkmp_ios_set_view(glView=%p)=void\n", (__bridge void*)glView);
+}
+
+void ijkmp_ios_set_audio_controller(IjkMediaPlayer *mp, id<FSAudioRenderingProtocol> audioRendering)
+{
+    assert(mp);
+    MPTRACE("ijkmp_ios_set_audio_controller(audioRendering=%p)\n", (__bridge void*)audioRendering);
+    pthread_mutex_lock(&mp->mutex);
+    ijkmp_ios_set_audio_controller_l(mp, audioRendering);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_ios_set_audio_controller(audioRendering=%p)=void\n", (__bridge void*)audioRendering);
 }

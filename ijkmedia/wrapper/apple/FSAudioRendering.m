@@ -1,11 +1,7 @@
 /*
- * FSSDLAudioKit.h
+ * FSAudioRendering.m
  *
- * Copyright (c) 2013-2014 Bilibili
- * Copyright (c) 2013-2014 Zhang Rui <bbcallen@gmail.com>
- * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
- *
- * based on https://github.com/kolyvan/kxmovie
+ * Copyright (c) 2023 debugly <qianlongxu@gmail.com>
  *
  * This file is part of FSPlayer.
  *
@@ -24,9 +20,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import <AVFoundation/AVFoundation.h>
+#import "FSAudioRendering.h"
+#import "FSSDLAudioQueueController.h"
+#import "FSSDLAudioUnitController.h"
 
-@class FSAudioSpec;
-void FSSDLGetAudioComponentDescriptionFromSpec(FSAudioSpec *spec, AudioComponentDescription *desc);
-void FSSDLGetAudioStreamBasicDescriptionFromSpec(FSAudioSpec *spec, AudioStreamBasicDescription *desc);
-void FSSDLCalculateAudioSpec(FSAudioSpec * spec);
+@implementation FSAudioSpec
+
+@end
+
+@implementation FSAudioRendering
+
++ (id<FSAudioRenderingProtocol>)createAudioUnitRendering
+{
+    return [FSSDLAudioUnitController new];
+}
+
++ (id<FSAudioRenderingProtocol>)createAudioQueueRendering
+{
+    return [FSSDLAudioQueueController new];
+}
+
+@end

@@ -52,7 +52,8 @@ struct SDL_Aout {
     void   (*func_set_playback_rate)(SDL_Aout *aout, float playbackRate);
     void   (*func_set_playback_volume)(SDL_Aout *aout, float playbackVolume);
     int    (*func_get_audio_persecond_callbacks)(SDL_Aout *aout);
-
+    //apple only
+    void   (*func_set_controller)(SDL_Aout *aout, void* aoutController);
     // Android only
     int    (*func_get_audio_session_id)(SDL_Aout *aout);
 };
@@ -72,7 +73,8 @@ int    SDL_AoutGetAudioPerSecondCallBacks(SDL_Aout *aout);
 // optional
 void   SDL_AoutSetPlaybackRate(SDL_Aout *aout, float playbackRate);
 void   SDL_AoutSetPlaybackVolume(SDL_Aout *aout, float volume);
-
+//apple only
+void   SDL_AoutSetController(SDL_Aout *aout, void *aoutController);
 // android only
 int    SDL_AoutGetAudioSessionId(SDL_Aout *aout);
 

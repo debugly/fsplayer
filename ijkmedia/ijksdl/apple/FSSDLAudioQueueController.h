@@ -25,22 +25,10 @@
  */
 
 #import <Foundation/Foundation.h>
+#import "FSAudioRenderingProtocol.h"
 
-#include "ijksdl/ijksdl_aout.h"
+@interface FSSDLAudioQueueController : NSObject <FSAudioRenderingProtocol>
 
-@interface FSSDLAudioQueueController : NSObject
-
-- (id)initWithAudioSpec:(const SDL_AudioSpec *)aSpec err:(NSError **)outErr;
-
-- (void)play;
-- (void)pause;
-- (void)flush;
-- (void)stop;
-- (void)close;
-- (void)setPlaybackRate:(float)playbackRate;
-- (void)setPlaybackVolume:(float)playbackVolume;
-- (double)get_latency_seconds;
-
-@property (nonatomic, readonly) SDL_AudioSpec spec;
+@property (nonatomic, readonly) FSAudioSpec * spec;
     
 @end

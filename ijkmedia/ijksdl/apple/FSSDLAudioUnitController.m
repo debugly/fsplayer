@@ -35,113 +35,107 @@
     BOOL _isPaused;
 }
 
-- (id)initWithAudioSpec:(const SDL_AudioSpec *)aSpec err:(NSError **)outErr
+- (BOOL)isSupportAudioSpec:(FSAudioSpec *)aSpec err:(NSError *__autoreleasing *)outErr
 {
-    self = [super init];
-    if (self) {
-        if (aSpec == NULL) {
-            self = nil;
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:1 userInfo:@{NSLocalizedDescriptionKey:@"AudioSpec is nil"}];
-            return nil;
+    if (aSpec == NULL) {
+        if (outErr) {
+            *outErr = [NSError errorWithDomain:@"fsplayer.audiounit" code:1 userInfo:@{NSLocalizedDescriptionKey:@"Spec is nil"}];
         }
-        _spec = *aSpec;
-        
-        if (aSpec->format != AUDIO_S16SYS) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:2 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"unsupported format %d", (int)aSpec->format]}];
-            return nil;
-        }
-        
-        if (aSpec->channels > 6) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:3 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"unsupported channels %d", (int)aSpec->channels]}];
-            return nil;
-        }
-        
-        AudioComponentDescription desc;
-        FSSDLGetAudioComponentDescriptionFromSpec(&_spec, &desc);
-        
-        AudioComponent auComponent = AudioComponentFindNext(NULL, &desc);
-        if (auComponent == NULL) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:4 userInfo:@{NSLocalizedDescriptionKey:@"AudioComponentFindNext is NULL"}];
-            self = nil;
-            return nil;
-        }
-        
-        AudioUnit auUnit;
-        OSStatus status = AudioComponentInstanceNew(auComponent, &auUnit);
-        if (status != noErr) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:5 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"AudioComponentInstanceNew failed:%d",status]}];
-            self = nil;
-            return nil;
-        }
-        
-        UInt32 flag = 1;
-        status = AudioUnitSetProperty(auUnit,
-                                      kAudioOutputUnitProperty_EnableIO,
-                                      kAudioUnitScope_Output,
-                                      0,
-                                      &flag,
-                                      sizeof(flag));
-        if (status != noErr) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:6 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"failed to set IO mode (%d)", (int)status]}];
-        }
-        
-        /* Get the current format */
-        _spec.format = AUDIO_S16SYS;
-        _spec.channels = 2;
-        AudioStreamBasicDescription streamDescription;
-        FSSDLGetAudioStreamBasicDescriptionFromSpec(&_spec, &streamDescription);
-        
-        /* Set the desired format */
-        UInt32 i_param_size = sizeof(streamDescription);
-        status = AudioUnitSetProperty(auUnit,
-                                      kAudioUnitProperty_StreamFormat,
-                                      kAudioUnitScope_Input,
-                                      0,
-                                      &streamDescription,
-                                      i_param_size);
-        if (status != noErr) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:7 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"failed to set stream format (%d)", (int)status]}];
-            self = nil;
-            return nil;
-        }
-        
-        /* Retrieve actual format */
-        status = AudioUnitGetProperty(auUnit,
-                                      kAudioUnitProperty_StreamFormat,
-                                      kAudioUnitScope_Input,
-                                      0,
-                                      &streamDescription,
-                                      &i_param_size);
-        if (status != noErr) {
-            ALOGE("AudioUnit: failed to verify stream format (%d)\n", (int)status);
-        }
-        
-        AURenderCallbackStruct callback;
-        callback.inputProc = (AURenderCallback) RenderCallback;
-        callback.inputProcRefCon = (__bridge void*) self;
-        status = AudioUnitSetProperty(auUnit,
-                                      kAudioUnitProperty_SetRenderCallback,
-                                      kAudioUnitScope_Input,
-                                      0, &callback, sizeof(callback));
-        if (status != noErr) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:8 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"render callback setup failed (%d)", (int)status]}];
-            self = nil;
-            return nil;
-        }
-        
-        SDL_CalculateAudioSpec(&_spec);
-        
-        /* AU initiliaze */
-        status = AudioUnitInitialize(auUnit);
-        if (status != noErr) {
-            if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:9 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"AudioUnitInitialize failed (%d)", (int)status]}];
-            self = nil;
-            return nil;
-        }
-        
-        _auUnit = auUnit;
+        return NO;
     }
-    return self;
+    
+    if (aSpec.format != FSAudioSpecS16) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"fsplayer.audiounit" code:2 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"unsupported format %d", (int)aSpec.format]}];
+        return NO;
+    }
+    
+    if (aSpec.channels > 6) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"fsplayer.audiounit" code:3 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"unsupported channels %d", (int)aSpec.channels]}];
+        return NO;
+    }
+    
+    /* Get the current format */
+    AudioComponentDescription desc;
+    FSSDLGetAudioComponentDescriptionFromSpec(aSpec, &desc);
+    
+    AudioComponent auComponent = AudioComponentFindNext(NULL, &desc);
+    if (auComponent == NULL) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:4 userInfo:@{NSLocalizedDescriptionKey:@"AudioComponentFindNext is NULL"}];
+        return NO;
+    }
+    
+    AudioUnit auUnit;
+    OSStatus status = AudioComponentInstanceNew(auComponent, &auUnit);
+    if (status != noErr) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:5 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"AudioComponentInstanceNew failed:%d",status]}];
+        return NO;
+    }
+    
+    UInt32 flag = 1;
+    status = AudioUnitSetProperty(auUnit,
+                                  kAudioOutputUnitProperty_EnableIO,
+                                  kAudioUnitScope_Output,
+                                  0,
+                                  &flag,
+                                  sizeof(flag));
+    if (status != noErr) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:6 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"failed to set IO mode (%d)", (int)status]}];
+    }
+    
+    /* Get the current format */
+    aSpec.format = FSAudioSpecS16;
+    aSpec.channels = 2;
+    AudioStreamBasicDescription streamDescription;
+    FSSDLGetAudioStreamBasicDescriptionFromSpec(aSpec, &streamDescription);
+    
+    /* Set the desired format */
+    UInt32 i_param_size = sizeof(streamDescription);
+    status = AudioUnitSetProperty(auUnit,
+                                  kAudioUnitProperty_StreamFormat,
+                                  kAudioUnitScope_Input,
+                                  0,
+                                  &streamDescription,
+                                  i_param_size);
+    if (status != noErr) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:7 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"failed to set stream format (%d)", (int)status]}];
+        return NO;
+    }
+    
+    /* Retrieve actual format */
+    status = AudioUnitGetProperty(auUnit,
+                                  kAudioUnitProperty_StreamFormat,
+                                  kAudioUnitScope_Input,
+                                  0,
+                                  &streamDescription,
+                                  &i_param_size);
+    if (status != noErr) {
+        ALOGE("AudioUnit: failed to verify stream format (%d)\n", (int)status);
+    }
+    
+    AURenderCallbackStruct callback;
+    callback.inputProc = (AURenderCallback) RenderCallback;
+    callback.inputProcRefCon = (__bridge void*) self;
+    status = AudioUnitSetProperty(auUnit,
+                                  kAudioUnitProperty_SetRenderCallback,
+                                  kAudioUnitScope_Input,
+                                  0, &callback, sizeof(callback));
+    if (status != noErr) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:8 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"render callback setup failed (%d)", (int)status]}];
+        return NO;
+    }
+    
+    FSSDLCalculateAudioSpec(aSpec);
+    
+    /* AU initiliaze */
+    status = AudioUnitInitialize(auUnit);
+    if (status != noErr) {
+        if (outErr) *outErr = [NSError errorWithDomain:@"ijk.audiounit" code:9 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"AudioUnitInitialize failed (%d)", (int)status]}];
+        return NO;
+    }
+    
+    _auUnit = auUnit;
+    _spec = aSpec;
+    return YES;
 }
 
 - (void)dealloc
@@ -217,6 +211,16 @@
 {
     return _spec.samples / _spec.freq;
 }
+
+- (void)setPlaybackRate:(float)playbackRate { 
+    
+}
+
+
+- (void)setPlaybackVolume:(float)playbackVolume { 
+    
+}
+
 
 static OSStatus RenderCallback(void                        *inRefCon,
                                AudioUnitRenderActionFlags  *ioActionFlags,

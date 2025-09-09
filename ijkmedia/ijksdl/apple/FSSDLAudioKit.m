@@ -25,8 +25,10 @@
  */
 
 #import "FSSDLAudioKit.h"
+#include "ijksdl/ijksdl_aout.h"
+#import "FSAudioRenderingProtocol.h"
 
-extern void FSSDLGetAudioComponentDescriptionFromSpec(const SDL_AudioSpec *spec, AudioComponentDescription *desc)
+void FSSDLGetAudioComponentDescriptionFromSpec(FSAudioSpec *spec, AudioComponentDescription *desc)
 {
     desc->componentType = kAudioUnitType_Output;
 #if TARGET_OS_IOS
@@ -41,22 +43,38 @@ extern void FSSDLGetAudioComponentDescriptionFromSpec(const SDL_AudioSpec *spec,
     desc->componentFlagsMask = 0;
 }
 
-extern void FSSDLGetAudioStreamBasicDescriptionFromSpec(const SDL_AudioSpec *spec, AudioStreamBasicDescription *desc)
+void FSSDLGetAudioStreamBasicDescriptionFromSpec(FSAudioSpec *spec, AudioStreamBasicDescription *desc)
 {
-    desc->mSampleRate = spec->freq;
+    desc->mSampleRate = spec.freq;
     desc->mFormatID = kAudioFormatLinearPCM;
     desc->mFormatFlags = kLinearPCMFormatFlagIsPacked;
-    desc->mChannelsPerFrame = spec->channels;
+    desc->mChannelsPerFrame = spec.channels;
     desc->mFramesPerPacket = 1;
     
-    desc->mBitsPerChannel = SDL_AUDIO_BITSIZE(spec->format);
-    if (SDL_AUDIO_ISBIGENDIAN(spec->format))
+    desc->mBitsPerChannel = SDL_AUDIO_BITSIZE(spec.format);
+    if (SDL_AUDIO_ISBIGENDIAN(spec.format))
     desc->mFormatFlags |= kLinearPCMFormatFlagIsBigEndian;
-    if (SDL_AUDIO_ISFLOAT(spec->format))
+    if (SDL_AUDIO_ISFLOAT(spec.format))
     desc->mFormatFlags |= kLinearPCMFormatFlagIsFloat;
-    if (SDL_AUDIO_ISSIGNED(spec->format))
+    if (SDL_AUDIO_ISSIGNED(spec.format))
     desc->mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
     
     desc->mBytesPerFrame = desc->mBitsPerChannel * desc->mChannelsPerFrame / 8;
     desc->mBytesPerPacket = desc->mBytesPerFrame * desc->mFramesPerPacket;
 }
+
+void FSSDLCalculateAudioSpec(FSAudioSpec * spec)
+{
+    switch (spec.format) {
+    case AUDIO_U8:
+        spec.silence = 0x80;
+        break;
+    default:
+        spec.silence = 0x00;
+        break;
+    }
+    spec.size = SDL_AUDIO_BITSIZE(spec.format) / 8;
+    spec.size *= spec.channels;
+    spec.size *= spec.samples;
+}
+

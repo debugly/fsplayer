@@ -24,20 +24,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import <Foundation/Foundation.h>
+#import "FSAudioRenderingProtocol.h"
 
-#include "ijksdl/ijksdl_aout.h"
+@interface FSSDLAudioUnitController : NSObject <FSAudioRenderingProtocol>
 
-@interface FSSDLAudioUnitController : NSObject
-
-- (id)initWithAudioSpec:(const SDL_AudioSpec *)aSpec err:(NSError **)outErr;
-
-- (void)play;
-- (void)pause;
-- (void)flush;
-- (void)stop;
-- (void)close;
-
-@property (nonatomic, readonly) SDL_AudioSpec spec;
+@property (nonatomic, readonly) FSAudioSpec * spec;
 
 @end

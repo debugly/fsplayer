@@ -1,11 +1,7 @@
 /*
- * FSSDLAudioKit.h
+ * FSAudioRendering.h
  *
- * Copyright (c) 2013-2014 Bilibili
- * Copyright (c) 2013-2014 Zhang Rui <bbcallen@gmail.com>
- * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
- *
- * based on https://github.com/kolyvan/kxmovie
+ * Copyright (c) 2023 debugly <qianlongxu@gmail.com>
  *
  * This file is part of FSPlayer.
  *
@@ -24,9 +20,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import <AVFoundation/AVFoundation.h>
+// you can use below mthods, create ijk internal render view.
 
-@class FSAudioSpec;
-void FSSDLGetAudioComponentDescriptionFromSpec(FSAudioSpec *spec, AudioComponentDescription *desc);
-void FSSDLGetAudioStreamBasicDescriptionFromSpec(FSAudioSpec *spec, AudioStreamBasicDescription *desc);
-void FSSDLCalculateAudioSpec(FSAudioSpec * spec);
+#import <FSPlayer/FSAudioRenderingProtocol.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface FSAudioRendering : NSObject
+
++ (id<FSAudioRenderingProtocol>)createAudioUnitRendering;
++ (id<FSAudioRenderingProtocol>)createAudioQueueRendering;
+
+@end
+
+NS_ASSUME_NONNULL_END

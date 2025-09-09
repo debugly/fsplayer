@@ -61,7 +61,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 @implementation FSPlayer {
     IjkMediaPlayer *_mediaPlayer;
-    UIView<FSVideoRenderingProtocol>* _glView;
+    UIView<FSVideoRenderingProtocol>* _videoRendering;
     FSPlayerMessagePool *_msgPool;
 
     NSInteger _videoWidth;
@@ -122,7 +122,10 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     // [UIApplication sharedApplication].idleTimerDisabled = on;
 }
 
-- (void)_initWithContent:(NSURL *)aUrl options:(FSOptions *)options glView:(UIView <FSVideoRenderingProtocol> *)glView
+- (void)_initWithContent:(NSURL *)aUrl
+                 options:(FSOptions *)options
+           viewRendering:(UIView <FSVideoRenderingProtocol> * _Nullable)videoRendering
+          audioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
     // init media resource
     _contentURL = aUrl;
@@ -156,24 +159,37 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     ijkmp_set_ijkio_inject_opaque(_mediaPlayer, (__bridge_retained void *)weakHolder);
     ijkmp_set_option_int(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "start-on-prepared", _shouldAutoplay ? 1 : 0);
 
-    _view = _glView = glView;
-    ijkmp_ios_set_glview(_mediaPlayer, glView);
+    _view = _videoRendering = videoRendering;
+    if (videoRendering) {
+        ijkmp_ios_set_glview(_mediaPlayer, videoRendering);
+        __weak typeof(self) wself = self;
+        if ([videoRendering respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
+            [videoRendering registerRefreshCurrentPicObserver:^{
+                __strong typeof(wself) self = wself;
+                if (self->_mediaPlayer) {
+                    ijkmp_refresh_picture(self->_mediaPlayer);
+                }
+            }];
+        }
+        
+        // init hud
+        _hudCtrl = [FSSDLHudControl new];
+
+        self.shouldShowHudView = options.showHudView;
+    } else {
+        [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
+        [options setPlayerOptionIntValue:0 forKey:@"subtitle_mix"];
+    }
     
-    __weak typeof(self) wself = self;
-    if ([glView respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
-        [glView registerRefreshCurrentPicObserver:^{
-            __strong typeof(wself) self = wself;
-            if (self->_mediaPlayer) {
-                ijkmp_refresh_picture(self->_mediaPlayer);
-            }
-        }];
+    if (audioRendering) {
+        ijkmp_ios_set_audio_controller(_mediaPlayer, audioRendering);
     }
     
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
     //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_FORMAT,"safe", 0);
     //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_PLAYER,"protocol_whitelist","ffconcat,file,http,https");
     //httpproxy
-    const char *default_p_whitelist = "ijkio,ijkhttphook,concat,http,tcp,https,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp";
+    const char *default_p_whitelist = "concat,http,tcp,https,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp";
     if (options.protocolWhitelist.length > 0) {
         NSString *whitelist = [[NSString stringWithUTF8String:default_p_whitelist] stringByAppendingFormat:@",%@",options.protocolWhitelist];
         default_p_whitelist = [whitelist UTF8String];
@@ -181,10 +197,6 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_FORMAT, "protocol_whitelist", default_p_whitelist);
     
     _subtitlePreference = fs_subtitle_default_preference();
-    // init hud
-    _hudCtrl = [FSSDLHudControl new];
-
-    self.shouldShowHudView = options.showHudView;
     
     [options applyTo:_mediaPlayer];
     
@@ -227,7 +239,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
             }
         }
     #endif
-        [self _initWithContent:aUrl options:options glView:glView];
+        [self _initWithContent:aUrl options:options viewRendering:glView audioRendering:nil];
     }
     return self;
 }
@@ -242,7 +254,23 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     self = [super init];
     if (self) {
         // init video sink
-        [self _initWithContent:aUrl options:options glView:glView];
+        [self _initWithContent:aUrl options:options viewRendering:glView audioRendering:nil];
+    }
+    return self;
+}
+
+- (id)initWithMoreContent:(NSURL *)aUrl
+              withOptions:(FSOptions *)options
+        withViewRendering:(UIView<FSVideoRenderingProtocol> *)viewRendering
+       withAudioRendering:(nonnull id<FSAudioRenderingProtocol>)audioRendering
+{
+    if (aUrl == nil)
+        return nil;
+
+    self = [super init];
+    if (self) {
+        // init video and audio sink
+        [self _initWithContent:aUrl options:options viewRendering:viewRendering audioRendering:audioRendering];
     }
     return self;
 }
@@ -607,8 +635,8 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     [_hudTimer invalidate];
     _hudTimer = nil;
     //clean refresh observer
-    if ([_glView respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
-        [_glView registerRefreshCurrentPicObserver:NULL];
+    if (_videoRendering && [_videoRendering respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
+        [_videoRendering registerRefreshCurrentPicObserver:NULL];
     }
     [self performSelectorInBackground:@selector(shutdownWaitStop:) withObject:self];
 }
@@ -1008,6 +1036,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     if (_hudTimer != nil)
         return;
 
+    if (_hudCtrl == nil)
+        return;
+    
     if ([[NSThread currentThread] isMainThread]) {
         UIView *hudView = [_hudCtrl contentView];
         [hudView setHidden:NO];
@@ -1969,12 +2000,12 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 #if TARGET_OS_IOS
     if (_isDanmakuMediaAirPlay) {
-        _glView.scaleFactor = 1.0f;
+        _videoRendering.scaleFactor = 1.0f;
     } else {
         CGFloat scale = [[UIScreen mainScreen] scale];
         if (scale < 0.1f)
             scale = 1.0f;
-        _glView.scaleFactor = scale;
+        _videoRendering.scaleFactor = scale;
     }
 #endif
      [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsAirPlayVideoActiveDidChangeNotification object:nil userInfo:nil];

@@ -115,6 +115,14 @@ void SDL_AoutSetPlaybackVolume(SDL_Aout *aout, float volume)
     }
 }
 
+void SDL_AoutSetController(SDL_Aout *aout, void *controller)
+{
+    if (aout) {
+        if (aout->func_set_controller)
+            aout->func_set_controller(aout, controller);
+    }
+}
+
 int SDL_AoutGetAudioSessionId(SDL_Aout *aout)
 {
     if (aout) {

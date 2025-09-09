@@ -39,5 +39,6 @@
 #import <FSPlayer/FSKVOController.h>
 #import <FSPlayer/FSVideoRenderingProtocol.h>
 #import <FSPlayer/FSVideoRenderView.h>
-
+#import <FSPlayer/FSAudioRenderingProtocol.h>
+#import <FSPlayer/FSAudioRendering.h>
 #endif /* FSPlayerKit_h */

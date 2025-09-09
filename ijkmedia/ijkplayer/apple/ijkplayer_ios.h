@@ -24,8 +24,10 @@
 
 #include "ijkplayer/ijkplayer.h"
 #import "FSVideoRenderingProtocol.h"
+#import "FSAudioRenderingProtocol.h"
 
 // ref_count is 1 after open
 IjkMediaPlayer *ijkmp_ios_create(int (*msg_loop)(void*));
 
 void            ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView);
+void            ijkmp_ios_set_audio_controller(IjkMediaPlayer *mp, id<FSAudioRenderingProtocol> audioRendering);
