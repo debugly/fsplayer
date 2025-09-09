@@ -459,7 +459,7 @@ static void video_image_display2(FFPlayer *ffp)
         } else if (is->ffSub) {
             int r = ff_apply_subtitle_stream_change(ffp);
             //has stream
-            if (ffp->subtitle && ff_sub_get_current_stream(is->ffSub, NULL) >= 0) {
+            if (ffp->subtitle_mix && ff_sub_get_current_stream(is->ffSub, NULL) >= 0) {
                 int got = ff_sub_get_texture(is->ffSub, vp->pts, ffp->gpu, &sub_overlay);
                 //when got equal to -100 means the ass subtitle frame not ready,need retry!
                 if (!sub_overlay && (r > 0 || got == FF_SUB_PENDING) && is->pause_req) {
@@ -4215,7 +4215,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
 //    av_dict_set(&opts, "http_proxy", "http://127.0.0.1:8888", 0);
     av_dict_set_intptr(&opts, "ijkapplication", (intptr_t)ffp->app_ctx, 0);
     
-    if (ff_sub_init(&is->ffSub, opts) < 0) {
+    if (!ffp->subtitle_disable && ff_sub_init(&is->ffSub, opts) < 0) {
         av_dict_free(&opts);
         goto fail;
     }
@@ -5265,6 +5265,10 @@ static int ffp_set_internal_stream_selected(FFPlayer *ffp, int stream, int selec
             break;
         case AVMEDIA_TYPE_SUBTITLE:
         {
+            if (ffp->subtitle_disable) {
+                av_log(ffp, AV_LOG_ERROR, "subtitle is disabled,can't selecte stream: %d\n", stream);
+                return 0;
+            }
             int current = ff_sub_get_current_stream(is->ffSub, NULL);
             if (selected && stream == current) {
                 av_log(ffp, AV_LOG_INFO, "subtitle stream has already been selected: %d\n", stream);
@@ -5319,6 +5323,9 @@ int ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected)
     
     if (stream >= 0 && stream < ic->nb_streams) {
         return ffp_set_internal_stream_selected(ffp, stream, selected);
+    } else if (ffp->subtitle_disable) {
+        av_log(ffp, AV_LOG_ERROR, "subtitle is disabled, can't selecte stream: %d\n", stream);
+        return 0;
     } else {
         int r = ff_sub_record_need_select_stream(is->ffSub, selected ? stream : -1);
         if (r == 1) {
@@ -5574,6 +5581,10 @@ int ffp_add_active_external_subtitle(FFPlayer *ffp, const char *file_name)
     return 1;
 #endif
     
+    if (ffp->subtitle_disable) {
+        av_log(ffp, AV_LOG_ERROR, "subtitle is disabled,can't add stream: %s\n", file_name);
+        return -1;
+    }
     VideoState *is = ffp->is;
     
     int idx = -1;

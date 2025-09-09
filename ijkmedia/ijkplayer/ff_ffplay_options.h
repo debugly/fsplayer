@@ -60,10 +60,14 @@
 
 static const AVOption ffp_context_options[] = {
     // original options in ffplay.c
-    { "an",                             "disable audio",
+    { "an",                             "disable audio stream",
         OPTION_OFFSET(audio_disable),   OPTION_INT(0, 0, 1) },
-    { "vn",                             "disable video",
+    { "vn",                             "disable video stream",
         OPTION_OFFSET(video_disable),   OPTION_INT(0, 0, 1) },
+    { "sn",                             "disable subtitle stream",
+        OPTION_OFFSET(subtitle_disable),OPTION_INT(0, 0, 1) },
+    // FFP_MERGE: sn, ast, vst, sst
+    // TODO: ss
     { "nodisp",                         "disable graphical display",
         OPTION_OFFSET(display_disable), OPTION_INT(0, 0, 1) },
     { "volume",                         "set startup volume 0=min 100=max",
@@ -78,8 +82,9 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(framedrop),       OPTION_INT(0, -1, 120) },
     { "seek-at-start",                  "set offset of player should be seeked",
         OPTION_OFFSET(seek_at_start),       OPTION_INT64(0, 0, INT_MAX) },
-    { "subtitle",                       "decode subtitle stream",
-        OPTION_OFFSET(subtitle),        OPTION_INT(1, 0, 1) },
+    { "subtitle_mix",                   "mix subtitle images use gpu",
+        OPTION_OFFSET(subtitle_mix),        OPTION_INT(1, 0, 1) },
+    // FFP_MERGE: window_title
 #if CONFIG_AUDIO_AVFILTER
     { "af",                             "audio filters",
         OPTION_OFFSET(afilters),        OPTION_STR(NULL) },
