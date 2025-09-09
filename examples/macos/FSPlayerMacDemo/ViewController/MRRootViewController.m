@@ -1321,6 +1321,40 @@ static BOOL useExact = NO;
     }
 }
 
+- (IBAction)onToggleMultiRenderer:(NSButton *)sender
+{
+    static MultiRenderSample *multiRenderVC = nil;
+    
+    if (sender.state == NSControlStateValueOn) {
+        
+        if (multiRenderVC) {
+            return;
+        }
+        NSURL *playingUrl = self.playingUrl;
+        [self doStopPlay];
+        
+        multiRenderVC = [[MultiRenderSample alloc] initWithNibName:@"MultiRenderSample" bundle:nil];
+        
+        [self addChildViewController:multiRenderVC];
+        [self.playerContainer addSubview:multiRenderVC.view positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
+        multiRenderVC.view.frame = self.playerContainer.bounds;
+        multiRenderVC.view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        [multiRenderVC.view viewDidMoveToSuperview];
+
+        [multiRenderVC setContentURL:playingUrl];
+    } else {
+        if (!multiRenderVC) {
+            return;
+        }
+        NSURL *playingUrl = multiRenderVC.contentURL;
+        [multiRenderVC.view removeFromSuperview];
+        [multiRenderVC removeFromParentViewController];
+        multiRenderVC = nil;
+        
+        [self playURL:playingUrl];
+    }
+}
+
 - (BOOL)preferHW
 {
     return [MRCocoaBindingUserDefault use_hw];

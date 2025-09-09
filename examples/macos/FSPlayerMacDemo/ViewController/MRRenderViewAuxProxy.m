@@ -30,6 +30,11 @@
 
 @synthesize showHdrAnimation = _showHdrAnimation;
 
+- (void)dealloc
+{
+    
+}
+
 - (instancetype)initWithFrame:(NSRect)frameRect
 {
     self = [super initWithFrame:frameRect];

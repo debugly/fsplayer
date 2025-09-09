@@ -20,12 +20,15 @@
 
 - (void)dealloc
 {
-    [self.player stop];
+    [self.player shutdown];
 }
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    // Do view setup here.
+- (void)setContentURL:(NSURL *)contentURL
+{
+    if (_contentURL != contentURL) {
+        _contentURL = contentURL;
+        [self playURL:contentURL];
+    }
 }
 
 - (void)playURL:(NSURL *)url
@@ -72,14 +75,14 @@
         [render2 setBackgroundColor:20 g:100 b:20];
     }
     
-    MRRenderViewAuxProxy *aux = [[MRRenderViewAuxProxy alloc] init];
+    MRRenderViewAuxProxy *videoAux = [[MRRenderViewAuxProxy alloc] init];
     
-    [aux addRenderView:render1];
-    [aux addRenderView:render2];
+    [videoAux addRenderView:render1];
+    [videoAux addRenderView:render2];
     
-    self.player = [[FSPlayer alloc] initWithMoreContent:url withOptions:options withGLView:aux];
+    self.player = [[FSPlayer alloc] initWithMoreContent:url withOptions:options withViewRendering:videoAux withAudioRendering:[FSAudioRendering createAudioQueueRendering]];
     
-    aux.scalingMode = FSScalingModeAspectFill;
+    videoAux.scalingMode = FSScalingModeAspectFill;
     self.player.shouldAutoplay = YES;
     [self.player prepareToPlay];
 }

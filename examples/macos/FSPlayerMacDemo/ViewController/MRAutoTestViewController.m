@@ -1626,7 +1626,7 @@ static BOOL hdrAnimationShown = 0;
     window.movableByWindowBackground = YES;
     [window makeKeyAndOrderFront:nil];
     window.releasedWhenClosed = NO;
-    [multiRenderVC playURL:playingUrl];
+    [multiRenderVC setContentURL:playingUrl];
 }
 
 - (IBAction)openNewInstance:(id)sender

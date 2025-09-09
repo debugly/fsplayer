@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="23504" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="23727" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23504"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23727"/>
         <capability name="Image references" minToolsVersion="12.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -61,7 +61,7 @@
                                                         <binding destination="OCk-Q5-1dK" name="value" keyPath="values.volume" id="1Nd-cY-qY3"/>
                                                     </connections>
                                                 </slider>
-                                                <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="F43-uk-XPX" userLabel="seek cost">
+                                                <textField focusRingType="none" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="F43-uk-XPX" userLabel="seek cost">
                                                     <rect key="frame" x="574" y="22" width="33" height="16"/>
                                                     <textFieldCell key="cell" lineBreakMode="clipping" title="seek" id="dyo-UA-0rK">
                                                         <font key="font" usesAppearanceFont="YES"/>
@@ -114,6 +114,17 @@
                                                 </button>
                                             </middleViews>
                                             <endViews>
+                                                <button verticalHuggingPriority="750" id="woS-dQ-mc9">
+                                                    <rect key="frame" x="1314" y="22" width="15" height="15"/>
+                                                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                    <buttonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" image="NSIconViewTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="a8Y-O1-xVJ">
+                                                        <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
+                                                        <font key="font" metaFont="system"/>
+                                                    </buttonCell>
+                                                    <connections>
+                                                        <action selector="onToggleMultiRenderer:" target="-2" id="O2O-TW-U5e"/>
+                                                    </connections>
+                                                </button>
                                                 <button verticalHuggingPriority="750" id="bWo-PE-hcl">
                                                     <rect key="frame" x="1364" y="22" width="15" height="15"/>
                                                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
@@ -156,8 +167,10 @@
                                                 <integer value="1000"/>
                                                 <integer value="1000"/>
                                                 <integer value="1000"/>
+                                                <integer value="1000"/>
                                             </visibilityPriorities>
                                             <customSpacing>
+                                                <real value="3.4028234663852886e+38"/>
                                                 <real value="3.4028234663852886e+38"/>
                                                 <real value="3.4028234663852886e+38"/>
                                                 <real value="3.4028234663852886e+38"/>
@@ -172,7 +185,7 @@
                                         <stackView distribution="fillProportionally" orientation="horizontal" alignment="centerY" spacing="5" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vbZ-O1-33f">
                                             <rect key="frame" x="0.0" y="0.0" width="1507" height="20"/>
                                             <subviews>
-                                                <textField horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lHe-K3-Qqv">
+                                                <textField focusRingType="none" horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lHe-K3-Qqv">
                                                     <rect key="frame" x="8" y="2" width="44" height="16"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" constant="40" id="eVi-UB-yod"/>
@@ -189,7 +202,7 @@
                                                         <constraint firstAttribute="height" constant="20" id="DmD-lr-GN1"/>
                                                     </constraints>
                                                 </customView>
-                                                <textField horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Lzk-4D-4ek">
+                                                <textField focusRingType="none" horizontalHuggingPriority="750" verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Lzk-4D-4ek">
                                                     <rect key="frame" x="1455" y="2" width="44" height="16"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" constant="40" id="moD-6P-cmd"/>
@@ -274,6 +287,7 @@
         <userDefaultsController representsSharedInstance="YES" id="OCk-Q5-1dK"/>
     </objects>
     <resources>
+        <image name="NSIconViewTemplate" width="19" height="18"/>
         <image name="info" width="24" height="24"/>
         <image name="info_hover" width="24" height="24"/>
         <image name="menu" width="24" height="24"/>
