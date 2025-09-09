@@ -137,10 +137,12 @@ fail:
 
 void ff_sub_desctoy_objs(FFSubtitle *sub)
 {
-    SDL_TextureOverlay_Release(&sub->assTexture);
-    SDL_TextureOverlay_Release(&sub->preTexture);
-    SDL_FBOOverlayFreeP(&sub->fbo);
-    av_dict_free(&sub->opts);
+    if (sub) {
+        SDL_TextureOverlay_Release(&sub->assTexture);
+        SDL_TextureOverlay_Release(&sub->preTexture);
+        SDL_FBOOverlayFreeP(&sub->fbo);
+        av_dict_free(&sub->opts);
+    }
 }
 
 void ff_sub_abort(FFSubtitle *sub)
@@ -194,6 +196,9 @@ int ff_sub_destroy(FFSubtitle **subp)
 
 int ff_sub_drop_old_frames(FFSubtitle *sub)
 {
+    if (!sub) {
+        return 0;
+    }
     int count = 0;
     int serial = sub->packetq.serial;
     while (frame_queue_nb_remaining(&sub->frameq) > 0) {
@@ -374,6 +379,9 @@ int ff_sub_is_need_update_stream(FFSubtitle *sub)
 //when close current stream "st_idx" is -1
 int ff_sub_record_need_select_stream(FFSubtitle *sub, int st_idx)
 {
+    if (!sub) {
+        return 0;
+    }
     int r;
     SDL_LockMutex(sub->mutex);
     if (sub->last_stream == st_idx) {
@@ -595,6 +603,9 @@ AVCodecContext * ff_sub_get_avctx(FFSubtitle *sub)
 
 int ff_sub_get_current_stream(FFSubtitle *sub, int *pending)
 {
+    if (!sub) {
+        return -1;
+    }
     int r;
     SDL_LockMutex(sub->mutex);
     r = sub->last_stream;
