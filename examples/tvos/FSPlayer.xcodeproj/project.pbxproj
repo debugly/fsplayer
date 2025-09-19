@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -98,6 +98,7 @@
 		20A5BF82B5A481642D73E2D0 /* ijksdl_audio.h in Headers */ = {isa = PBXBuildFile; fileRef = 02935DD0940C766E7AF696E8 /* ijksdl_audio.h */; };
 		20D84A13D826A3616384DFE3 /* ffpipeline_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = 60D43DDAB47F56FB878E62EE /* ffpipeline_ios.h */; };
 		2144BFE392F7375798AABE14 /* FSOptions.h in Headers */ = {isa = PBXBuildFile; fileRef = 2DB3AC79E670B321F3AB6565 /* FSOptions.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		217EC23B18E1350F354AC9AB /* FSAudioRendering.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A1C3C55F52FEA956C47FFEB /* FSAudioRendering.m */; };
 		218F91DECB2FED3BE76ED9AE /* ijksdl_vout_overlay_ffmpeg_hw.m in Sources */ = {isa = PBXBuildFile; fileRef = 87B548C11EA6F63A38DA0513 /* ijksdl_vout_overlay_ffmpeg_hw.m */; };
 		21CA6FDFE34C42624EE79106 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 34D6ED99C78974BFB4A21973 /* libbz2.tbd */; };
 		21DF5E2AB9BB8E23B9DA1AC5 /* ijksdl_gpu_metal.h in Headers */ = {isa = PBXBuildFile; fileRef = A36233B539DAA0286D13C544 /* ijksdl_gpu_metal.h */; };
@@ -106,6 +107,7 @@
 		22BDBB8209EFE9438795BB7B /* ijksdl_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = FC4F47DC3C8BDD75C6A9F31D /* ijksdl_ios.h */; };
 		22C742FF8CE487E1BF12A9D5 /* libxml2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F467F61959DAEB52E2F3E5EA /* libxml2.a */; };
 		243A4FBCA41B8B132818CA69 /* ijkthreadpool.h in Headers */ = {isa = PBXBuildFile; fileRef = 50B264094733B2E8AA2A09AA /* ijkthreadpool.h */; };
+		2463F77C875DEC179BB886BC /* FSAudioRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A474C08810F661842B79D87A /* FSAudioRendering.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		246EC9BAA3BE8F21998C9B21 /* ijksdl_stdinc.c in Sources */ = {isa = PBXBuildFile; fileRef = EDE74BCE193BC0CDFBA0AA11 /* ijksdl_stdinc.c */; };
 		248F693EF4F1BE028A5FF84E /* FSSDLAudioQueueController.m in Sources */ = {isa = PBXBuildFile; fileRef = C3596CA5741F35F23BAAE15C /* FSSDLAudioQueueController.m */; };
 		2589FEE7E92D2F4BF0B6F59A /* ijksdl_class.h in Headers */ = {isa = PBXBuildFile; fileRef = 72B1FE3CFF913D2BC228A2AE /* ijksdl_class.h */; };
@@ -298,9 +300,11 @@
 		6B1DC043F27A5211B3E4785F /* FSPlayerKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 370F8C828DAF44BFEECDA834 /* FSPlayerKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		6B2D9954D9841B23E8080E16 /* ff_muxer.c in Sources */ = {isa = PBXBuildFile; fileRef = B3ACF642D3C588C555ABBE14 /* ff_muxer.c */; };
 		6B3A945AA42CF8A31AE75A1B /* FSPlayerKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 370F8C828DAF44BFEECDA834 /* FSPlayerKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		6BBCCABDCE94256EC1A90C26 /* FSAudioRendering.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A1C3C55F52FEA956C47FFEB /* FSAudioRendering.m */; };
 		6C6FF8952D7B9C35FFF6A180 /* ff_fferror.h in Headers */ = {isa = PBXBuildFile; fileRef = 0A38D00D06574F904AB72AAA /* ff_fferror.h */; };
 		6CEBF14483821006FA1B02DF /* ijkioprotocol.c in Sources */ = {isa = PBXBuildFile; fileRef = 1531AEFFABA9D6842E493365 /* ijkioprotocol.c */; };
 		6D5E84F2E8CB4B74030E9B4B /* ff_packet_list.h in Headers */ = {isa = PBXBuildFile; fileRef = E95CA5D57C612DD221BFDB2D /* ff_packet_list.h */; };
+		6D6F53B051094AB911377C11 /* FSAudioRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A474C08810F661842B79D87A /* FSAudioRendering.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		6DA17AE7E7EA5B2D3EC870FE /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1A7C06A9D64974F0B3FB821 /* libcrypto.a */; };
 		6DCBED94AE93EE01FD1F77CC /* ff_sub_component.h in Headers */ = {isa = PBXBuildFile; fileRef = 1FA530D40BCAE1E13EC094AB /* ff_sub_component.h */; };
 		6DD710A9F65DC0FE5A98A5D6 /* ijksdl_extra_log.h in Headers */ = {isa = PBXBuildFile; fileRef = A3C7BBA8B36DFC5A057EF869 /* ijksdl_extra_log.h */; };
@@ -315,6 +319,8 @@
 		7206EDEB897AC9EB35A1CC35 /* FSVideoRenderView.m in Sources */ = {isa = PBXBuildFile; fileRef = FF431D147BE42B7CACCC5F28 /* FSVideoRenderView.m */; };
 		729E6D82BFD3BDC43AB86AC9 /* libsmb2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DF4B82D3481857016666347 /* libsmb2.a */; };
 		72D603177E657A1C63F49009 /* ff_subtitle_preference.h in Headers */ = {isa = PBXBuildFile; fileRef = DA0B611FE2E875BF9CB4477B /* ff_subtitle_preference.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		734DEBBA7AB0B8B8E2AD6F1B /* FSAudioRendering.h in Headers */ = {isa = PBXBuildFile; fileRef = A474C08810F661842B79D87A /* FSAudioRendering.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		738912E466A88DC038BEA600 /* FSAudioRenderingProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 6AA36BDE784DFD28C7955761 /* FSAudioRenderingProtocol.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		73AC41202CD74465F92BEAAD /* ff_ffplay.h in Headers */ = {isa = PBXBuildFile; fileRef = CEA1746B39702033219F7993 /* ff_ffplay.h */; };
 		73E0EC65053C6942FACAAFCD /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 078B8CC6399CC718CCF44343 /* UIKit.framework */; };
 		742A2A3BF4948F3C6E33BFA2 /* FSMetalView.m in Sources */ = {isa = PBXBuildFile; fileRef = 255AAD990C0339CAF72423CD /* FSMetalView.m */; };
@@ -332,6 +338,7 @@
 		783E5EB990BF5B4C9372A822 /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = BCD06D3753B19EEE191DD24A /* cJSON.c */; };
 		7860981379F0898927258D59 /* FSMetalPipelineMeta.m in Sources */ = {isa = PBXBuildFile; fileRef = 89B51B8E3BA318A6704B8C8D /* FSMetalPipelineMeta.m */; };
 		7866D344D90423B431615304 /* ijklas.c in Sources */ = {isa = PBXBuildFile; fileRef = CE8097515198F64EC935EB4E /* ijklas.c */; };
+		787728A419F02840F7BC0801 /* FSAudioRendering.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A1C3C55F52FEA956C47FFEB /* FSAudioRendering.m */; };
 		78B0A7DC5E471E34DDA55059 /* ff_version.h in Headers */ = {isa = PBXBuildFile; fileRef = 7FA55B40D46A3A97218D22FB /* ff_version.h */; };
 		799368B58F976F9157D73D07 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4157E6D8F6649FB619F2E6B3 /* CoreVideo.framework */; };
 		7A8119DF65F5998A96586332 /* ijksdl_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = FC4F47DC3C8BDD75C6A9F31D /* ijksdl_ios.h */; };
@@ -366,6 +373,7 @@
 		848DAD4CA588556EC9F3BEC5 /* ijkplayer_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = D0462C59F3814D912DCAEEE5 /* ijkplayer_ios.h */; };
 		84F331A88632B549F6F3F220 /* ijkioapplication.h in Headers */ = {isa = PBXBuildFile; fileRef = 37B9471C3FBD076B78C3CF2F /* ijkioapplication.h */; };
 		84FBB0DC4E7D1E5D252F79CC /* ijksdl_endian.h in Headers */ = {isa = PBXBuildFile; fileRef = 6A5CA6878E1EE1A562F2E55A /* ijksdl_endian.h */; };
+		85C2D96510BC7087CD42D9D9 /* FSAudioRenderingProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 6AA36BDE784DFD28C7955761 /* FSAudioRenderingProtocol.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		85CA42B2EE717F833BC9E87C /* FSNotificationManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 8633F9E8779260F1044DE0CB /* FSNotificationManager.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		867C6AC9C425674AAEAC6941 /* FSMediaModule.h in Headers */ = {isa = PBXBuildFile; fileRef = E20C07924AEF84D65FF7F288 /* FSMediaModule.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		86EB043CF828905C696FEACF /* ff_sub_component.c in Sources */ = {isa = PBXBuildFile; fileRef = BECBF71453C5463DD2CF08E4 /* ff_sub_component.c */; };
@@ -480,6 +488,7 @@
 		B54C92DF70F71BCA8BC30CA2 /* FSMathUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = DEFFE5A3E55850588915525F /* FSMathUtilities.m */; };
 		B5DCB5DCA52682A26E46CDA3 /* FSMetalRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = 4876B72A99B044517DDEA373 /* FSMetalRenderer.m */; };
 		B7BAA8981701DCA841EEB77B /* ijklivehook.c in Sources */ = {isa = PBXBuildFile; fileRef = D82AC892D013E94F64831EDA /* ijklivehook.c */; };
+		B811D21FC7B9C134B163F090 /* FSAudioRenderingProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 6AA36BDE784DFD28C7955761 /* FSAudioRenderingProtocol.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B81FEBF4D6CFA3042A71A2A6 /* ff_ass_renderer.c in Sources */ = {isa = PBXBuildFile; fileRef = F402E07A72F79A76FD3B46D9 /* ff_ass_renderer.c */; };
 		B8787CE4279405197B40D40D /* ff_frame_queue.c in Sources */ = {isa = PBXBuildFile; fileRef = 55385ED9775DA74068B7E6E7 /* ff_frame_queue.c */; };
 		B928FC09419A26F6ABDB560E /* ijksdl_error.h in Headers */ = {isa = PBXBuildFile; fileRef = FCB0EEB688F1BC2A2E80E8AD /* ijksdl_error.h */; };
@@ -729,6 +738,7 @@
 		391A2916925A4B867CE2E909 /* ijksdl_vout.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijksdl_vout.c; sourceTree = "<group>"; };
 		39B6F7E5084E1F53C1D48E05 /* allformats.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = allformats.c; sourceTree = "<group>"; };
 		39C8147D9982FF46FFA97AB4 /* ijksdl_gpu_opengl_shader_compiler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu_opengl_shader_compiler.h; sourceTree = "<group>"; };
+		3A1C3C55F52FEA956C47FFEB /* FSAudioRendering.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSAudioRendering.m; sourceTree = "<group>"; };
 		3D461F9AA9B923AC5C2E2A83 /* FSKVOController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSKVOController.m; sourceTree = "<group>"; };
 		3F90BD1B0EDAF4FA87760336 /* ff_recorder.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ff_recorder.c; sourceTree = "<group>"; };
 		405F019C5E9C2AB608C57992 /* ijksdl_gpu_opengl_fbo_macos.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ijksdl_gpu_opengl_fbo_macos.m; sourceTree = "<group>"; };
@@ -768,6 +778,7 @@
 		68AC70B1B3E77CBFA7AB3CB8 /* ijkio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkio.c; sourceTree = "<group>"; };
 		690C0B94926343DBDCCA4A10 /* mr_stream_peek.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mr_stream_peek.h; sourceTree = "<group>"; };
 		6A5CA6878E1EE1A562F2E55A /* ijksdl_endian.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_endian.h; sourceTree = "<group>"; };
+		6AA36BDE784DFD28C7955761 /* FSAudioRenderingProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAudioRenderingProtocol.h; sourceTree = "<group>"; };
 		6AFBB78F35CD8728EC4F1E3A /* common.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = common.c; sourceTree = "<group>"; };
 		6BE0E8225C6333360432E371 /* ijk_vout_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijk_vout_common.h; sourceTree = "<group>"; };
 		6FEB3B8BBBEBB11345BE141D /* FSSDLAudioKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSSDLAudioKit.m; sourceTree = "<group>"; };
@@ -827,6 +838,7 @@
 		A2CB0793025718B7A7979C8B /* ijksdl_aout_internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_aout_internal.h; sourceTree = "<group>"; };
 		A36233B539DAA0286D13C544 /* ijksdl_gpu_metal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu_metal.h; sourceTree = "<group>"; };
 		A3C7BBA8B36DFC5A057EF869 /* ijksdl_extra_log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_extra_log.h; sourceTree = "<group>"; };
+		A474C08810F661842B79D87A /* FSAudioRendering.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAudioRendering.h; sourceTree = "<group>"; };
 		A4B727DAD4EC33A14EC24423 /* ijksdl_gpu_opengl_shader_compiler.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ijksdl_gpu_opengl_shader_compiler.m; sourceTree = "<group>"; };
 		A659279C79F418778FCD503C /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		A7C5DEC8FFC5C9C3B2D5D0B9 /* ff_ffpipeline.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff_ffpipeline.h; sourceTree = "<group>"; };
@@ -1293,6 +1305,9 @@
 			children = (
 				849C7C45A6C618A599F9C3F0 /* FSAudioKit.h */,
 				66DC29B921D68983D77952F6 /* FSAudioKit.m */,
+				A474C08810F661842B79D87A /* FSAudioRendering.h */,
+				3A1C3C55F52FEA956C47FFEB /* FSAudioRendering.m */,
+				6AA36BDE784DFD28C7955761 /* FSAudioRenderingProtocol.h */,
 				5C9AF853543A4F0F87B4FD52 /* FSKVOController.h */,
 				3D461F9AA9B923AC5C2E2A83 /* FSKVOController.m */,
 				E20C07924AEF84D65FF7F288 /* FSMediaModule.h */,
@@ -1457,7 +1472,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_5625946A-2B40-47B5-AF4C-89D4FA3258D2" /* wrapper */ = {
+		"TEMP_F3E3D3BE-7134-45D2-8025-9238954956C7" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1472,6 +1487,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F49BA28BD0BB14B441F0CD27 /* FSAudioKit.h in Headers */,
+				6D6F53B051094AB911377C11 /* FSAudioRendering.h in Headers */,
+				738912E466A88DC038BEA600 /* FSAudioRenderingProtocol.h in Headers */,
 				9F149CBB749679553B0182B7 /* FSKVOController.h in Headers */,
 				57982A259B89E3E3D0BB3795 /* FSMathUtilities.h in Headers */,
 				2C0CC0F88241D503C7691BF4 /* FSMediaModule.h in Headers */,
@@ -1582,6 +1599,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				BC945E06442E0F7DF7A6B280 /* FSAudioKit.h in Headers */,
+				2463F77C875DEC179BB886BC /* FSAudioRendering.h in Headers */,
+				85C2D96510BC7087CD42D9D9 /* FSAudioRenderingProtocol.h in Headers */,
 				04E11D19991F1F18FF0AAB41 /* FSKVOController.h in Headers */,
 				E403AED50F33622CA5CF659B /* FSMathUtilities.h in Headers */,
 				867C6AC9C425674AAEAC6941 /* FSMediaModule.h in Headers */,
@@ -1691,6 +1710,8 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				734DEBBA7AB0B8B8E2AD6F1B /* FSAudioRendering.h in Headers */,
+				B811D21FC7B9C134B163F090 /* FSAudioRenderingProtocol.h in Headers */,
 				E960FB4F93F5B8A3A3C4BDA5 /* FSHudRowView.h in Headers */,
 				A51B8A4D35FCB4133CC9B55E /* FSKVOController.h in Headers */,
 				6F5BAD7160F527A51194537B /* FSMathUtilities.h in Headers */,
@@ -1823,6 +1844,8 @@
 			dependencies = (
 			);
 			name = "FSPlayer-tvOS";
+			packageProductDependencies = (
+			);
 			productName = "FSPlayer-tvOS";
 			productReference = 46E445F92BD65C0F4498DCC8 /* FSPlayer-tvOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1841,6 +1864,8 @@
 			dependencies = (
 			);
 			name = "FSPlayer-iOS";
+			packageProductDependencies = (
+			);
 			productName = "FSPlayer-iOS";
 			productReference = 08F8FEAD3A0AE161583FC49F /* FSPlayer-iOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1859,6 +1884,8 @@
 			dependencies = (
 			);
 			name = "FSPlayer-macOS";
+			packageProductDependencies = (
+			);
 			productName = "FSPlayer-macOS";
 			productReference = 4CE44165D565024414A46AA8 /* FSPlayer-macOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1871,8 +1898,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 51D464E92E5A7EF8EE2C2C4C /* Build configuration list for PBXProject "FSPlayer" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -1883,6 +1908,8 @@
 				en,
 			);
 			mainGroup = 776463D9629244132E155C9E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -1956,6 +1983,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EAA97FE071BC3F688E0DBE3F /* FSAudioKit.m in Sources */,
+				6BBCCABDCE94256EC1A90C26 /* FSAudioRendering.m in Sources */,
 				EF9979B6B97C61B1B1640784 /* FSKVOController.m in Sources */,
 				B54C92DF70F71BCA8BC30CA2 /* FSMathUtilities.m in Sources */,
 				5456E01DE0A8B4AD7B8D79EA /* FSMediaModule.m in Sources */,
@@ -2046,6 +2074,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				787728A419F02840F7BC0801 /* FSAudioRendering.m in Sources */,
 				88D91DF860AC7109BFA20FD6 /* FSHudRowView.m in Sources */,
 				E01DB2866AA4F0B15A510B35 /* FSKVOController.m in Sources */,
 				40F1503F3CFD7E9DCBF7FAF3 /* FSMathUtilities.m in Sources */,
@@ -2150,6 +2179,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BDF4B784F55D6BDD2C4234AB /* FSAudioKit.m in Sources */,
+				217EC23B18E1350F354AC9AB /* FSAudioRendering.m in Sources */,
 				D93353AD0D74D4B3DD32C5AA /* FSKVOController.m in Sources */,
 				E1C55D0783FCEFAC49BD2E23 /* FSMathUtilities.m in Sources */,
 				AE6DDE29F079A74652E4C77C /* FSMediaModule.m in Sources */,
