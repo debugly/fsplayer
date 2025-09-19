@@ -1,3 +1,14 @@
+tag 1.0.3
+--------------------------------
+
+- rename subtitle option to subtitle_mix
+- support custom audio rendering
+- support get video-master diff
+- add libwebp decoder
+- add webp demuxer for animated webp images
+- fix removeFromSuperview triggered reshape crash when use OpenGL backend
+- fix the display of PNG images with transparency channels
+
 tag 1.0.2
 --------------------------------
 
