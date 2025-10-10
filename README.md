@@ -56,10 +56,12 @@
 - [x] 双声道音频可强制指定声道播放
 - [x] 获取当前显示的视频帧
 - [x] 录制视频
-- [x] AV1 硬解
+- [x] 支持播放webp动画
+- [x] 支持自定义音频渲染器
 
-正在开发的功能
+调研中
 
+- [ ] AV1 硬解
 - [ ] 直播回放
 - [ ] 音视频可变速变调
 - [ ] 支持透明视频
@@ -73,10 +75,10 @@
 - macOS Sequoia(15.5)
 - Xcode Version 16.4 (16F6)
 
-| 最低支持平台      | 架构                                     |
-| ----------- | -------------------------------------- |
+| 最低支持平台  | 架构                                     |
+| ----------- | --------------------------------------- |
 | iOS 11.0    | arm64、arm64_simulator、x86_64_simulator |
-| macOS 10.11 | arm64、x86_64                           |
+| macOS 10.11 | arm64、x86_64                            |
 | tvOS 12.0   | arm64、arm64_simulator、x86_64_simulator |
 
 ## 更新记录
@@ -114,18 +116,18 @@ self.player.shouldAutoplay = YES;
 
 更详细的使用[说明文档](https://fsplayer.debugly.cn/manuals/getting-started.html)
 
-## 编译
+## 编译步骤
 
-源码完全开放，可以自己编译：
+源码完全开放，可以自己编译 Framework：
 
 ```bash
 # Build iOS Framework
 ./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
 ./examples/ios/build-framework.sh
-#Build macOS Framework
+# Build macOS Framework
 ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
 ./examples/macos/build-framework.sh
-#Build tvOS Framework
+# Build tvOS Framework
 ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
 ./examples/tvos/build-framework.sh
 ```
