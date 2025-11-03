@@ -25,6 +25,7 @@
 #import <FSPlayer/FSMediaPlayback.h>
 #import <FSPlayer/FSMonitor.h>
 #import <FSPlayer/FSOptions.h>
+#import <FSPlayer/FSVideoRenderView.h>
 #import <FSPlayer/FSVideoRenderingProtocol.h>
 #import <FSPlayer/FSAudioRenderingProtocol.h>
 
