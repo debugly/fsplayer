@@ -150,7 +150,7 @@ targets:
       METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework"
       ALWAYS_SEARCH_USER_PATHS: YES
       ENABLE_BITCODE: NO
-      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"dvdnav" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
+      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"dvdnav" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray" -l"sharpyuv" -l"webp" -l"webpdecoder" -l"webpdemux"
       HEADER_SEARCH_PATHS:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../ijkmedia"
@@ -180,6 +180,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/uavs3d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/unibreak/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/xml2/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/webp/lib"
       LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/ass/lib"
@@ -197,6 +198,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/uavs3d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/webp/lib"
     dependencies: 
       - sdk: UIKit.framework
       - sdk: OpenGLES.framework
@@ -254,7 +256,7 @@ targets:
       METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework"
       ALWAYS_SEARCH_USER_PATHS: YES
       ENABLE_BITCODE: NO
-      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"dvdnav" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
+      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"dvdnav" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray" -l"sharpyuv" -l"webp" -l"webpdecoder" -l"webpdemux"
       HEADER_SEARCH_PATHS:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../ijkmedia"
@@ -284,6 +286,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/uavs3d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/unibreak/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/xml2/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/webp/lib/"
       LIBRARY_SEARCH_PATHS[sdk=appletvsimulator*]:
         - "$(inherited)"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/ass/lib"
@@ -301,6 +304,7 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/uavs3d/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib"
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib"
+        - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/webp/lib"
     dependencies:
       - sdk: UIKit.framework
       - sdk: OpenGLES.framework

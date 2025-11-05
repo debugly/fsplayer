@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -1472,7 +1472,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_6FC65F3D-2E78-40A0-812C-5577CF28BDF4" /* wrapper */ = {
+		"TEMP_C75D63A2-CB79-44CF-874B-1F3D44F70931" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1844,8 +1844,6 @@
 			dependencies = (
 			);
 			name = "FSPlayer-tvOS";
-			packageProductDependencies = (
-			);
 			productName = "FSPlayer-tvOS";
 			productReference = 46E445F92BD65C0F4498DCC8 /* FSPlayer-tvOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1864,8 +1862,6 @@
 			dependencies = (
 			);
 			name = "FSPlayer-iOS";
-			packageProductDependencies = (
-			);
 			productName = "FSPlayer-iOS";
 			productReference = 08F8FEAD3A0AE161583FC49F /* FSPlayer-iOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1884,8 +1880,6 @@
 			dependencies = (
 			);
 			name = "FSPlayer-macOS";
-			packageProductDependencies = (
-			);
 			productName = "FSPlayer-macOS";
 			productReference = 4CE44165D565024414A46AA8 /* FSPlayer-macOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1898,6 +1892,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 51D464E92E5A7EF8EE2C2C4C /* Build configuration list for PBXProject "FSPlayer" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -1908,8 +1904,6 @@
 				en,
 			);
 			mainGroup = 776463D9629244132E155C9E;
-			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -2376,6 +2370,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/webp/lib",
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
@@ -2394,11 +2389,12 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/webp/lib",
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
@@ -2519,6 +2515,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal/webp/lib",
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
@@ -2537,11 +2534,12 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/webp/lib",
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = iphoneos;
@@ -2659,6 +2657,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/webp/lib/",
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=appletvsimulator*]" = (
 					"$(inherited)",
@@ -2677,11 +2676,12 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/webp/lib",
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
@@ -2742,6 +2742,7 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal/webp/lib/",
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=appletvsimulator*]" = (
 					"$(inherited)",
@@ -2760,11 +2761,12 @@
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/uavs3d/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/unibreak/lib",
 					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/xml2/lib",
+					"${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/webp/lib",
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
 				MTL_LANGUAGE_REVISION = Metal20;
-				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\"";
+				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
