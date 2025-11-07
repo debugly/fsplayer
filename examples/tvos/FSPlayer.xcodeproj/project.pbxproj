@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -1472,7 +1472,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_3DE13026-AAE6-4180-94C8-81EC2FBADF21" /* wrapper */ = {
+		"TEMP_507F956B-4892-4CAC-BA2A-9E18B36201A4" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1844,6 +1844,8 @@
 			dependencies = (
 			);
 			name = "FSPlayer-tvOS";
+			packageProductDependencies = (
+			);
 			productName = "FSPlayer-tvOS";
 			productReference = 46E445F92BD65C0F4498DCC8 /* FSPlayer-tvOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1862,6 +1864,8 @@
 			dependencies = (
 			);
 			name = "FSPlayer-iOS";
+			packageProductDependencies = (
+			);
 			productName = "FSPlayer-iOS";
 			productReference = 08F8FEAD3A0AE161583FC49F /* FSPlayer-iOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1880,6 +1884,8 @@
 			dependencies = (
 			);
 			name = "FSPlayer-macOS";
+			packageProductDependencies = (
+			);
 			productName = "FSPlayer-macOS";
 			productReference = 4CE44165D565024414A46AA8 /* FSPlayer-macOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1892,8 +1898,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 51D464E92E5A7EF8EE2C2C4C /* Build configuration list for PBXProject "FSPlayer" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -1904,6 +1908,8 @@
 				en,
 			);
 			mainGroup = 776463D9629244132E155C9E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -2310,11 +2316,15 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = (
+					"${PROJECT_DIR}/../../ijkmedia/wrapper/apple",
+				);
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -2393,6 +2403,7 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
@@ -2403,6 +2414,9 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_INCLUDE_PATHS = (
+					"${PROJECT_DIR}/../../ijkmedia/wrapper/apple",
+				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -2455,11 +2469,15 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = (
+					"${PROJECT_DIR}/../../ijkmedia/wrapper/apple",
+				);
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
@@ -2538,6 +2556,7 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
@@ -2548,6 +2567,9 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_INCLUDE_PATHS = (
+					"${PROJECT_DIR}/../../ijkmedia/wrapper/apple",
+				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -2680,12 +2702,16 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
 				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = (
+					"${PROJECT_DIR}/../../ijkmedia/wrapper/apple",
+				);
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 12.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -2765,12 +2791,16 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
 				PRODUCT_NAME = FSPlayer;
 				SDKROOT = appletvos;
 				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = (
+					"${PROJECT_DIR}/../../ijkmedia/wrapper/apple",
+				);
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 12.0;
 				VERSIONING_SYSTEM = "apple-generic";
