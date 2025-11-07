@@ -34,6 +34,10 @@ targets:
     settings:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
+      DEFINES_MODULE: YES
+      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-xcgen.modulemap"
+      SWIFT_INCLUDE_PATHS:
+        - "${PROJECT_DIR}/../../ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES
       GCC_PREPROCESSOR_DEFINITIONS: "$(inherited)"
       MTL_LANGUAGE_REVISION: Metal20
@@ -144,6 +148,10 @@ targets:
     settings:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
+      DEFINES_MODULE: YES
+      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-xcgen.modulemap"
+      SWIFT_INCLUDE_PATHS:
+        - "${PROJECT_DIR}/../../ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES
       GCC_PREPROCESSOR_DEFINITIONS: "$(inherited)"
       MTL_LANGUAGE_REVISION: Metal20
@@ -250,6 +258,10 @@ targets:
     settings:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
+      DEFINES_MODULE: YES
+      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-xcgen.modulemap"
+      SWIFT_INCLUDE_PATHS:
+        - "${PROJECT_DIR}/../../ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES
       GCC_PREPROCESSOR_DEFINITIONS: "$(inherited)"
       MTL_LANGUAGE_REVISION: Metal20
