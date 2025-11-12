@@ -35,7 +35,7 @@ targets:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
       DEFINES_MODULE: YES
-      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-xcgen.modulemap"
+      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-macos.modulemap"
       SWIFT_INCLUDE_PATHS:
         - "${PROJECT_DIR}/../../ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES
@@ -149,7 +149,7 @@ targets:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
       DEFINES_MODULE: YES
-      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-xcgen.modulemap"
+      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-ios.modulemap"
       SWIFT_INCLUDE_PATHS:
         - "${PROJECT_DIR}/../../ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES
@@ -259,7 +259,7 @@ targets:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
       DEFINES_MODULE: YES
-      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-xcgen.modulemap"
+      MODULEMAP_FILE: "${PROJECT_DIR}/../../module-tvos.modulemap"
       SWIFT_INCLUDE_PATHS:
         - "${PROJECT_DIR}/../../ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES

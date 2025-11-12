@@ -1472,7 +1472,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_94F3B70F-2056-4CD5-A91F-666408B12924" /* wrapper */ = {
+		"TEMP_435FD097-AEDB-46FB-A7F0-802C9FE85D15" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -2316,7 +2316,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
-				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-macos.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
 				PRODUCT_NAME = FSPlayer;
@@ -2403,7 +2403,7 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
-				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-ios.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
@@ -2469,7 +2469,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources";
-				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-macos.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-macOS";
 				PRODUCT_NAME = FSPlayer;
@@ -2556,7 +2556,7 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
-				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-ios.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-iOS";
@@ -2702,7 +2702,7 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
-				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-tvos.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
@@ -2791,7 +2791,7 @@
 				);
 				MARKETING_VERSION = 1.0.2;
 				METAL_LIBRARY_OUTPUT_DIR = "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework";
-				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-xcgen.modulemap";
+				MODULEMAP_FILE = "${PROJECT_DIR}/../../module-tvos.modulemap";
 				MTL_LANGUAGE_REVISION = Metal20;
 				OTHER_LDFLAGS = "$(inherited) -l\"opus\" -l\"crypto\" -l\"ssl\" -l\"dav1d\" -l\"dvdread\" -l\"dvdnav\" -l\"freetype\" -l\"fribidi\" -l\"harfbuzz\" -l\"harfbuzz-subset\" -l\"unibreak\" -l\"ass\" -l\"uavs3d\" -l\"avcodec\" -l\"avdevice\" -l\"avfilter\" -l\"avformat\" -l\"avutil\" -l\"swresample\" -l\"swscale\" -l\"smb2\" -l\"xml2\" -l\"bluray\" -l\"sharpyuv\" -l\"webp\" -l\"webpdecoder\" -l\"webpdemux\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.debugly.FSPlayer-tvOS";
