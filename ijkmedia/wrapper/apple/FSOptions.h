@@ -79,5 +79,7 @@ NS_ASSUME_NONNULL_BEGIN
 //append extra protocol whitelist
 @property(nonatomic, copy) NSString *protocolWhitelist;
 
+@property(nonatomic) BOOL automaticallySetupAudioSession;
+
 @end
 NS_ASSUME_NONNULL_END

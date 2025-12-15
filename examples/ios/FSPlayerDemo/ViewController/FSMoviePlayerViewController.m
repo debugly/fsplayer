@@ -112,6 +112,8 @@
         [options setPlayerOptionIntValue:1 forKey:@"is-manifest"];
     }
     options.metalRenderer = YES;
+    options.automaticallySetupAudioSession = YES;
+    
     self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
