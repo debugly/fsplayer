@@ -208,8 +208,10 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 #if TARGET_OS_IOS
     _notificationManager = [[FSNotificationManager alloc] init];
     // init audio sink
-    [[FSAudioKit sharedInstance] setupAudioSession];
-    [self registerApplicationObservers];
+    if (options.automaticallySetupAudioSession) {
+        [[FSAudioKit sharedInstance] setupAudioSession];
+    }
+    [self registerApplicationObserversWithOptions:options];
 #endif
 }
 
@@ -2062,12 +2064,14 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 #if TARGET_OS_IOS
 #pragma mark app state changed
 
-- (void)registerApplicationObservers
+- (void)registerApplicationObserversWithOptions:(FSOptions *)options
 {
-    [_notificationManager addObserver:self
-                             selector:@selector(audioSessionInterrupt:)
-                                 name:AVAudioSessionInterruptionNotification
-                               object:nil];
+    if (options.automaticallySetupAudioSession) {
+        [_notificationManager addObserver:self
+                                 selector:@selector(audioSessionInterrupt:)
+                                     name:AVAudioSessionInterruptionNotification
+                                   object:nil];
+    }
 
     [_notificationManager addObserver:self
                              selector:@selector(applicationWillResignActive)

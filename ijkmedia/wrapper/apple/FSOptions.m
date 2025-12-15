@@ -50,6 +50,7 @@
 
     options.showHudView   = NO;
     options.metalRenderer = YES;
+    options.automaticallySetupAudioSession = YES;
     return options;
 }
 
