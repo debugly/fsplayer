@@ -35,6 +35,7 @@
 
 struct SDL_Aout_Opaque {
     __strong id<FSAudioRenderingProtocol> aoutController;
+    bool automaticallySetupAudioSession;
 };
 
 static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_AudioSpec *obtained)
@@ -58,6 +59,7 @@ static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_Aud
     if (!opaque->aoutController) {
         opaque->aoutController = [FSAudioRendering createAudioQueueRendering];
     }
+    opaque->aoutController.automaticallySetupAudioSession = opaque->automaticallySetupAudioSession;
     
     if (![opaque->aoutController isSupportAudioSpec:spec err:&error]) {
         ALOGE("aout_open_audio:%d,%s",error.code,[error.userInfo[NSLocalizedDescriptionKey] UTF8String]);
@@ -85,6 +87,14 @@ static void aout_set_controller(SDL_Aout *aout, void *aoutController)
     SDL_Aout_Opaque *opaque = aout->opaque;
     if (opaque->aoutController != aoutController) {
         opaque->aoutController = (__bridge id<FSAudioRenderingProtocol>)(aoutController);
+    }
+}
+
+static void aout_set_automatically_setup_audio_session(SDL_Aout *aout, bool automaticallySetupAudioSession)
+{
+    SDL_Aout_Opaque *opaque = aout->opaque;
+    if (opaque->automaticallySetupAudioSession != automaticallySetupAudioSession) {
+        opaque->automaticallySetupAudioSession = automaticallySetupAudioSession;
     }
 }
 
@@ -177,5 +187,6 @@ SDL_Aout *SDL_AoutIos_CreateForAudioUnit(void)
     aout->func_get_latency_seconds = auout_get_latency_seconds;
     aout->func_get_audio_persecond_callbacks = aout_get_persecond_callbacks;
     aout->func_set_controller = aout_set_controller;
+    aout->func_set_automatically_setup_audio_session = aout_set_automatically_setup_audio_session;
     return aout;
 }

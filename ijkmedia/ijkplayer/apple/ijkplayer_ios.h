@@ -31,3 +31,4 @@ IjkMediaPlayer *ijkmp_ios_create(int (*msg_loop)(void*));
 
 void            ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView);
 void            ijkmp_ios_set_audio_controller(IjkMediaPlayer *mp, id<FSAudioRenderingProtocol> audioRendering);
+void            ijkmp_ios_set_automatically_setup_audio_session(IjkMediaPlayer *mp, bool automaticallySetupAudioSession);

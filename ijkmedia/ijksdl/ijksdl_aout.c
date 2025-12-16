@@ -123,6 +123,14 @@ void SDL_AoutSetController(SDL_Aout *aout, void *controller)
     }
 }
 
+void SDL_AoutSetAutomaticallySetupAudioSession(SDL_Aout *aout, bool automaticallySetupAudioSession)
+{
+    if (aout) {
+        if (aout->func_set_automatically_setup_audio_session)
+            aout->func_set_automatically_setup_audio_session(aout, automaticallySetupAudioSession);
+    }
+}
+
 int SDL_AoutGetAudioSessionId(SDL_Aout *aout)
 {
     if (aout) {

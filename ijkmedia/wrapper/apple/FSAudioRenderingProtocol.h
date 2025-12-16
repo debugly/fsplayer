@@ -56,6 +56,7 @@ typedef void (*FSAudioCallback) (void *userdata, uint8_t * stream, int len);
 - (double)get_latency_seconds;
 
 @property (nonatomic, readonly) FSAudioSpec * spec;
+@property (nonatomic, assign) BOOL automaticallySetupAudioSession;
 
 @end
 

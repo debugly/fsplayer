@@ -181,6 +181,8 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
         [options setPlayerOptionIntValue:0 forKey:@"subtitle_mix"];
     }
     
+    ijkmp_ios_set_automatically_setup_audio_session(_mediaPlayer, options.automaticallySetupAudioSession);
+    
     if (audioRendering) {
         ijkmp_ios_set_audio_controller(_mediaPlayer, audioRendering);
     }
