@@ -186,6 +186,9 @@ FS_EXTERN NSString* const FSPlayerLoadStateDidChangeNotification;
 // Posted when the movie player begins or ends playing video via AirPlay.
 FS_EXTERN NSString* const FSPlayerIsAirPlayVideoActiveDidChangeNotification;
 
+// Posted when the buffering changes.
+FS_EXTERN NSString* const FSPlayerBufferingDidChangeNotification;
+
 // -----------------------------------------------------------------------------
 // Movie Property Notifications
 

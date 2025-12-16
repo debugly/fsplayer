@@ -422,6 +422,10 @@ static NSString *recordVideoPath = nil;
     }
 }
 
+- (void)moviePlayBackBufferingDidChange:(NSNotification*)notification {
+    NSLog(@"moviePlayBackBufferingDidChange: %f, currentTime: %f", _player.playableDuration, _player.currentPlaybackTime);
+}
+
 #pragma mark Install Movie Notifications
 
 /* Register observers for the various movie object notifications. */
@@ -446,6 +450,11 @@ static NSString *recordVideoPath = nil;
                                              selector:@selector(moviePlayBackStateDidChange:)
                                                  name:FSPlayerPlaybackStateDidChangeNotification
                                                object:_player];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(moviePlayBackBufferingDidChange:)
+                                                 name:FSPlayerBufferingDidChangeNotification
+                                               object:_player];
 }
 
 #pragma mark Remove Movie Notification Handlers
@@ -457,6 +466,7 @@ static NSString *recordVideoPath = nil;
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerDidFinishNotification object:_player];
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerIsPreparedToPlayNotification object:_player];
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerPlaybackStateDidChangeNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerBufferingDidChangeNotification object:_player];
 }
 
 @end

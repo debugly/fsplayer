@@ -1547,6 +1547,9 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_BUFFERING_UPDATE:
             _bufferingPosition = avmsg->arg1;
             _bufferingProgress = avmsg->arg2;
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerBufferingDidChangeNotification
+             object:self];
             // NSLog(@"FFP_MSG_BUFFERING_UPDATE: %d, %%%d\n", _bufferingPosition, _bufferingProgress);
             break;
         case FFP_MSG_BUFFERING_BYTES_UPDATE:
