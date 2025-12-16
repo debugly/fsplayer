@@ -144,7 +144,10 @@
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     
-    [self.player shutdown];
+    id<FSMediaPlayback> player = self.player;
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        [player shutdown];
+    });
     [self removeMovieNotificationObservers];
 }
 
