@@ -125,6 +125,9 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 @property (nonatomic) float playbackRate;
 //from 0.0 to 1.0
 @property (nonatomic) float playbackVolume;
+
+@property (nonatomic) int playbackLoop;
+
 #if TARGET_OS_IOS
 - (UIImage *)thumbnailImageAtCurrentTime;
 #endif

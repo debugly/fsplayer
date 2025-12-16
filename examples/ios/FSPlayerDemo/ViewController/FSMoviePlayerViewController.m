@@ -115,6 +115,7 @@
     options.automaticallySetupAudioSession = YES;
     
     self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
+    self.player.playbackLoop = 2;
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
     //设置代理，拿到当前渲染帧
