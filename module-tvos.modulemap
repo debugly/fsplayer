@@ -1,6 +1,5 @@
 framework module FSPlayer {
   umbrella header "FSPlayerKit.h"
-  header "FSAudioKit.h"
   header "FSPlayerDef.h"
 
   export *

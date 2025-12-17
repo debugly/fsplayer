@@ -32,18 +32,6 @@ typedef enum FSOptionCategory {
     kIJKFFOptionCategorySwr    = 5,
 } FSOptionCategory;
 
-// for codec option 'skip_loop_filter' and 'skip_frame'
-typedef enum FSAVDiscard {
-    /* We leave some space between them for extensions (drop some
-     * keyframes for intra-only or drop just some bidir frames). */
-    FS_AVDISCARD_NONE    =-16, ///< discard nothing
-    FS_AVDISCARD_DEFAULT =  0, ///< discard useless packets like 0 size packets in avi
-    FS_AVDISCARD_NONREF  =  8, ///< discard all non reference
-    FS_AVDISCARD_BIDIR   = 16, ///< discard all bidirectional frames
-    FS_AVDISCARD_NONKEY  = 32, ///< discard all frames except keyframes
-    FS_AVDISCARD_ALL     = 48, ///< discard all
-} FSAVDiscard;
-
 struct IjkMediaPlayer;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -78,7 +66,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) BOOL metalRenderer;
 //append extra protocol whitelist
 @property(nonatomic, copy) NSString *protocolWhitelist;
-
+//setup audio session use AVAudioSessionCategoryPlayback ,observer and handle interrupt event
 @property(nonatomic) BOOL automaticallySetupAudioSession;
 
 @end

@@ -29,8 +29,6 @@ targets:
         headerVisibility: public
       - path: ijkmedia/wrapper/apple
         headerVisibility: public
-        excludes:
-          - "FSAudioKit.*"
     settings:
       PRODUCT_NAME: FSPlayer
       MARKETING_VERSION: 1.0.2
@@ -209,7 +207,6 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/webp/lib"
     dependencies: 
       - sdk: UIKit.framework
-      - sdk: OpenGLES.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: CoreFoundation.framework
@@ -319,7 +316,6 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/webp/lib"
     dependencies:
       - sdk: UIKit.framework
-      - sdk: OpenGLES.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: CoreFoundation.framework

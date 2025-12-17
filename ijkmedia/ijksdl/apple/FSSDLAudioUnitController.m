@@ -153,14 +153,20 @@
 #if TARGET_OS_IOS
     if (_automaticallySetupAudioSession) {
         NSError *error = nil;
-        if (NO == [[AVAudioSession sharedInstance] setActive:YES error:&error]) {
-            NSLog(@"AudioUnit: AVAudioSession.setActive(YES) failed: %@\n", error ? [error localizedDescription] : @"nil");
+        [[AVAudioSession sharedInstance] setActive:YES error:&error];
+        if (error) {
+            NSString *msg = [error localizedDescription];
+            if (!msg) {
+                msg = @"unknown";
+            }
+            ALOGE("AVAudioSession.setActive(YES) failed: %s\n", [msg UTF8String]);
         }
     }
 #endif
     OSStatus status = AudioOutputUnitStart(_auUnit);
-    if (status != noErr)
-    NSLog(@"AudioUnit: AudioOutputUnitStart failed (%d)\n", (int)status);
+    if (status != noErr) {
+        ALOGE("AudioOutputUnitStart failed (%d)\n", (int)status);
+    }
 }
 
 - (void)pause
@@ -170,8 +176,9 @@
     
     _isPaused = YES;
     OSStatus status = AudioOutputUnitStop(_auUnit);
-    if (status != noErr)
-    ALOGE("AudioUnit: failed to stop AudioUnit (%d)\n", (int)status);
+    if (status != noErr) {
+        ALOGE("AudioOutputUnitStop failed: (%d)\n", (int)status);
+    }
 }
 
 - (void)flush
@@ -188,8 +195,9 @@
     return;
     
     OSStatus status = AudioOutputUnitStop(_auUnit);
-    if (status != noErr)
-    ALOGE("AudioUnit: failed to stop AudioUnit (%d)", (int)status);
+    if (status != noErr) {
+        ALOGE("AudioOutputUnitStop failed: (%d)\n", (int)status);
+    }
 }
 
 - (void)close
