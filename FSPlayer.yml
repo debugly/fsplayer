@@ -207,7 +207,6 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/ios/universal-simulator/webp/lib"
     dependencies: 
       - sdk: UIKit.framework
-      - sdk: OpenGLES.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: CoreFoundation.framework
@@ -317,7 +316,6 @@ targets:
         - "${PROJECT_DIR}/../../FFToolChain/build/product/tvos/universal-simulator/webp/lib"
     dependencies:
       - sdk: UIKit.framework
-      - sdk: OpenGLES.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: CoreFoundation.framework
