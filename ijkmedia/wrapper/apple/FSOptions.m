@@ -126,42 +126,42 @@
 
 #pragma mark Common Helper
 
--(void)setFormatOptionValue:(NSString *)value forKey:(NSString *)key
+- (void)setFormatOptionValue:(NSString *)value forKey:(NSString *)key
 {
     [self setOptionValue:value forKey:key ofCategory:kIJKFFOptionCategoryFormat];
 }
 
--(void)setCodecOptionValue:(NSString *)value forKey:(NSString *)key
+- (void)setCodecOptionValue:(NSString *)value forKey:(NSString *)key
 {
     [self setOptionValue:value forKey:key ofCategory:kIJKFFOptionCategoryCodec];
 }
 
--(void)setSwsOptionValue:(NSString *)value forKey:(NSString *)key
+- (void)setSwsOptionValue:(NSString *)value forKey:(NSString *)key
 {
     [self setOptionValue:value forKey:key ofCategory:kIJKFFOptionCategorySws];
 }
 
--(void)setPlayerOptionValue:(NSString *)value forKey:(NSString *)key
+- (void)setPlayerOptionValue:(NSString *)value forKey:(NSString *)key
 {
     [self setOptionValue:value forKey:key ofCategory:kIJKFFOptionCategoryPlayer];
 }
 
--(void)setFormatOptionIntValue:(int64_t)value forKey:(NSString *)key
+- (void)setFormatOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategoryFormat];
 }
 
--(void)setCodecOptionIntValue:(int64_t)value forKey:(NSString *)key
+- (void)setCodecOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategoryCodec];
 }
 
--(void)setSwsOptionIntValue:(int64_t)value forKey:(NSString *)key
+- (void)setSwsOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategorySws];
 }
 
--(void)setPlayerOptionIntValue:(int64_t)value forKey:(NSString *)key
+- (void)setPlayerOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategoryPlayer];
 }
