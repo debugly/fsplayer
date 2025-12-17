@@ -32,7 +32,7 @@
 #import "ijkioapplication.h"
 #include "string.h"
 #if TARGET_OS_IOS || TARGET_OS_TV
-#import "FSAudioKit.h"
+#import <AVFoundation/AVFoundation.h>
 #else
 #import "FSSDLGLView.h"
 #endif
@@ -272,11 +272,19 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     [self setScreenOn:YES];
 
 #if TARGET_OS_IOS
-    _notificationManager = [[FSNotificationManager alloc] init];
-    // init audio sink
+    /* Set audio session to mediaplayback */
     if (options.automaticallySetupAudioSession) {
-        [[FSAudioKit sharedInstance] setupAudioSession];
+        NSError *error = nil;
+        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:&error];
+        if (error) {
+            NSString *msg = [error localizedDescription];
+            if (!msg) {
+                msg = @"unknown";
+            }
+            av_log(NULL, AV_LOG_ERROR, "AVAudioSession.setCategory(Playback) failed: %s\n", [msg UTF8String]);
+        }
     }
+    _notificationManager = [[FSNotificationManager alloc] init];
     [self registerApplicationObserversWithOptions:options];
 #endif
 }
@@ -2136,7 +2144,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     int reason = [[[notification userInfo] valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
     switch (reason) {
         case AVAudioSessionInterruptionTypeBegan: {
-            NSLog(@"FSPlayer:audioSessionInterrupt: begin\n");
+            av_log(NULL, AV_LOG_DEBUG, "audioSessionInterrupt: begin");
             switch (self.playbackState) {
                 case FSPlayerPlaybackStatePaused:
                 case FSPlayerPlaybackStateStopped:
@@ -2147,12 +2155,16 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
                     break;
             }
             [self pause];
-            [[FSAudioKit sharedInstance] setActive:NO];
+            @try {
+                [[AVAudioSession sharedInstance] setActive:NO error:nil];
+            } @catch (NSException *exception) {
+                av_log(NULL, AV_LOG_ERROR, "failed to inactive AVAudioSession\n");
+            }
             break;
         }
         case AVAudioSessionInterruptionTypeEnded: {
-            NSLog(@"FSPlayer:audioSessionInterrupt: end\n");
-            [[FSAudioKit sharedInstance] setActive:YES];
+            av_log(NULL, AV_LOG_DEBUG, "audioSessionInterrupt: end");
+            [[AVAudioSession sharedInstance] setActive:YES error:nil];
             if (_playingBeforeInterruption) {
                 [self play];
             }
@@ -2163,7 +2175,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillResignActive
 {
-    NSLog(@"FSPlayer:applicationWillResignActive: %d", (int)[UIApplication sharedApplication].applicationState);
+    av_log(NULL, AV_LOG_DEBUG, "applicationWillResignActive: %d", (int)[UIApplication sharedApplication].applicationState);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self->_pauseInBackground) {
             [self pause];
@@ -2173,7 +2185,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationDidEnterBackground
 {
-    NSLog(@"FSPlayer:applicationDidEnterBackground: %d", (int)[UIApplication sharedApplication].applicationState);
+    av_log(NULL, AV_LOG_DEBUG, "applicationDidEnterBackground: %d", (int)[UIApplication sharedApplication].applicationState);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self->_pauseInBackground) {
             [self pause];
@@ -2183,7 +2195,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillTerminate
 {
-    NSLog(@"FSPlayer:applicationWillTerminate: %d", (int)[UIApplication sharedApplication].applicationState);
+    av_log(NULL, AV_LOG_DEBUG, "applicationWillTerminate: %d", (int)[UIApplication sharedApplication].applicationState);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self->_pauseInBackground) {
             [self pause];

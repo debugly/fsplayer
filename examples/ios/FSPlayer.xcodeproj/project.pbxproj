@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -500,12 +500,10 @@
 		BAE3429277C814F43D8E8667 /* ff_ffplay.h in Headers */ = {isa = PBXBuildFile; fileRef = CEA1746B39702033219F7993 /* ff_ffplay.h */; };
 		BC5E8211E7C3A2F4A440124D /* ff_subtitle_def.c in Sources */ = {isa = PBXBuildFile; fileRef = 15CD43614D5F398E83C901F9 /* ff_subtitle_def.c */; };
 		BC6864730C961A0F973ACB74 /* FSMetalSubtitlePipeline.h in Headers */ = {isa = PBXBuildFile; fileRef = 16EA140B43A14E49EEB1CDB7 /* FSMetalSubtitlePipeline.h */; };
-		BC945E06442E0F7DF7A6B280 /* FSAudioKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 849C7C45A6C618A599F9C3F0 /* FSAudioKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BCC60C389C76DB5A0897A4F8 /* ijksdl_aout.h in Headers */ = {isa = PBXBuildFile; fileRef = F2912E4091750E38758D1320 /* ijksdl_aout.h */; };
 		BCFCB32B9D9F7B4FA318B681 /* FSSDLAudioQueueController.m in Sources */ = {isa = PBXBuildFile; fileRef = C3596CA5741F35F23BAAE15C /* FSSDLAudioQueueController.m */; };
 		BD24472EBBC0935BE44994E0 /* ff_fferror.h in Headers */ = {isa = PBXBuildFile; fileRef = 0A38D00D06574F904AB72AAA /* ff_fferror.h */; };
 		BDCD2548470F1F75F2C853F6 /* FSSDLAudioKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D8461AF087186423E4AE6B4 /* FSSDLAudioKit.h */; };
-		BDF4B784F55D6BDD2C4234AB /* FSAudioKit.m in Sources */ = {isa = PBXBuildFile; fileRef = 66DC29B921D68983D77952F6 /* FSAudioKit.m */; };
 		BEFA9364E1271F2E5FFB5E07 /* ijkiourlhook.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D50BB1AF6B194B36CDA233F /* ijkiourlhook.c */; };
 		BF9892DD7271FE5ACFC9E04B /* FSPlayerDef.m in Sources */ = {isa = PBXBuildFile; fileRef = D1DA77F7026A3FC397E2675D /* FSPlayerDef.m */; };
 		BFE8125CD755ABD29D067152 /* ff_ffplay_debug.h in Headers */ = {isa = PBXBuildFile; fileRef = 97CC4DEC62D6E72C458BC932 /* ff_ffplay_debug.h */; };
@@ -622,7 +620,6 @@
 		EA0116E05395E96F683D0344 /* ff_fferror.h in Headers */ = {isa = PBXBuildFile; fileRef = 0A38D00D06574F904AB72AAA /* ff_fferror.h */; };
 		EA18B57D12CFDE97809EFA53 /* FSSDLGLView.h in Headers */ = {isa = PBXBuildFile; fileRef = 08A62647BB432ACC1A8E7A5A /* FSSDLGLView.h */; };
 		EA30B7E25F0D72EA1BFE56E4 /* ijkmediadatasource.c in Sources */ = {isa = PBXBuildFile; fileRef = B99E0898460B4A174C3AECF7 /* ijkmediadatasource.c */; };
-		EAA97FE071BC3F688E0DBE3F /* FSAudioKit.m in Sources */ = {isa = PBXBuildFile; fileRef = 66DC29B921D68983D77952F6 /* FSAudioKit.m */; };
 		EB60D735F5ECA6D347537379 /* ijkplayer_ios.h in Headers */ = {isa = PBXBuildFile; fileRef = D0462C59F3814D912DCAEEE5 /* ijkplayer_ios.h */; };
 		EBD71E90CDF5A501B88D19E8 /* FSSDLThread.m in Sources */ = {isa = PBXBuildFile; fileRef = 9318C7F778A9C2BC1469188D /* FSSDLThread.m */; };
 		EBE02BBC81A1AB7C375B6C23 /* ijkplayer_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FE52AC061F525B5F9626C29 /* ijkplayer_internal.h */; };
@@ -641,7 +638,6 @@
 		F2598288F521E57F1F9F5660 /* libopus.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8E74367FBE0F349693A09665 /* libopus.a */; };
 		F2ED382A00EB6BFA4381F429 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 078B8CC6399CC718CCF44343 /* UIKit.framework */; };
 		F391569CA5E260779D9747CC /* ijksdl_inc_internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 1CCEA3592499E980F37A4268 /* ijksdl_inc_internal.h */; };
-		F49BA28BD0BB14B441F0CD27 /* FSAudioKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 849C7C45A6C618A599F9C3F0 /* FSAudioKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F56B5BCFCD99D20769AF8DC9 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DF8338E74AA8E67AC0A08407 /* libz.tbd */; };
 		F5D5E0010A50470620FAC70F /* ijksdl_log.h in Headers */ = {isa = PBXBuildFile; fileRef = 80810754AAEF7BA6EB13C041 /* ijksdl_log.h */; };
 		F5EECDF25D26D16E41F665AC /* ff_packet_list.h in Headers */ = {isa = PBXBuildFile; fileRef = E95CA5D57C612DD221BFDB2D /* ff_packet_list.h */; };
@@ -774,7 +770,6 @@
 		625D54FD25A231326FEDB1C6 /* FSPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSPlayer.h; sourceTree = "<group>"; };
 		645B482149101DDF502808EB /* ijkiomanager.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkiomanager.c; sourceTree = "<group>"; };
 		65841F5A1B6990B08035B754 /* ijkstl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ijkstl.cpp; sourceTree = "<group>"; };
-		66DC29B921D68983D77952F6 /* FSAudioKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSAudioKit.m; sourceTree = "<group>"; };
 		68AC70B1B3E77CBFA7AB3CB8 /* ijkio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkio.c; sourceTree = "<group>"; };
 		690C0B94926343DBDCCA4A10 /* mr_stream_peek.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mr_stream_peek.h; sourceTree = "<group>"; };
 		6A5CA6878E1EE1A562F2E55A /* ijksdl_endian.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_endian.h; sourceTree = "<group>"; };
@@ -801,7 +796,6 @@
 		8127C30FE5205117319B776E /* ijkiourl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijkiourl.h; sourceTree = "<group>"; };
 		8331A17C52C17287F7B64966 /* ijksdl_gpu_opengl_renderer_macos.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_gpu_opengl_renderer_macos.h; sourceTree = "<group>"; };
 		83F22F5B31A4A925B83EDFFD /* ijktree.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijktree.h; sourceTree = "<group>"; };
-		849C7C45A6C618A599F9C3F0 /* FSAudioKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAudioKit.h; sourceTree = "<group>"; };
 		8547A58CBEAB1C5F4958EACA /* ijkiocache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ijkiocache.c; sourceTree = "<group>"; };
 		8633F9E8779260F1044DE0CB /* FSNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSNotificationManager.h; sourceTree = "<group>"; };
 		86A9965FE4600B091967E6A7 /* ijksdl_vout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ijksdl_vout.h; sourceTree = "<group>"; };
@@ -1303,8 +1297,6 @@
 		BDABEC4D58007491E4AC434C /* apple */ = {
 			isa = PBXGroup;
 			children = (
-				849C7C45A6C618A599F9C3F0 /* FSAudioKit.h */,
-				66DC29B921D68983D77952F6 /* FSAudioKit.m */,
 				A474C08810F661842B79D87A /* FSAudioRendering.h */,
 				3A1C3C55F52FEA956C47FFEB /* FSAudioRendering.m */,
 				6AA36BDE784DFD28C7955761 /* FSAudioRenderingProtocol.h */,
@@ -1472,7 +1464,7 @@
 			path = ijkavformat;
 			sourceTree = "<group>";
 		};
-		"TEMP_25684DBD-3F3F-4B66-A672-EF9FAD86A24B" /* wrapper */ = {
+		"TEMP_60BF9BD0-6509-475F-B52F-D5A2B3EDA5C8" /* wrapper */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1486,7 +1478,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F49BA28BD0BB14B441F0CD27 /* FSAudioKit.h in Headers */,
 				6D6F53B051094AB911377C11 /* FSAudioRendering.h in Headers */,
 				738912E466A88DC038BEA600 /* FSAudioRenderingProtocol.h in Headers */,
 				9F149CBB749679553B0182B7 /* FSKVOController.h in Headers */,
@@ -1598,7 +1589,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BC945E06442E0F7DF7A6B280 /* FSAudioKit.h in Headers */,
 				2463F77C875DEC179BB886BC /* FSAudioRendering.h in Headers */,
 				85C2D96510BC7087CD42D9D9 /* FSAudioRenderingProtocol.h in Headers */,
 				04E11D19991F1F18FF0AAB41 /* FSKVOController.h in Headers */,
@@ -1844,8 +1834,6 @@
 			dependencies = (
 			);
 			name = "FSPlayer-tvOS";
-			packageProductDependencies = (
-			);
 			productName = "FSPlayer-tvOS";
 			productReference = 46E445F92BD65C0F4498DCC8 /* FSPlayer-tvOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1864,8 +1852,6 @@
 			dependencies = (
 			);
 			name = "FSPlayer-iOS";
-			packageProductDependencies = (
-			);
 			productName = "FSPlayer-iOS";
 			productReference = 08F8FEAD3A0AE161583FC49F /* FSPlayer-iOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1884,8 +1870,6 @@
 			dependencies = (
 			);
 			name = "FSPlayer-macOS";
-			packageProductDependencies = (
-			);
 			productName = "FSPlayer-macOS";
 			productReference = 4CE44165D565024414A46AA8 /* FSPlayer-macOS.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1898,6 +1882,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 51D464E92E5A7EF8EE2C2C4C /* Build configuration list for PBXProject "FSPlayer" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -1908,8 +1894,6 @@
 				en,
 			);
 			mainGroup = 776463D9629244132E155C9E;
-			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -1982,7 +1966,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EAA97FE071BC3F688E0DBE3F /* FSAudioKit.m in Sources */,
 				6BBCCABDCE94256EC1A90C26 /* FSAudioRendering.m in Sources */,
 				EF9979B6B97C61B1B1640784 /* FSKVOController.m in Sources */,
 				B54C92DF70F71BCA8BC30CA2 /* FSMathUtilities.m in Sources */,
@@ -2178,7 +2161,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BDF4B784F55D6BDD2C4234AB /* FSAudioKit.m in Sources */,
 				217EC23B18E1350F354AC9AB /* FSAudioRendering.m in Sources */,
 				D93353AD0D74D4B3DD32C5AA /* FSKVOController.m in Sources */,
 				E1C55D0783FCEFAC49BD2E23 /* FSMathUtilities.m in Sources */,
