@@ -125,6 +125,9 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 @property (nonatomic) float playbackRate;
 //from 0.0 to 1.0
 @property (nonatomic) float playbackVolume;
+
+@property (nonatomic) int playbackLoop;
+
 #if TARGET_OS_IOS
 - (UIImage *)thumbnailImageAtCurrentTime;
 #endif
@@ -182,6 +185,9 @@ FS_EXTERN NSString* const FSPlayerLoadStateDidChangeNotification;
 
 // Posted when the movie player begins or ends playing video via AirPlay.
 FS_EXTERN NSString* const FSPlayerIsAirPlayVideoActiveDidChangeNotification;
+
+// Posted when the buffering changes.
+FS_EXTERN NSString* const FSPlayerBufferingDidChangeNotification;
 
 // -----------------------------------------------------------------------------
 // Movie Property Notifications

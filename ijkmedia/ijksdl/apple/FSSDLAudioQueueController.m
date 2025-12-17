@@ -42,6 +42,7 @@
     volatile BOOL _isAborted;
     NSLock *_lock;
 }
+@synthesize automaticallySetupAudioSession = _automaticallySetupAudioSession;
 
 - (BOOL)isSupportAudioSpec:(FSAudioSpec *)aSpec err:(NSError *__autoreleasing *)outErr
 {
@@ -141,9 +142,11 @@
     @synchronized(_lock) {
         _isPaused = NO;
 #if TARGET_OS_IOS
-        NSError *error = nil;
-        if (NO == [[AVAudioSession sharedInstance] setActive:YES error:&error]) {
-            NSLog(@"AudioQueue: AVAudioSession.setActive(YES) failed: %@\n", error ? [error localizedDescription] : @"nil");
+        if (_automaticallySetupAudioSession) {
+            NSError *error = nil;
+            if (NO == [[AVAudioSession sharedInstance] setActive:YES error:&error]) {
+                NSLog(@"AudioQueue: AVAudioSession.setActive(YES) failed: %@\n", error ? [error localizedDescription] : @"nil");
+            }
         }
 #endif
         OSStatus status = AudioQueueStart(_audioQueueRef, NULL);

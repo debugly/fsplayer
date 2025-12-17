@@ -116,6 +116,70 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @synthesize isVideoSync = _isVideoSync;
 @synthesize subtitlePreference = _subtitlePreference;
 
+static void FSPlayerSafeDestroy(FSPlayer *player) {
+    __block IjkMediaPlayer *mediaPlayer = player->_mediaPlayer;
+    if (!mediaPlayer) {
+        return;
+    }
+    __block FSSDLHudControl *hudCtrl = player->_hudCtrl;
+    __block NSTimer *hudTimer = player->_hudTimer;
+    __block UIView<FSVideoRenderingProtocol> *view = player->_view;
+    
+#if TARGET_OS_IOS
+    [player unregisterApplicationObservers];
+#endif
+    
+    player->_mediaPlayer = nil;
+    player->_videoRendering = nil;
+    player->_view = nil;
+    player->_hudCtrl = nil;
+    player->_hudTimer = nil;
+    
+    player->_segmentOpenDelegate    = nil;
+    player->_tcpOpenDelegate        = nil;
+    player->_httpOpenDelegate       = nil;
+    player->_liveOpenDelegate       = nil;
+    player->_nativeInvokeDelegate   = nil;
+    
+    ijkmp_set_weak_thiz(mediaPlayer, NULL);
+    ijkmp_set_inject_opaque(mediaPlayer, NULL);
+    ijkmp_set_ijkio_inject_opaque(mediaPlayer, NULL);
+    
+    void(^UIHandler)(void) = ^{
+        [FSMediaModule sharedModule].mediaModuleIdleTimerDisabled = NO;
+        /// VideoRendering在父视图移除
+        if ([view respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
+            [view registerRefreshCurrentPicObserver:nil];
+        }
+        [view removeFromSuperview];
+        view = nil;
+        /// hud
+        [hudTimer invalidate];
+        hudTimer = nil;
+        [hudCtrl destroyContentView];
+        hudCtrl = nil;
+    };
+    if ([NSThread isMainThread]) {
+        UIHandler();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIHandler();
+        });
+    }
+    
+    /// 异步串行队列执行，避免主线程卡顿
+    static dispatch_queue_t serialQueue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        serialQueue = dispatch_queue_create("cn.debugly.FSPlayer.destroy", DISPATCH_QUEUE_SERIAL);
+    });
+    dispatch_async(serialQueue, ^{
+        ijkmp_stop(mediaPlayer);
+        ijkmp_shutdown(mediaPlayer);
+        ijkmp_dec_ref_p(&mediaPlayer);
+    });
+}
+
 - (void)setScreenOn: (BOOL)on
 {
     [FSMediaModule sharedModule].mediaModuleIdleTimerDisabled = on;
@@ -180,6 +244,8 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
         [options setPlayerOptionIntValue:0 forKey:@"subtitle_mix"];
     }
+    
+    ijkmp_ios_set_automatically_setup_audio_session(_mediaPlayer, options.automaticallySetupAudioSession);
     
     if (audioRendering) {
         ijkmp_ios_set_audio_controller(_mediaPlayer, audioRendering);
@@ -279,7 +345,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 - (void)dealloc
 {
-//    [self unregisterApplicationObservers];
+    FSPlayerSafeDestroy(self);
 }
 
 - (void)setShouldAutoplay:(BOOL)shouldAutoplay
@@ -625,52 +691,8 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 
 - (void)shutdown
 {
-    NSAssert([NSThread isMainThread], @"must on main thread call shutdown");
-    if (!_mediaPlayer)
-        return;
-#if TARGET_OS_IOS
-    [self unregisterApplicationObservers];
-#endif
-    [self setScreenOn:NO];
-    //destroy hud
-    [_hudCtrl destroyContentView];
-    [_hudTimer invalidate];
-    _hudTimer = nil;
-    //clean refresh observer
-    if (_videoRendering && [_videoRendering respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
-        [_videoRendering registerRefreshCurrentPicObserver:NULL];
-    }
-    [self performSelectorInBackground:@selector(shutdownWaitStop:) withObject:self];
-}
-
-- (void)shutdownWaitStop:(FSPlayer *) mySelf
-{
-    if (!_mediaPlayer)
-        return;
-
-    ijkmp_stop(_mediaPlayer);
-    ijkmp_shutdown(_mediaPlayer);
-
-    [self performSelectorOnMainThread:@selector(shutdownClose:) withObject:self waitUntilDone:YES];
-}
-
-- (void)shutdownClose:(FSPlayer *) mySelf
-{
-    if (!_mediaPlayer)
-        return;
-
-    _segmentOpenDelegate    = nil;
-    _tcpOpenDelegate        = nil;
-    _httpOpenDelegate       = nil;
-    _liveOpenDelegate       = nil;
-    _nativeInvokeDelegate   = nil;
-
-    __unused id weakPlayer = (__bridge_transfer FSPlayer*)ijkmp_set_weak_thiz(_mediaPlayer, NULL);
-    __unused id weakHolder = (__bridge_transfer FSWeakHolder*)ijkmp_set_inject_opaque(_mediaPlayer, NULL);
-    __unused id weakijkHolder = (__bridge_transfer FSWeakHolder*)ijkmp_set_ijkio_inject_opaque(_mediaPlayer, NULL);
-
-    ijkmp_dec_ref_p(&_mediaPlayer);
-
+    FSPlayerSafeDestroy(self);
+    
     [self didShutdown];
 }
 
@@ -1170,6 +1192,18 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     return ijkmp_get_property_float(_mediaPlayer, FFP_PROP_FLOAT_PLAYBACK_VOLUME, 1.0f);
 }
 
+- (void)setPlaybackLoop:(int)playbackLoop {
+    if (!_mediaPlayer)
+        return;
+    return ijkmp_set_loop(_mediaPlayer, playbackLoop);
+}
+
+- (int)playbackLoop {
+    if (!_mediaPlayer)
+        return 1;
+    return ijkmp_get_loop(_mediaPlayer);
+}
+
 - (int64_t)getFileSize
 {
     if (!_mediaPlayer)
@@ -1513,6 +1547,9 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_BUFFERING_UPDATE:
             _bufferingPosition = avmsg->arg1;
             _bufferingProgress = avmsg->arg2;
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerBufferingDidChangeNotification
+             object:self];
             // NSLog(@"FFP_MSG_BUFFERING_UPDATE: %d, %%%d\n", _bufferingPosition, _bufferingProgress);
             break;
         case FFP_MSG_BUFFERING_BYTES_UPDATE:

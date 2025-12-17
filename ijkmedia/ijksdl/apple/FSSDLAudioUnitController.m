@@ -34,6 +34,7 @@
     AudioUnit _auUnit;
     BOOL _isPaused;
 }
+@synthesize automaticallySetupAudioSession = _automaticallySetupAudioSession;
 
 - (BOOL)isSupportAudioSpec:(FSAudioSpec *)aSpec err:(NSError *__autoreleasing *)outErr
 {
@@ -150,9 +151,11 @@
     
     _isPaused = NO;
 #if TARGET_OS_IOS
-    NSError *error = nil;
-    if (NO == [[AVAudioSession sharedInstance] setActive:YES error:&error]) {
-        NSLog(@"AudioUnit: AVAudioSession.setActive(YES) failed: %@\n", error ? [error localizedDescription] : @"nil");
+    if (_automaticallySetupAudioSession) {
+        NSError *error = nil;
+        if (NO == [[AVAudioSession sharedInstance] setActive:YES error:&error]) {
+            NSLog(@"AudioUnit: AVAudioSession.setActive(YES) failed: %@\n", error ? [error localizedDescription] : @"nil");
+        }
     }
 #endif
     OSStatus status = AudioOutputUnitStart(_auUnit);

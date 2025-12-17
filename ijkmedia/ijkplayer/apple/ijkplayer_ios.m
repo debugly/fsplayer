@@ -82,6 +82,15 @@ static void ijkmp_ios_set_audio_controller_l(IjkMediaPlayer *mp, id<FSAudioRende
     SDL_AoutSetController(mp->ffplayer->aout, (__bridge void*)audioRendering);
 }
 
+static void ijkmp_ios_automatically_setup_audio_session_l(IjkMediaPlayer *mp, bool automaticallySetupAudioSession)
+{
+    assert(mp);
+    assert(mp->ffplayer);
+    assert(mp->ffplayer->aout);
+    
+    SDL_AoutSetAutomaticallySetupAudioSession(mp->ffplayer->aout, automaticallySetupAudioSession);
+}
+
 void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView)
 {
     assert(mp);
@@ -100,4 +109,14 @@ void ijkmp_ios_set_audio_controller(IjkMediaPlayer *mp, id<FSAudioRenderingProto
     ijkmp_ios_set_audio_controller_l(mp, audioRendering);
     pthread_mutex_unlock(&mp->mutex);
     MPTRACE("ijkmp_ios_set_audio_controller(audioRendering=%p)=void\n", (__bridge void*)audioRendering);
+}
+
+void ijkmp_ios_set_automatically_setup_audio_session(IjkMediaPlayer *mp, bool automaticallySetupAudioSession)
+{
+    assert(mp);
+    MPTRACE("ijkmp_ios_set_automatically_setup_audio_session(automaticallySetupAudioSession=%d)\n", automaticallySetupAudioSession);
+    pthread_mutex_lock(&mp->mutex);
+    ijkmp_ios_automatically_setup_audio_session_l(mp, automaticallySetupAudioSession);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_ios_set_automatically_setup_audio_session(automaticallySetupAudioSession=%d)=void\n", automaticallySetupAudioSession);
 }

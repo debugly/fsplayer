@@ -115,6 +115,7 @@
     options.automaticallySetupAudioSession = YES;
     
     self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
+    self.player.playbackLoop = 2;
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
     //设置代理，拿到当前渲染帧
@@ -143,7 +144,10 @@
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     
-    [self.player shutdown];
+    id<FSMediaPlayback> player = self.player;
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        [player shutdown];
+    });
     [self removeMovieNotificationObservers];
 }
 
@@ -418,6 +422,10 @@ static NSString *recordVideoPath = nil;
     }
 }
 
+- (void)moviePlayBackBufferingDidChange:(NSNotification*)notification {
+    NSLog(@"moviePlayBackBufferingDidChange: %f, currentTime: %f", _player.playableDuration, _player.currentPlaybackTime);
+}
+
 #pragma mark Install Movie Notifications
 
 /* Register observers for the various movie object notifications. */
@@ -442,6 +450,11 @@ static NSString *recordVideoPath = nil;
                                              selector:@selector(moviePlayBackStateDidChange:)
                                                  name:FSPlayerPlaybackStateDidChangeNotification
                                                object:_player];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(moviePlayBackBufferingDidChange:)
+                                                 name:FSPlayerBufferingDidChangeNotification
+                                               object:_player];
 }
 
 #pragma mark Remove Movie Notification Handlers
@@ -453,6 +466,7 @@ static NSString *recordVideoPath = nil;
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerDidFinishNotification object:_player];
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerIsPreparedToPlayNotification object:_player];
     [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerPlaybackStateDidChangeNotification object:_player];
+    [[NSNotificationCenter defaultCenter]removeObserver:self name:FSPlayerBufferingDidChangeNotification object:_player];
 }
 
 @end

@@ -659,6 +659,8 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_scalingMode != scalingMode) {
         _scalingMode = scalingMode;
+        
+        [self draw];
     }
 }
 
@@ -666,6 +668,8 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
         _rotatePreference = rotatePreference;
+        
+        [self draw];
     }
 }
 
@@ -680,6 +684,8 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_darPreference.ratio != darPreference.ratio) {
         _darPreference = darPreference;
+        
+        [self draw];
     }
 }
 
