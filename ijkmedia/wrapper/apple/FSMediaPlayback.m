@@ -36,6 +36,8 @@ NSString *const FSPlayerIsAirPlayVideoActiveDidChangeNotification = @"FSPlayerIs
 
 NSString *const FSPlayerBufferingDidChangeNotification = @"FSPlayerBufferingDidChangeNotification";
 
+NSString *const FSPlayerCurrentPlaybackTimeDidChangeNotification = @"FSPlayerCurrentPlaybackTimeDidChangeNotification";
+
 NSString *const FSPlayerNaturalSizeAvailableNotification = @"FSPlayerNaturalSizeAvailableNotification";
 NSString *const FSPlayerZRotateAvailableNotification = @"FSPlayerZRotateAvailableNotification";
 NSString *const FSPlayerNoCodecFoundNotification = @"FSPlayerNoCodecFoundNotification";

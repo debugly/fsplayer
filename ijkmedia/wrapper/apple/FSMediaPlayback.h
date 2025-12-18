@@ -189,6 +189,9 @@ FS_EXTERN NSString* const FSPlayerIsAirPlayVideoActiveDidChangeNotification;
 // Posted when the buffering changes.
 FS_EXTERN NSString* const FSPlayerBufferingDidChangeNotification;
 
+// Posted when the current playback time changes.
+FS_EXTERN NSString* const FSPlayerCurrentPlaybackTimeDidChangeNotification;
+
 // -----------------------------------------------------------------------------
 // Movie Property Notifications
 

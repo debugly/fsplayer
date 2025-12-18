@@ -87,6 +87,9 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 #endif
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
+    
+    NSTimer *_currentPlaybackTimeTimer;
+    NSTimeInterval _currentPlaybackTimeNotificationInterval;
 }
 
 @synthesize view = _view;
@@ -124,6 +127,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     __block FSSDLHudControl *hudCtrl = player->_hudCtrl;
     __block NSTimer *hudTimer = player->_hudTimer;
     __block UIView<FSVideoRenderingProtocol> *view = player->_view;
+    __block NSTimer *currentPlaybackTimeTimer = player->_currentPlaybackTimeTimer;
     
 #if TARGET_OS_IOS
     [player unregisterApplicationObservers];
@@ -134,6 +138,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     player->_view = nil;
     player->_hudCtrl = nil;
     player->_hudTimer = nil;
+    player->_currentPlaybackTimeTimer = nil;
     
     player->_segmentOpenDelegate    = nil;
     player->_tcpOpenDelegate        = nil;
@@ -158,6 +163,9 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         hudTimer = nil;
         [hudCtrl destroyContentView];
         hudCtrl = nil;
+        /// currentPlaybackTime
+        [currentPlaybackTimeTimer invalidate];
+        currentPlaybackTimeTimer = nil;
     };
     if ([NSThread isMainThread]) {
         UIHandler();
@@ -206,6 +214,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     _scalingMode = FSScalingModeAspectFit;
     _shouldAutoplay = YES;
     _canUpdateAccurateSeek = YES;
+    _currentPlaybackTimeNotificationInterval = options.currentPlaybackTimeNotificationInterval;
     
     memset(&_asyncStat, 0, sizeof(_asyncStat));
     memset(&_cacheStat, 0, sizeof(_cacheStat));
@@ -1097,11 +1106,10 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
         hudView.frame = rect;
         [self.view addSubview:hudView];
         
-        _hudTimer = [NSTimer scheduledTimerWithTimeInterval:.5f
-                                                     target:self
-                                                   selector:@selector(refreshHudView)
-                                                   userInfo:nil
-                                                    repeats:YES];
+        __weak __typeof(self) weakSelf = self;
+        _hudTimer = [NSTimer scheduledTimerWithTimeInterval:.5f repeats:YES block:^(NSTimer *timer) {
+            [weakSelf refreshHudView];
+        }];
     } else {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self startHudTimer];
@@ -1451,9 +1459,13 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self setScreenOn:NO];
 
             [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSPlayerPlaybackStateDidChangeNotification
+             postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
              object:self];
             
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerPlaybackStateDidChangeNotification
+             object:self];
+
             [[NSNotificationCenter defaultCenter]
                 postNotificationName:FSPlayerDidFinishNotification
                 object:self
@@ -1486,15 +1498,23 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             ijkmp_set_playback_volume(_mediaPlayer, [self playbackVolume]);
 
             [self startHudTimer];
+            [self createCurrentPlaybackTimeTimer];
             _isPreparedToPlay = YES;
 
             [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayNotification object:self];
             _loadState = FSPlayerLoadStatePlayable | FSPlayerLoadStatePlaythroughOK;
 
             [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
+             object:self];
+            
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerBufferingDidChangeNotification
+             object:self];
+            
+            [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerLoadStateDidChangeNotification
              object:self];
-
             break;
         }
         case FFP_MSG_COMPLETED: {
@@ -1502,9 +1522,13 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self setScreenOn:NO];
 
             [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
+             object:self];
+            
+            [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerPlaybackStateDidChangeNotification
              object:self];
-
+            
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerDidFinishNotification
              object:self
@@ -1578,6 +1602,11 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
              object:self
              userInfo:@{FSPlayerDidSeekCompleteTargetKey: @(avmsg->arg1),
                         FSPlayerDidSeekCompleteErrorKey: @(avmsg->arg2)}];
+            
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
+             object:self];
+            
             _seeking = NO;
             break;
         }
@@ -1647,6 +1676,10 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
              postNotificationName:FSPlayerAccurateSeekCompleteNotification
              object:self
              userInfo:@{FSPlayerDidAccurateSeekCompleteCurPos: @(avmsg->arg1)}];
+            
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
+             object:self];
             break;
         }
         case FFP_MSG_VIDEO_SEEK_RENDERING_START: {
@@ -1764,6 +1797,24 @@ static int media_player_msg_loop(void* arg)
             [self setHudUrl:url];
         });
     }
+}
+
+- (void)createCurrentPlaybackTimeTimer {
+    if (!_currentPlaybackTimeTimer && _currentPlaybackTimeNotificationInterval > 0) {
+        __weak __typeof(self) weakSelf = self;
+        _currentPlaybackTimeTimer = [NSTimer scheduledTimerWithTimeInterval:_currentPlaybackTimeNotificationInterval repeats:YES block:^(NSTimer *timer) {
+            [weakSelf callCurrentPlaybackTimeNotification];
+        }];
+    }
+}
+
+- (void)callCurrentPlaybackTimeNotification {
+    if (!_mediaPlayer || !self.isPlaying) {
+        return;
+    }
+    [[NSNotificationCenter defaultCenter]
+     postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
+     object:self];
 }
 
 #pragma mark av_format_control_message
