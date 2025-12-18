@@ -113,6 +113,7 @@
     }
     options.metalRenderer = YES;
     options.automaticallySetupAudioSession = YES;
+    options.currentPlaybackTimeNotificationInterval = 0.5;
     
     self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
     self.player.playbackLoop = 2;

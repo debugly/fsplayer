@@ -89,6 +89,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     BOOL _canUpdateAccurateSeek;
     
     NSTimer *_currentPlaybackTimeTimer;
+    NSTimeInterval _currentPlaybackTimeNotificationInterval;
 }
 
 @synthesize view = _view;
@@ -213,6 +214,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     _scalingMode = FSScalingModeAspectFit;
     _shouldAutoplay = YES;
     _canUpdateAccurateSeek = YES;
+    _currentPlaybackTimeNotificationInterval = options.currentPlaybackTimeNotificationInterval;
     
     memset(&_asyncStat, 0, sizeof(_asyncStat));
     memset(&_cacheStat, 0, sizeof(_cacheStat));
@@ -1798,9 +1800,9 @@ static int media_player_msg_loop(void* arg)
 }
 
 - (void)createCurrentPlaybackTimeTimer {
-    if (!_currentPlaybackTimeTimer) {
+    if (!_currentPlaybackTimeTimer && _currentPlaybackTimeNotificationInterval > 0) {
         __weak __typeof(self) weakSelf = self;
-        _currentPlaybackTimeTimer = [NSTimer scheduledTimerWithTimeInterval:.5f repeats:YES block:^(NSTimer *timer) {
+        _currentPlaybackTimeTimer = [NSTimer scheduledTimerWithTimeInterval:_currentPlaybackTimeNotificationInterval repeats:YES block:^(NSTimer *timer) {
             [weakSelf callCurrentPlaybackTimeNotification];
         }];
     }

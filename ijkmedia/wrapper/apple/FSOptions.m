@@ -51,6 +51,7 @@
     options.showHudView   = NO;
     options.metalRenderer = YES;
     options.automaticallySetupAudioSession = YES;
+    options.currentPlaybackTimeNotificationInterval = 0;
     return options;
 }
 
