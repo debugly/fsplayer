@@ -348,6 +348,12 @@ typedef CGRect NSRect;
 
 @end
 
+@interface FSMetalRenderedView ()
+
+@property (nonatomic, assign) CGSize previousDrawableSize;
+
+@end
+
 @implementation FSMetalRenderedView
 
 @synthesize scalingMode = _scalingMode;
@@ -805,7 +811,9 @@ typedef CGRect NSRect;
 {
     [super layoutSubviews];
     
-    if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
+    if (!CGSizeEqualToSize(self.previousDrawableSize, self.drawableSize)) {
+        self.previousDrawableSize = self.drawableSize;
+        
         [self setNeedsRefreshCurrentPic];
     }
 }
