@@ -65,7 +65,7 @@
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
-        // Custom initialization
+        self.modalPresentationStyle = UIModalPresentationFullScreen;
     }
     return self;
 }
@@ -79,6 +79,8 @@
 //    [[UIApplication sharedApplication] setStatusBarHidden:YES];
 //    [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationLandscapeLeft animated:NO];
 
+    self.view.backgroundColor = UIColor.blackColor;
+    
 #ifdef DEBUG
     //[FSPlayer setLogReport:YES];
     [FSPlayer setLogLevel:FS_LOG_INFO];
@@ -152,15 +154,6 @@
     [self removeMovieNotificationObservers];
 }
 
-//- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation{
-//    return UIInterfaceOrientationIsLandscape(toInterfaceOrientation);
-//}
-
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations
-{
-    return UIInterfaceOrientationMaskLandscape;
-}
-
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
@@ -196,6 +189,24 @@
         player.shouldShowHudView = !player.shouldShowHudView;
         
         sender.title = (player.shouldShowHudView ? @"HUD On" : @"HUD Off");
+    }
+}
+
+- (IBAction)onClickOrientation:(UIBarButtonItem *)sender
+{
+    if (@available(iOS 16.0, *)) {
+        [self setNeedsUpdateOfSupportedInterfaceOrientations];
+        
+        UIInterfaceOrientationMask mask;
+        if (UIInterfaceOrientationIsPortrait(self.view.window.windowScene.interfaceOrientation)) {
+            mask = UIInterfaceOrientationMaskLandscapeRight;
+        } else {
+            mask = UIInterfaceOrientationMaskPortrait;
+        }
+        [self.view.window.windowScene requestGeometryUpdateWithPreferences:[[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask]
+                                                              errorHandler:^(NSError * _Nonnull error) {
+            
+        }];
     }
 }
 

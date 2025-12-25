@@ -24,6 +24,7 @@
 
 #ifndef FSVideoRenderingProtocol_h
 #define FSVideoRenderingProtocol_h
+
 #import <TargetConditionals.h>
 #if TARGET_OS_OSX
 #import <AppKit/AppKit.h>
@@ -35,6 +36,8 @@ typedef NSView UIView;
 #else
 #import <UIKit/UIKit.h>
 #endif
+
+NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, FSScalingMode) {
     FSScalingModeAspectFit,  // Uniform scale until one dimension fits
@@ -165,7 +168,7 @@ typedef enum : NSUInteger {
 
 @optional;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
-- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block;
+- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
 
 @property(nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
 
@@ -176,5 +179,7 @@ typedef enum : NSUInteger {
 - (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif /* FSVideoRenderingProtocol_h */
