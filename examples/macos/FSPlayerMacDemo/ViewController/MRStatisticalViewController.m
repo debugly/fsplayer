@@ -552,7 +552,7 @@ static BOOL hdrAnimationShown = 0;
     [options setPlayerOptionIntValue:6      forKey:@"video-pictq-size"];
     //    [options setPlayerOptionIntValue:50000      forKey:@"min-frames"];
     [options setPlayerOptionIntValue:119     forKey:@"max-fps"];
-    [options setCodecOptionIntValue:FS_AVDISCARD_DEFAULT forKey:@"skip_loop_filter"];
+    // [options setCodecOptionIntValue:FS_AVDISCARD_DEFAULT forKey:@"skip_loop_filter"];
     //for mgeg-ts seek
     [options setFormatOptionIntValue:1 forKey:@"seek_flag_keyframe"];
 //    default is 5000000,but some high bit rate video probe faild cause no audio.

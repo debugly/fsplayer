@@ -154,14 +154,29 @@ typedef CGRect NSRect;
                 ratio = FFMAX(wRatio, hRatio);
             }
             CGSize size = CGSizeMake(attachSize.width * ratio, attachSize.height * ratio);
-            self.renderedView.frame = CGRectMake(CGRectGetMidX(self.bounds) - size.width / 2,
-                                                 CGRectGetMidY(self.bounds) - size.height / 2,
-                                                 size.width,
-                                                 size.height);
+            CGRect frame = CGRectMake(CGRectGetMidX(self.bounds) - size.width / 2,
+                                      CGRectGetMidY(self.bounds) - size.height / 2,
+                                      size.width,
+                                      size.height);
+            self.renderedView.frame = [self convertRectToPixelRect:frame];
         } else {
             self.renderedView.frame = CGRectZero;
         }
     }
+}
+
+- (CGRect)convertRectToPixelRect:(CGRect)rect {
+    CGFloat scale;
+#if TARGET_OS_OSX
+    scale = self.window.screen.backingScaleFactor;
+#else
+    scale = self.window.screen.scale;
+#endif
+    scale = MAX(scale, 1.0);
+    return CGRectMake(round(rect.origin.x * scale) / scale,
+                      round(rect.origin.y * scale) / scale,
+                      ceil(rect.size.width * scale) / scale,
+                      ceil(rect.size.height * scale) / scale);
 }
 
 - (void)makeNeedsLayout {
