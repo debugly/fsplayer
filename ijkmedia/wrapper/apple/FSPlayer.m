@@ -308,19 +308,15 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         // init video sink
         UIView<FSVideoRenderingProtocol> *glView = nil;
     #if TARGET_OS_IOS || TARGET_OS_TV
-        CGRect rect = [[UIScreen mainScreen] bounds];
-        rect.origin = CGPointZero;
-        glView = [[FSMetalView alloc] initWithFrame:rect];
+        glView = [[FSMetalView alloc] initWithFrame:CGRectZero];
     #else
-        CGRect rect = [[[NSScreen screens] firstObject]frame];
-        rect.origin = CGPointZero;
         if (!options.metalRenderer) {
-            glView = [[FSSDLGLView alloc] initWithFrame:rect];
+            glView = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
         } else {
             if (@available(macOS 10.13, *)) {
-                glView = [[FSMetalView alloc] initWithFrame:rect];
+                glView = [[FSMetalView alloc] initWithFrame:CGRectZero];
             } else {
-                glView = [[FSSDLGLView alloc] initWithFrame:rect];
+                glView = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
             }
         }
     #endif
@@ -1081,30 +1077,18 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
         return;
     
     if ([[NSThread currentThread] isMainThread]) {
-        UIView *hudView = [_hudCtrl contentView];
-        [hudView setHidden:NO];
-        CGRect rect = self.view.bounds;
-#if TARGET_OS_IOS || TARGET_OS_TV
-        hudView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleLeftMargin;
-        CGFloat screenWidth = [[UIScreen mainScreen]bounds].size.width;
-#if TARGET_OS_TV
-        rect.size.width = MIN(screenWidth / 3.0, 600);
-#else
-        rect.size.width = MIN(screenWidth / 3.0, 350);
-#endif
-        
-#else
-        hudView.autoresizingMask = NSViewHeightSizable | NSViewMinXMargin | NSViewMinYMargin | NSViewMaxYMargin;
-        NSScreen *screen = self.view.window.screen;
-        if (!screen) {
-            screen = [[NSScreen screens] firstObject];
+        if (self.view != nil) {
+            UIView *hudView = [_hudCtrl contentView];
+            [hudView setHidden:NO];
+            [self.view addSubview:hudView];
+            hudView.translatesAutoresizingMaskIntoConstraints = NO;
+            [NSLayoutConstraint activateConstraints:@[
+                [hudView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                [hudView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+                [hudView.widthAnchor constraintEqualToAnchor:self.view.widthAnchor multiplier:1.0 / 3.0],
+                [hudView.rightAnchor constraintEqualToAnchor:self.view.rightAnchor]
+            ]];
         }
-        CGFloat screenWidth = [screen frame].size.width;
-        rect.size.width = MIN(screenWidth / 3.0, 350);
-#endif
-        rect.origin.x = CGRectGetWidth(self.view.bounds) - rect.size.width;
-        hudView.frame = rect;
-        [self.view addSubview:hudView];
         
         __weak __typeof(self) weakSelf = self;
         _hudTimer = [NSTimer scheduledTimerWithTimeInterval:.5f repeats:YES block:^(NSTimer *timer) {

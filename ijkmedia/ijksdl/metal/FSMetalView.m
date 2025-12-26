@@ -59,10 +59,6 @@ typedef CGRect NSRect;
 {
     self = [super initWithCoder:coder];
     if (self) {
-        self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:CGRectZero];
-        if (!self.renderedView) {
-            return nil;
-        }
         [self prepare];
     }
     return self;
@@ -72,16 +68,17 @@ typedef CGRect NSRect;
 {
     self = [super initWithFrame:frameRect];
     if (self) {
-        self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:frameRect];
-        if (!self.renderedView) {
-            return nil;
-        }
         [self prepare];
     }
     return self;
 }
 
 - (void)prepare {
+    self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:self.bounds];
+    if (!self.renderedView) {
+        NSAssert(NO, @"not supported");
+        return;
+    }
     self.clipsToBounds = YES;
     [self addSubview:self.renderedView];
 }
@@ -401,6 +398,28 @@ typedef CGRect NSRect;
 
 @synthesize displayDelegate = _displayDelegate;
 
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        if (![self prepareMetal]) {
+            return nil;
+        }
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        if (![self prepareMetal]) {
+            return nil;
+        }
+    }
+    return self;
+}
+
 - (void)dealloc
 {
     if (_pictureTextureCache) {
@@ -437,28 +456,6 @@ typedef CGRect NSRect;
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
     return YES;
-}
-
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super initWithCoder:coder];
-    if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
-    }
-    return self;
-}
-
-- (instancetype)initWithFrame:(NSRect)frameRect
-{
-    self = [super initWithFrame:frameRect];
-    if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
-    }
-    return self;
 }
 
 - (void)setShowHdrAnimation:(BOOL)showHdrAnimation

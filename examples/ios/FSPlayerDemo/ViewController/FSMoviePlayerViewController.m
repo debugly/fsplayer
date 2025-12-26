@@ -119,8 +119,6 @@
     
     self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
     self.player.playbackLoop = 2;
-    self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-    self.player.view.frame = self.view.bounds;
     //设置代理，拿到当前渲染帧
     [self.player.view setDisplayDelegate:self];
     self.player.scalingMode = FSScalingModeAspectFit;
@@ -129,7 +127,8 @@
     FSSubtitlePreference p = self.player.subtitlePreference;
     p.PrimaryColour = 16776960;
     self.player.subtitlePreference = p;
-    self.view.autoresizesSubviews = YES;
+    
+    self.player.view.frame = self.view.bounds;
     [self.view addSubview:self.player.view];
     [self.view addSubview:self.mediaControl];
 
@@ -152,6 +151,11 @@
         [player shutdown];
     });
     [self removeMovieNotificationObservers];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    self.player.view.frame = self.view.bounds;
 }
 
 - (void)didReceiveMemoryWarning
