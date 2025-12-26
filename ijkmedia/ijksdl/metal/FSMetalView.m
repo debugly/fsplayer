@@ -252,33 +252,37 @@ typedef CGRect NSRect;
 }
 
 - (BOOL)displayAttach:(FSOverlayAttach *)attach {
+    BOOL shouldNeedsLayout = NO;
     CGSize attachSize = CGSizeMake(attach.w, attach.h);
     if (!CGSizeEqualToSize(self.attachSize, attachSize)) {
         self.attachSize = attachSize;
         if (attachSize.width > 0 && attachSize.height > 0) {
-            [self makeNeedsLayout];
+            shouldNeedsLayout = YES;
         }
     }
     int attachSarNum = attach.sarNum;
     if (self.attachSarNum != attachSarNum) {
         self.attachSarNum = attachSarNum;
         if (attachSarNum > 0) {
-            [self makeNeedsLayout];
+            shouldNeedsLayout = YES;
         }
     }
     int attachSarDen = attach.sarDen;
     if (self.attachSarDen != attachSarDen) {
         self.attachSarDen = attachSarDen;
         if (attachSarDen > 0) {
-            [self makeNeedsLayout];
+            shouldNeedsLayout = YES;
         }
     }
     int attachAutoZRotate = attach.autoZRotate;
     if (self.attachAutoZRotate != attachAutoZRotate) {
         self.attachAutoZRotate = attachAutoZRotate;
         if (attachAutoZRotate > 0) {
-            [self makeNeedsLayout];
+            shouldNeedsLayout = YES;
         }
+    }
+    if (shouldNeedsLayout) {
+        [self makeNeedsLayout];
     }
     return [self.renderedView displayAttach:attach];
 }
