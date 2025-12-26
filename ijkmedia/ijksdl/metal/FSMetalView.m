@@ -153,30 +153,37 @@ typedef CGRect NSRect;
             } else if (scalingMode == FSScalingModeAspectFill) {
                 ratio = FFMAX(wRatio, hRatio);
             }
-            CGSize size = CGSizeMake(attachSize.width * ratio, attachSize.height * ratio);
-            CGRect frame = CGRectMake(CGRectGetMidX(self.bounds) - size.width / 2,
-                                      CGRectGetMidY(self.bounds) - size.height / 2,
-                                      size.width,
-                                      size.height);
-            self.renderedView.frame = [self convertRectToPixelRect:frame];
+            CGSize size = [self convertSizeToPixelSize:CGSizeMake(attachSize.width * ratio,
+                                                                  attachSize.height * ratio)];
+            CGPoint origin = [self convertPointToPixelPoint:CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
+                                                                        CGRectGetMidY(self.bounds) - size.height / 2)];
+            self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
         } else {
             self.renderedView.frame = CGRectZero;
         }
     }
 }
 
-- (CGRect)convertRectToPixelRect:(CGRect)rect {
+- (CGPoint)convertPointToPixelPoint:(CGPoint)point {
+    CGFloat scale = [self screenScale];
+    return CGPointMake(round(point.x * scale) / scale,
+                       round(point.y * scale) / scale);
+}
+
+- (CGSize)convertSizeToPixelSize:(CGSize)size {
+    CGFloat scale = [self screenScale];
+    return CGSizeMake(floor(size.width * scale) / scale,
+                      floor(size.height * scale) / scale);
+}
+
+- (CGFloat)screenScale {
     CGFloat scale;
 #if TARGET_OS_OSX
     scale = self.window.screen.backingScaleFactor;
 #else
     scale = self.window.screen.scale;
 #endif
-    scale = MAX(scale, 1.0);
-    return CGRectMake(round(rect.origin.x * scale) / scale,
-                      round(rect.origin.y * scale) / scale,
-                      ceil(rect.size.width * scale) / scale,
-                      ceil(rect.size.height * scale) / scale);
+    return MAX(scale, 1.0);
 }
 
 - (void)makeNeedsLayout {
