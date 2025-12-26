@@ -63,7 +63,7 @@ typedef CGRect NSRect;
         if (!self.renderedView) {
             return nil;
         }
-        [self addSubview:self.renderedView];
+        [self prepare];
     }
     return self;
 }
@@ -76,9 +76,14 @@ typedef CGRect NSRect;
         if (!self.renderedView) {
             return nil;
         }
-        [self addSubview:self.renderedView];
+        [self prepare];
     }
     return self;
+}
+
+- (void)prepare {
+    self.clipsToBounds = YES;
+    [self addSubview:self.renderedView];
 }
 
 #if TARGET_OS_OSX
@@ -127,9 +132,7 @@ typedef CGRect NSRect;
                     darRatio = 1.0 / darRatio;
                 }
                 //need swap display size
-                int tmp = drawableSize.width;
-                drawableSize.width = drawableSize.height;
-                drawableSize.height = tmp;
+                attachSize = CGSizeMake(attachSize.height, attachSize.width);
             }
             
             //apply user dar
