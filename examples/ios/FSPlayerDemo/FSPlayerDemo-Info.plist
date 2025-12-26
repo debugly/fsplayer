@@ -33,6 +33,10 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>save record video</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>save record video</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -41,9 +45,16 @@
 	<array>
 		<string>armv7</string>
 	</array>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>save record video</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>save record video</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
 </dict>
 </plist>

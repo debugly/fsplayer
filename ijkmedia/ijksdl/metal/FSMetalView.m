@@ -26,7 +26,7 @@
 typedef CGRect NSRect;
 #endif
 
-@interface FSMetalView ()
+@interface FSMetalRenderedView: MTKView <FSVideoRenderingProtocol>
 
 // The command queue used to pass commands to the device.
 @property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
@@ -42,7 +42,345 @@ typedef CGRect NSRect;
 
 @end
 
+@interface FSMetalView ()
+
+@property (nonatomic, strong) FSMetalRenderedView *renderedView;
+
+@property (atomic, assign) CGSize attachSize;
+@property (atomic, assign) int attachSarNum;
+@property (atomic, assign) int attachSarDen;
+@property (atomic, assign) int attachAutoZRotate;
+
+@end
+
 @implementation FSMetalView
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        [self prepare];
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        [self prepare];
+    }
+    return self;
+}
+
+- (void)prepare {
+    self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:self.bounds];
+    if (!self.renderedView) {
+        NSAssert(NO, @"not supported");
+        return;
+    }
+    self.clipsToBounds = YES;
+    [self addSubview:self.renderedView];
+}
+
+#if TARGET_OS_OSX
+- (void)layout {
+    [super layout];
+    [self updateRenderedViewFrame];
+}
+#else
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self updateRenderedViewFrame];
+}
+#endif
+
+- (void)updateRenderedViewFrame {
+    if (self.scalingMode == FSScalingModeFill) {
+        self.renderedView.frame = self.bounds;
+    } else {
+        CGSize drawableSize = self.bounds.size;
+        CGSize attachSize = self.attachSize;
+        int attachSarNum = self.attachSarNum;
+        int attachSarDen = self.attachSarDen;
+        int attachAutoZRotate = self.attachAutoZRotate;
+        FSScalingMode scalingMode = self.scalingMode;
+        FSRotatePreference rotatePreference = self.rotatePreference;
+        FSDARPreference darPreference = self.darPreference;
+        
+        if (drawableSize.width > 0 && drawableSize.height > 0 && attachSize.width > 0 && attachSize.height > 0) {
+            //keep video AVRational
+            if (attachSarNum > 0 && attachSarDen > 0) {
+                attachSize.width = 1.0 * attachSarNum / attachSarDen * attachSize.width;
+            }
+            
+            int zDegrees = 0;
+            if (rotatePreference.type == FSRotateZ) {
+                zDegrees += rotatePreference.degrees;
+            }
+            zDegrees += attachAutoZRotate;
+            
+            float darRatio = darPreference.ratio;
+            
+            //when video's z rotate degrees is 90 odd multiple
+            if (abs(zDegrees) / 90 % 2 == 1) {
+                //need swap user's ratio
+                if (darRatio > 0.001) {
+                    darRatio = 1.0 / darRatio;
+                }
+                //need swap display size
+                attachSize = CGSizeMake(attachSize.height, attachSize.width);
+            }
+            
+            //apply user dar
+            if (darRatio > 0.001) {
+                if (1.0 * attachSize.width / attachSize.height > darRatio) {
+                    attachSize.height = attachSize.width * 1.0 / darRatio;
+                } else {
+                    attachSize.width = attachSize.height * darRatio;
+                }
+            }
+            
+            float wRatio = drawableSize.width / attachSize.width;
+            float hRatio = drawableSize.height / attachSize.height;
+            float ratio  = 1.0f;
+            
+            if (scalingMode == FSScalingModeAspectFit) {
+                ratio = FFMIN(wRatio, hRatio);
+            } else if (scalingMode == FSScalingModeAspectFill) {
+                ratio = FFMAX(wRatio, hRatio);
+            }
+            CGSize size = [self convertSizeToPixelSize:CGSizeMake(attachSize.width * ratio,
+                                                                  attachSize.height * ratio)];
+            CGPoint origin = [self convertPointToPixelPoint:CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
+                                                                        CGRectGetMidY(self.bounds) - size.height / 2)];
+            self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
+        } else {
+            self.renderedView.frame = CGRectZero;
+        }
+    }
+}
+
+- (CGPoint)convertPointToPixelPoint:(CGPoint)point {
+    CGFloat scale = [self screenScale];
+    return CGPointMake(round(point.x * scale) / scale,
+                       round(point.y * scale) / scale);
+}
+
+- (CGSize)convertSizeToPixelSize:(CGSize)size {
+    CGFloat scale = [self screenScale];
+    return CGSizeMake(floor(size.width * scale) / scale,
+                      floor(size.height * scale) / scale);
+}
+
+- (CGFloat)screenScale {
+    CGFloat scale;
+#if TARGET_OS_OSX
+    scale = self.window.screen.backingScaleFactor;
+#else
+    scale = self.window.screen.scale;
+#endif
+    return MAX(scale, 1.0);
+}
+
+- (void)makeNeedsLayout {
+    void(^setNeedsLayout)(void) = ^{
+#if TARGET_OS_OSX
+        self.needsLayout = YES;
+#else
+        [self setNeedsLayout];
+#endif
+    };
+    if (NSThread.isMainThread) {
+        setNeedsLayout();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            setNeedsLayout();
+        });
+    }
+}
+
+#pragma mark - FSVideoRenderingProtocol
+
+- (void)setScalingMode:(FSScalingMode)scalingMode {
+    if (self.renderedView.scalingMode != scalingMode) {
+        [self makeNeedsLayout];
+    }
+    self.renderedView.scalingMode = scalingMode;
+}
+
+- (FSScalingMode)scalingMode {
+    return self.renderedView.scalingMode;
+}
+
+#if TARGET_OS_IOS
+- (void)setScaleFactor:(CGFloat)scaleFactor {
+    self.renderedView.scaleFactor = scaleFactor;
+}
+
+- (CGFloat)scaleFactor {
+    return self.renderedView.scaleFactor;
+}
+#endif
+
+- (void)setRotatePreference:(FSRotatePreference)rotatePreference {
+    if (self.renderedView.rotatePreference.type != rotatePreference.type || self.renderedView.rotatePreference.degrees != rotatePreference.degrees) {
+        [self makeNeedsLayout];
+    }
+    self.renderedView.rotatePreference = rotatePreference;
+}
+
+- (FSRotatePreference)rotatePreference {
+    return self.renderedView.rotatePreference;
+}
+
+- (void)setColorPreference:(FSColorConvertPreference)colorPreference {
+    self.renderedView.colorPreference = colorPreference;
+}
+
+- (FSColorConvertPreference)colorPreference {
+    return self.renderedView.colorPreference;
+}
+
+- (void)setDarPreference:(FSDARPreference)darPreference {
+    if (self.renderedView.darPreference.ratio != darPreference.ratio) {
+        [self makeNeedsLayout];
+    }
+    self.renderedView.darPreference = darPreference;
+}
+
+- (FSDARPreference)darPreference {
+    return self.renderedView.darPreference;
+}
+
+- (void)setPreventDisplay:(BOOL)preventDisplay {
+    self.renderedView.preventDisplay = preventDisplay;
+}
+
+- (BOOL)preventDisplay {
+    return self.renderedView.preventDisplay;
+}
+
+- (void)setShowHdrAnimation:(BOOL)showHdrAnimation {
+    self.renderedView.showHdrAnimation = showHdrAnimation;
+}
+
+- (BOOL)showHdrAnimation {
+    return self.renderedView.showHdrAnimation;
+}
+
+- (void)setNeedsRefreshCurrentPic {
+    [self.renderedView setNeedsRefreshCurrentPic];
+}
+
+- (BOOL)displayAttach:(FSOverlayAttach *)attach {
+    BOOL shouldNeedsLayout = NO;
+    CGSize attachSize = CGSizeMake(attach.w, attach.h);
+    if (!CGSizeEqualToSize(self.attachSize, attachSize)) {
+        self.attachSize = attachSize;
+        if (attachSize.width > 0 && attachSize.height > 0) {
+            shouldNeedsLayout = YES;
+        }
+    }
+    int attachSarNum = attach.sarNum;
+    if (self.attachSarNum != attachSarNum) {
+        self.attachSarNum = attachSarNum;
+        if (attachSarNum > 0) {
+            shouldNeedsLayout = YES;
+        }
+    }
+    int attachSarDen = attach.sarDen;
+    if (self.attachSarDen != attachSarDen) {
+        self.attachSarDen = attachSarDen;
+        if (attachSarDen > 0) {
+            shouldNeedsLayout = YES;
+        }
+    }
+    int attachAutoZRotate = attach.autoZRotate;
+    if (self.attachAutoZRotate != attachAutoZRotate) {
+        self.attachAutoZRotate = attachAutoZRotate;
+        if (attachAutoZRotate > 0) {
+            shouldNeedsLayout = YES;
+        }
+    }
+    if (shouldNeedsLayout) {
+        [self makeNeedsLayout];
+    }
+    return [self.renderedView displayAttach:attach];
+}
+
+#if !TARGET_OS_OSX
+- (UIImage *)snapshot {
+    return [self.renderedView snapshot];
+}
+#else
+- (CGImageRef)snapshot:(FSSnapshotType)aType {
+    return [self.renderedView snapshot:aType];
+}
+#endif
+
+- (NSString *)name {
+    return [self.renderedView name];
+}
+
+- (id)context {
+    return self.renderedView.context;
+}
+
+- (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b {
+    [self.renderedView setBackgroundColor:r g:g b:b];
+}
+
+- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block {
+    [self.renderedView registerRefreshCurrentPicObserver:block];
+}
+
+- (void)setDisplayDelegate:(id<FSVideoRenderingDelegate>)displayDelegate {
+    self.renderedView.displayDelegate = displayDelegate;
+}
+
+- (id<FSVideoRenderingDelegate>)displayDelegate {
+    return self.renderedView.displayDelegate;
+}
+
+#if TARGET_OS_OSX
+- (NSView *)hitTest:(NSPoint)point
+{
+    for (NSView *sub in [self subviews]) {
+        NSPoint pointInSelf = [self convertPoint:point fromView:self.superview];
+        NSPoint pointInSub = [self convertPoint:pointInSelf toView:sub];
+        if (NSPointInRect(pointInSub, sub.bounds)) {
+            return sub;
+        }
+    }
+    return nil;
+}
+
+- (BOOL)acceptsFirstResponder
+{
+    return NO;
+}
+
+- (BOOL)mouseDownCanMoveWindow
+{
+    return YES;
+}
+#else
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+    return NO;
+}
+#endif
+
+@end
+
+@interface FSMetalRenderedView ()
+
+@property (nonatomic, assign) CGSize previousDrawableSize;
+
+@end
+
+@implementation FSMetalRenderedView
 
 @synthesize scalingMode = _scalingMode;
 // rotate preference
@@ -59,6 +397,28 @@ typedef CGRect NSRect;
 @synthesize showHdrAnimation = _showHdrAnimation;
 
 @synthesize displayDelegate = _displayDelegate;
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        if (![self prepareMetal]) {
+            return nil;
+        }
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        if (![self prepareMetal]) {
+            return nil;
+        }
+    }
+    return self;
+}
 
 - (void)dealloc
 {
@@ -98,28 +458,6 @@ typedef CGRect NSRect;
     return YES;
 }
 
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super initWithCoder:coder];
-    if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
-    }
-    return self;
-}
-
-- (instancetype)initWithFrame:(NSRect)frameRect
-{
-    self = [super initWithFrame:frameRect];
-    if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
-    }
-    return self;
-}
-
 - (void)setShowHdrAnimation:(BOOL)showHdrAnimation
 {
     if (_showHdrAnimation != showHdrAnimation) {
@@ -128,61 +466,8 @@ typedef CGRect NSRect;
     }
 }
 
-- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize
-{
-    if (_scalingMode == FSScalingModeFill) {
-        return CGSizeMake(1.0, 1.0);
-    }
-    
-    int frameWidth = attach.w;
-    int frameHeight = attach.h;
-    
-    //keep video AVRational
-    if (attach.sarNum > 0 && attach.sarDen > 0) {
-        frameWidth = 1.0 * attach.sarNum / attach.sarDen * frameWidth;
-    }
-    
-    int zDegrees = 0;
-    if (_rotatePreference.type == FSRotateZ) {
-        zDegrees += _rotatePreference.degrees;
-    }
-    zDegrees += attach.autoZRotate;
-    
-    float darRatio = self.darPreference.ratio;
-    
-    //when video's z rotate degrees is 90 odd multiple
-    if (abs(zDegrees) / 90 % 2 == 1) {
-        //need swap user's ratio
-        if (darRatio > 0.001) {
-            darRatio = 1.0 / darRatio;
-        }
-        //need swap display size
-        int tmp = drawableSize.width;
-        drawableSize.width = drawableSize.height;
-        drawableSize.height = tmp;
-    }
-    
-    //apply user dar
-    if (darRatio > 0.001) {
-        if (1.0 * attach.w / attach.h > darRatio) {
-            frameHeight = frameWidth * 1.0 / darRatio;
-        } else {
-            frameWidth = frameHeight * darRatio;
-        }
-    }
-    
-    float wRatio = drawableSize.width / frameWidth;
-    float hRatio = drawableSize.height / frameHeight;
-    float ratio  = 1.0f;
-    
-    if (_scalingMode == FSScalingModeAspectFit) {
-        ratio = FFMIN(wRatio, hRatio);
-    } else if (_scalingMode == FSScalingModeAspectFill) {
-        ratio = FFMAX(wRatio, hRatio);
-    }
-    float nW = (frameWidth * ratio / drawableSize.width);
-    float nH = (frameHeight * ratio / drawableSize.height);
-    return CGSizeMake(nW, nH);
+- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize {
+    return CGSizeMake(1.0, 1.0);
 }
 
 - (BOOL)setupSubPipelineIfNeed
@@ -304,7 +589,7 @@ typedef CGRect NSRect;
             id<CAMetalDrawable> drawable = self.currentDrawable;
             if (drawable) {
                 id<MTLTexture> texture = drawable.texture;
-
+                
                 MTLRenderPassDescriptor *passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
                 passDescriptor.colorAttachments[0].texture = texture;
                 passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -313,7 +598,7 @@ typedef CGRect NSRect;
                 
                 id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
                 id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
-            
+                
                 [commandEncoder endEncoding];
                 [commandBuffer presentDrawable:drawable];
                 [commandBuffer commit];
@@ -498,7 +783,7 @@ typedef CGRect NSRect;
     }
     
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-   
+    
     if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
         return NULL;
     }
@@ -552,7 +837,9 @@ typedef CGRect NSRect;
 {
     [super layoutSubviews];
     
-    if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
+    if (!CGSizeEqualToSize(self.previousDrawableSize, self.drawableSize)) {
+        self.previousDrawableSize = self.drawableSize;
+        
         [self setNeedsRefreshCurrentPic];
     }
 }
@@ -618,7 +905,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     return result;
 }
 
-- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block
+- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block
 {
     self.refreshCurrentPicBlock = block;
 }
@@ -705,34 +992,5 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     return @"Metal";
 }
-
-#if TARGET_OS_OSX
-- (NSView *)hitTest:(NSPoint)point
-{
-    for (NSView *sub in [self subviews]) {
-        NSPoint pointInSelf = [self convertPoint:point fromView:self.superview];
-        NSPoint pointInSub = [self convertPoint:pointInSelf toView:sub];
-        if (NSPointInRect(pointInSub, sub.bounds)) {
-            return sub;
-        }
-    }
-    return nil;
-}
-
-- (BOOL)acceptsFirstResponder
-{
-    return NO;
-}
-
-- (BOOL)mouseDownCanMoveWindow
-{
-    return YES;
-}
-#else
-- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
-{
-    return NO;
-}
-#endif
 
 @end

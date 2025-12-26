@@ -308,19 +308,15 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         // init video sink
         UIView<FSVideoRenderingProtocol> *glView = nil;
     #if TARGET_OS_IOS || TARGET_OS_TV
-        CGRect rect = [[UIScreen mainScreen] bounds];
-        rect.origin = CGPointZero;
-        glView = [[FSMetalView alloc] initWithFrame:rect];
+        glView = [[FSMetalView alloc] initWithFrame:CGRectZero];
     #else
-        CGRect rect = [[[NSScreen screens] firstObject]frame];
-        rect.origin = CGPointZero;
         if (!options.metalRenderer) {
-            glView = [[FSSDLGLView alloc] initWithFrame:rect];
+            glView = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
         } else {
             if (@available(macOS 10.13, *)) {
-                glView = [[FSMetalView alloc] initWithFrame:rect];
+                glView = [[FSMetalView alloc] initWithFrame:CGRectZero];
             } else {
-                glView = [[FSSDLGLView alloc] initWithFrame:rect];
+                glView = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
             }
         }
     #endif
@@ -785,21 +781,34 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 
 - (void)setCurrentAudioExtraDelay:(float)delay
 {
+    if (!_mediaPlayer) {
+        return;
+    }
+        
     ijkmp_set_audio_extra_delay(_mediaPlayer, delay);
 }
 
 - (float)currentAudioExtraDelay
 {
+    if (!_mediaPlayer) {
+        return 0;
+    }
     return ijkmp_get_audio_extra_delay(_mediaPlayer);
 }
 
 - (void)setCurrentSubtitleExtraDelay:(float)delay
 {
+    if (!_mediaPlayer) {
+        return;
+    }
     ijkmp_set_subtitle_extra_delay(_mediaPlayer, delay);
 }
 
 - (float)currentSubtitleExtraDelay
 {
+    if (!_mediaPlayer) {
+        return 0;
+    }
     return ijkmp_get_subtitle_extra_delay(_mediaPlayer);
 }
 
@@ -990,6 +999,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
 
 - (int64_t)currentDownloadSpeed
 {
+    if (!_mediaPlayer) {
+        return 0;
+    }
     return ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_TCP_SPEED, 0);
 }
 
@@ -1081,30 +1093,18 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
         return;
     
     if ([[NSThread currentThread] isMainThread]) {
-        UIView *hudView = [_hudCtrl contentView];
-        [hudView setHidden:NO];
-        CGRect rect = self.view.bounds;
-#if TARGET_OS_IOS || TARGET_OS_TV
-        hudView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleLeftMargin;
-        CGFloat screenWidth = [[UIScreen mainScreen]bounds].size.width;
-#if TARGET_OS_TV
-        rect.size.width = MIN(screenWidth / 3.0, 600);
-#else
-        rect.size.width = MIN(screenWidth / 3.0, 350);
-#endif
-        
-#else
-        hudView.autoresizingMask = NSViewHeightSizable | NSViewMinXMargin | NSViewMinYMargin | NSViewMaxYMargin;
-        NSScreen *screen = self.view.window.screen;
-        if (!screen) {
-            screen = [[NSScreen screens] firstObject];
+        if (self.view != nil) {
+            UIView *hudView = [_hudCtrl contentView];
+            [hudView setHidden:NO];
+            [self.view addSubview:hudView];
+            hudView.translatesAutoresizingMaskIntoConstraints = NO;
+            [NSLayoutConstraint activateConstraints:@[
+                [hudView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                [hudView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+                [hudView.widthAnchor constraintEqualToAnchor:self.view.widthAnchor multiplier:1.0 / 3.0],
+                [hudView.rightAnchor constraintEqualToAnchor:self.view.rightAnchor]
+            ]];
         }
-        CGFloat screenWidth = [screen frame].size.width;
-        rect.size.width = MIN(screenWidth / 3.0, 350);
-#endif
-        rect.origin.x = CGRectGetWidth(self.view.bounds) - rect.size.width;
-        hudView.frame = rect;
-        [self.view addSubview:hudView];
         
         __weak __typeof(self) weakSelf = self;
         _hudTimer = [NSTimer scheduledTimerWithTimeInterval:.5f repeats:YES block:^(NSTimer *timer) {
@@ -1150,6 +1150,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
 {
     _audioSamplesCallback = audioSamplesCallback;
 
+    if (!_mediaPlayer) {
+        return;
+    }
     if (audioSamplesCallback) {
         ijkmp_set_audio_sample_observer(_mediaPlayer, ijkff_audio_samples_callback);
     } else {
@@ -1159,6 +1162,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
 
 - (void)enableAccurateSeek:(BOOL)open
 {
+    if (!_mediaPlayer) {
+        return;
+    }
     if (_canUpdateAccurateSeek) {
         _enableAccurateSeek = 0;
         ijkmp_set_enable_accurate_seek(_mediaPlayer, open);
@@ -1170,6 +1176,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
 
 - (void)stepToNextFrame
 {
+    if (!_mediaPlayer) {
+        return;
+    }
     ijkmp_step_to_next_frame(_mediaPlayer);
 }
 
@@ -1442,8 +1451,9 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
 
 - (void)postEvent: (FSPlayerMessage *)msg
 {
-    if (!msg)
+    if (!_mediaPlayer || !msg) {
         return;
+    }
 
     AVMessage *avmsg = msg.msg;
     switch (avmsg->what) {
@@ -2269,6 +2279,9 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)closeCurrentStream:(NSString *)streamType
 {
+    if (!_mediaPlayer) {
+        return;
+    }
     NSDictionary *dic = self.monitor.mediaMeta;
     if (dic[streamType] != nil) {
         int streamIdx = [dic[streamType] intValue];
@@ -2282,6 +2295,10 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 {
     if (!FSSubtitlePreferenceIsEqual(&_subtitlePreference, &subtitlePreference)) {
         _subtitlePreference = subtitlePreference;
+        
+        if (!_mediaPlayer) {
+            return;
+        }
         ijkmp_set_subtitle_preference(_mediaPlayer, &subtitlePreference);
     }
 }
@@ -2290,16 +2307,25 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)setAudioChannel:(FSAudioChannel)config
 {
+    if (!_mediaPlayer) {
+        return;
+    }
     ijkmp_set_property_int64(_mediaPlayer, FFP_PROP_INT64_CHANNEL_CONFIG, config);
 }
 
 - (FSAudioChannel)getAudioChanne
 {
+    if (!_mediaPlayer) {
+        return FSAudioChannelStereo;
+    }
     return (int)ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_CHANNEL_CONFIG, FSAudioChannelStereo);
 }
 
 - (NSArray <NSString *> *)getInputFormatExtensions
 {
+    if (!_mediaPlayer) {
+        return nil;
+    }
     const char *exts = ijkmp_get_iformat_extensions(_mediaPlayer);
     if (exts) {
         return [[NSString stringWithCString:exts encoding:NSUTF8StringEncoding] componentsSeparatedByString:@","];
@@ -2330,6 +2356,9 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (int)stopExactRecord
 {
+    if (!_mediaPlayer) {
+        return -1000;
+    }
     return ijkmp_stop_exact_record(_mediaPlayer);
 }
 
