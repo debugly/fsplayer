@@ -51,7 +51,11 @@
     options.showHudView   = NO;
     options.metalRenderer = YES;
     options.automaticallySetupAudioSession = YES;
-    options.currentPlaybackTimeNotificationInterval = 0;
+    if (@available(macOS 10.12, *)) {
+        options.currentPlaybackTimeNotificationInterval = 0;
+    } else {
+        // Fallback on earlier versions
+    }
     return options;
 }
 

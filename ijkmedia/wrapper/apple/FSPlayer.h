@@ -137,11 +137,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly) CGFloat fpsInMeta;
 @property(nonatomic, readonly) CGFloat fpsAtOutput;
-@property(nonatomic) BOOL shouldShowHudView;
+@property(nonatomic) BOOL shouldShowHudView API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0));
 //when sampleSize is -1,the samples is NULL,means needs reset and refresh ui.
 @property(nonatomic, copy) void (^audioSamplesCallback)(int16_t * _Nullable samples, int sampleSize, int sampleRate, int channels);
 
-- (NSDictionary *)allHudItem;
+- (NSDictionary *)allHudItem API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0));
 
 - (void)setOptionValue:(NSString *)value
                 forKey:(NSString *)key

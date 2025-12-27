@@ -86,7 +86,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
     
-    NSTimer *_playbackTimeNotifiTimer;
+    __weak NSTimer *_playbackTimeNotifiTimer;
     NSTimeInterval _playbackTimeNotifiInterval;
 }
 
@@ -207,7 +207,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     _scalingMode = FSScalingModeAspectFit;
     _shouldAutoplay = YES;
     _canUpdateAccurateSeek = YES;
-    _playbackTimeNotifiInterval = options.currentPlaybackTimeNotificationInterval;
+    if (@available(macOS 10.12, *)) {
+        _playbackTimeNotifiInterval = options.currentPlaybackTimeNotificationInterval;
+    } else {
+        // Fallback on earlier versions
+    }
     
     memset(&_asyncStat, 0, sizeof(_asyncStat));
     memset(&_cacheStat, 0, sizeof(_cacheStat));
@@ -241,7 +245,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         // init hud
         _hudCtrl = [FSSDLHudControl new];
 
-        self.shouldShowHudView = options.showHudView;
+        if (@available(macOS 10.12, *)) {
+            self.shouldShowHudView = options.showHudView;
+        } else {
+            // Fallback on earlier versions
+        }
     } else {
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
         [options setPlayerOptionIntValue:0 forKey:@"subtitle_mix"];
@@ -471,7 +479,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
 
     [self setScreenOn:_keepScreenOnWhilePlaying];
 
-    [self startHudTimer];
+    if (@available(macOS 10.12, *)) {
+        [self startHudTimer];
+    } else {
+        // Fallback on earlier versions
+    }
     ijkmp_start(_mediaPlayer);
 }
 
@@ -1074,7 +1086,7 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
                forKey:@"tcp-spd"];
 }
 
-- (void)startHudTimer
+- (void)startHudTimer API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0))
 {
     if (!_shouldShowHudView)
         return;
@@ -1493,8 +1505,13 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             ijkmp_set_playback_rate(_mediaPlayer, [self playbackRate]);
             ijkmp_set_playback_volume(_mediaPlayer, [self playbackVolume]);
 
-            [self startHudTimer];
-            [self createPlaybackTimeNotifiTimerIfNeed];
+            if (@available(macOS 10.12, *)) {
+                [self startHudTimer];
+                [self createPlaybackTimeNotifiTimerIfNeed];
+            } else {
+                // Fallback on earlier versions
+            }
+            
             _isPreparedToPlay = YES;
 
             [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayNotification object:self];
@@ -1795,7 +1812,7 @@ static int media_player_msg_loop(void* arg)
     }
 }
 
-- (void)createPlaybackTimeNotifiTimerIfNeed {
+- (void)createPlaybackTimeNotifiTimerIfNeed API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0)) {
     if (!_playbackTimeNotifiTimer && _playbackTimeNotifiInterval > 0) {
         __weak __typeof(self) weakSelf = self;
         _playbackTimeNotifiTimer = [NSTimer scheduledTimerWithTimeInterval:_playbackTimeNotifiInterval repeats:YES block:^(NSTimer *timer) {
@@ -1805,7 +1822,7 @@ static int media_player_msg_loop(void* arg)
     }
 }
 
-- (void)onPlaybackTimeTick {
+- (void)onPlaybackTimeTick API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0)) {
     if (!_mediaPlayer || !self.isPlaying) {
         return;
     }
