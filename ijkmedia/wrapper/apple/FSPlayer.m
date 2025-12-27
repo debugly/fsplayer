@@ -79,8 +79,6 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
     AVAppAsyncStatistic _asyncStat;
     IjkIOAppCacheStatistic _cacheStat;
-
-    NSTimer *_hudTimer;
     FSSDLHudControl *_hudCtrl;
 #if TARGET_OS_IOS
     FSNotificationManager *_notificationManager;
@@ -88,8 +86,8 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
     
-    NSTimer *_currentPlaybackTimeTimer;
-    NSTimeInterval _currentPlaybackTimeNotificationInterval;
+    NSTimer *_playbackTimeNotifiTimer;
+    NSTimeInterval _playbackTimeNotifiInterval;
 }
 
 @synthesize view = _view;
@@ -125,9 +123,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         return;
     }
     __block FSSDLHudControl *hudCtrl = player->_hudCtrl;
-    __block NSTimer *hudTimer = player->_hudTimer;
     __block UIView<FSVideoRenderingProtocol> *view = player->_view;
-    __block NSTimer *currentPlaybackTimeTimer = player->_currentPlaybackTimeTimer;
+    __block NSTimer *playbackTimeNotifiTimer = player->_playbackTimeNotifiTimer;
     
 #if TARGET_OS_IOS
     [player unregisterApplicationObservers];
@@ -137,8 +134,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     player->_videoRendering = nil;
     player->_view = nil;
     player->_hudCtrl = nil;
-    player->_hudTimer = nil;
-    player->_currentPlaybackTimeTimer = nil;
+    player->_playbackTimeNotifiTimer = nil;
     
     player->_segmentOpenDelegate    = nil;
     player->_tcpOpenDelegate        = nil;
@@ -158,14 +154,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         }
         [view removeFromSuperview];
         view = nil;
-        /// hud
-        [hudTimer invalidate];
-        hudTimer = nil;
         [hudCtrl destroyContentView];
         hudCtrl = nil;
         /// currentPlaybackTime
-        [currentPlaybackTimeTimer invalidate];
-        currentPlaybackTimeTimer = nil;
+        [playbackTimeNotifiTimer invalidate];
+        playbackTimeNotifiTimer = nil;
     };
     if ([NSThread isMainThread]) {
         UIHandler();
@@ -214,7 +207,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     _scalingMode = FSScalingModeAspectFit;
     _shouldAutoplay = YES;
     _canUpdateAccurateSeek = YES;
-    _currentPlaybackTimeNotificationInterval = options.currentPlaybackTimeNotificationInterval;
+    _playbackTimeNotifiInterval = options.currentPlaybackTimeNotificationInterval;
     
     memset(&_asyncStat, 0, sizeof(_asyncStat));
     memset(&_cacheStat, 0, sizeof(_cacheStat));
@@ -1086,9 +1079,6 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     if (!_shouldShowHudView)
         return;
 
-    if (_hudTimer != nil)
-        return;
-
     if (_hudCtrl == nil)
         return;
     
@@ -1104,12 +1094,13 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
                 [hudView.widthAnchor constraintEqualToAnchor:self.view.widthAnchor multiplier:1.0 / 3.0],
                 [hudView.rightAnchor constraintEqualToAnchor:self.view.rightAnchor]
             ]];
+            
+            //create PlaybackTimeNotifi Timer
+            if (_playbackTimeNotifiInterval <= 0) {
+                _playbackTimeNotifiInterval = 0.5;
+                [self createPlaybackTimeNotifiTimerIfNeed];
+            }
         }
-        
-        __weak __typeof(self) weakSelf = self;
-        _hudTimer = [NSTimer scheduledTimerWithTimeInterval:.5f repeats:YES block:^(NSTimer *timer) {
-            [weakSelf refreshHudView];
-        }];
     } else {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self startHudTimer];
@@ -1119,14 +1110,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
 
 - (void)stopHudTimer
 {
-    if (_hudTimer == nil)
-        return;
-
     if ([[NSThread currentThread] isMainThread]) {
         UIView *hudView = [_hudCtrl contentView];
         [hudView setHidden:YES];
-        [_hudTimer invalidate];
-        _hudTimer = nil;
     } else {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self stopHudTimer];
@@ -1508,7 +1494,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             ijkmp_set_playback_volume(_mediaPlayer, [self playbackVolume]);
 
             [self startHudTimer];
-            [self createCurrentPlaybackTimeTimer];
+            [self createPlaybackTimeNotifiTimerIfNeed];
             _isPreparedToPlay = YES;
 
             [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayNotification object:self];
@@ -1809,19 +1795,25 @@ static int media_player_msg_loop(void* arg)
     }
 }
 
-- (void)createCurrentPlaybackTimeTimer {
-    if (!_currentPlaybackTimeTimer && _currentPlaybackTimeNotificationInterval > 0) {
+- (void)createPlaybackTimeNotifiTimerIfNeed {
+    if (!_playbackTimeNotifiTimer && _playbackTimeNotifiInterval > 0) {
         __weak __typeof(self) weakSelf = self;
-        _currentPlaybackTimeTimer = [NSTimer scheduledTimerWithTimeInterval:_currentPlaybackTimeNotificationInterval repeats:YES block:^(NSTimer *timer) {
-            [weakSelf callCurrentPlaybackTimeNotification];
+        _playbackTimeNotifiTimer = [NSTimer scheduledTimerWithTimeInterval:_playbackTimeNotifiInterval repeats:YES block:^(NSTimer *timer) {
+            __strong __typeof(weakSelf) self = weakSelf;
+            [self onPlaybackTimeTick];
         }];
     }
 }
 
-- (void)callCurrentPlaybackTimeNotification {
+- (void)onPlaybackTimeTick {
     if (!_mediaPlayer || !self.isPlaying) {
         return;
     }
+    
+    if (self.shouldShowHudView) {
+        [self refreshHudView];
+    }
+    
     [[NSNotificationCenter defaultCenter]
      postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
      object:self];
