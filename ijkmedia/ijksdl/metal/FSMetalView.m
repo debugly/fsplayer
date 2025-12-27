@@ -26,6 +26,7 @@
 typedef CGRect NSRect;
 #endif
 
+NS_CLASS_AVAILABLE(10_13, 11_0)
 @interface FSMetalRenderedView: MTKView <FSVideoRenderingProtocol>
 
 // The command queue used to pass commands to the device.
@@ -75,11 +76,9 @@ typedef CGRect NSRect;
 
 - (void)prepare {
     self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:self.bounds];
-    if (!self.renderedView) {
-        NSAssert(NO, @"not supported");
-        return;
-    }
+#if ! TARGET_OS_OSX
     self.clipsToBounds = YES;
+#endif
     [self addSubview:self.renderedView];
 }
 
