@@ -1,6 +1,10 @@
 tag 1.0.3
 --------------------------------
-
+- support give up setup AudioSession on iOS platform #60
+- support async destroy player when set player to nil even though not call shutdown
+- improve playveiw animation
+- add g726le and g726be decoders
+- fix videotoolbox can't decode some h264 video bug
 - rename subtitle option to subtitle_mix
 - support custom audio rendering
 - support get video-master diff

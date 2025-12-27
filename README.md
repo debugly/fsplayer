@@ -61,7 +61,7 @@
 - [x] 缓冲进度通知
 - [x] 支持异步销毁，即使不调用 shutdown 也能正常销毁
 - [x] 支持设定播放器不管理 AudioSession 状态
-
+- [x] 优化播放器 View 动画效果
 
 调研中
 
@@ -98,7 +98,7 @@ FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，�
 - 通过 Cocoapods 集成:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.2/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.3/FSPlayer.spec.json'
 ```
 
 ### 调用

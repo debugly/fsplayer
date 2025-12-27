@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION_NAME=1.0.2
+VERSION_NAME=1.0.3
 VERSION_TARGET=$1
 
 echo "alter version to $VERSION_NAME"
