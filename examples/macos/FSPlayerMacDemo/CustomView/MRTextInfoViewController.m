@@ -48,7 +48,7 @@
         [self.view.window setTitlebarAppearsTransparent:NO];
         [self.view.window setMovableByWindowBackground:YES];
         
-        self.view.window.styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskBorderless | NSWindowStyleMaskClosable;
+        self.view.window.styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskResizable | NSWindowStyleMaskClosable;
 //        self.view.window.titleVisibility = NSWindowTitleHidden;
         
         //隐藏最大化、最小化按钮
