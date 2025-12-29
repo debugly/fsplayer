@@ -37,6 +37,10 @@
 	<string>save record video</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>save record video</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -207,10 +207,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     _scalingMode = FSScalingModeAspectFit;
     _shouldAutoplay = YES;
     _canUpdateAccurateSeek = YES;
-    if (@available(macOS 10.12, *)) {
+    if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
         _playbackTimeNotifiInterval = options.currentPlaybackTimeNotificationInterval;
-    } else {
-        // Fallback on earlier versions
     }
     
     memset(&_asyncStat, 0, sizeof(_asyncStat));
@@ -245,10 +243,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         // init hud
         _hudCtrl = [FSSDLHudControl new];
 
-        if (@available(macOS 10.12, *)) {
+        if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
             self.shouldShowHudView = options.showHudView;
-        } else {
-            // Fallback on earlier versions
         }
     } else {
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
@@ -479,11 +475,10 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
 
     [self setScreenOn:_keepScreenOnWhilePlaying];
 
-    if (@available(macOS 10.12, *)) {
-        [self startHudTimer];
-    } else {
-        // Fallback on earlier versions
+    if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
+        [self startHudTimerIfNeed];
     }
+    
     ijkmp_start(_mediaPlayer);
 }
 
@@ -918,7 +913,7 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 
 - (NSDictionary *)allHudItem
 {
-    if (!self.shouldShowHudView) {
+    if (self.shouldShowHudView && _hudCtrl != nil) {
         [self refreshHudView];
     }
     return [_hudCtrl allHudItem];
@@ -1086,7 +1081,7 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
                forKey:@"tcp-spd"];
 }
 
-- (void)startHudTimer API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0))
+- (void)startHudTimerIfNeed API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0))
 {
     if (!_shouldShowHudView)
         return;
@@ -1108,14 +1103,11 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
             ]];
             
             //create PlaybackTimeNotifi Timer
-            if (_playbackTimeNotifiInterval <= 0) {
-                _playbackTimeNotifiInterval = 0.5;
-                [self createPlaybackTimeNotifiTimerIfNeed];
-            }
+            [self createPlaybackTimeNotifiTimerIfNeed];
         }
     } else {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self startHudTimer];
+            [self startHudTimerIfNeed];
         });
     }
 }
@@ -1139,7 +1131,7 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     }
     _shouldShowHudView = shouldShowHudView;
     if (shouldShowHudView)
-        [self startHudTimer];
+        [self startHudTimerIfNeed];
     else
         [self stopHudTimer];
 }
@@ -1505,11 +1497,9 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             ijkmp_set_playback_rate(_mediaPlayer, [self playbackRate]);
             ijkmp_set_playback_volume(_mediaPlayer, [self playbackVolume]);
 
-            if (@available(macOS 10.12, *)) {
-                [self startHudTimer];
+            if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
+                [self startHudTimerIfNeed];
                 [self createPlaybackTimeNotifiTimerIfNeed];
-            } else {
-                // Fallback on earlier versions
             }
             
             _isPreparedToPlay = YES;
@@ -1813,9 +1803,13 @@ static int media_player_msg_loop(void* arg)
 }
 
 - (void)createPlaybackTimeNotifiTimerIfNeed API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0)) {
-    if (!_playbackTimeNotifiTimer && _playbackTimeNotifiInterval > 0) {
+    if (!_playbackTimeNotifiTimer && (_playbackTimeNotifiInterval > 0 || self.shouldShowHudView)) {
         __weak __typeof(self) weakSelf = self;
-        _playbackTimeNotifiTimer = [NSTimer scheduledTimerWithTimeInterval:_playbackTimeNotifiInterval repeats:YES block:^(NSTimer *timer) {
+        NSTimeInterval interval = _playbackTimeNotifiInterval;
+        if (interval <= 0) {
+            interval = 0.5;
+        }
+        _playbackTimeNotifiTimer = [NSTimer scheduledTimerWithTimeInterval:interval repeats:YES block:^(NSTimer *timer) {
             __strong __typeof(weakSelf) self = weakSelf;
             [self onPlaybackTimeTick];
         }];
@@ -1827,13 +1821,15 @@ static int media_player_msg_loop(void* arg)
         return;
     }
     
-    if (self.shouldShowHudView) {
+    if (self.shouldShowHudView && _hudCtrl != nil) {
         [self refreshHudView];
     }
     
-    [[NSNotificationCenter defaultCenter]
-     postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
-     object:self];
+    if (_playbackTimeNotifiInterval > 0) {
+        [[NSNotificationCenter defaultCenter]
+         postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
+         object:self];
+    }
 }
 
 #pragma mark av_format_control_message

@@ -163,6 +163,8 @@
             [FSVideoViewController presentFromViewController:self withTitle:historyItem.title URL:historyItem.url completion:^{
                 [self.navigationController popViewControllerAnimated:NO];
             }];
+            
+            [tableView reloadData];
         } break;
             
         default:
