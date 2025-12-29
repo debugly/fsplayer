@@ -149,37 +149,15 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
             } else if (scalingMode == FSScalingModeAspectFill) {
                 ratio = FFMAX(wRatio, hRatio);
             }
-            CGSize size = [self convertSizeToPixelSize:CGSizeMake(attachSize.width * ratio,
-                                                                  attachSize.height * ratio)];
-            CGPoint origin = [self convertPointToPixelPoint:CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
-                                                                        CGRectGetMidY(self.bounds) - size.height / 2)];
+            CGSize size = CGSizeMake(attachSize.width * ratio,
+                                     attachSize.height * ratio);
+            CGPoint origin = CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
+                                         CGRectGetMidY(self.bounds) - size.height / 2);
             self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
         } else {
             self.renderedView.frame = CGRectZero;
         }
     }
-}
-
-- (CGPoint)convertPointToPixelPoint:(CGPoint)point {
-    CGFloat scale = [self screenScale];
-    return CGPointMake(round(point.x * scale) / scale,
-                       round(point.y * scale) / scale);
-}
-
-- (CGSize)convertSizeToPixelSize:(CGSize)size {
-    CGFloat scale = [self screenScale];
-    return CGSizeMake(floor(size.width * scale) / scale,
-                      floor(size.height * scale) / scale);
-}
-
-- (CGFloat)screenScale {
-    CGFloat scale;
-#if TARGET_OS_OSX
-    scale = self.window.screen.backingScaleFactor;
-#else
-    scale = self.window.screen.scale;
-#endif
-    return MAX(scale, 1.0);
 }
 
 - (void)makeNeedsLayout {
