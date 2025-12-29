@@ -29,18 +29,6 @@ typedef CGRect NSRect;
 NS_CLASS_AVAILABLE(10_13, 11_0)
 @interface FSMetalRenderedView: MTKView <FSVideoRenderingProtocol>
 
-// The command queue used to pass commands to the device.
-@property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
-@property (nonatomic, assign) CVMetalTextureCacheRef pictureTextureCache;
-@property (atomic, strong) FSMetalRenderer *picturePipeline;
-@property (atomic, strong) FSMetalSubtitlePipeline *subPipeline;
-@property (nonatomic, strong) FSMetalOffscreenRendering *offscreenRendering;
-@property (atomic, strong) FSOverlayAttach *currentAttach;
-@property (assign) int hdrAnimationFrameCount;
-@property (atomic, strong) NSLock *pilelineLock;
-@property (assign) BOOL needCleanBackgroundColor;
-@property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
-
 @end
 
 @interface FSMetalView ()
@@ -76,7 +64,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 - (void)prepare {
     self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:self.bounds];
-#if ! TARGET_OS_OSX
+#if !TARGET_OS_OSX
     self.clipsToBounds = YES;
 #endif
     [self addSubview:self.renderedView];
@@ -353,7 +341,24 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 @interface FSMetalRenderedView ()
 
+// The command queue used to pass commands to the device.
+@property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
+@property (nonatomic, assign) CVMetalTextureCacheRef pictureTextureCache;
+@property (atomic, strong) FSMetalRenderer *picturePipeline;
+@property (atomic, strong) FSMetalSubtitlePipeline *subPipeline;
+@property (nonatomic, strong) FSMetalOffscreenRendering *offscreenRendering;
+@property (atomic, strong) FSOverlayAttach *currentAttach;
+@property (assign) int hdrAnimationFrameCount;
+@property (atomic, strong) NSLock *pilelineLock;
+@property (assign) BOOL needCleanBackgroundColor;
+@property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
+
+#if TARGET_OS_IOS
+@property (atomic, assign) BOOL isEnterBackground;
+#endif
+#if TARGET_OS_IOS || TARGET_OS_TV
 @property (nonatomic, assign) CGSize previousDrawableSize;
+#endif
 
 @end
 
@@ -399,6 +404,8 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 - (void)dealloc
 {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+    
     if (_pictureTextureCache) {
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
@@ -432,6 +439,19 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     self.paused = YES;
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
+    
+#if TARGET_OS_IOS
+    self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
+    
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(didEnterBackground)
+                                               name:UIApplicationDidEnterBackgroundNotification
+                                             object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(willEnterForeground)
+                                               name:UIApplicationWillEnterForegroundNotification
+                                             object:nil];
+#endif
     return YES;
 }
 
@@ -560,6 +580,11 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 /// Called whenever the view needs to render a frame.
 - (void)drawRect:(NSRect)dirtyRect
 {
+#if TARGET_OS_IOS
+    if (self.isEnterBackground) {
+        return;
+    }
+#endif
     FSOverlayAttach * attach = self.currentAttach;
     if (attach.videoTextures.count == 0) {
         if (self.needCleanBackgroundColor) {
@@ -803,6 +828,16 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     }
 }
 
+#if TARGET_OS_IOS
+- (void)didEnterBackground {
+    self.isEnterBackground = YES;
+}
+
+- (void)willEnterForeground {
+    self.isEnterBackground = NO;
+}
+#endif
+
 #if TARGET_OS_IOS || TARGET_OS_TV
 - (UIImage *)snapshot
 {
@@ -898,6 +933,13 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     }
     
     attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache];
+    
+#if TARGET_OS_IOS
+    // Execution of the command buffer was aborted due to an error during execution. Insufficient Permission (to submit GPU work from background) (00000006:kIOGPUCommandBufferCallbackErrorBackgroundExecutionNotPermitted)
+    if (self.isEnterBackground) {
+        return NO;
+    }
+#endif
     
     if (self.preventDisplay) {
         return YES;
