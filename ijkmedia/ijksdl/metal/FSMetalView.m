@@ -442,11 +442,11 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
     
     [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(didEnterBackground)
+                                           selector:@selector(applicationDidEnterBackground)
                                                name:UIApplicationDidEnterBackgroundNotification
                                              object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(willEnterForeground)
+                                           selector:@selector(applicationWillEnterForeground)
                                                name:UIApplicationWillEnterForegroundNotification
                                              object:nil];
 #endif
@@ -828,11 +828,11 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 
-- (void)didEnterBackground {
+- (void)applicationDidEnterBackground {
     self.isEnterBackground = YES;
 }
 
-- (void)willEnterForeground {
+- (void)applicationWillEnterForeground {
     self.isEnterBackground = NO;
 }
 
