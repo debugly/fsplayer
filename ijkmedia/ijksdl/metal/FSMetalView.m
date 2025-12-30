@@ -382,9 +382,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 {
     self = [super initWithCoder:coder];
     if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
+        [self prepareMetal];
     }
     return self;
 }
@@ -393,9 +391,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 {
     self = [super initWithFrame:frameRect];
     if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
+        [self prepareMetal];
     }
     return self;
 }
