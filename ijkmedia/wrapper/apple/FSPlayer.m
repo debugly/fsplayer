@@ -2241,7 +2241,6 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillResignActive
 {
-    av_log(NULL, AV_LOG_DEBUG, "applicationWillResignActive: %d", (int)[UIApplication sharedApplication].applicationState);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self->_pauseInBackground) {
             [self pause];
@@ -2251,7 +2250,6 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationDidEnterBackground
 {
-    av_log(NULL, AV_LOG_DEBUG, "applicationDidEnterBackground: %d", (int)[UIApplication sharedApplication].applicationState);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self->_pauseInBackground) {
             [self pause];
@@ -2261,7 +2259,6 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillTerminate
 {
-    av_log(NULL, AV_LOG_DEBUG, "applicationWillTerminate: %d", (int)[UIApplication sharedApplication].applicationState);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self->_pauseInBackground) {
             [self pause];
