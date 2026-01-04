@@ -715,10 +715,11 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 
 - (FSPlayerPlaybackState)playbackState
 {
-    if (!_mediaPlayer)
-        return NO;
-
     FSPlayerPlaybackState mpState = FSPlayerPlaybackStateStopped;
+    
+    if (!_mediaPlayer)
+        return mpState;
+    
     int state = ijkmp_get_state(_mediaPlayer);
     switch (state) {
         case MP_STATE_STOPPED:
