@@ -30,6 +30,7 @@ NSString *const FSPlayerDidFinishNotification = @"FSPlayerDidFinishNotification"
 NSString *const FSPlayerDidFinishReasonUserInfoKey =
     @"FSPlayerDidFinishReasonUserInfoKey";
 NSString *const FSPlayerPlaybackStateDidChangeNotification = @"FSPlayerPlaybackStateDidChangeNotification";
+NSString *const FSPlayerPlaybackScheduleDidChangeNotification = @"FSPlayerPlaybackScheduleDidChangeNotification";
 NSString *const FSPlayerLoadStateDidChangeNotification = @"FSPlayerLoadStateDidChangeNotification";
 
 NSString *const FSPlayerIsAirPlayVideoActiveDidChangeNotification = @"FSPlayerIsAirPlayVideoActiveDidChangeNotification";
