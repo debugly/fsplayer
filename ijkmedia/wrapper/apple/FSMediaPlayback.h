@@ -41,6 +41,18 @@ typedef NS_ENUM(NSInteger, FSPlayerPlaybackState) {
     FSPlayerPlaybackStateSeekingBackward
 };
 
+typedef NS_ENUM(NSInteger, FSPlayerPlaybackSchedule) {
+    FSPlayerPlaybackScheduleIdle = 0,
+    FSPlayerPlaybackScheduleInitialized,
+    FSPlayerPlaybackSchedulePreparing,
+    FSPlayerPlaybackSchedulePrepared,
+    FSPlayerPlaybackScheduleStarted,
+    FSPlayerPlaybackSchedulePaused,
+    FSPlayerPlaybackScheduleCompleted,
+    FSPlayerPlaybackScheduleStopped,
+    FSPlayerPlaybackScheduleError
+};
+
 typedef NS_OPTIONS(NSUInteger, FSPlayerLoadState) {
     FSPlayerLoadStateUnknown        = 0,
     FSPlayerLoadStatePlayable       = 1 << 0,
@@ -105,6 +117,7 @@ typedef NS_ENUM(NSInteger, FSTimeOption) {
 
 @property(nonatomic, readonly)  BOOL isPreparedToPlay;
 @property(nonatomic, readonly)  FSPlayerPlaybackState playbackState;
+@property(nonatomic, readonly)  FSPlayerPlaybackSchedule playbackSchedule;
 @property(nonatomic, readonly)  FSPlayerLoadState loadState;
 @property(nonatomic, readonly) int isSeekBuffering;
 @property(nonatomic, readonly) int isAudioSync;
@@ -179,6 +192,9 @@ FS_EXTERN NSString* const FSPlayerDidFinishReasonUserInfoKey; // NSNumber (FSFin
 
 // Posted when the playback state changes, either programatically or by the user.
 FS_EXTERN NSString* const FSPlayerPlaybackStateDidChangeNotification;
+
+// Posted when the playback schedule changes.
+FS_EXTERN NSString* const FSPlayerPlaybackScheduleDidChangeNotification;
 
 // Posted when the network load state changes.
 FS_EXTERN NSString* const FSPlayerLoadStateDidChangeNotification;

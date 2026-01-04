@@ -99,6 +99,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 @synthesize isPreparedToPlay = _isPreparedToPlay;
 @synthesize playbackState = _playbackState;
+@synthesize playbackSchedule = _playbackSchedule;
 @synthesize loadState = _loadState;
 
 @synthesize naturalSize = _naturalSize;
@@ -487,7 +488,6 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     if (!_mediaPlayer)
         return;
 
-//    [self stopHudTimer];
     ijkmp_pause(_mediaPlayer);
 }
 
@@ -499,6 +499,22 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     [self setScreenOn:NO];
     [self stopHudTimer];
     ijkmp_stop(_mediaPlayer);
+}
+
+- (void)shutdown
+{
+    if (!_mediaPlayer)
+        return;
+    
+    FSPlayerSafeDestroy(self);
+    // FSPlayerSafeDestroy会异步调用ijkmp_stop，这里需要及时更新下
+    [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_STOPPED];
+
+    [self didShutdown];
+}
+
+- (void)didShutdown
+{
 }
 
 - (BOOL)isPlaying
@@ -702,21 +718,10 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     }
 }
 
-- (void)shutdown
-{
-    FSPlayerSafeDestroy(self);
-    
-    [self didShutdown];
-}
-
-- (void)didShutdown
-{
-}
-
 - (FSPlayerPlaybackState)playbackState
 {
     if (!_mediaPlayer)
-        return NO;
+        return FSPlayerPlaybackStateStopped;
 
     FSPlayerPlaybackState mpState = FSPlayerPlaybackStateStopped;
     int state = ijkmp_get_state(_mediaPlayer);
@@ -734,6 +739,15 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
             mpState = FSPlayerPlaybackStatePaused;
             break;
         case MP_STATE_PREPARED:
+            if (self.shouldAutoplay) {
+                if (_seeking)
+                    mpState = FSPlayerPlaybackStateSeekingForward;
+                else
+                    mpState = FSPlayerPlaybackStatePlaying;
+            } else {
+                mpState = FSPlayerPlaybackStatePaused;
+            }
+            break;
         case MP_STATE_STARTED: {
             if (_seeking)
                 mpState = FSPlayerPlaybackStateSeekingForward;
@@ -742,13 +756,63 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
             break;
         }
     }
-    // FSPlayerPlaybackStatePlaying,
-    // FSPlayerPlaybackStatePaused,
-    // FSPlayerPlaybackStateStopped,
-    // FSPlayerPlaybackStateInterrupted,
-    // FSPlayerPlaybackStateSeekingForward,
-    // FSPlayerPlaybackStateSeekingBackward
     return mpState;
+}
+
+- (FSPlayerPlaybackSchedule)playbackSchedule {
+    return _playbackSchedule;
+}
+
+- (void)updateAndNotifyPlaybackScheduleWithState:(int)state {
+    FSPlayerPlaybackSchedule schedule;
+    if (_mediaPlayer) {
+        switch (state) {
+            case MP_STATE_IDLE:
+                schedule = FSPlayerPlaybackScheduleIdle;
+                break;
+            case MP_STATE_INITIALIZED:
+                schedule = FSPlayerPlaybackScheduleInitialized;
+                break;
+            case MP_STATE_ASYNC_PREPARING:
+                schedule = FSPlayerPlaybackSchedulePreparing;
+                break;
+            case MP_STATE_PREPARED:
+                schedule = FSPlayerPlaybackSchedulePrepared;
+                break;
+            case MP_STATE_STARTED:
+                schedule = FSPlayerPlaybackScheduleStarted;
+                break;
+            case MP_STATE_PAUSED:
+                schedule = FSPlayerPlaybackSchedulePaused;
+                break;
+            case MP_STATE_COMPLETED:
+                schedule = FSPlayerPlaybackScheduleCompleted;
+                break;
+            case MP_STATE_STOPPED:
+                schedule = FSPlayerPlaybackScheduleStopped;
+                break;
+            case MP_STATE_ERROR:
+                schedule = FSPlayerPlaybackScheduleError;
+                break;
+            case MP_STATE_END:
+                schedule = FSPlayerPlaybackScheduleStopped;
+                break;
+            default:
+                schedule = FSPlayerPlaybackScheduleIdle;
+                break;
+        }
+    } else {
+        schedule = FSPlayerPlaybackScheduleStopped;
+    }
+    if (_playbackSchedule != schedule) {
+        _playbackSchedule = schedule;
+        
+        av_log(NULL, AV_LOG_DEBUG, "updatePlaybackSchedule: %ld\n", schedule);
+        
+        [[NSNotificationCenter defaultCenter]
+         postNotificationName:FSPlayerPlaybackScheduleDidChangeNotification
+         object:self];
+    }
 }
 
 - (void)setCurrentPlaybackTime:(NSTimeInterval)aCurrentPlaybackTime
@@ -1458,6 +1522,8 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         case FFP_MSG_ERROR: {
             [self setScreenOn:NO];
 
+            [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_ERROR];
+            
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
              object:self];
@@ -1503,6 +1569,8 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             }
             
             _isPreparedToPlay = YES;
+            
+            [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_PREPARED];
 
             [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayNotification object:self];
             _loadState = FSPlayerLoadStatePlayable | FSPlayerLoadStatePlaythroughOK;
@@ -1524,6 +1592,8 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
 
             [self setScreenOn:NO];
 
+            [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_COMPLETED];
+            
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
              object:self];
@@ -1595,6 +1665,8 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             // NSLog(@"FFP_MSG_BUFFERING_TIME_UPDATE: %d\n", avmsg->arg1);
             break;
         case FFP_MSG_PLAYBACK_STATE_CHANGED:
+            [self updateAndNotifyPlaybackScheduleWithState:avmsg->arg1];
+
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerPlaybackStateDidChangeNotification
              object:self];
