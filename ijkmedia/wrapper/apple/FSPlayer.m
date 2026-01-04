@@ -886,12 +886,6 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     _scalingMode = newScalingMode;
 }
 
-// deprecated, for MPMoviePlayerController compatiable
-- (UIImage *)thumbnailImageAtTime:(NSTimeInterval)playbackTime timeOption:(FSTimeOption)option
-{
-    return nil;
-}
-
 #if TARGET_OS_IOS
 - (UIImage *)thumbnailImageAtCurrentTime
 {
