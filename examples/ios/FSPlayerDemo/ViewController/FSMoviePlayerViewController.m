@@ -403,40 +403,55 @@ static NSString *recordVideoPath = nil;
 
 - (void)moviePlayBackStateDidChange:(NSNotification*)notification
 {
-    //    MPMoviePlaybackStateStopped,
-    //    MPMoviePlaybackStatePlaying,
-    //    MPMoviePlaybackStatePaused,
-    //    MPMoviePlaybackStateInterrupted,
-    //    MPMoviePlaybackStateSeekingForward,
-    //    MPMoviePlaybackStateSeekingBackward
-
-    switch (_player.playbackState)
-    {
-        case FSPlayerPlaybackStateStopped: {
-            NSLog(@"FSPlayerPlaybackStateDidChange %d: stoped", (int)_player.playbackState);
+    switch (self.player.playbackSchedule) {
+        case FSPlayerPlaybackScheduleIdle:
+            NSLog(@"FSPlayerPlaybackSchedule:Idle");
             break;
-        }
-        case FSPlayerPlaybackStatePlaying: {
-            NSLog(@"FSPlayerPlaybackStateDidChange %d: playing", (int)_player.playbackState);
+        case FSPlayerPlaybackScheduleInitialized:
+            NSLog(@"FSPlayerPlaybackSchedule:Initialized");
             break;
-        }
-        case FSPlayerPlaybackStatePaused: {
-            NSLog(@"FSPlayerPlaybackStateDidChange %d: paused", (int)_player.playbackState);
+        case FSPlayerPlaybackSchedulePreparing:
+            NSLog(@"FSPlayerPlaybackSchedule:Preparing");
             break;
-        }
-        case FSPlayerPlaybackStateInterrupted: {
-            NSLog(@"FSPlayerPlaybackStateDidChange %d: interrupted", (int)_player.playbackState);
+        case FSPlayerPlaybackSchedulePrepared:
+            NSLog(@"FSPlayerPlaybackSchedule:Prepared");
             break;
-        }
+        case FSPlayerPlaybackScheduleStarted:
+            NSLog(@"FSPlayerPlaybackSchedule:Started");
+            break;
+        case FSPlayerPlaybackSchedulePaused:
+            NSLog(@"FSPlayerPlaybackSchedule:Paused");
+            break;
+        case FSPlayerPlaybackScheduleCompleted:
+            NSLog(@"FSPlayerPlaybackSchedule:Completed");
+            break;
+        case FSPlayerPlaybackScheduleStopped:
+            NSLog(@"FSPlayerPlaybackSchedule:Stopped");
+            break;
+        case FSPlayerPlaybackScheduleError:
+            NSLog(@"FSPlayerPlaybackSchedule:Error");
+            break;
+    }
+    
+    switch (self.player.playbackState) {
+        case FSPlayerPlaybackStatePaused:
+            NSLog(@"FSPlayerPlaybackState:Paused");
+            break;
+        case FSPlayerPlaybackStatePlaying:
+            NSLog(@"FSPlayerPlaybackState:Playing");
+            break;
+        case FSPlayerPlaybackStateStopped:
+            NSLog(@"FSPlayerPlaybackState:Stopped");
+            break;
+        case FSPlayerPlaybackStateInterrupted:
+            NSLog(@"FSPlayerPlaybackState:Interrupted");
+            break;
         case FSPlayerPlaybackStateSeekingForward:
-        case FSPlayerPlaybackStateSeekingBackward: {
-            NSLog(@"FSPlayerPlaybackStateDidChange %d: seeking", (int)_player.playbackState);
+            NSLog(@"FSPlayerPlaybackState:SeekingForward");
             break;
-        }
-        default: {
-            NSLog(@"FSPlayerPlaybackStateDidChange %d: unknown", (int)_player.playbackState);
+        case FSPlayerPlaybackStateSeekingBackward:
+            NSLog(@"FSPlayerPlaybackState:SeekingBackward");
             break;
-        }
     }
     
     [self.mediaControl refreshMediaControl];
