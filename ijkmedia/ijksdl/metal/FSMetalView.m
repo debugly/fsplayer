@@ -353,10 +353,8 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 @property (assign) BOOL needCleanBackgroundColor;
 @property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
 
-#if TARGET_OS_IOS
-@property (atomic, assign) BOOL isEnterBackground;
-#endif
 #if TARGET_OS_IOS || TARGET_OS_TV
+@property (atomic, assign) BOOL isEnterBackground;
 @property (nonatomic, assign) CGSize previousDrawableSize;
 #endif
 
@@ -384,9 +382,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 {
     self = [super initWithCoder:coder];
     if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
+        [self prepareMetal];
     }
     return self;
 }
@@ -395,9 +391,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 {
     self = [super initWithFrame:frameRect];
     if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
+        [self prepareMetal];
     }
     return self;
 }
@@ -440,15 +434,15 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
     
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
     
     [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(didEnterBackground)
+                                           selector:@selector(applicationDidEnterBackground)
                                                name:UIApplicationDidEnterBackgroundNotification
                                              object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(willEnterForeground)
+                                           selector:@selector(applicationWillEnterForeground)
                                                name:UIApplicationWillEnterForegroundNotification
                                              object:nil];
 #endif
@@ -580,7 +574,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 /// Called whenever the view needs to render a frame.
 - (void)drawRect:(NSRect)dirtyRect
 {
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     if (self.isEnterBackground) {
         return;
     }
@@ -828,17 +822,16 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     }
 }
 
-#if TARGET_OS_IOS
-- (void)didEnterBackground {
+#if TARGET_OS_IOS || TARGET_OS_TV
+
+- (void)applicationDidEnterBackground {
     self.isEnterBackground = YES;
 }
 
-- (void)willEnterForeground {
+- (void)applicationWillEnterForeground {
     self.isEnterBackground = NO;
 }
-#endif
 
-#if TARGET_OS_IOS || TARGET_OS_TV
 - (UIImage *)snapshot
 {
     CGImageRef cgImg = [self snapshot:FSSnapshotTypeScreen];
@@ -934,7 +927,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     
     attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache];
     
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     // Execution of the command buffer was aborted due to an error during execution. Insufficient Permission (to submit GPU work from background) (00000006:kIOGPUCommandBufferCallbackErrorBackgroundExecutionNotPermitted)
     if (self.isEnterBackground) {
         return NO;

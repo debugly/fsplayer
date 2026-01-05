@@ -106,7 +106,7 @@ void ijkmp_change_state_l(IjkMediaPlayer *mp, int new_state)
 {
     if (mp->mp_state != new_state) {
         mp->mp_state = new_state;
-        ffp_notify_msg1(mp->ffplayer, FFP_MSG_PLAYBACK_STATE_CHANGED);
+        ffp_notify_msg2(mp->ffplayer, FFP_MSG_PLAYBACK_STATE_CHANGED, new_state);
     }
 }
 
@@ -285,10 +285,12 @@ void ijkmp_shutdown_l(IjkMediaPlayer *mp)
     assert(mp);
 
     MPTRACE("ijkmp_shutdown_l()\n");
+    pthread_mutex_lock(&mp->mutex);
     if (mp->ffplayer) {
         //ffp_stop_l(mp->ffplayer);
         ffp_wait_stop_l(mp->ffplayer);
     }
+    pthread_mutex_unlock(&mp->mutex);
     MPTRACE("ijkmp_shutdown_l()=void\n");
 }
 
@@ -346,6 +348,8 @@ static int ijkmp_set_data_source_l(IjkMediaPlayer *mp, const char *url)
     if (!mp->data_source)
         return EIJK_OUT_OF_MEMORY;
 
+    msg_queue_start(&mp->ffplayer->msg_queue);
+    
     ijkmp_change_state_l(mp, MP_STATE_INITIALIZED);
     return 0;
 }
@@ -387,8 +391,6 @@ static int ijkmp_prepare_async_l(IjkMediaPlayer *mp)
     assert(mp->data_source);
 
     ijkmp_change_state_l(mp, MP_STATE_ASYNC_PREPARING);
-
-    msg_queue_start(&mp->ffplayer->msg_queue);
 
     // released in msg_loop
     ijkmp_inc_ref(mp);
@@ -513,12 +515,13 @@ static int ijkmp_stop_l(IjkMediaPlayer *mp)
 
     ffp_remove_msg(mp->ffplayer, FFP_REQ_START);
     ffp_remove_msg(mp->ffplayer, FFP_REQ_PAUSE);
+    
+    ijkmp_change_state_l(mp, MP_STATE_STOPPED);
+    
     int retval = ffp_stop_l(mp->ffplayer);
     if (retval < 0) {
         return retval;
     }
-
-    ijkmp_change_state_l(mp, MP_STATE_STOPPED);
     return 0;
 }
 
@@ -687,12 +690,18 @@ int ijkmp_get_msg(IjkMediaPlayer *mp, AVMessage *msg, int block)
                 // FIXME: 1: onError() ?
                 av_log(mp->ffplayer, AV_LOG_DEBUG, "FFP_MSG_PREPARED: expecting mp_state==MP_STATE_ASYNC_PREPARING\n");
             }
-            if (!mp->ffplayer->start_on_prepared) {
-                ijkmp_change_state_l(mp, MP_STATE_PAUSED);
+            if (mp->ffplayer->start_on_prepared) {
+                ijkmp_change_state_l(mp, MP_STATE_STARTED);
             }
             pthread_mutex_unlock(&mp->mutex);
             break;
 
+        case FFP_MSG_ERROR:
+            pthread_mutex_lock(&mp->mutex);
+            ijkmp_change_state_l(mp, MP_STATE_ERROR);
+            pthread_mutex_unlock(&mp->mutex);
+            break;
+                
         case FFP_MSG_COMPLETED:
             MPTRACE("ijkmp_get_msg: FFP_MSG_COMPLETED\n");
 
