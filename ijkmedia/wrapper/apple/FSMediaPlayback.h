@@ -72,14 +72,6 @@ typedef enum FSAudioChannel {
     FSAudioChannelLeft = 2
 } FSAudioChannel;
 
-// -----------------------------------------------------------------------------
-// Thumbnails
-
-typedef NS_ENUM(NSInteger, FSTimeOption) {
-    FSTimeOptionNearestKeyFrame,
-    FSTimeOptionExact
-};
-
 @protocol FSMediaPlayback;
 
 #pragma mark FSMediaPlayback

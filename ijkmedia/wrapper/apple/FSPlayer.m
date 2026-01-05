@@ -720,10 +720,11 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 
 - (FSPlayerPlaybackState)playbackState
 {
-    if (!_mediaPlayer)
-        return FSPlayerPlaybackStateStopped;
-
     FSPlayerPlaybackState mpState = FSPlayerPlaybackStateStopped;
+    
+    if (!_mediaPlayer)
+        return mpState;
+    
     int state = ijkmp_get_state(_mediaPlayer);
     switch (state) {
         case MP_STATE_STOPPED:
@@ -948,12 +949,6 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
     FSScalingMode newScalingMode = aScalingMode;
     self.view.scalingMode = aScalingMode;
     _scalingMode = newScalingMode;
-}
-
-// deprecated, for MPMoviePlayerController compatiable
-- (UIImage *)thumbnailImageAtTime:(NSTimeInterval)playbackTime timeOption:(FSTimeOption)option
-{
-    return nil;
 }
 
 #if TARGET_OS_IOS
