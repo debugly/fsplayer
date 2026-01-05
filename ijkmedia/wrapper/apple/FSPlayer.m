@@ -74,14 +74,14 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     NSInteger _bufferingPosition;
 
     BOOL _keepScreenOnWhilePlaying;
-    BOOL _pauseInBackground;
-    BOOL _playingBeforeInterruption;
-
+    
     AVAppAsyncStatistic _asyncStat;
     IjkIOAppCacheStatistic _cacheStat;
     FSSDLHudControl *_hudCtrl;
 #if TARGET_OS_IOS
     FSNotificationManager *_notificationManager;
+    BOOL _playingBeforeInterruption;
+    BOOL _pauseInBackground;
 #endif
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
@@ -273,12 +273,12 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     
     [options applyTo:_mediaPlayer];
     
-    _pauseInBackground = NO;
     // init extra
     _keepScreenOnWhilePlaying = YES;
     [self setScreenOn:YES];
 
 #if TARGET_OS_IOS
+    _pauseInBackground = NO;
     /* Set audio session to mediaplayback */
     if (options.automaticallySetupAudioSession) {
         NSError *error = nil;
@@ -523,11 +523,6 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         return NO;
 
     return ijkmp_is_playing(_mediaPlayer);
-}
-
-- (void)setPauseInBackground:(BOOL)pause
-{
-    _pauseInBackground = pause;
 }
 
 inline static int getPlayerOption(FSOptionCategory category)
@@ -2302,6 +2297,12 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
         }
     });
 }
+
+- (void)setPauseInBackground:(BOOL)pause
+{
+    _pauseInBackground = pause;
+}
+
 #endif
 
 - (void)exchangeSelectedStream:(int)streamIdx

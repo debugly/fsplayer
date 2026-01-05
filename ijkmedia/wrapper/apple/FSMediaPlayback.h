@@ -86,7 +86,9 @@ typedef enum FSAudioChannel {
 - (void)stop;
 - (BOOL)isPlaying;
 - (void)shutdown;
+#if TARGET_OS_IOS
 - (void)setPauseInBackground:(BOOL)pause;
+#endif
 //PS:外挂字幕，最多可挂载512个。
 //挂载并激活字幕；本地网络均可
 - (BOOL)loadThenActiveSubtitle:(NSURL*)url;

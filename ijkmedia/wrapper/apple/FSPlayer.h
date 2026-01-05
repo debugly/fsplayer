@@ -122,7 +122,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (int64_t)trafficStatistic;
 - (float)dropFrameRate;
 - (int)dropFrameCount;
-- (void)setPauseInBackground:(BOOL)pause;
 - (void)setHudValue:(NSString * _Nullable)value forKey:(NSString *)key;
 
 + (void)setLogReport:(BOOL)preferLogReport;
