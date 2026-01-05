@@ -185,9 +185,6 @@ FS_EXTERN NSString* const FSPlayerDidFinishReasonUserInfoKey; // NSNumber (FSFin
 // Posted when the playback state changes, either programatically or by the user.
 FS_EXTERN NSString* const FSPlayerPlaybackStateDidChangeNotification;
 
-// Posted when the playback schedule changes.
-FS_EXTERN NSString* const FSPlayerPlaybackScheduleDidChangeNotification;
-
 // Posted when the network load state changes.
 FS_EXTERN NSString* const FSPlayerLoadStateDidChangeNotification;
 

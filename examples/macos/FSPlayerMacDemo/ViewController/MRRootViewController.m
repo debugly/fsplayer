@@ -762,6 +762,8 @@ static BOOL hdrAnimationShown = 0;
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerICYMetaChanged:) name:FSPlayerICYMetaChangedNotification object:self.player];
     
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playbackStateDidChange:) name:FSPlayerPlaybackStateDidChangeNotification object:self.player];
+
     self.player.shouldAutoplay = YES;
     [self onVolumeChange:nil];
     [self applyScalingMode];
@@ -982,6 +984,62 @@ static BOOL hdrAnimationShown = 0;
 - (void)ijkPlayerICYMetaChanged:(NSNotification *)notifi
 {
     [self printICYMeta];
+}
+
+- (void)playbackStateDidChange:(NSNotification *)notifi
+{
+    if (notifi.object == self.player) {
+        switch (self.player.playbackSchedule) {
+            case FSPlayerPlaybackScheduleIdle:
+                NSLog(@"FSPlayerPlaybackSchedule:Idle");
+                break;
+            case FSPlayerPlaybackScheduleInitialized:
+                NSLog(@"FSPlayerPlaybackSchedule:Initialized");
+                break;
+            case FSPlayerPlaybackSchedulePreparing:
+                NSLog(@"FSPlayerPlaybackSchedule:Preparing");
+                break;
+            case FSPlayerPlaybackSchedulePrepared:
+                NSLog(@"FSPlayerPlaybackSchedule:Prepared");
+                break;
+            case FSPlayerPlaybackScheduleStarted:
+                NSLog(@"FSPlayerPlaybackSchedule:Started");
+                break;
+            case FSPlayerPlaybackSchedulePaused:
+                NSLog(@"FSPlayerPlaybackSchedule:Paused");
+                break;
+            case FSPlayerPlaybackScheduleCompleted:
+                NSLog(@"FSPlayerPlaybackSchedule:Completed");
+                break;
+            case FSPlayerPlaybackScheduleStopped:
+                NSLog(@"FSPlayerPlaybackSchedule:Stopped");
+                break;
+            case FSPlayerPlaybackScheduleError:
+                NSLog(@"FSPlayerPlaybackSchedule:Error");
+                break;
+        }
+        
+        switch (self.player.playbackState) {
+            case FSPlayerPlaybackStatePaused:
+                NSLog(@"FSPlayerPlaybackState:Paused");
+                break;
+            case FSPlayerPlaybackStatePlaying:
+                NSLog(@"FSPlayerPlaybackState:Playing");
+                break;
+            case FSPlayerPlaybackStateStopped:
+                NSLog(@"FSPlayerPlaybackState:Stopped");
+                break;
+            case FSPlayerPlaybackStateInterrupted:
+                NSLog(@"FSPlayerPlaybackState:Interrupted");
+                break;
+            case FSPlayerPlaybackStateSeekingForward:
+                NSLog(@"FSPlayerPlaybackState:SeekingForward");
+                break;
+            case FSPlayerPlaybackStateSeekingBackward:
+                NSLog(@"FSPlayerPlaybackState:SeekingBackward");
+                break;
+        }
+    }
 }
 
 - (void)saveCurrentPlayRecord
