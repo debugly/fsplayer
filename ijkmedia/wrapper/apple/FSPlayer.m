@@ -185,8 +185,10 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         
         // ijk资源全部释放完毕后，再销毁weakHolder，避免野指针
         // WeakHolder引用计数-1
-        CFRelease((void *)weakHolder);
-        weakHolder = nil;
+        if (weakHolder) {
+            CFRelease((__bridge CFTypeRef)weakHolder);
+            weakHolder = nil;
+        }
     });
 }
 
@@ -234,7 +236,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     _weakHolder = weakHolder;
 
     // WeakHolder引用计数+1
-    void *retainWeakHolder = (__bridge_retained void *)weakHolder;
+    void *retainWeakHolder = (void *)CFRetain((__bridge CFTypeRef)weakHolder);
     ijkmp_set_weak_thiz(_mediaPlayer, retainWeakHolder);
     ijkmp_set_inject_opaque(_mediaPlayer, retainWeakHolder);
     ijkmp_set_ijkio_inject_opaque(_mediaPlayer, retainWeakHolder);
