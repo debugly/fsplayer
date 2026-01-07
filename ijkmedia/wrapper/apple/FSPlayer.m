@@ -47,10 +47,13 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 // It means you didn't call shutdown if you found this object leaked.
 @interface FSWeakHolder : NSObject
-@property (nonatomic, weak) id object;
+@property (nonatomic, weak) FSPlayer *player;
 @end
 
 @implementation FSWeakHolder
+- (void)dealloc {
+    av_log(NULL, AV_LOG_DEBUG, "FSWeakHolder dealloc\n");
+}
 @end
 
 @interface FSPlayer()
@@ -88,6 +91,8 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     
     __weak NSTimer *_playbackTimeNotifiTimer;
     NSTimeInterval _playbackTimeNotifiInterval;
+    
+    __weak FSWeakHolder *_weakHolder;
 }
 
 @synthesize view = _view;
@@ -126,6 +131,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     __block FSSDLHudControl *hudCtrl = player->_hudCtrl;
     __block UIView<FSVideoRenderingProtocol> *view = player->_view;
     __block NSTimer *playbackTimeNotifiTimer = player->_playbackTimeNotifiTimer;
+    __block FSWeakHolder *weakHolder = player->_weakHolder;
     
 #if TARGET_OS_IOS
     [player unregisterApplicationObservers];
@@ -136,16 +142,13 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     player->_view = nil;
     player->_hudCtrl = nil;
     player->_playbackTimeNotifiTimer = nil;
+    player->_weakHolder = nil;
     
     player->_segmentOpenDelegate    = nil;
     player->_tcpOpenDelegate        = nil;
     player->_httpOpenDelegate       = nil;
     player->_liveOpenDelegate       = nil;
     player->_nativeInvokeDelegate   = nil;
-    
-    ijkmp_set_weak_thiz(mediaPlayer, NULL);
-    ijkmp_set_inject_opaque(mediaPlayer, NULL);
-    ijkmp_set_ijkio_inject_opaque(mediaPlayer, NULL);
     
     void(^UIHandler)(void) = ^{
         [FSMediaModule sharedModule].mediaModuleIdleTimerDisabled = NO;
@@ -179,6 +182,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         ijkmp_stop(mediaPlayer);
         ijkmp_shutdown(mediaPlayer);
         ijkmp_dec_ref_p(&mediaPlayer);
+        
+        // ijk资源全部释放完毕后，再销毁weakHolder，避免野指针
+        // WeakHolder引用计数-1
+        CFRelease((void *)weakHolder);
+        weakHolder = nil;
     });
 }
 
@@ -220,12 +228,17 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     // init player
     _mediaPlayer = ijkmp_ios_create(media_player_msg_loop);
     _msgPool = [[FSPlayerMessagePool alloc] init];
-    FSWeakHolder *weakHolder = [FSWeakHolder new];
-    weakHolder.object = self;
+    
+    FSWeakHolder *weakHolder = [[FSWeakHolder alloc] init];
+    weakHolder.player = self;
+    _weakHolder = weakHolder;
 
-    ijkmp_set_weak_thiz(_mediaPlayer, (__bridge_retained void *) self);
-    ijkmp_set_inject_opaque(_mediaPlayer, (__bridge_retained void *) weakHolder);
-    ijkmp_set_ijkio_inject_opaque(_mediaPlayer, (__bridge_retained void *)weakHolder);
+    // WeakHolder引用计数+1
+    void *retainWeakHolder = (__bridge_retained void *)weakHolder;
+    ijkmp_set_weak_thiz(_mediaPlayer, retainWeakHolder);
+    ijkmp_set_inject_opaque(_mediaPlayer, retainWeakHolder);
+    ijkmp_set_ijkio_inject_opaque(_mediaPlayer, retainWeakHolder);
+    
     ijkmp_set_option_int(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "start-on-prepared", _shouldAutoplay ? 1 : 0);
 
     _view = _videoRendering = videoRendering;
@@ -357,6 +370,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
 - (void)dealloc
 {
     FSPlayerSafeDestroy(self);
+    
+    av_log(NULL, AV_LOG_DEBUG, "FSPlayer dealloc\n");
 }
 
 - (void)setShouldAutoplay:(BOOL)shouldAutoplay
@@ -508,7 +523,13 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     
     FSPlayerSafeDestroy(self);
     // FSPlayerSafeDestroy会异步调用ijkmp_stop，这里需要及时更新下
-    [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_STOPPED];
+    if ([NSThread isMainThread]) {
+        [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_STOPPED];
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_STOPPED];
+        });
+    }
 
     [self didShutdown];
 }
@@ -1788,15 +1809,12 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
     return [_msgPool obtain];
 }
 
-inline static FSPlayer *ffplayerRetain(void *arg) {
-    return (__bridge_transfer FSPlayer *) arg;
-}
-
 static int media_player_msg_loop(void* arg)
 {
     @autoreleasepool {
         IjkMediaPlayer *mp = (IjkMediaPlayer*)arg;
-        __weak FSPlayer *ffpController = ffplayerRetain(ijkmp_set_weak_thiz(mp, NULL));
+        FSWeakHolder *weakHolder = (__bridge FSWeakHolder *)ijkmp_get_weak_thiz(mp);
+        __weak FSPlayer *ffpController = weakHolder.player;
         while (ffpController) {
             @autoreleasepool {
                 FSPlayerMessage *msg = [ffpController obtainMessage];
@@ -1812,9 +1830,6 @@ static int media_player_msg_loop(void* arg)
                 [ffpController performSelectorOnMainThread:@selector(postEvent:) withObject:msg waitUntilDone:NO];
             }
         }
-
-        // retained in prepare_async, before SDL_CreateThreadEx
-        ijkmp_dec_ref_p(&mp);
         return 0;
     }
 }
@@ -2063,7 +2078,7 @@ static int onInjectOnHttpEvent(FSPlayer *mpc, int type, void *data, size_t data_
 static int ijkff_inject_callback(void *opaque, int message, void *data, size_t data_size)
 {
     FSWeakHolder *weakHolder = (__bridge FSWeakHolder*)opaque;
-    FSPlayer *mpc = weakHolder.object;
+    FSPlayer *mpc = weakHolder.player;
     if (!mpc)
         return 0;
 
@@ -2096,7 +2111,7 @@ static int ijkff_inject_callback(void *opaque, int message, void *data, size_t d
 static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int sampleSize, int sampleRate, int channels)
 {
     FSWeakHolder *weakHolder = (__bridge FSWeakHolder*)opaque;
-    FSPlayer *mpc = weakHolder.object;
+    FSPlayer *mpc = weakHolder.player;
     if (!mpc)
         return 0;
 
@@ -2242,7 +2257,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     int reason = [[[notification userInfo] valueForKey:AVAudioSessionInterruptionTypeKey] intValue];
     switch (reason) {
         case AVAudioSessionInterruptionTypeBegan: {
-            av_log(NULL, AV_LOG_DEBUG, "audioSessionInterrupt: begin");
+            av_log(NULL, AV_LOG_DEBUG, "audioSessionInterrupt: begin\n");
             switch (self.playbackState) {
                 case FSPlayerPlaybackStatePaused:
                 case FSPlayerPlaybackStateStopped:
@@ -2261,7 +2276,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
             break;
         }
         case AVAudioSessionInterruptionTypeEnded: {
-            av_log(NULL, AV_LOG_DEBUG, "audioSessionInterrupt: end");
+            av_log(NULL, AV_LOG_DEBUG, "audioSessionInterrupt: end\n");
             [[AVAudioSession sharedInstance] setActive:YES error:nil];
             if (_playingBeforeInterruption) {
                 [self play];

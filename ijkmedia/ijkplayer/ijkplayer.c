@@ -50,6 +50,7 @@ inline static void ijkmp_destroy(IjkMediaPlayer *mp)
         SDL_WaitThread(mp->msg_thread, NULL);
         mp->msg_thread = NULL;
     }
+    mp->weak_thiz = NULL;
 
     pthread_mutex_destroy(&mp->mutex);
 
@@ -137,7 +138,9 @@ void *ijkmp_set_inject_opaque(IjkMediaPlayer *mp, void *opaque)
     assert(mp);
 
     MPTRACE("%s(%p)\n", __func__, opaque);
+    pthread_mutex_lock(&mp->mutex);
     void *prev_weak_thiz = ffp_set_inject_opaque(mp->ffplayer, opaque);
+    pthread_mutex_unlock(&mp->mutex);
     MPTRACE("%s()=void\n", __func__);
     return prev_weak_thiz;
 }
@@ -147,7 +150,9 @@ void *ijkmp_set_ijkio_inject_opaque(IjkMediaPlayer *mp, void *opaque)
     assert(mp);
 
     MPTRACE("%s(%p)\n", __func__, opaque);
+    pthread_mutex_lock(&mp->mutex);
     void *prev_weak_thiz = ffp_set_ijkio_inject_opaque(mp->ffplayer, opaque);
+    pthread_mutex_unlock(&mp->mutex);
     MPTRACE("%s()=void\n", __func__);
     return prev_weak_thiz;
 }
@@ -392,8 +397,6 @@ static int ijkmp_prepare_async_l(IjkMediaPlayer *mp)
 
     ijkmp_change_state_l(mp, MP_STATE_ASYNC_PREPARING);
 
-    // released in msg_loop
-    ijkmp_inc_ref(mp);
     mp->msg_thread = SDL_CreateThreadEx(&mp->_msg_thread, ijkmp_msg_loop, mp, "ff_msg_loop");
     // msg_thread is detached inside msg_loop
     // TODO: 9 release weak_thiz if pthread_create() failed;
@@ -663,10 +666,10 @@ void *ijkmp_get_weak_thiz(IjkMediaPlayer *mp)
 
 void *ijkmp_set_weak_thiz(IjkMediaPlayer *mp, void *weak_thiz)
 {
+    pthread_mutex_lock(&mp->mutex);
     void *prev_weak_thiz = mp->weak_thiz;
-
     mp->weak_thiz = weak_thiz;
-
+    pthread_mutex_unlock(&mp->mutex);
     return prev_weak_thiz;
 }
 
