@@ -167,18 +167,10 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     if ([NSThread isMainThread]) {
         UIHandler();
     } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            UIHandler();
-        });
+        dispatch_async(dispatch_get_main_queue(), UIHandler);
     }
     
-    /// 异步串行队列执行，避免主线程卡顿
-    static dispatch_queue_t serialQueue;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        serialQueue = dispatch_queue_create("cn.debugly.FSPlayer.destroy", DISPATCH_QUEUE_SERIAL);
-    });
-    dispatch_async(serialQueue, ^{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         ijkmp_stop(mediaPlayer);
         ijkmp_shutdown(mediaPlayer);
         ijkmp_dec_ref_p(&mediaPlayer);
