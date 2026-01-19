@@ -1555,6 +1555,8 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             
             _isPreparedToPlay = YES;
             
+            [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_PREPARED];
+            
             [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsPreparedToPlayNotification object:self];
             _loadState = FSPlayerLoadStatePlayable | FSPlayerLoadStatePlaythroughOK;
 
