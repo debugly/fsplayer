@@ -3060,10 +3060,11 @@ static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
         break;
     }
 #if IS_FFMPEG_6
-    while ((t = av_dict_iterate(opts, t))) {
+    while ((t = av_dict_iterate(opts, t)))
 #else
-    while ((t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX))) {
+    while ((t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX)))
 #endif
+    {
         const AVClass *priv_class;
         char *p = strchr(t->key, ':');
         int used = 0;
@@ -3255,10 +3256,11 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         goto fail;
     }
 #if IS_FFMPEG_6
-    if ((t = av_dict_iterate(opts, NULL))) {
+    if ((t = av_dict_iterate(opts, NULL)))
 #else
-    if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
+    if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX)))
 #endif
+    {
         av_log(NULL, AV_LOG_ERROR, "codec Option %s not found.\n", t->key);
     }
     is->eof = 0;
@@ -3567,10 +3569,11 @@ static int read_thread(void *arg)
     if (scan_all_pmts_set)
         av_dict_set(&ffp->format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
 #if IS_FFMPEG_6
-    if ((t = av_dict_iterate(ffp->format_opts, NULL))) {
+    if ((t = av_dict_iterate(ffp->format_opts, NULL)))
 #else
-    if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
+    if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX)))
 #endif
+    {
         av_log(NULL, AV_LOG_ERROR, "format Option %s not found.\n", t->key);
     }
     is->ic = ic;
