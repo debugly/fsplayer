@@ -46,7 +46,7 @@
     [options setFormatOptionIntValue:1                  forKey:@"reconnect"];
     [options setFormatOptionIntValue:30 * 1000 * 1000   forKey:@"timeout"];
     //the user-agent option is deprecated, please use user_agent option
-    [options setFormatOptionValue:@"ijkplayer"          forKey:@"user_agent"];
+    [options setFormatOptionValue:@"fsplayer"           forKey:@"user_agent"];
 
     options.showHudView   = NO;
     options.metalRenderer = YES;
