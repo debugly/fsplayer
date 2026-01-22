@@ -4758,7 +4758,7 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
     if (once_flag) {
         once_flag = 0;
         av_log(NULL, AV_LOG_INFO, "===== versions =====\n");
-        ffp_show_version_str(ffp, "ijkplayer",      ijk_version_info());
+        ffp_show_version_str(ffp, "fsplayer",       ijk_version_info());
         ffp_show_version_str(ffp, "FFmpeg",         av_version_info());
         ffp_show_version_int(ffp, "libavutil",      avutil_version());
         ffp_show_version_int(ffp, "libavcodec",     avcodec_version());
