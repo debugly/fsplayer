@@ -1720,8 +1720,11 @@ static BOOL useExact = NO;
     }
 
     [FSPlayer setLogHandler:^(FSLogLevel level, NSString *tag, NSString *msg) {
-        NSString *dateStr = [df stringFromDate:[NSDate date]];
-        NSLog(@"[%@] [%@] %@", dateStr, tag, msg);
+        NSString *msgStr = [msg stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (msgStr.length > 0) {
+            NSString *dateStr = [df stringFromDate:[NSDate date]];
+            NSLog(@"[%@] [%@] %@", dateStr, tag, msg);
+        }
     }];
     
     [self reSetLoglevel];
