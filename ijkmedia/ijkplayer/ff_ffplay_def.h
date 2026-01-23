@@ -765,26 +765,44 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
 }
 
 inline static void ffp_notify_msg1(FFPlayer *ffp, int what) {
+    if (!ffp) {
+        return;
+    }
     msg_queue_put_simple3(&ffp->msg_queue, what, 0, 0);
 }
 
 inline static void ffp_notify_msg2(FFPlayer *ffp, int what, int arg1) {
+    if (!ffp) {
+        return;
+    }
     msg_queue_put_simple3(&ffp->msg_queue, what, arg1, 0);
 }
 
 inline static void ffp_notify_str2(FFPlayer *ffp, int what, const char *str) {
+    if (!ffp) {
+        return;
+    }
     msg_queue_put_str(&ffp->msg_queue, what, str);
 }
 
 inline static void ffp_notify_msg3(FFPlayer *ffp, int what, int arg1, int arg2) {
+    if (!ffp) {
+        return;
+    }
     msg_queue_put_simple3(&ffp->msg_queue, what, arg1, arg2);
 }
 
 inline static void ffp_notify_msg4(FFPlayer *ffp, int what, int arg1, int arg2, void *obj, int obj_len) {
+    if (!ffp) {
+        return;
+    }
     msg_queue_put_simple4(&ffp->msg_queue, what, arg1, arg2, obj, obj_len);
 }
 
 inline static void ffp_remove_msg(FFPlayer *ffp, int what) {
+    if (!ffp) {
+        return;
+    }
     msg_queue_remove(&ffp->msg_queue, what);
 }
 

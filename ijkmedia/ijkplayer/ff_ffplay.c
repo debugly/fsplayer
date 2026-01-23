@@ -5576,6 +5576,9 @@ float ffp_get_subtitle_extra_delay(FFPlayer *ffp)
 //add + active
 int ffp_add_active_external_subtitle(FFPlayer *ffp, const char *file_name)
 {
+    if (!ffp || !ffp->is) {
+        return 0;
+    }
 #if CONFIG_VIDEO_AVFILTER && 0
     //use subtitles filter
     char buffer[1024] = { 0 };
@@ -5615,6 +5618,9 @@ int ffp_add_active_external_subtitle(FFPlayer *ffp, const char *file_name)
 //add only
 int ffp_addOnly_external_subtitle(FFPlayer *ffp, const char *file_name)
 {
+    if (!ffp || !ffp->is) {
+        return 0;
+    }
     VideoState *is = ffp->is;
     IjkMediaMeta *stream_meta = NULL;
     int r = ff_sub_add_ex_subtitle(is->ffSub, file_name, &stream_meta, NULL);
@@ -5628,6 +5634,9 @@ int ffp_addOnly_external_subtitle(FFPlayer *ffp, const char *file_name)
 //add only
 int ffp_addOnly_external_subtitles(FFPlayer *ffp, const char *file_names [], int count)
 {
+    if (!ffp || !ffp->is) {
+        return 0;
+    }
     VideoState *is = ffp->is;
     int ret = 0;
     for(int i = 0; i < count; i++) {
