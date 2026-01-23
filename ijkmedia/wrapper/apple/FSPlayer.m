@@ -1811,7 +1811,7 @@ static int media_player_msg_loop(void* arg)
         IjkMediaPlayer *mp = (IjkMediaPlayer*)arg;
         FSWeakHolder *weakHolder = (__bridge FSWeakHolder *)ijkmp_get_weak_thiz(mp);
         __weak FSPlayer *ffpController = weakHolder.player;
-        while (ffpController) {
+        while (ffpController && mp) {
             @autoreleasepool {
                 FSPlayerMessage *msg = [ffpController obtainMessage];
                 if (!msg)
