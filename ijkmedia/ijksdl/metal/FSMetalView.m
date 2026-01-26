@@ -167,6 +167,14 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 #pragma mark - FSVideoRenderingProtocol
 
+- (void)setDisplayDelegate:(id<FSVideoRenderingDelegate>)displayDelegate {
+    self.renderedView.displayDelegate = displayDelegate;
+}
+
+- (id<FSVideoRenderingDelegate>)displayDelegate {
+    return self.renderedView.displayDelegate;
+}
+
 - (void)setScalingMode:(FSScalingMode)scalingMode {
     if (self.renderedView.scalingMode != scalingMode) {
         [self makeNeedsLayout];
@@ -300,14 +308,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     [self.renderedView registerRefreshCurrentPicObserver:block];
 }
 
-- (void)setDisplayDelegate:(id<FSVideoRenderingDelegate>)displayDelegate {
-    self.renderedView.displayDelegate = displayDelegate;
-}
-
-- (id<FSVideoRenderingDelegate>)displayDelegate {
-    return self.renderedView.displayDelegate;
-}
-
 #if TARGET_OS_OSX
 - (NSView *)hitTest:(NSPoint)point
 {
@@ -362,6 +362,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 @implementation FSMetalRenderedView
 
+@synthesize displayDelegate = _displayDelegate;
 @synthesize scalingMode = _scalingMode;
 // rotate preference
 @synthesize rotatePreference = _rotatePreference;
@@ -375,8 +376,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 @synthesize scaleFactor = _scaleFactor;
 #endif
 @synthesize showHdrAnimation = _showHdrAnimation;
-
-@synthesize displayDelegate = _displayDelegate;
 
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
