@@ -134,6 +134,8 @@ typedef enum : NSUInteger {
 
 @protocol FSVideoRenderingProtocol <NSObject>
 
+@property(nullable, nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
+
 @property(nonatomic) FSScalingMode scalingMode;
 #if TARGET_OS_IOS
 @property(nonatomic) CGFloat scaleFactor;
@@ -169,8 +171,6 @@ typedef enum : NSUInteger {
 @optional;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
 - (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
-
-@property(nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
 
 @end
 

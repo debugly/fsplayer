@@ -127,6 +127,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
     int    _rendererGravity;
 }
 
+@synthesize displayDelegate = _displayDelegate;
 @synthesize scalingMode = _scalingMode;
 // rotate preference
 @synthesize rotatePreference = _rotatePreference;
@@ -136,7 +137,6 @@ static void unlock_gl(NSOpenGLContext *ctx)
 @synthesize darPreference = _darPreference;
 @synthesize preventDisplay;
 @synthesize showHdrAnimation = _showHdrAnimation;
-@synthesize displayDelegate = _displayDelegate;
 
 - (void)destroyRender
 {
