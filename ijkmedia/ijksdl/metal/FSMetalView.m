@@ -244,7 +244,10 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 }
 
 - (void)setColorPreference:(FSColorConvertPreference)colorPreference {
-    self.renderedView.colorPreference = colorPreference;
+    if (self.renderedView.colorPreference.brightness != colorPreference.brightness || self.renderedView.colorPreference.saturation != colorPreference.saturation || self.renderedView.colorPreference.contrast != colorPreference.contrast) {
+        self.renderedView.colorPreference = colorPreference;
+        [self setNeedsRefreshCurrentPic];
+    }
 }
 
 - (FSColorConvertPreference)colorPreference {
@@ -969,13 +972,6 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 }
 
 #pragma mark - override setter methods
-
-- (void)setColorPreference:(FSColorConvertPreference)colorPreference
-{
-    if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
-        _colorPreference = colorPreference;
-    }
-}
 
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b
 {
