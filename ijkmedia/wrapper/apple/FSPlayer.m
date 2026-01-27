@@ -1630,13 +1630,24 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             _isSeekBuffering = 0;
             break;
         }
-        case FFP_MSG_BUFFERING_UPDATE:
-            _bufferingPosition = avmsg->arg1;
-            _bufferingProgress = avmsg->arg2;
-            [[NSNotificationCenter defaultCenter]
-             postNotificationName:FSPlayerBufferingDidChangeNotification
-             object:self];
-            // NSLog(@"FFP_MSG_BUFFERING_UPDATE: %d, %%%d\n", _bufferingPosition, _bufferingProgress);
+        case FFP_MSG_BUFFERING_UPDATE: {
+            BOOL update = NO;
+            if (_bufferingPosition != avmsg->arg1) {
+                _bufferingPosition = avmsg->arg1;
+                update = YES;
+            }
+            
+            if (_bufferingProgress != avmsg->arg2) {
+                _bufferingProgress = avmsg->arg2;
+                update = YES;
+            }
+            
+            if (update) {
+                [[NSNotificationCenter defaultCenter]
+                 postNotificationName:FSPlayerBufferingDidChangeNotification
+                 object:self];
+            }
+        }
             break;
         case FFP_MSG_BUFFERING_BYTES_UPDATE:
             // NSLog(@"FFP_MSG_BUFFERING_BYTES_UPDATE: %d\n", avmsg->arg1);

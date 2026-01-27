@@ -458,11 +458,11 @@ static NSString *recordVideoPath = nil;
 }
 
 - (void)moviePlayBackBufferingDidChange:(NSNotification*)notification {
-    NSLog(@"moviePlayBackBufferingDidChange: %f, currentTime: %f", _player.playableDuration, _player.currentPlaybackTime);
+    NSLog(@"bufferingDidChange: %ld",(long)_player.bufferingProgress);
 }
 
 - (void)moviePlayBackCurrentPlaybackTimeDidChange:(NSNotification*)notification {
-    NSLog(@"moviePlayBackCurrentPlaybackTimeDidChange: %f", _player.currentPlaybackTime);
+    NSLog(@"currentPlaybackTimeDidChange: %f", _player.currentPlaybackTime);
     [self.mediaControl refreshMediaControl];
 }
 
