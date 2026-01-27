@@ -171,6 +171,11 @@
 
 #pragma mark IBAction
 
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return UIStatusBarStyleLightContent;
+}
+
 - (IBAction)onClickMediaControl:(id)sender
 {
     [self.mediaControl showAndFade];
