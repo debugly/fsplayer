@@ -1615,9 +1615,6 @@ static BOOL useExact = NO;
     colorPreference.contrast   = [MRCocoaBindingUserDefault color_adjust_contrast];
     
     self.player.view.colorPreference = colorPreference;
-    if (!self.player.isPlaying) {
-        [self.player.view setNeedsRefreshCurrentPic];
-    }
 }
 
 #pragma mark 播放器偏好设置
@@ -1755,25 +1752,16 @@ static BOOL useExact = NO;
         __strongSelf__
         int value = [v intValue];
         [self.player setScalingMode:value];
-        if (!self.player.isPlaying) {
-            [self.player.view setNeedsRefreshCurrentPic];
-        }
     } forKey:@"picture_fill_mode"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         [self applyDAR];
-        if (!self.player.isPlaying) {
-            [self.player.view setNeedsRefreshCurrentPic];
-        }
     } forKey:@"picture_wh_ratio"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         [self applyRotate];
-        if (!self.player.isPlaying) {
-            [self.player.view setNeedsRefreshCurrentPic];
-        }
     } forKey:@"picture_ratate_mode"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {

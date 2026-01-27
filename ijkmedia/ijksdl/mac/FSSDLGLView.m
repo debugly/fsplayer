@@ -118,6 +118,7 @@ static void unlock_gl(NSOpenGLContext *ctx)
 @property(assign) int hdrAnimationFrameCount;
 @property(nonatomic) NSOpenGLContext *sharedContext;
 @property(nonatomic) NSArray *bgColor;
+@property(nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
 
 @end
 
@@ -459,12 +460,21 @@ static void unlock_gl(NSOpenGLContext *ctx)
     unlock_gl([self openGLContext]);
 }
 
+- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block
+{
+    self.refreshCurrentPicBlock = block;
+}
+
 - (void)setNeedsRefreshCurrentPic
 {
-    [self.renderThread performSelector:@selector(doRefreshCurrentAttach:)
-                            withTarget:self
-                            withObject:self.currentAttach
-                         waitUntilDone:NO];
+    if (self.refreshCurrentPicBlock) {
+        self.refreshCurrentPicBlock();
+    } else {
+        [self.renderThread performSelector:@selector(doRefreshCurrentAttach:)
+                                withTarget:self
+                                withObject:self.currentAttach
+                             waitUntilDone:NO];
+    }
 }
 
 - (BOOL)displayAttach:(FSOverlayAttach *)attach
@@ -768,6 +778,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
     if (FS_GLES2_Renderer_isValid(_renderer)) {
         FS_GLES2_Renderer_setGravity(_renderer, _rendererGravity, self.backingWidth, self.backingHeight);
     }
+    [self setNeedsRefreshCurrentPic];
 }
 
 - (void)setRotatePreference:(FSRotatePreference)rotatePreference
@@ -777,6 +788,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
         if (FS_GLES2_Renderer_isValid(_renderer)) {
             FS_GLES2_Renderer_updateRotate(_renderer, _rotatePreference.type, _rotatePreference.degrees);
         }
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -786,6 +798,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
         _colorPreference = colorPreference;
         if (FS_GLES2_Renderer_isValid(_renderer)) {
             FS_GLES2_Renderer_updateColorConversion(_renderer, _colorPreference.brightness, _colorPreference.saturation,_colorPreference.contrast);
+            [self setNeedsRefreshCurrentPic];
         }
     }
 }
@@ -797,6 +810,7 @@ static CGImageRef _FlipCGImage(CGImageRef src)
         if (FS_GLES2_Renderer_isValid(_renderer)) {
             FS_GLES2_Renderer_updateUserDefinedDAR(_renderer, _darPreference.ratio);
         }
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
