@@ -316,6 +316,19 @@ static NSString *recordVideoPath = nil;
 
 - (IBAction)onRecord:(UIButton *)sender
 {
+//    test dar
+//    int dar_num = 0;
+//    int dar_den = 1;
+//    
+//    if (self.player.view.darPreference.ratio == 0) {
+//        dar_num = 1;
+//        dar_den = 1;
+//        self.player.view.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
+//    } else {
+//        self.player.view.darPreference = (FSDARPreference){0.0};
+//    }
+//    return;
+    
     if (sender.isSelected) {
         int error = [self.player stopFastRecord];
         NSLog(@"停止录制:%d", error);

@@ -39,6 +39,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 @property (atomic, assign) int attachSarNum;
 @property (atomic, assign) int attachSarDen;
 @property (atomic, assign) int attachAutoZRotate;
+@property (atomic, assign) BOOL animating;
 
 @end
 
@@ -73,16 +74,29 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 #if TARGET_OS_OSX
 - (void)layout {
     [super layout];
-    [self updateRenderedViewFrame];
+    if (!self.animating) {
+        [self updateRenderedViewFrameWithAnimate:NO];
+    }
 }
+
 #else
+//frame #0: 0x00000001017abb7c FSPlayer`-[FSMetalView layoutSubviews](self=0x000000010070c8c0, _cmd="layoutSubviews") at FSMetalView.m:90:6
+//frame #1: 0x0000000182cfd1c4 UIKitCore`-[UIView(CALayerDelegate) layoutSublayersOfLayer:] + 2556
+//frame #2: 0x000000018437d520 QuartzCore`CA::Layer::layout_if_needed(CA::Transaction*) + 528
+//frame #3: 0x0000000184370294 QuartzCore`CA::Layer::layout_and_display_if_needed(CA::Transaction*) + 132
+//frame #4: 0x0000000184383cc8 QuartzCore`CA::Context::commit_transaction(CA::Transaction*, double, double*) + 464
+//frame #5: 0x000000018438c79c QuartzCore`CA::Transaction::commit() + 708
+//frame #6: 0x000000018436f9a8 QuartzCore`CA::Transaction::flush_as_runloop_observer(bool) + 84
 - (void)layoutSubviews {
     [super layoutSubviews];
-    [self updateRenderedViewFrame];
+    //ignore animate caused layoutSubviews
+    if (!self.animating) {
+        [self updateRenderedViewFrameWithAnimate:NO];
+    }
 }
 #endif
 
-- (void)updateRenderedViewFrame {
+- (void)updateRenderedViewFrameWithAnimate:(BOOL)animate {
     if (self.scalingMode == FSScalingModeFill) {
         self.renderedView.frame = self.bounds;
     } else {
@@ -141,7 +155,31 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
                                      attachSize.height * ratio);
             CGPoint origin = CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
                                          CGRectGetMidY(self.bounds) - size.height / 2);
-            self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
+            
+            if (animate) {
+                self.animating = YES;
+                [self setNeedsRefreshCurrentPic];
+#if TARGET_OS_OSX
+                [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+                    context.duration = 0.3;
+                    context.allowsImplicitAnimation = YES;
+                    context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+                    self.renderedView.animator.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
+                } completionHandler:^{
+                    self.animating = NO;
+                    [self setNeedsRefreshCurrentPic];
+                }];
+#else
+                [UIView animateWithDuration:0.3 animations:^{
+                    self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
+                } completion:^(BOOL finished) {
+                    self.animating = NO;
+                    [self setNeedsRefreshCurrentPic];
+                }];
+#endif
+            } else {
+                self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
+            }
         } else {
             self.renderedView.frame = CGRectZero;
         }
@@ -159,9 +197,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     if (NSThread.isMainThread) {
         setNeedsLayout();
     } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            setNeedsLayout();
-        });
+        dispatch_async(dispatch_get_main_queue(), setNeedsLayout);
     }
 }
 
@@ -177,9 +213,9 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 - (void)setScalingMode:(FSScalingMode)scalingMode {
     if (self.renderedView.scalingMode != scalingMode) {
-        [self makeNeedsLayout];
+        self.renderedView.scalingMode = scalingMode;
+        [self updateRenderedViewFrameWithAnimate:YES];
     }
-    self.renderedView.scalingMode = scalingMode;
 }
 
 - (FSScalingMode)scalingMode {
@@ -198,9 +234,9 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 - (void)setRotatePreference:(FSRotatePreference)rotatePreference {
     if (self.renderedView.rotatePreference.type != rotatePreference.type || self.renderedView.rotatePreference.degrees != rotatePreference.degrees) {
-        [self makeNeedsLayout];
+        self.renderedView.rotatePreference = rotatePreference;
+        [self updateRenderedViewFrameWithAnimate:YES];
     }
-    self.renderedView.rotatePreference = rotatePreference;
 }
 
 - (FSRotatePreference)rotatePreference {
@@ -217,9 +253,9 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 
 - (void)setDarPreference:(FSDARPreference)darPreference {
     if (self.renderedView.darPreference.ratio != darPreference.ratio) {
-        [self makeNeedsLayout];
+        self.renderedView.darPreference = darPreference;
+        [self updateRenderedViewFrameWithAnimate:YES];
     }
-    self.renderedView.darPreference = darPreference;
 }
 
 - (FSDARPreference)darPreference {
@@ -837,25 +873,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     return [[UIImage alloc]initWithCGImage:cgImg];
 }
 
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    
-    if (!CGSizeEqualToSize(self.previousDrawableSize, self.drawableSize)) {
-        self.previousDrawableSize = self.drawableSize;
-        
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
-#else
-
-- (void)resizeWithOldSuperviewSize:(NSSize)oldSize
-{
-    [super resizeWithOldSuperviewSize:oldSize];
-    [self setNeedsRefreshCurrentPic];
-}
-
 #endif
 
 - (void)setNeedsRefreshCurrentPic
@@ -953,37 +970,10 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 #pragma mark - override setter methods
 
-- (void)setScalingMode:(FSScalingMode)scalingMode
-{
-    if (_scalingMode != scalingMode) {
-        _scalingMode = scalingMode;
-        
-        [self draw];
-    }
-}
-
-- (void)setRotatePreference:(FSRotatePreference)rotatePreference
-{
-    if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
-        _rotatePreference = rotatePreference;
-        
-        [self draw];
-    }
-}
-
 - (void)setColorPreference:(FSColorConvertPreference)colorPreference
 {
     if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
         _colorPreference = colorPreference;
-    }
-}
-
-- (void)setDarPreference:(FSDARPreference)darPreference
-{
-    if (_darPreference.ratio != darPreference.ratio) {
-        _darPreference = darPreference;
-        
-        [self draw];
     }
 }
 
