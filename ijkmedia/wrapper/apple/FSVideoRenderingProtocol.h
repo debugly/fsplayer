@@ -98,15 +98,15 @@ static inline UIColor * ijk_ass_int_to_color(uint32_t rgba) {
     return [UIColor colorWithRed:r green:g blue:b alpha:a];
 }
 
-typedef enum _IJKSDLRotateType {
+typedef enum _FSSDLRotateType {
     FSRotateNone,
     FSRotateX,
     FSRotateY,
     FSRotateZ
 } FSRotateType;
 
-typedef struct _IJKSDLRotatePreference FSRotatePreference;
-struct _IJKSDLRotatePreference {
+typedef struct _FSSDLRotatePreference FSRotatePreference;
+struct _FSSDLRotatePreference {
     FSRotateType type;
     float degrees;
 };
@@ -118,8 +118,8 @@ struct _FSColorConvertPreference {
     float contrast;
 };
 
-typedef struct _IJKSDLDARPreference FSDARPreference;
-struct _IJKSDLDARPreference {
+typedef struct _FSSDLDARPreference FSDARPreference;
+struct _FSSDLDARPreference {
     float ratio; //ratio is width / height;
 };
 
