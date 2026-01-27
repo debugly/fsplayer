@@ -45,16 +45,16 @@
 {
     FSSubtitlePreference sp = fs_subtitle_default_preference();
     
-    NSColor *text_color = ijk_ass_int_to_color(sp.PrimaryColour);
+    NSColor *text_color = fs_ass_int_to_color(sp.PrimaryColour);
     NSData *text_color_data = [NSKeyedArchiver archivedDataWithRootObject:text_color];
     
-    NSColor *SecondaryColour = ijk_ass_int_to_color(sp.SecondaryColour);
+    NSColor *SecondaryColour = fs_ass_int_to_color(sp.SecondaryColour);
     NSData *subtitle_bg_color_data = [NSKeyedArchiver archivedDataWithRootObject:SecondaryColour];
     
-    NSColor *OutlineColour = ijk_ass_int_to_color(sp.OutlineColour);
+    NSColor *OutlineColour = fs_ass_int_to_color(sp.OutlineColour);
     NSData *subtitle_stroke_color_data = [NSKeyedArchiver archivedDataWithRootObject:OutlineColour];
     
-    NSColor *BackColour = ijk_ass_int_to_color(sp.BackColour);
+    NSColor *BackColour = fs_ass_int_to_color(sp.BackColour);
     NSData *subtitle_shadow_color_data = [NSKeyedArchiver archivedDataWithRootObject:BackColour];
     
     NSDictionary *initValues = @{

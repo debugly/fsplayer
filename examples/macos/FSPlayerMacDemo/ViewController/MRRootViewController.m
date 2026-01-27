@@ -1586,10 +1586,10 @@ static BOOL useExact = NO;
 {
     FSSubtitlePreference p = self.player.subtitlePreference;
     p.ForceOverride = [MRCocoaBindingUserDefault force_override];
-    p.PrimaryColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault PrimaryColour]);
-    p.SecondaryColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault SecondaryColour]);
-    p.BackColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault BackColour]);
-    p.OutlineColour = ijk_ass_color_to_int([MRCocoaBindingUserDefault OutlineColour]);
+    p.PrimaryColour = fs_ass_color_to_int([MRCocoaBindingUserDefault PrimaryColour]);
+    p.SecondaryColour = fs_ass_color_to_int([MRCocoaBindingUserDefault SecondaryColour]);
+    p.BackColour = fs_ass_color_to_int([MRCocoaBindingUserDefault BackColour]);
+    p.OutlineColour = fs_ass_color_to_int([MRCocoaBindingUserDefault OutlineColour]);
     p.Outline = [MRCocoaBindingUserDefault Outline];
     p.BottomMargin = ([MRCocoaBindingUserDefault subtitle_bottom_margin]) / 100.0;
     p.Scale = [MRCocoaBindingUserDefault subtitle_scale];
@@ -1794,7 +1794,7 @@ static BOOL useExact = NO;
         __strongSelf__
         NSColor *color = v;
         FSSubtitlePreference p = self.player.subtitlePreference;
-        p.PrimaryColour = ijk_ass_color_to_int(color);
+        p.PrimaryColour = fs_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"PrimaryColour"];
     
@@ -1802,7 +1802,7 @@ static BOOL useExact = NO;
         __strongSelf__
         NSColor *color = v;
         FSSubtitlePreference p = self.player.subtitlePreference;
-        p.SecondaryColour = ijk_ass_color_to_int(color);
+        p.SecondaryColour = fs_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"SecondaryColour"];
     
@@ -1810,7 +1810,7 @@ static BOOL useExact = NO;
         __strongSelf__
         NSColor *color = v;
         FSSubtitlePreference p = self.player.subtitlePreference;
-        p.BackColour = ijk_ass_color_to_int(color);
+        p.BackColour = fs_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"BackColour"];
     
@@ -1818,7 +1818,7 @@ static BOOL useExact = NO;
         __strongSelf__
         NSColor *color = v;
         FSSubtitlePreference p = self.player.subtitlePreference;
-        p.OutlineColour = ijk_ass_color_to_int(color);
+        p.OutlineColour = fs_ass_color_to_int(color);
         self.player.subtitlePreference = p;
     } forKey:@"OutlineColour"];
     
