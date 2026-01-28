@@ -39,7 +39,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 @property (atomic, assign) int attachSarNum;
 @property (atomic, assign) int attachSarDen;
 @property (atomic, assign) int attachAutoZRotate;
-@property (atomic, assign) BOOL animating;
 
 @end
 
@@ -74,9 +73,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 #if TARGET_OS_OSX
 - (void)layout {
     [super layout];
-    if (!self.animating) {
-        [self updateRenderedViewFrameWithAnimate:NO];
-    }
+    [self updateRenderedViewFrame];
 }
 
 #else
@@ -89,14 +86,11 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 //frame #6: 0x000000018436f9a8 QuartzCore`CA::Transaction::flush_as_runloop_observer(bool) + 84
 - (void)layoutSubviews {
     [super layoutSubviews];
-    //ignore animate caused layoutSubviews
-    if (!self.animating) {
-        [self updateRenderedViewFrameWithAnimate:NO];
-    }
+    [self updateRenderedViewFrame];
 }
 #endif
 
-- (void)updateRenderedViewFrameWithAnimate:(BOOL)animate {
+- (void)updateRenderedViewFrame {
     if (self.scalingMode == FSScalingModeFill) {
         self.renderedView.frame = self.bounds;
     } else {
@@ -155,31 +149,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
                                      attachSize.height * ratio);
             CGPoint origin = CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
                                          CGRectGetMidY(self.bounds) - size.height / 2);
-            
-            if (animate) {
-                self.animating = YES;
-                [self setNeedsRefreshCurrentPic];
-#if TARGET_OS_OSX
-                [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
-                    context.duration = 0.3;
-                    context.allowsImplicitAnimation = YES;
-                    context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-                    self.renderedView.animator.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-                } completionHandler:^{
-                    self.animating = NO;
-                    [self setNeedsRefreshCurrentPic];
-                }];
-#else
-                [UIView animateWithDuration:0.3 animations:^{
-                    self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-                } completion:^(BOOL finished) {
-                    self.animating = NO;
-                    [self setNeedsRefreshCurrentPic];
-                }];
-#endif
-            } else {
-                self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-            }
+            self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
         } else {
             self.renderedView.frame = CGRectZero;
         }
@@ -214,7 +184,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)setScalingMode:(FSScalingMode)scalingMode {
     if (self.renderedView.scalingMode != scalingMode) {
         self.renderedView.scalingMode = scalingMode;
-        [self updateRenderedViewFrameWithAnimate:YES];
+        [self makeNeedsLayout];
     }
 }
 
@@ -235,7 +205,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)setRotatePreference:(FSRotatePreference)rotatePreference {
     if (self.renderedView.rotatePreference.type != rotatePreference.type || self.renderedView.rotatePreference.degrees != rotatePreference.degrees) {
         self.renderedView.rotatePreference = rotatePreference;
-        [self updateRenderedViewFrameWithAnimate:YES];
+        [self makeNeedsLayout];
     }
 }
 
@@ -257,7 +227,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)setDarPreference:(FSDARPreference)darPreference {
     if (self.renderedView.darPreference.ratio != darPreference.ratio) {
         self.renderedView.darPreference = darPreference;
-        [self updateRenderedViewFrameWithAnimate:YES];
+        [self makeNeedsLayout];
     }
 }
 
