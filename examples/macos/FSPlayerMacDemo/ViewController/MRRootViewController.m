@@ -1752,6 +1752,17 @@ static BOOL useExact = NO;
         __strongSelf__
         int value = [v intValue];
         [self.player setScalingMode:value];
+        
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+            __strongSelf__
+            context.duration = 0.3;
+            context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+            context.allowsImplicitAnimation = YES;
+            [self.view setNeedsLayout:YES];
+            [self.view layoutSubtreeIfNeeded];
+        } completionHandler:^{
+           
+        }];
     } forKey:@"picture_fill_mode"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
@@ -1762,6 +1773,17 @@ static BOOL useExact = NO;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         [self applyRotate];
+        
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+            __strongSelf__
+            context.duration = 0.3;
+            context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+            context.allowsImplicitAnimation = YES;
+            [self.view setNeedsLayout:YES];
+            [self.view layoutSubtreeIfNeeded];
+        } completionHandler:^{
+           
+        }];
     } forKey:@"picture_ratate_mode"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {

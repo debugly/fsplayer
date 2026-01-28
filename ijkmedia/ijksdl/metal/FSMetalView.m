@@ -26,6 +26,49 @@
 typedef CGRect NSRect;
 #endif
 
+typedef NS_ENUM(NSInteger, FSMetalDecimalRoundingRule) {
+    FSMetalDecimalRoundingRuleRound,
+    FSMetalDecimalRoundingRuleCeil,
+    FSMetalDecimalRoundingRuleFloor,
+};
+
+CG_INLINE CGFloat
+__FSMetalCGFloatMakePixelValue(CGFloat value, FSMetalDecimalRoundingRule rule) {
+    /// 以下算法是由「yoga -> YGPixelGrid.h -> YGRoundValueToPixelGrid」中翻译
+    
+    BOOL(^inexactEquals)(CGFloat, CGFloat) = ^BOOL(CGFloat a, CGFloat b) {
+        if (!isnan(a) && !isnan(b)) {
+            return ABS(a - b) < 0.0001;
+        }
+        return isnan(a) && isnan(b);
+    };
+    
+#if TARGET_OS_IPHONE
+    CGFloat pointScaleFactor = MAX(UIScreen.mainScreen.traitCollection.displayScale, 1);
+#else
+    CGFloat pointScaleFactor = MAX(NSScreen.mainScreen.backingScaleFactor, 1);
+#endif
+    CGFloat scaledValue = value * pointScaleFactor;
+    CGFloat fractial = fmod(scaledValue, 1.0);
+    if (fractial < 0) {
+        ++fractial;
+    }
+    if (inexactEquals(fractial, 0)) {
+        scaledValue = scaledValue - fractial;
+    } else if (inexactEquals(fractial, 1.0)) {
+        scaledValue = scaledValue - fractial + 1.0;
+    } else if (rule == FSMetalDecimalRoundingRuleCeil) {
+        scaledValue = scaledValue - fractial + 1.0;
+    } else if (rule == FSMetalDecimalRoundingRuleFloor) {
+        scaledValue = scaledValue - fractial;
+    } else if (rule == FSMetalDecimalRoundingRuleRound) {
+        scaledValue = scaledValue - fractial + (!isnan(fractial) && (fractial > 0.5 || inexactEquals(fractial, 0.5)) ? 1.0 : 0.0);
+    } else {
+        NSCAssert(NO, @"");
+    }
+    return isnan(scaledValue) ? 0 : (scaledValue / pointScaleFactor);
+}
+
 NS_CLASS_AVAILABLE(10_13, 11_0)
 @interface FSMetalRenderedView: MTKView <FSVideoRenderingProtocol>
 
@@ -149,6 +192,11 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
                                      attachSize.height * ratio);
             CGPoint origin = CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
                                          CGRectGetMidY(self.bounds) - size.height / 2);
+#if TARGET_OS_OSX
+            // 需进行像素对齐，解决外部使用runAnimationGroup可能不会生效的问题
+            origin.x = __FSMetalCGFloatMakePixelValue(origin.x, FSMetalDecimalRoundingRuleRound);
+            origin.y = __FSMetalCGFloatMakePixelValue(origin.y, FSMetalDecimalRoundingRuleRound);
+#endif
             self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
         } else {
             self.renderedView.frame = CGRectZero;
@@ -159,7 +207,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)makeNeedsLayout {
     void(^setNeedsLayout)(void) = ^{
 #if TARGET_OS_OSX
-        self.needsLayout = YES;
+        [self setNeedsLayout:YES];
 #else
         [self setNeedsLayout];
 #endif
@@ -185,7 +233,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     if (self.renderedView.scalingMode != scalingMode) {
         self.renderedView.scalingMode = scalingMode;
         [self makeNeedsLayout];
-        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -230,7 +277,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     if (self.renderedView.darPreference.ratio != darPreference.ratio) {
         self.renderedView.darPreference = darPreference;
         [self makeNeedsLayout];
-        [self setNeedsRefreshCurrentPic];
     }
 }
 
