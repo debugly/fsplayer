@@ -228,6 +228,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     if (self.renderedView.darPreference.ratio != darPreference.ratio) {
         self.renderedView.darPreference = darPreference;
         [self makeNeedsLayout];
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
