@@ -185,7 +185,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     if (self.renderedView.scalingMode != scalingMode) {
         self.renderedView.scalingMode = scalingMode;
         [self makeNeedsLayout];
-        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -207,7 +206,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     if (self.renderedView.rotatePreference.type != rotatePreference.type || self.renderedView.rotatePreference.degrees != rotatePreference.degrees) {
         self.renderedView.rotatePreference = rotatePreference;
         [self makeNeedsLayout];
-        [self setNeedsRefreshCurrentPic];
     }
 }
 
