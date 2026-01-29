@@ -26,6 +26,49 @@
 typedef CGRect NSRect;
 #endif
 
+typedef NS_ENUM(NSInteger, FSMetalDecimalRoundingRule) {
+    FSMetalDecimalRoundingRuleRound,
+    FSMetalDecimalRoundingRuleCeil,
+    FSMetalDecimalRoundingRuleFloor,
+};
+
+CG_INLINE CGFloat
+__FSMetalCGFloatMakePixelValue(CGFloat value, FSMetalDecimalRoundingRule rule) {
+    /// 以下算法是由「yoga -> YGPixelGrid.h -> YGRoundValueToPixelGrid」中翻译
+    
+    BOOL(^inexactEquals)(CGFloat, CGFloat) = ^BOOL(CGFloat a, CGFloat b) {
+        if (!isnan(a) && !isnan(b)) {
+            return ABS(a - b) < 0.0001;
+        }
+        return isnan(a) && isnan(b);
+    };
+    
+#if TARGET_OS_IPHONE
+    CGFloat pointScaleFactor = MAX(UIScreen.mainScreen.traitCollection.displayScale, 1);
+#else
+    CGFloat pointScaleFactor = MAX(NSScreen.mainScreen.backingScaleFactor, 1);
+#endif
+    CGFloat scaledValue = value * pointScaleFactor;
+    CGFloat fractial = fmod(scaledValue, 1.0);
+    if (fractial < 0) {
+        ++fractial;
+    }
+    if (inexactEquals(fractial, 0)) {
+        scaledValue = scaledValue - fractial;
+    } else if (inexactEquals(fractial, 1.0)) {
+        scaledValue = scaledValue - fractial + 1.0;
+    } else if (rule == FSMetalDecimalRoundingRuleCeil) {
+        scaledValue = scaledValue - fractial + 1.0;
+    } else if (rule == FSMetalDecimalRoundingRuleFloor) {
+        scaledValue = scaledValue - fractial;
+    } else if (rule == FSMetalDecimalRoundingRuleRound) {
+        scaledValue = scaledValue - fractial + (!isnan(fractial) && (fractial > 0.5 || inexactEquals(fractial, 0.5)) ? 1.0 : 0.0);
+    } else {
+        NSCAssert(NO, @"");
+    }
+    return isnan(scaledValue) ? 0 : (scaledValue / pointScaleFactor);
+}
+
 NS_CLASS_AVAILABLE(10_13, 11_0)
 @interface FSMetalRenderedView: MTKView <FSVideoRenderingProtocol>
 
@@ -39,7 +82,6 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 @property (atomic, assign) int attachSarNum;
 @property (atomic, assign) int attachSarDen;
 @property (atomic, assign) int attachAutoZRotate;
-@property (atomic, assign) BOOL animating;
 
 @end
 
@@ -74,9 +116,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 #if TARGET_OS_OSX
 - (void)layout {
     [super layout];
-    if (!self.animating) {
-        [self updateRenderedViewFrameWithAnimate:NO];
-    }
+    [self updateRenderedViewFrame];
 }
 
 #else
@@ -89,14 +129,11 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 //frame #6: 0x000000018436f9a8 QuartzCore`CA::Transaction::flush_as_runloop_observer(bool) + 84
 - (void)layoutSubviews {
     [super layoutSubviews];
-    //ignore animate caused layoutSubviews
-    if (!self.animating) {
-        [self updateRenderedViewFrameWithAnimate:NO];
-    }
+    [self updateRenderedViewFrame];
 }
 #endif
 
-- (void)updateRenderedViewFrameWithAnimate:(BOOL)animate {
+- (void)updateRenderedViewFrame {
     if (self.scalingMode == FSScalingModeFill) {
         self.renderedView.frame = self.bounds;
     } else {
@@ -155,31 +192,12 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
                                      attachSize.height * ratio);
             CGPoint origin = CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
                                          CGRectGetMidY(self.bounds) - size.height / 2);
-            
-            if (animate) {
-                self.animating = YES;
-                [self setNeedsRefreshCurrentPic];
 #if TARGET_OS_OSX
-                [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
-                    context.duration = 0.3;
-                    context.allowsImplicitAnimation = YES;
-                    context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-                    self.renderedView.animator.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-                } completionHandler:^{
-                    self.animating = NO;
-                    [self setNeedsRefreshCurrentPic];
-                }];
-#else
-                [UIView animateWithDuration:0.3 animations:^{
-                    self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-                } completion:^(BOOL finished) {
-                    self.animating = NO;
-                    [self setNeedsRefreshCurrentPic];
-                }];
+            // 需进行像素对齐，解决外部使用runAnimationGroup可能不会生效的问题
+            origin.x = __FSMetalCGFloatMakePixelValue(origin.x, FSMetalDecimalRoundingRuleRound);
+            origin.y = __FSMetalCGFloatMakePixelValue(origin.y, FSMetalDecimalRoundingRuleRound);
 #endif
-            } else {
-                self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-            }
+            self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
         } else {
             self.renderedView.frame = CGRectZero;
         }
@@ -189,7 +207,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)makeNeedsLayout {
     void(^setNeedsLayout)(void) = ^{
 #if TARGET_OS_OSX
-        self.needsLayout = YES;
+        [self setNeedsLayout:YES];
 #else
         [self setNeedsLayout];
 #endif
@@ -214,7 +232,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)setScalingMode:(FSScalingMode)scalingMode {
     if (self.renderedView.scalingMode != scalingMode) {
         self.renderedView.scalingMode = scalingMode;
-        [self updateRenderedViewFrameWithAnimate:YES];
+        [self makeNeedsLayout];
     }
 }
 
@@ -235,7 +253,8 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)setRotatePreference:(FSRotatePreference)rotatePreference {
     if (self.renderedView.rotatePreference.type != rotatePreference.type || self.renderedView.rotatePreference.degrees != rotatePreference.degrees) {
         self.renderedView.rotatePreference = rotatePreference;
-        [self updateRenderedViewFrameWithAnimate:YES];
+        [self makeNeedsLayout];
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -257,7 +276,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 - (void)setDarPreference:(FSDARPreference)darPreference {
     if (self.renderedView.darPreference.ratio != darPreference.ratio) {
         self.renderedView.darPreference = darPreference;
-        [self updateRenderedViewFrameWithAnimate:YES];
+        [self makeNeedsLayout];
     }
 }
 

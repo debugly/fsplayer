@@ -316,7 +316,7 @@ static NSString *recordVideoPath = nil;
 
 - (IBAction)onRecord:(UIButton *)sender
 {
-//    test dar
+    // test dar
 //    int dar_num = 0;
 //    int dar_den = 1;
 //    
@@ -327,6 +327,15 @@ static NSString *recordVideoPath = nil;
 //    } else {
 //        self.player.view.darPreference = (FSDARPreference){0.0};
 //    }
+//    [UIView animateWithDuration:0.75 delay:0 usingSpringWithDamping:0.45 initialSpringVelocity:1.5 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+//        [self.view setNeedsLayout];
+//        [self.view layoutIfNeeded];
+//        // 或者
+//        // [self.player.view setNeedsLayout];
+//        // [self.player.view layoutIfNeeded];
+//    } completion:^(BOOL finished) {
+//        
+//    }];
 //    return;
     
     if (sender.isSelected) {
