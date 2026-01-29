@@ -19,4 +19,5 @@ cd "$THIS_DIR"
 
 set -e
 
-xcodegen -p . -s ../../FSPlayer.yml
+export MY_PROJECT_DIR="$THIS_DIR"
+xcodegen -p . -s FSPlayer.yml

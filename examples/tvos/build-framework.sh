@@ -20,7 +20,7 @@ cd "$THIS_DIR"
 set -e
 
 if [[ ! -d FSPlayer.xcodeproj ]]; then
-    ./generate-fsplayer.sh
+    ../../generate-proj.sh
 fi
 
 # 1
@@ -48,13 +48,13 @@ export IPHONEOS_DEPLOYMENT_TARGET=11.0
 xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
 -configuration Release  \
 -sdk appletvsimulator -arch x86_64 -arch arm64 \
-BUILD_DIR=. \
+BUILD_DIR="$THIS_DIR" \
 clean build
 
 xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
 -configuration Release  \
 -sdk appletvos -arch arm64 \
-BUILD_DIR=. \
+BUILD_DIR="$THIS_DIR" \
 clean build
 
 echo "tvos framework dir:$WORK_DIR"

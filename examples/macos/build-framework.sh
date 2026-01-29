@@ -20,7 +20,7 @@ cd "$THIS_DIR"
 set -e
 
 if [[ ! -d FSPlayer.xcodeproj ]]; then
-    ./generate-fsplayer.sh
+    ../../generate-proj.sh
 fi
 
 # 1
@@ -42,7 +42,7 @@ fi
 xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
 -configuration Release  \
 -sdk macosx -arch x86_64 -arch arm64 \
-BUILD_DIR=. \
+BUILD_DIR="$THIS_DIR" \
 clean build
 
 echo "macos framework dir:$WORK_DIR"

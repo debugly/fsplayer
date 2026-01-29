@@ -44,7 +44,7 @@ jobs:
       uses: cardinalby/export-env-action@v2
       with:
         envFile: 'constants.env'
-    - run: brew install tree
+    - run: brew install tree xcodegen
     - name: Download Pre Compiled Dependencies
       run: |
         ./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
