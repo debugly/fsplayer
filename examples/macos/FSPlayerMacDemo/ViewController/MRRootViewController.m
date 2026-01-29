@@ -667,10 +667,11 @@ static BOOL hdrAnimationShown = 0;
     
     //protocolWhitelist need set to httpproxy
     //options.protocolWhitelist = @"httpproxy";
-    //[options setFormatOptionValue:@"127.0.0.1:7890" forKey:@"http_proxy"];
+    //[options setFormatOptionValue:@"http://127.0.0.1:8888" forKey:@"http_proxy"];
+    //[options setFormatOptionValue:@"Referer: https://example.com\r\nOrigin: https://example.com\r\nUser-Agent: MyApp" forKey:@"headers"];
+    //when headers contain User-Agent,that will override the user_agent key
+    //[options setFormatOptionValue:@"MyUserAgent" forKey:@"user_agent"];
     
-    //[options setFormatOptionIntValue:1 forKey:@"use_n516_configure_mov_pkt_buffer"];
-
     int use_cache = 0;
     if (use_cache == 1) {
         NSString *urlStr = [url absoluteString];
