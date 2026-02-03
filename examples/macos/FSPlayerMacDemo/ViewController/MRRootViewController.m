@@ -701,6 +701,10 @@ static BOOL hdrAnimationShown = 0;
         [options setPlayerOptionValue:@"52428800" forKey:@"max-buffer-size"];
     }
     
+//    test preload http
+//    [options setFormatOptionValue:@"ijkhttp2" forKey:@"selected_http"];
+//    options.protocolWhitelist = @"ijkhttp2";
+    
     NSMutableArray *dus = [NSMutableArray array];
     if ([url.scheme isEqualToString:@"file"] && [url.absoluteString.pathExtension isEqualToString:@"m3u8"]) {
         NSString *str = [[NSString alloc] initWithContentsOfURL:url encoding:NSUTF8StringEncoding error:nil];
