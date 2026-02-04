@@ -1,3 +1,8 @@
+tag 1.0.4
+--------------------------------
+- FSPlayer support async relese by default
+- rename ijk_ass_* to fs_ass_*
+
 tag 1.0.3
 --------------------------------
 - support give up setup AudioSession on iOS platform #60
