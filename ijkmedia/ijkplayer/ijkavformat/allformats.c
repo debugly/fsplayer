@@ -176,6 +176,7 @@ void ijkav_register_all(void)
 #ifdef __ANDROID__
     FS_REGISTER_PROTOCOL(ijkmediadatasource);
 #endif
+    FS_REGISTER_PROTOCOL(ijkhttp2);
     FS_REGISTER_PROTOCOL(ijkio);
     FS_REGISTER_PROTOCOL(ijktcphook);
     FS_REGISTER_PROTOCOL(ijkhttphook);
