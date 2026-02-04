@@ -87,6 +87,13 @@ typedef CGRect NSRect;
         self.device = nil;
         return NO;
     }
+    // default is UIViewContentModeScaleToFill,the content will be filled to new bounds when change view's frame by Implicit Animation
+#if TARGET_OS_OSX
+    self.layer.contentsGravity = kCAGravityCenter;
+#else
+    self.contentMode = UIViewContentModeCenter;
+#endif
+    
     // Create the command queue
     self.commandQueue = [self.device newCommandQueue];
     self.autoResizeDrawable = YES;
