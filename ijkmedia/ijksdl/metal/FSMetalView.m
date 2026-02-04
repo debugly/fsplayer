@@ -26,359 +26,7 @@
 typedef CGRect NSRect;
 #endif
 
-NS_CLASS_AVAILABLE(10_13, 11_0)
-@interface FSMetalRenderedView: MTKView <FSVideoRenderingProtocol>
-
-@end
-
 @interface FSMetalView ()
-
-@property (nonatomic, strong) FSMetalRenderedView *renderedView;
-
-@property (atomic, assign) CGSize attachSize;
-@property (atomic, assign) int attachSarNum;
-@property (atomic, assign) int attachSarDen;
-@property (atomic, assign) int attachAutoZRotate;
-@property (atomic, assign) BOOL animating;
-
-@end
-
-@implementation FSMetalView
-
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super initWithCoder:coder];
-    if (self) {
-        [self prepare];
-    }
-    return self;
-}
-
-- (instancetype)initWithFrame:(NSRect)frameRect
-{
-    self = [super initWithFrame:frameRect];
-    if (self) {
-        [self prepare];
-    }
-    return self;
-}
-
-- (void)prepare {
-    self.renderedView = [[FSMetalRenderedView alloc] initWithFrame:self.bounds];
-#if !TARGET_OS_OSX
-    self.clipsToBounds = YES;
-#endif
-    [self addSubview:self.renderedView];
-}
-
-#if TARGET_OS_OSX
-- (void)layout {
-    [super layout];
-    if (!self.animating) {
-        [self updateRenderedViewFrameWithAnimate:NO];
-    }
-}
-
-#else
-//frame #0: 0x00000001017abb7c FSPlayer`-[FSMetalView layoutSubviews](self=0x000000010070c8c0, _cmd="layoutSubviews") at FSMetalView.m:90:6
-//frame #1: 0x0000000182cfd1c4 UIKitCore`-[UIView(CALayerDelegate) layoutSublayersOfLayer:] + 2556
-//frame #2: 0x000000018437d520 QuartzCore`CA::Layer::layout_if_needed(CA::Transaction*) + 528
-//frame #3: 0x0000000184370294 QuartzCore`CA::Layer::layout_and_display_if_needed(CA::Transaction*) + 132
-//frame #4: 0x0000000184383cc8 QuartzCore`CA::Context::commit_transaction(CA::Transaction*, double, double*) + 464
-//frame #5: 0x000000018438c79c QuartzCore`CA::Transaction::commit() + 708
-//frame #6: 0x000000018436f9a8 QuartzCore`CA::Transaction::flush_as_runloop_observer(bool) + 84
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    //ignore animate caused layoutSubviews
-    if (!self.animating) {
-        [self updateRenderedViewFrameWithAnimate:NO];
-    }
-}
-#endif
-
-- (void)updateRenderedViewFrameWithAnimate:(BOOL)animate {
-    if (self.scalingMode == FSScalingModeFill) {
-        self.renderedView.frame = self.bounds;
-    } else {
-        CGSize drawableSize = self.bounds.size;
-        CGSize attachSize = self.attachSize;
-        int attachSarNum = self.attachSarNum;
-        int attachSarDen = self.attachSarDen;
-        int attachAutoZRotate = self.attachAutoZRotate;
-        FSScalingMode scalingMode = self.scalingMode;
-        FSRotatePreference rotatePreference = self.rotatePreference;
-        FSDARPreference darPreference = self.darPreference;
-        
-        if (drawableSize.width > 0 && drawableSize.height > 0 && attachSize.width > 0 && attachSize.height > 0) {
-            //keep video AVRational
-            if (attachSarNum > 0 && attachSarDen > 0) {
-                attachSize.width = 1.0 * attachSarNum / attachSarDen * attachSize.width;
-            }
-            
-            int zDegrees = 0;
-            if (rotatePreference.type == FSRotateZ) {
-                zDegrees += rotatePreference.degrees;
-            }
-            zDegrees += attachAutoZRotate;
-            
-            float darRatio = darPreference.ratio;
-            
-            //when video's z rotate degrees is 90 odd multiple
-            if (abs(zDegrees) / 90 % 2 == 1) {
-                //need swap user's ratio
-                if (darRatio > 0.001) {
-                    darRatio = 1.0 / darRatio;
-                }
-                //need swap display size
-                attachSize = CGSizeMake(attachSize.height, attachSize.width);
-            }
-            
-            //apply user dar
-            if (darRatio > 0.001) {
-                if (1.0 * attachSize.width / attachSize.height > darRatio) {
-                    attachSize.height = attachSize.width * 1.0 / darRatio;
-                } else {
-                    attachSize.width = attachSize.height * darRatio;
-                }
-            }
-            
-            float wRatio = drawableSize.width / attachSize.width;
-            float hRatio = drawableSize.height / attachSize.height;
-            float ratio  = 1.0f;
-            
-            if (scalingMode == FSScalingModeAspectFit) {
-                ratio = FFMIN(wRatio, hRatio);
-            } else if (scalingMode == FSScalingModeAspectFill) {
-                ratio = FFMAX(wRatio, hRatio);
-            }
-            CGSize size = CGSizeMake(attachSize.width * ratio,
-                                     attachSize.height * ratio);
-            CGPoint origin = CGPointMake(CGRectGetMidX(self.bounds) - size.width / 2,
-                                         CGRectGetMidY(self.bounds) - size.height / 2);
-            
-            if (animate) {
-                self.animating = YES;
-                [self setNeedsRefreshCurrentPic];
-#if TARGET_OS_OSX
-                [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
-                    context.duration = 0.3;
-                    context.allowsImplicitAnimation = YES;
-                    context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-                    self.renderedView.animator.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-                } completionHandler:^{
-                    self.animating = NO;
-                    [self setNeedsRefreshCurrentPic];
-                }];
-#else
-                [UIView animateWithDuration:0.3 animations:^{
-                    self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-                } completion:^(BOOL finished) {
-                    self.animating = NO;
-                    [self setNeedsRefreshCurrentPic];
-                }];
-#endif
-            } else {
-                self.renderedView.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-            }
-        } else {
-            self.renderedView.frame = CGRectZero;
-        }
-    }
-}
-
-- (void)makeNeedsLayout {
-    void(^setNeedsLayout)(void) = ^{
-#if TARGET_OS_OSX
-        self.needsLayout = YES;
-#else
-        [self setNeedsLayout];
-#endif
-    };
-    if (NSThread.isMainThread) {
-        setNeedsLayout();
-    } else {
-        dispatch_async(dispatch_get_main_queue(), setNeedsLayout);
-    }
-}
-
-#pragma mark - FSVideoRenderingProtocol
-
-- (void)setDisplayDelegate:(id<FSVideoRenderingDelegate>)displayDelegate {
-    self.renderedView.displayDelegate = displayDelegate;
-}
-
-- (id<FSVideoRenderingDelegate>)displayDelegate {
-    return self.renderedView.displayDelegate;
-}
-
-- (void)setScalingMode:(FSScalingMode)scalingMode {
-    if (self.renderedView.scalingMode != scalingMode) {
-        self.renderedView.scalingMode = scalingMode;
-        [self updateRenderedViewFrameWithAnimate:YES];
-    }
-}
-
-- (FSScalingMode)scalingMode {
-    return self.renderedView.scalingMode;
-}
-
-#if TARGET_OS_IOS
-- (void)setScaleFactor:(CGFloat)scaleFactor {
-    self.renderedView.scaleFactor = scaleFactor;
-}
-
-- (CGFloat)scaleFactor {
-    return self.renderedView.scaleFactor;
-}
-#endif
-
-- (void)setRotatePreference:(FSRotatePreference)rotatePreference {
-    if (self.renderedView.rotatePreference.type != rotatePreference.type || self.renderedView.rotatePreference.degrees != rotatePreference.degrees) {
-        self.renderedView.rotatePreference = rotatePreference;
-        [self updateRenderedViewFrameWithAnimate:YES];
-    }
-}
-
-- (FSRotatePreference)rotatePreference {
-    return self.renderedView.rotatePreference;
-}
-
-- (void)setColorPreference:(FSColorConvertPreference)colorPreference {
-    if (self.renderedView.colorPreference.brightness != colorPreference.brightness || self.renderedView.colorPreference.saturation != colorPreference.saturation || self.renderedView.colorPreference.contrast != colorPreference.contrast) {
-        self.renderedView.colorPreference = colorPreference;
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
-- (FSColorConvertPreference)colorPreference {
-    return self.renderedView.colorPreference;
-}
-
-- (void)setDarPreference:(FSDARPreference)darPreference {
-    if (self.renderedView.darPreference.ratio != darPreference.ratio) {
-        self.renderedView.darPreference = darPreference;
-        [self updateRenderedViewFrameWithAnimate:YES];
-    }
-}
-
-- (FSDARPreference)darPreference {
-    return self.renderedView.darPreference;
-}
-
-- (void)setPreventDisplay:(BOOL)preventDisplay {
-    self.renderedView.preventDisplay = preventDisplay;
-}
-
-- (BOOL)preventDisplay {
-    return self.renderedView.preventDisplay;
-}
-
-- (void)setShowHdrAnimation:(BOOL)showHdrAnimation {
-    self.renderedView.showHdrAnimation = showHdrAnimation;
-}
-
-- (BOOL)showHdrAnimation {
-    return self.renderedView.showHdrAnimation;
-}
-
-- (void)setNeedsRefreshCurrentPic {
-    [self.renderedView setNeedsRefreshCurrentPic];
-}
-
-- (BOOL)displayAttach:(FSOverlayAttach *)attach {
-    BOOL shouldNeedsLayout = NO;
-    CGSize attachSize = CGSizeMake(attach.w, attach.h);
-    if (!CGSizeEqualToSize(self.attachSize, attachSize)) {
-        self.attachSize = attachSize;
-        if (attachSize.width > 0 && attachSize.height > 0) {
-            shouldNeedsLayout = YES;
-        }
-    }
-    int attachSarNum = attach.sarNum;
-    if (self.attachSarNum != attachSarNum) {
-        self.attachSarNum = attachSarNum;
-        if (attachSarNum > 0) {
-            shouldNeedsLayout = YES;
-        }
-    }
-    int attachSarDen = attach.sarDen;
-    if (self.attachSarDen != attachSarDen) {
-        self.attachSarDen = attachSarDen;
-        if (attachSarDen > 0) {
-            shouldNeedsLayout = YES;
-        }
-    }
-    int attachAutoZRotate = attach.autoZRotate;
-    if (self.attachAutoZRotate != attachAutoZRotate) {
-        self.attachAutoZRotate = attachAutoZRotate;
-        if (attachAutoZRotate > 0) {
-            shouldNeedsLayout = YES;
-        }
-    }
-    if (shouldNeedsLayout) {
-        [self makeNeedsLayout];
-    }
-    return [self.renderedView displayAttach:attach];
-}
-
-#if !TARGET_OS_OSX
-- (UIImage *)snapshot {
-    return [self.renderedView snapshot];
-}
-#else
-- (CGImageRef)snapshot:(FSSnapshotType)aType {
-    return [self.renderedView snapshot:aType];
-}
-#endif
-
-- (NSString *)name {
-    return [self.renderedView name];
-}
-
-- (id)context {
-    return self.renderedView.context;
-}
-
-- (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b {
-    [self.renderedView setBackgroundColor:r g:g b:b];
-}
-
-- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block {
-    [self.renderedView registerRefreshCurrentPicObserver:block];
-}
-
-#if TARGET_OS_OSX
-- (NSView *)hitTest:(NSPoint)point
-{
-    for (NSView *sub in [self subviews]) {
-        NSPoint pointInSelf = [self convertPoint:point fromView:self.superview];
-        NSPoint pointInSub = [self convertPoint:pointInSelf toView:sub];
-        if (NSPointInRect(pointInSub, sub.bounds)) {
-            return sub;
-        }
-    }
-    return nil;
-}
-
-- (BOOL)acceptsFirstResponder
-{
-    return NO;
-}
-
-- (BOOL)mouseDownCanMoveWindow
-{
-    return YES;
-}
-#else
-- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
-{
-    return NO;
-}
-#endif
-
-@end
-
-@interface FSMetalRenderedView ()
 
 // The command queue used to pass commands to the device.
 @property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
@@ -392,16 +40,10 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 @property (assign) BOOL needCleanBackgroundColor;
 @property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
 
-#if TARGET_OS_IOS || TARGET_OS_TV
-@property (atomic, assign) BOOL isEnterBackground;
-@property (nonatomic, assign) CGSize previousDrawableSize;
-#endif
-
 @end
 
-@implementation FSMetalRenderedView
+@implementation FSMetalView
 
-@synthesize displayDelegate = _displayDelegate;
 @synthesize scalingMode = _scalingMode;
 // rotate preference
 @synthesize rotatePreference = _rotatePreference;
@@ -416,28 +58,10 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 #endif
 @synthesize showHdrAnimation = _showHdrAnimation;
 
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super initWithCoder:coder];
-    if (self) {
-        [self prepareMetal];
-    }
-    return self;
-}
-
-- (instancetype)initWithFrame:(NSRect)frameRect
-{
-    self = [super initWithFrame:frameRect];
-    if (self) {
-        [self prepareMetal];
-    }
-    return self;
-}
+@synthesize displayDelegate = _displayDelegate;
 
 - (void)dealloc
 {
-    [NSNotificationCenter.defaultCenter removeObserver:self];
-    
     if (_pictureTextureCache) {
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
@@ -471,20 +95,29 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     self.paused = YES;
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
-    
-#if TARGET_OS_IOS || TARGET_OS_TV
-    self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
-    
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(applicationDidEnterBackground)
-                                               name:UIApplicationDidEnterBackgroundNotification
-                                             object:nil];
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(applicationWillEnterForeground)
-                                               name:UIApplicationWillEnterForegroundNotification
-                                             object:nil];
-#endif
     return YES;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        if (![self prepareMetal]) {
+            return nil;
+        }
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        if (![self prepareMetal]) {
+            return nil;
+        }
+    }
+    return self;
 }
 
 - (void)setShowHdrAnimation:(BOOL)showHdrAnimation
@@ -495,8 +128,61 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     }
 }
 
-- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize {
-    return CGSizeMake(1.0, 1.0);
+- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize
+{
+    if (_scalingMode == FSScalingModeFill) {
+        return CGSizeMake(1.0, 1.0);
+    }
+    
+    int frameWidth = attach.w;
+    int frameHeight = attach.h;
+    
+    //keep video AVRational
+    if (attach.sarNum > 0 && attach.sarDen > 0) {
+        frameWidth = 1.0 * attach.sarNum / attach.sarDen * frameWidth;
+    }
+    
+    int zDegrees = 0;
+    if (_rotatePreference.type == FSRotateZ) {
+        zDegrees += _rotatePreference.degrees;
+    }
+    zDegrees += attach.autoZRotate;
+    
+    float darRatio = self.darPreference.ratio;
+    
+    //when video's z rotate degrees is 90 odd multiple
+    if (abs(zDegrees) / 90 % 2 == 1) {
+        //need swap user's ratio
+        if (darRatio > 0.001) {
+            darRatio = 1.0 / darRatio;
+        }
+        //need swap display size
+        int tmp = drawableSize.width;
+        drawableSize.width = drawableSize.height;
+        drawableSize.height = tmp;
+    }
+    
+    //apply user dar
+    if (darRatio > 0.001) {
+        if (1.0 * attach.w / attach.h > darRatio) {
+            frameHeight = frameWidth * 1.0 / darRatio;
+        } else {
+            frameWidth = frameHeight * darRatio;
+        }
+    }
+    
+    float wRatio = drawableSize.width / frameWidth;
+    float hRatio = drawableSize.height / frameHeight;
+    float ratio  = 1.0f;
+    
+    if (_scalingMode == FSScalingModeAspectFit) {
+        ratio = FFMIN(wRatio, hRatio);
+    } else if (_scalingMode == FSScalingModeAspectFill) {
+        ratio = FFMAX(wRatio, hRatio);
+    }
+    float nW = (frameWidth * ratio / drawableSize.width);
+    float nH = (frameHeight * ratio / drawableSize.height);
+    return CGSizeMake(nW, nH);
 }
 
 - (BOOL)setupSubPipelineIfNeed
@@ -612,18 +298,13 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 /// Called whenever the view needs to render a frame.
 - (void)drawRect:(NSRect)dirtyRect
 {
-#if TARGET_OS_IOS || TARGET_OS_TV
-    if (self.isEnterBackground) {
-        return;
-    }
-#endif
     FSOverlayAttach * attach = self.currentAttach;
     if (attach.videoTextures.count == 0) {
         if (self.needCleanBackgroundColor) {
             id<CAMetalDrawable> drawable = self.currentDrawable;
             if (drawable) {
                 id<MTLTexture> texture = drawable.texture;
-                
+
                 MTLRenderPassDescriptor *passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
                 passDescriptor.colorAttachments[0].texture = texture;
                 passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -632,7 +313,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
                 
                 id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
                 id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
-                
+            
                 [commandEncoder endEncoding];
                 [commandBuffer presentDrawable:drawable];
                 [commandBuffer commit];
@@ -817,7 +498,7 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
     }
     
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    
+   
     if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
         return NULL;
     }
@@ -861,19 +542,27 @@ NS_CLASS_AVAILABLE(10_13, 11_0)
 }
 
 #if TARGET_OS_IOS || TARGET_OS_TV
-
-- (void)applicationDidEnterBackground {
-    self.isEnterBackground = YES;
-}
-
-- (void)applicationWillEnterForeground {
-    self.isEnterBackground = NO;
-}
-
 - (UIImage *)snapshot
 {
     CGImageRef cgImg = [self snapshot:FSSnapshotTypeScreen];
     return [[UIImage alloc]initWithCGImage:cgImg];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    
+    if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
+        [self setNeedsRefreshCurrentPic];
+    }
+}
+
+#else
+
+- (void)resizeWithOldSuperviewSize:(NSSize)oldSize
+{
+    [super resizeWithOldSuperviewSize:oldSize];
+    [self setNeedsRefreshCurrentPic];
 }
 
 #endif
@@ -929,7 +618,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     return result;
 }
 
-- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block
+- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block
 {
     self.refreshCurrentPicBlock = block;
 }
@@ -945,13 +634,6 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     }
     
     attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache];
-    
-#if TARGET_OS_IOS || TARGET_OS_TV
-    // Execution of the command buffer was aborted due to an error during execution. Insufficient Permission (to submit GPU work from background) (00000006:kIOGPUCommandBufferCallbackErrorBackgroundExecutionNotPermitted)
-    if (self.isEnterBackground) {
-        return NO;
-    }
-#endif
     
     if (self.preventDisplay) {
         return YES;
@@ -973,6 +655,34 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 #pragma mark - override setter methods
 
+- (void)setScalingMode:(FSScalingMode)scalingMode
+{
+    if (_scalingMode != scalingMode) {
+        _scalingMode = scalingMode;
+    }
+}
+
+- (void)setRotatePreference:(FSRotatePreference)rotatePreference
+{
+    if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
+        _rotatePreference = rotatePreference;
+    }
+}
+
+- (void)setColorPreference:(FSColorConvertPreference)colorPreference
+{
+    if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
+        _colorPreference = colorPreference;
+    }
+}
+
+- (void)setDarPreference:(FSDARPreference)darPreference
+{
+    if (_darPreference.ratio != darPreference.ratio) {
+        _darPreference = darPreference;
+    }
+}
+
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b
 {
     self.clearColor = (MTLClearColor){r/255.0, g/255.0, b/255.0, 1.0f};
@@ -989,5 +699,34 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     return @"Metal";
 }
+
+#if TARGET_OS_OSX
+- (NSView *)hitTest:(NSPoint)point
+{
+    for (NSView *sub in [self subviews]) {
+        NSPoint pointInSelf = [self convertPoint:point fromView:self.superview];
+        NSPoint pointInSub = [self convertPoint:pointInSelf toView:sub];
+        if (NSPointInRect(pointInSub, sub.bounds)) {
+            return sub;
+        }
+    }
+    return nil;
+}
+
+- (BOOL)acceptsFirstResponder
+{
+    return NO;
+}
+
+- (BOOL)mouseDownCanMoveWindow
+{
+    return YES;
+}
+#else
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+    return NO;
+}
+#endif
 
 @end

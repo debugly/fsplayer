@@ -7,17 +7,12 @@
 //
 
 #import "FSVideoRenderingProtocol.h"
-#if TARGET_OS_OSX
-#import <AppKit/AppKit.h>
-typedef NSView UIView;
-#else
-#import <UIKit/UIKit.h>
-#endif
+@import MetalKit;
 
 NS_ASSUME_NONNULL_BEGIN
 
 NS_CLASS_AVAILABLE(10_13, 11_0)
-@interface FSMetalView : UIView <FSVideoRenderingProtocol>
+@interface FSMetalView : MTKView <FSVideoRenderingProtocol>
 
 @end
 
