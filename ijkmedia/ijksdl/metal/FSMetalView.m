@@ -659,6 +659,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_scalingMode != scalingMode) {
         _scalingMode = scalingMode;
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -666,6 +667,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
         _rotatePreference = rotatePreference;
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -673,6 +675,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_colorPreference.brightness != colorPreference.brightness || _colorPreference.saturation != colorPreference.saturation || _colorPreference.contrast != colorPreference.contrast) {
         _colorPreference = colorPreference;
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
@@ -680,6 +683,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 {
     if (_darPreference.ratio != darPreference.ratio) {
         _darPreference = darPreference;
+        [self setNeedsRefreshCurrentPic];
     }
 }
 
