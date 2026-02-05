@@ -40,6 +40,10 @@ typedef CGRect NSRect;
 @property (assign) BOOL needCleanBackgroundColor;
 @property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
 
+#if TARGET_OS_IOS || TARGET_OS_TV
+@property (atomic, assign) BOOL isEnterBackground;
+#endif
+
 @end
 
 @implementation FSMetalView
@@ -62,6 +66,8 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+    
     if (_pictureTextureCache) {
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
@@ -102,6 +108,19 @@ typedef CGRect NSRect;
     self.paused = YES;
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
+    
+#if TARGET_OS_IOS || TARGET_OS_TV
+    self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
+    
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(applicationDidEnterBackground)
+                                               name:UIApplicationDidEnterBackgroundNotification
+                                             object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(applicationWillEnterForeground)
+                                               name:UIApplicationWillEnterForegroundNotification
+                                             object:nil];
+#endif
     return YES;
 }
 
@@ -109,9 +128,7 @@ typedef CGRect NSRect;
 {
     self = [super initWithCoder:coder];
     if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
+        [self prepareMetal];
     }
     return self;
 }
@@ -120,9 +137,7 @@ typedef CGRect NSRect;
 {
     self = [super initWithFrame:frameRect];
     if (self) {
-        if (![self prepareMetal]) {
-            return nil;
-        }
+        [self prepareMetal];
     }
     return self;
 }
@@ -305,6 +320,12 @@ typedef CGRect NSRect;
 /// Called whenever the view needs to render a frame.
 - (void)drawRect:(NSRect)dirtyRect
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    if (self.isEnterBackground) {
+        return;
+    }
+#endif
+    
     FSOverlayAttach * attach = self.currentAttach;
     if (attach.videoTextures.count == 0) {
         if (self.needCleanBackgroundColor) {
@@ -549,6 +570,15 @@ typedef CGRect NSRect;
 }
 
 #if TARGET_OS_IOS || TARGET_OS_TV
+
+- (void)applicationDidEnterBackground {
+    self.isEnterBackground = YES;
+}
+
+- (void)applicationWillEnterForeground {
+    self.isEnterBackground = NO;
+}
+
 - (UIImage *)snapshot
 {
     CGImageRef cgImg = [self snapshot:FSSnapshotTypeScreen];
@@ -641,6 +671,13 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     }
     
     attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache];
+    
+#if TARGET_OS_IOS || TARGET_OS_TV
+    // Execution of the command buffer was aborted due to an error during execution. Insufficient Permission (to submit GPU work from background) (00000006:kIOGPUCommandBufferCallbackErrorBackgroundExecutionNotPermitted)
+    if (self.isEnterBackground) {
+        return NO;
+    }
+#endif
     
     if (self.preventDisplay) {
         return YES;
