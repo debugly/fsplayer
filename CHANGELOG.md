@@ -1,7 +1,12 @@
 tag 1.0.4
 --------------------------------
-- FSPlayer support async relese by default
 - rename ijk_ass_* to fs_ass_*
+- user agent use **fsplayer** instead of ijkplayer by default
+- update dar、scaling、rotate、color preference refresh picture automatically
+- fix some mp4 can't smoothly play bug #64
+- FSPlayer support async relese  by default #70
+- improve rotate animation experience #76
+- deprecate initWithContentURL and initWithMoreContent API #78
 
 tag 1.0.3
 --------------------------------
