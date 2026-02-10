@@ -93,9 +93,10 @@ typedef CGRect NSRect;
         self.device = nil;
         return NO;
     }
-    // default is UIViewContentModeScaleToFill,the content will be filled to new bounds when change view's frame by Implicit Animation
+    // default is kCAGravityResize,the content will be filled to new bounds when change view's frame by Implicit Animation
 #if TARGET_OS_OSX
-    self.layer.contentsGravity = kCAGravityCenter;
+    //#76 设置了 kCAGravityCenter 之后发现 macOS 外接1倍屏会出现画面显示到中央，无法填充满的问题，Retina屏幕没有问题
+    //self.layer.contentsGravity = kCAGravityCenter;
 #else
     self.contentMode = UIViewContentModeCenter;
 #endif
