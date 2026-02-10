@@ -9,8 +9,6 @@
 #import "AppDelegate.h"
 #import "WindowController.h"
 #import "MRRootViewController.h"
-#import "MRAutoTestViewController.h"
-#import "MRStatisticalViewController.h"
 #import <FSPlayer/FSPlayer.h>
 #import "MRGlobalNotification.h"
 #import "MRUtil+SystemPanel.h"
@@ -49,7 +47,7 @@
     int _a = (int)strtol(a, NULL, 16);
     
     uint32_t value = _r + (_g << 8) + (_b << 16) + (_a << 24);
-    uint32_t value2 = (uint32_t)strtol(color, NULL, 16);
+    //uint32_t value2 = (uint32_t)strtol(color, NULL, 16);
     
     char aColor[9] = {0};
     sprintf(aColor, "%08X", value);
@@ -105,8 +103,6 @@
     NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 800, 600) styleMask:mask backing:NSBackingStoreBuffered defer:YES];
     
     window.contentViewController = [[MRRootViewController alloc] init];
-//    window.contentViewController = [[MRAutoTestViewController alloc] init];
-//    window.contentViewController = [[MRStatisticalViewController alloc] init];
     if (window.contentViewController.title) {
         window.title = window.contentViewController.title;
     }

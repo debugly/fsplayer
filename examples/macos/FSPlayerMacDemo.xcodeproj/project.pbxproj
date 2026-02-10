@@ -7,17 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C905CF172B54C8D300D59730 /* MRAutoTestViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */; };
-		C905CF182B54C8D300D59730 /* MRAutoTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */; };
-		C905CF1C2B550C7400D59730 /* MRStatisticalViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF192B550C7400D59730 /* MRStatisticalViewController.m */; };
-		C905CF1D2B550C7400D59730 /* MRStatisticalViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF1B2B550C7400D59730 /* MRStatisticalViewController.xib */; };
 		C905CF212B55163C00D59730 /* MRRootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF1F2B55163C00D59730 /* MRRootViewController.m */; };
 		C905CF222B55163C00D59730 /* MRRootViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF202B55163C00D59730 /* MRRootViewController.xib */; };
 		C92F1A242DAE240200540BD5 /* MRTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = C92F1A232DAE240200540BD5 /* MRTextField.m */; };
 		C969BE4B27BDCD27008BC2AD /* MRGlobalNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = C969BE4927BDCD27008BC2AD /* MRGlobalNotification.m */; };
 		C969BE4E27BDD34E008BC2AD /* MRUtil+SystemPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = C969BE4C27BDD34E008BC2AD /* MRUtil+SystemPanel.m */; };
-		C969F8F22DCAF64100EB31DF /* FSPlayer-macOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */; };
-		C969F8F32DCAF64100EB31DF /* FSPlayer-macOS.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C969F8F22DCAF64100EB31DF /* FSPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer.framework */; };
+		C969F8F32DCAF64100EB31DF /* FSPlayer.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684782DC4EF9600A1BA88 /* FSPlayer.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C96F5B9B291A052100C79E07 /* MRProgressIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = C96F5B99291A052000C79E07 /* MRProgressIndicator.m */; };
 		C97423CE2A3AE8BE001F6B54 /* NSString+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = C97423CD2A3AE8BE001F6B54 /* NSString+Ex.m */; };
 		C97674EE2A1F333D00B7627E /* MRTextInfoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C97674EC2A1F333D00B7627E /* MRTextInfoViewController.m */; };
@@ -100,7 +96,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				C969F8F32DCAF64100EB31DF /* FSPlayer-macOS.framework in Embed Frameworks */,
+				C969F8F32DCAF64100EB31DF /* FSPlayer.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -109,12 +105,6 @@
 
 /* Begin PBXFileReference section */
 		1B92B1D02DC37CDF00B58436 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
-		C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MRAutoTestViewController.xib; sourceTree = "<group>"; };
-		C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRAutoTestViewController.m; sourceTree = "<group>"; };
-		C905CF162B54C8D300D59730 /* MRAutoTestViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRAutoTestViewController.h; sourceTree = "<group>"; };
-		C905CF192B550C7400D59730 /* MRStatisticalViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRStatisticalViewController.m; sourceTree = "<group>"; };
-		C905CF1A2B550C7400D59730 /* MRStatisticalViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRStatisticalViewController.h; sourceTree = "<group>"; };
-		C905CF1B2B550C7400D59730 /* MRStatisticalViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MRStatisticalViewController.xib; sourceTree = "<group>"; };
 		C905CF1E2B55163C00D59730 /* MRRootViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRRootViewController.h; sourceTree = "<group>"; };
 		C905CF1F2B55163C00D59730 /* MRRootViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRRootViewController.m; sourceTree = "<group>"; };
 		C905CF202B55163C00D59730 /* MRRootViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MRRootViewController.xib; sourceTree = "<group>"; };
@@ -222,7 +212,7 @@
 				DD9B13C422C24040002D1D79 /* CoreMedia.framework in Frameworks */,
 				DD9B13C222C24037002D1D79 /* CoreGraphics.framework in Frameworks */,
 				DD9B13C022C2402D002D1D79 /* GLKit.framework in Frameworks */,
-				C969F8F22DCAF64100EB31DF /* FSPlayer-macOS.framework in Frameworks */,
+				C969F8F22DCAF64100EB31DF /* FSPlayer.framework in Frameworks */,
 				DD9B13BE22C24026002D1D79 /* AVFoundation.framework in Frameworks */,
 				DD9B13BC22C2401F002D1D79 /* libbz2.tbd in Frameworks */,
 				DD9B13BA22C24017002D1D79 /* libc++.tbd in Frameworks */,
@@ -236,7 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				1B1684762DC4EF9600A1BA88 /* FSPlayer-iOS.framework */,
-				1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */,
+				1B1684782DC4EF9600A1BA88 /* FSPlayer.framework */,
 				1B16847A2DC4EF9600A1BA88 /* FSPlayer-tvOS.framework */,
 			);
 			name = Products;
@@ -278,12 +268,6 @@
 				C9CCCB042BF5B58E00A13FE2 /* MRPlayerSettingsView.h */,
 				C9CCCB052BF5B58E00A13FE2 /* MRPlayerSettingsView.m */,
 				C9CCCB022BF5B51400A13FE2 /* MRPlayerSettingsView.xib */,
-				C905CF162B54C8D300D59730 /* MRAutoTestViewController.h */,
-				C905CF152B54C8D300D59730 /* MRAutoTestViewController.m */,
-				C905CF142B54C8D300D59730 /* MRAutoTestViewController.xib */,
-				C905CF1A2B550C7400D59730 /* MRStatisticalViewController.h */,
-				C905CF192B550C7400D59730 /* MRStatisticalViewController.m */,
-				C905CF1B2B550C7400D59730 /* MRStatisticalViewController.xib */,
 				C9C7E2772B60E37200D5F2E0 /* MRPlaylistViewController.h */,
 				C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */,
 				C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */,
@@ -478,10 +462,9 @@
 			remoteRef = 1B1684752DC4EF9600A1BA88 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		1B1684782DC4EF9600A1BA88 /* FSPlayer-macOS.framework */ = {
+		1B1684782DC4EF9600A1BA88 /* FSPlayer.framework */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.framework;
-			name = "FSPlayer-macOS.framework";
 			path = FSPlayer.framework;
 			remoteRef = 1B1684772DC4EF9600A1BA88 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
@@ -501,10 +484,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C905CF172B54C8D300D59730 /* MRAutoTestViewController.xib in Resources */,
 				DD9B138F22C23A7A002D1D79 /* Assets.xcassets in Resources */,
 				DD9B139222C23A7A002D1D79 /* MainMenu.xib in Resources */,
-				C905CF1D2B550C7400D59730 /* MRStatisticalViewController.xib in Resources */,
 				C986F7BB2DADF2C6006D5F4E /* MRInputURLViewController.xib in Resources */,
 				C97674EF2A1F333D00B7627E /* MRTextInfoViewController.xib in Resources */,
 				C9C7E2832B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib in Resources */,
@@ -525,7 +506,6 @@
 				C9C7E2822B60F09100D5F2E0 /* MRPlayerSettingsViewController.m in Sources */,
 				C9CCCB062BF5B58E00A13FE2 /* MRPlayerSettingsView.m in Sources */,
 				C99B0F1A29DE76B100E88ECB /* MRRenderViewAuxProxy.m in Sources */,
-				C905CF182B54C8D300D59730 /* MRAutoTestViewController.m in Sources */,
 				DD0443E927E7749800CB946B /* MRActionItem.m in Sources */,
 				C969BE4B27BDCD27008BC2AD /* MRGlobalNotification.m in Sources */,
 				DDB7827B2757266900382094 /* SHBaseView.m in Sources */,
@@ -536,7 +516,6 @@
 				C97DCC0727C867EA0019874F /* MRBaseView.m in Sources */,
 				DD4EB00127310F1C00FBCD3A /* WindowController.m in Sources */,
 				C969BE4E27BDD34E008BC2AD /* MRUtil+SystemPanel.m in Sources */,
-				C905CF1C2B550C7400D59730 /* MRStatisticalViewController.m in Sources */,
 				DD9B138D22C23A79002D1D79 /* AppDelegate.m in Sources */,
 				C96F5B9B291A052100C79E07 /* MRProgressIndicator.m in Sources */,
 				C9C291D02B623A7400C42B5C /* MRCocoaBindingUserDefault.m in Sources */,
