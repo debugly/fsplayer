@@ -115,8 +115,7 @@
     if ([url_str containsString:@"adaptationSet"]) {
         [self.navigationController presentViewController:[[FSVideoViewController alloc] initWithManifest:url_str] animated:YES completion:^{}];
     } else{
-        NSURL   *url  = [NSURL URLWithString:item[1]];
-        [self.navigationController presentViewController:[[FSVideoViewController alloc] initWithURL:url] animated:YES completion:^{}];
+        [self.navigationController presentViewController:[[FSVideoViewController alloc] initWithURL:url_str] animated:YES completion:^{}];
     }
 }
 

@@ -58,7 +58,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 @interface FSPlayer()
 
-@property (nonatomic, strong) NSURL *contentURL;
+@property (nonatomic, copy) NSString *content;
 
 @end
 
@@ -190,13 +190,13 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     // [UIApplication sharedApplication].idleTimerDisabled = on;
 }
 
-- (void)_initWithContent:(NSURL *)aUrl
+- (void)_initWithContent:(NSString *)content
                  options:(FSOptions *)options
-           viewRendering:(UIView <FSVideoRenderingProtocol> * _Nullable)videoRendering
+          videoRendering:(UIView <FSVideoRenderingProtocol> * _Nullable)videoRendering
           audioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
     // init media resource
-    _contentURL = aUrl;
+    self.content = content;
     
     ijkmp_global_init();
     ijkmp_global_set_inject_callback(ijkff_inject_callback);
@@ -305,58 +305,105 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
 
 - (id)initWithContentURL:(NSURL *)aUrl withOptions:(FSOptions *)options
 {
-    if (aUrl == nil)
-        return nil;
-
-    self = [super init];
-    if (self) {
-        // init video sink
-        UIView<FSVideoRenderingProtocol> *glView = nil;
-    #if TARGET_OS_IOS || TARGET_OS_TV
-        glView = [[FSMetalView alloc] initWithFrame:CGRectZero];
-    #else
-        if (!options.metalRenderer) {
-            glView = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-        } else {
-            if (@available(macOS 10.13, *)) {
-                glView = [[FSMetalView alloc] initWithFrame:CGRectZero];
-            } else {
-                glView = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-            }
-        }
-    #endif
-        [self _initWithContent:aUrl options:options viewRendering:glView audioRendering:nil];
+    //[absoluteString] 遇到中文，不会解码，因此需要 stringByRemovingPercentEncoding
+    //[path] 遇到中文，会解码，因此不需要 stringByRemovingPercentEncoding
+    //http、smb2 等网络协议，请求时会自定对path百分号编码，所以移除与否不影响
+    //bluray: 会先解码一次，不存在中文编码/打不开流问题
+    //ftp 协议不会先自动解码，所以就少了一次解码的过程，导致不能播放
+    //播放器需要的是字符串，从 NSURL 到字符串的过程中很容易有误判，导致少一次解码，如果改成解码，也可能会导致多解码一次，仍旧引发不能播放问题
+    NSString *filePath = nil;
+    if ([aUrl isFileURL]) {
+        filePath = [aUrl path];
+    } else {
+        filePath = [aUrl absoluteString];
     }
-    return self;
+    return [self initWithContent:filePath options:options];
 }
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions *)options
                withGLView:(UIView<FSVideoRenderingProtocol> *)glView
 {
-    if (aUrl == nil)
-        return nil;
-
-    self = [super init];
-    if (self) {
-        // init video sink
-        [self _initWithContent:aUrl options:options viewRendering:glView audioRendering:nil];
+    NSString *filePath = nil;
+    if ([aUrl isFileURL]) {
+        filePath = [aUrl path];
+    } else {
+        filePath = [aUrl absoluteString];
     }
-    return self;
+    return [self initWithContent:filePath options:options videoRendering:glView];
 }
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions *)options
-        withViewRendering:(UIView<FSVideoRenderingProtocol> *)viewRendering
-       withAudioRendering:(nonnull id<FSAudioRenderingProtocol>)audioRendering
+        withViewRendering:(UIView<FSVideoRenderingProtocol> *)videoRendering
+       withAudioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
-    if (aUrl == nil)
-        return nil;
+    NSString *filePath = nil;
+    if ([aUrl isFileURL]) {
+        filePath = [aUrl path];
+    } else {
+        filePath = [aUrl absoluteString];
+    }
+    return [self initWithContent:filePath options:options videoRendering:videoRendering audioRendering:audioRendering];
+}
 
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options
+{
+    UIView<FSVideoRenderingProtocol> *videoRendering = nil;
+#if TARGET_OS_IOS || TARGET_OS_TV
+    videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+#else
+    if (!options.metalRenderer) {
+        videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
+    } else {
+        if (@available(macOS 10.13, *)) {
+            videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+        } else {
+            videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
+        }
+    }
+#endif
+    return [self initWithContent:content options:options videoRendering:videoRendering];
+}
+
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options
+       videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+{
+    return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:nil];
+}
+
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options
+       audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
+{
+    UIView<FSVideoRenderingProtocol> *videoRendering = nil;
+#if TARGET_OS_IOS || TARGET_OS_TV
+    videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+#else
+    if (!options.metalRenderer) {
+        videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
+    } else {
+        if (@available(macOS 10.13, *)) {
+            videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+        } else {
+            videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
+        }
+    }
+#endif
+    return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:audioRendering];
+}
+
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options
+        videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+       audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
+{
     self = [super init];
     if (self) {
         // init video and audio sink
-        [self _initWithContent:aUrl options:options viewRendering:viewRendering audioRendering:audioRendering];
+        [self _initWithContent:content options:options videoRendering:videoRendering audioRendering:audioRendering];
     }
     return self;
 }
@@ -391,11 +438,12 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     [self setScreenOn:_keepScreenOnWhilePlaying];
     NSString *render = [self.view name];
     [self setHudValue:render forKey:@"v-renderer"];
-    NSString *scheme = [[_contentURL scheme] lowercaseString];
     
-    if ([_contentURL isFileURL]) {
+    BOOL isFileProtocol = [self.content hasPrefix:@"file://"] || [self.content hasPrefix:@"/"];
+    
+    if (isFileProtocol) {
         [self setHudValue:nil forKey:@"path"];
-    } else if ([scheme hasPrefix:@"http"]){
+    } else if ([self.content hasPrefix:@"http"]){
         [self setHudValue:nil forKey:@"scheme"];
         [self setHudValue:nil forKey:@"host"];
         [self setHudValue:nil forKey:@"path"];
@@ -415,27 +463,15 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         [self setHudValue:nil forKey:@"tcp-spd"];
     }
     
-    [self setHudUrl:_contentURL];
-    
-    //[absoluteString] 遇到中文，不会解码，因此需要 stringByRemovingPercentEncoding
-    //[path] 遇到中文，会解码，因此不需要 stringByRemovingPercentEncoding
-    //http、smb2 等网络协议，请求时会自定对path百分号编码，所以移除与否不影响
-    //bluray: 会自动解码，不存在中文编码/打不开流问题
-    
-    NSString *filePath = nil;
-    
-    if ([_contentURL isFileURL]) {
-        filePath = [_contentURL path];
-    } else {
-        filePath = [self.contentURL absoluteString];
-    }
+    [self setHudUrl:[NSURL URLWithString:self.content]];
     
     //如果是 iso 则使用 bluray:// 协议打开
-    if ([@"iso" isEqualToString:[[filePath pathExtension] lowercaseString]]) {
-        filePath = [@"bluray://" stringByAppendingString:filePath];
+    NSString *contentURL = self.content;
+    if ([@"iso" isEqualToString:[[contentURL pathExtension] lowercaseString]]) {
+        contentURL = [@"bluray://" stringByAppendingString:contentURL];
     }
-
-    ijkmp_set_data_source(_mediaPlayer, [filePath UTF8String]);
+    
+    ijkmp_set_data_source(_mediaPlayer, [contentURL UTF8String]);
     ijkmp_set_option_int(_mediaPlayer, FSMP_OPT_CATEGORY_FORMAT, "safe", 0); // for concat demuxer
     ijkmp_set_subtitle_preference(_mediaPlayer, &_subtitlePreference);
     
@@ -1096,7 +1132,7 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     float vmdiff  = ijkmp_get_property_float(_mediaPlayer, FFP_PROP_FLOAT_VMDIFF, .0f);
     [self setHudValue:[NSString stringWithFormat:@"%.3f %.3f", avdelay, -vmdiff] forKey:@"delay-avdiff"];
 
-    if ([self.contentURL.absoluteString containsString:@"ijkio:cache"]) {
+    if ([self.content containsString:@"ijkio:cache"]) {
         int64_t bitRate = ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_BIT_RATE, 0);
         [self setHudValue:[NSString stringWithFormat:@"-%@, %@",
                              formatedSize(_cacheStat.cache_file_forwards),
@@ -2429,6 +2465,11 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     if (!_mediaPlayer)
         return 0;
     return ijkmp_get_property_float(_mediaPlayer, FFP_PROP_FLOAT_VMDIFF, .0f);
+}
+
+- (NSURL *)contentURL
+{
+    return [NSURL URLWithString:self.content];
 }
 
 @end

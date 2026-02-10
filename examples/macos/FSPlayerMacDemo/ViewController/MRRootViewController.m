@@ -55,7 +55,7 @@ static BOOL hdrAnimationShown = 0;
 @property (nonatomic, strong) NSMutableArray *subtitles;
 @property (nonatomic, assign) int lastSubIdx;
 
-@property (nonatomic, copy) NSURL *playingUrl;
+@property (nonatomic, copy) NSString *playingUrl;
 @property (nonatomic, weak) NSTimer *tickTimer;
 @property (nonatomic, assign, getter=isUsingHardwareAccelerate) BOOL usingHardwareAccelerate;
 
@@ -220,8 +220,7 @@ static BOOL hdrAnimationShown = 0;
     NSMutableArray *videos = [NSMutableArray array];
     
     for (NSString *link in links) {
-        NSURL *url = [NSURL URLWithString:link];
-        [videos addObject:url];
+        [videos addObject:link];
     }
     
     if ([videos count] > 0) {
@@ -549,7 +548,7 @@ static BOOL hdrAnimationShown = 0;
     }
 }
 
-- (NSMutableArray *)playList
+- (NSMutableArray <NSString *> *)playList
 {
     if (!_playList) {
         _playList = [NSMutableArray array];
@@ -565,13 +564,13 @@ static BOOL hdrAnimationShown = 0;
     return _subtitles;
 }
 
-- (void)perpareIJKPlayer:(NSURL *)url hwaccel:(BOOL)hwaccel isLive:(BOOL)isLive
+- (void)perpareIJKPlayer:(NSString *)urlStr hwaccel:(BOOL)hwaccel isLive:(BOOL)isLive
 {
     if (self.playingUrl) {
         [self doStopPlay];
     }
     
-    self.playingUrl = url;
+    self.playingUrl = urlStr;
     self.seeking = NO;
     
     FSOptions *options = [FSOptions optionsByDefault];
@@ -609,7 +608,7 @@ static BOOL hdrAnimationShown = 0;
     
     [options setPlayerOptionIntValue:[MRCocoaBindingUserDefault copy_hw_frame] forKey:@"copy_hw_frame"];
     //图片不使用 cvpixelbufferpool
-    NSString *ext = [[[url path] pathExtension] lowercaseString];
+    NSString *ext = [[urlStr pathExtension] lowercaseString];
     if ([[MRUtil pictureType] containsObject:ext]) {
         [options setPlayerOptionIntValue:0      forKey:@"enable-cvpixelbufferpool"];
         if ([@"gif" isEqualToString:ext] || [@"webp" isEqualToString:ext]) {
@@ -672,42 +671,10 @@ static BOOL hdrAnimationShown = 0;
     //when headers contain User-Agent,that will override the user_agent key
     //[options setFormatOptionValue:@"MyUserAgent" forKey:@"user_agent"];
     
-    int use_cache = 0;
-    if (use_cache == 1) {
-        NSString *urlStr = [url absoluteString];
-        NSString *cacheKey = [urlStr md5Hash];
-        NSString *fileName = [[url path] lastPathComponent];
-        if (fileName.length < 1) {
-            fileName = cacheKey;
-        }
-        NSString *cacheDir = [NSFileManager mr_DirWithType:NSCachesDirectory WithPathComponents:@[@".fsplayer",cacheKey]];
-        NSString *cacheFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.tmp",fileName]];
-        NSString *mapFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-map.tmp",fileName]];
-        
-        [options setFormatOptionValue:cacheFile forKey:@"cache_file_path"];
-        [options setFormatOptionValue:mapFile forKey:@"cache_map_path"];
-        [options setFormatOptionValue:@"1" forKey:@"auto_save_map"];
-        [options setFormatOptionValue:@"1" forKey:@"parse_cache_map"];
-        
-        NSString *cacheUrl = [NSString stringWithFormat:@"ijkio:cache:ffio:%@",url];
-        url = [NSURL URLWithString:cacheUrl];
-        
-        [options setPlayerOptionValue:@"5242880" forKey:@"max-buffer-size"];
-    } else if (use_cache == 2) {
-        NSString *urlStr = [url absoluteString];
-        NSString *cacheUrl = [NSString stringWithFormat:@"cache:%@",url];
-        url = [NSURL URLWithString:cacheUrl];
-        options.protocolWhitelist = @"cache";
-        [options setPlayerOptionValue:@"52428800" forKey:@"max-buffer-size"];
-    }
-    
-//    test preload http
-//    [options setFormatOptionValue:@"ijkhttp2" forKey:@"selected_http"];
-//    options.protocolWhitelist = @"ijkhttp2";
-    
     NSMutableArray *dus = [NSMutableArray array];
-    if ([url.scheme isEqualToString:@"file"] && [url.absoluteString.pathExtension isEqualToString:@"m3u8"]) {
-        NSString *str = [[NSString alloc] initWithContentsOfURL:url encoding:NSUTF8StringEncoding error:nil];
+    BOOL isFileProtocol = [urlStr hasPrefix:@"file"] || [urlStr hasPrefix:@"/"];
+    if (isFileProtocol && [urlStr.pathExtension isEqualToString:@"m3u8"]) {
+        NSString *str = [[NSString alloc] initWithContentsOfFile:urlStr encoding:NSUTF8StringEncoding error:nil];
         NSArray *lines = [str componentsSeparatedByString:@"\n"];
         double sum = 0;
         for (NSString *line in lines) {
@@ -725,8 +692,39 @@ static BOOL hdrAnimationShown = 0;
     }
     self.playerSlider.tags = dus;
     
-    [NSDocumentController.sharedDocumentController noteNewRecentDocumentURL:url];
-    self.player = [[FSPlayer alloc] initWithContentURL:url withOptions:options];
+    [NSDocumentController.sharedDocumentController noteNewRecentDocumentURL:[NSURL URLWithString:urlStr]];
+    
+    int use_cache = 0;
+    if (use_cache == 1) {
+        NSString *cacheKey = [urlStr md5Hash];
+        NSString *fileName = [urlStr lastPathComponent];
+        if (fileName.length < 1) {
+            fileName = cacheKey;
+        }
+        NSString *cacheDir = [NSFileManager mr_DirWithType:NSCachesDirectory WithPathComponents:@[@".fsplayer",cacheKey]];
+        NSString *cacheFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.tmp",fileName]];
+        NSString *mapFile = [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-map.tmp",fileName]];
+        
+        [options setFormatOptionValue:cacheFile forKey:@"cache_file_path"];
+        [options setFormatOptionValue:mapFile forKey:@"cache_map_path"];
+        [options setFormatOptionValue:@"1" forKey:@"auto_save_map"];
+        [options setFormatOptionValue:@"1" forKey:@"parse_cache_map"];
+        
+        urlStr = [NSString stringWithFormat:@"ijkio:cache:ffio:%@",urlStr];
+
+        [options setPlayerOptionValue:@"5242880" forKey:@"max-buffer-size"];
+    } else if (use_cache == 2) {
+        urlStr = [NSString stringWithFormat:@"cache:%@",urlStr];
+        options.protocolWhitelist = @"cache";
+        [options setPlayerOptionValue:@"52428800" forKey:@"max-buffer-size"];
+    }
+    
+//    test preload http
+//    [options setFormatOptionValue:@"ijkhttp2" forKey:@"selected_http"];
+//    options.protocolWhitelist = @"ijkhttp2";
+    options.protocolWhitelist = @"ftp";
+    
+    self.player = [[FSPlayer alloc] initWithContent:urlStr options:options];
     
     NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
     playerView.frame = self.playerContainer.bounds;
@@ -736,7 +734,7 @@ static BOOL hdrAnimationShown = 0;
     playerView.showHdrAnimation = !hdrAnimationShown;
     //playerView.preventDisplay = YES;
     //test
-    [playerView setBackgroundColor:0 g:0 b:0];
+    [playerView setBackgroundColor:240 g:0 b:0];
     [playerView setDisplayDelegate:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
@@ -865,7 +863,7 @@ static BOOL hdrAnimationShown = 0;
         if (self.isUsingHardwareAccelerate) {
             self.usingHardwareAccelerate = NO;
             NSLog(@"decoder fatal:%@;close videotoolbox hwaccel.",notifi.userInfo);
-            NSURL *playingUrl = self.playingUrl;
+            NSString *playingUrl = self.playingUrl;
             [self onStop];
             [self playURL:playingUrl];
             return;
@@ -935,8 +933,7 @@ static BOOL hdrAnimationShown = 0;
             int errCode = [notifi.userInfo[@"code"] intValue];
             NSLog(@"播放出错:%d",errCode);
             NSAlert *alert = [[NSAlert alloc] init];
-            NSString *urlString = [self.player.contentURL isFileURL] ? [self.player.contentURL path] : [self.player.contentURL absoluteString];
-            alert.informativeText = urlString;
+            alert.informativeText = self.player.content;
             alert.messageText = [NSString stringWithFormat:@"%@",notifi.userInfo[@"msg"]];
             
             if ([self.playList count] > 1) {
@@ -973,7 +970,7 @@ static BOOL hdrAnimationShown = 0;
             if ([[MRUtil pictureType] containsObject:[[[self.playingUrl lastPathComponent] pathExtension] lowercaseString]]) {
 //                [self stopPlay];
             } else {
-                NSString *key = [[self.playingUrl absoluteString] md5Hash];
+                NSString *key = [self.playingUrl md5Hash];
                 [self playNext:nil];
                 [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
             }
@@ -1050,7 +1047,7 @@ static BOOL hdrAnimationShown = 0;
 - (void)saveCurrentPlayRecord
 {
     if (self.playingUrl && self.player) {
-        NSString *key = [[self.playingUrl absoluteString] md5Hash];
+        NSString *key = [self.playingUrl md5Hash];
         
         if (self.player.duration > 0 &&
             self.player.duration - self.player.currentPlaybackTime < 10 &&
@@ -1065,7 +1062,7 @@ static BOOL hdrAnimationShown = 0;
 - (NSTimeInterval)readCurrentPlayRecord
 {
     if (self.playingUrl) {
-        NSString *key = [[self.playingUrl absoluteString] md5Hash];
+        NSString *key = [self.playingUrl md5Hash];
         return [[NSUserDefaults standardUserDefaults] doubleForKey:key];
     }
     return 0.0;
@@ -1128,17 +1125,17 @@ static BOOL hdrAnimationShown = 0;
     }
 }
 
-- (void)playURL:(NSURL *)url
+- (void)playURL:(NSString *)urlStr
 {
-    if (!url) {
+    if (!urlStr) {
         return;
     }
     [self destroyPlayer];
 #warning 根据地址，动态修改
-    BOOL isLive = [@[@"rtmp",@"rtsp"] containsObject:url.scheme];
+    BOOL isLive = [urlStr hasPrefix:@"rtmp"] || [urlStr hasPrefix:@"rtsp"];
     
-    [self perpareIJKPlayer:url hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
-    NSString *videoName = [url isFileURL] ? [url path] : [[url resourceSpecifier] lastPathComponent];
+    [self perpareIJKPlayer:urlStr hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
+    NSString *videoName = [urlStr lastPathComponent];
     
     NSInteger idx = [self.playList indexOfObject:self.playingUrl] + 1;
     
@@ -1166,11 +1163,11 @@ static BOOL hdrAnimationShown = 0;
     [self onTick:nil];
 }
 
-- (NSURL *)existingInPlayList:(NSURL *)url
+- (NSString *)existingInPlayList:(NSString *)url
 {
-    NSURL *t = nil;
-    for (NSURL *item in [self.playList copy]) {
-        if ([[item absoluteString] isEqualToString:[url absoluteString]]) {
+    NSString *t = nil;
+    for (NSString *item in [self.playList copy]) {
+        if ([item isEqualToString:url]) {
             t = item;
             break;
         }
@@ -1190,6 +1187,23 @@ static BOOL hdrAnimationShown = 0;
     return t;
 }
 
+- (NSString *)decodeURL:(NSURL *)url
+{
+    NSURLComponents *comp = [[NSURLComponents alloc] initWithURL:url resolvingAgainstBaseURL:NO];
+    NSString *scheme = comp.scheme ?: @"file";
+    NSString *host = comp.host ?: @"";
+    NSString *port = comp.port ? [NSString stringWithFormat:@":%@", comp.port] : @"";
+
+    NSString *auth = @"";
+    if (comp.user || comp.password) {
+        auth = [NSString stringWithFormat:@"%@:%@@", comp.user ?: @"", comp.password ?: @""];
+    }
+    NSString *decodedPath = [comp path];
+    NSString *query = [comp query] ? [NSString stringWithFormat:@"?%@", comp.query] : @"";
+    NSString *fragment = [comp fragment] ? [NSString stringWithFormat:@"#%@", comp.fragment] : @"";
+    return [NSString stringWithFormat:@"%@://%@%@%@%@%@%@", scheme, auth, host, port, decodedPath,query,fragment];
+}
+
 - (void)appendToPlayList:(NSArray *)bookmarkArr append:(BOOL)append
 {
     if (!append) {
@@ -1204,20 +1218,21 @@ static BOOL hdrAnimationShown = 0;
     
     for (NSDictionary *dic in bookmarkArr) {
         NSURL *url = dic[@"url"];
-        
-        if ([[[url pathExtension] lowercaseString] isEqualToString:@"xlist"]) {
-            for (NSURL *u in [MRUtil parseXPlayList:url]) {
+        NSString *str = [self decodeURL:url];
+        if ([[[str pathExtension] lowercaseString] isEqualToString:@"xlist"]) {
+            for (NSString *u in [MRUtil parseXPlayList:str]) {
                 if ([self existingInPlayList:u]) {
                     continue;
                 }
                 [videos addObject:u];
             }
         } else if ([dic[@"type"] intValue] == 0) {
-            if ([self existingInPlayList:url]) {
+            if ([self existingInPlayList:str]) {
                 continue;
             }
-            [videos addObject:url];
+            [videos addObject:str];
         } else if ([dic[@"type"] intValue] == 1) {
+            NSURL *url = dic[@"url"];
             if ([self existingInSubList:url]) {
                 continue;
             }
@@ -1364,7 +1379,7 @@ static BOOL useExact = NO;
         // 获取当前时间戳（毫秒级）
         NSDate *now = [NSDate date];
         long long timestamp = (long long)([now timeIntervalSince1970] * 1000);
-        NSString *extension = [[self.player.contentURL lastPathComponent] pathExtension];
+        NSString *extension = [[self.player.content lastPathComponent] pathExtension];
         if (!extension) {
             extension = [[self.player getInputFormatExtensions] firstObject];
         }
@@ -1393,7 +1408,7 @@ static BOOL useExact = NO;
         if (multiRenderVC) {
             return;
         }
-        NSURL *playingUrl = self.playingUrl;
+        NSString *playingUrl = self.playingUrl;
         [self doStopPlay];
         
         multiRenderVC = [[MultiRenderSample alloc] initWithNibName:@"MultiRenderSample" bundle:nil];
@@ -1409,7 +1424,7 @@ static BOOL useExact = NO;
         if (!multiRenderVC) {
             return;
         }
-        NSURL *playingUrl = multiRenderVC.contentURL;
+        NSString *playingUrl = multiRenderVC.contentURL;
         [multiRenderVC.view removeFromSuperview];
         [multiRenderVC removeFromParentViewController];
         multiRenderVC = nil;
@@ -1428,7 +1443,7 @@ static BOOL useExact = NO;
     self.usingHardwareAccelerate = [self preferHW];
     float playbackRate = self.player.playbackRate;
     
-    NSURL *url = self.playingUrl;
+    NSString *url = self.playingUrl;
     [self onStop];
     [self playURL:url];
     self.player.playbackRate = playbackRate;
@@ -1501,7 +1516,7 @@ static BOOL useExact = NO;
         idx --;
     }
     
-    NSURL *url = self.playList[idx];
+    NSString *url = self.playList[idx];
     [self resetPreferenceEachPlay];
     [self playURL:url];
 }
@@ -1933,14 +1948,7 @@ static BOOL useExact = NO;
 
 - (NSString *)dirForCurrentPlayingUrl
 {
-    if ([self.playingUrl isFileURL]) {
-        if (![[MRUtil pictureType] containsObject:[[self.playingUrl lastPathComponent] pathExtension]]) {
-            return [self saveDir:[[self.playingUrl path] lastPathComponent]];
-        } else {
-            return [self saveDir:nil];
-        }
-    }
-    return [self saveDir:[[self.playingUrl path] stringByDeletingLastPathComponent]];
+    return [self saveDir:[self.playingUrl lastPathComponent]];
 }
 
 - (void)onCaptureShot

@@ -208,7 +208,7 @@ didOutputMetadataObjects:(NSArray *)metadataObjects
     if(buttonIndex == alertView.cancelButtonIndex) {
         [self startRunning];
     } else {
-        NSURL *url = [NSURL URLWithString:alertView.message];
+        NSString *url = alertView.message;
         
         [FSVideoViewController presentFromViewController:self withTitle:[NSString stringWithFormat:@"URL: %@", url] URL:url completion:^{
             [self.navigationController popViewControllerAnimated:NO];

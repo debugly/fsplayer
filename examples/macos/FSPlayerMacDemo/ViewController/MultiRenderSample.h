@@ -12,7 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface MultiRenderSample : NSViewController
 
-@property (nonatomic, strong) NSURL *contentURL;
+@property (nonatomic, strong) NSString *contentURL;
 
 @end
 

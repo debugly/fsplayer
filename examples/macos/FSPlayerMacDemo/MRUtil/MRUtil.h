@@ -19,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSArray <NSString *>*)acceptMediaType;
 
 + (BOOL)saveImageToFile:(CGImageRef)img path:(NSString *)imgPath;
-+ (NSArray *)parseXPlayList:(NSURL*)url;
++ (NSArray<NSString *> *)parseXPlayList:(NSString*)url;
 
 @end
 

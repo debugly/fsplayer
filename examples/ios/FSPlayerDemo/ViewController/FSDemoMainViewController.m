@@ -198,19 +198,18 @@
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info
 {
     NSString *mediaType = [info objectForKey: UIImagePickerControllerMediaType];
-    NSURL *movieUrl;
+    NSString *moviePath;
 
     // Handle a movied picked from a photo album
     if (CFStringCompare ((CFStringRef) mediaType, kUTTypeMovie, 0)
         == kCFCompareEqualTo) {
 
-        NSString *moviePath = [[info objectForKey:
+        moviePath = [[info objectForKey:
                                 UIImagePickerControllerMediaURL] path];
-        movieUrl = [NSURL URLWithString:moviePath];
     }
 
     [self dismissViewControllerAnimated:YES completion:^(void){
-        [self.navigationController pushViewController:[[FSVideoViewController alloc]   initWithURL:movieUrl] animated:YES];
+        [self.navigationController pushViewController:[[FSVideoViewController alloc]   initWithURL:moviePath] animated:YES];
     }];
 }
 

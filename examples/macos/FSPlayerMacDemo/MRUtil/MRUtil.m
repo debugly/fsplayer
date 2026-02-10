@@ -146,9 +146,9 @@
     }
 }
 
-+ (NSArray *)parseXPlayList:(NSURL*)url
++ (NSArray<NSString *> *)parseXPlayList:(NSString*)url
 {
-    NSString *str = [[NSString alloc] initWithContentsOfFile:[url path] encoding:NSUTF8StringEncoding error:nil];
+    NSString *str = [[NSString alloc] initWithContentsOfFile:url encoding:NSUTF8StringEncoding error:nil];
     str = [str stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSArray *lines = [str componentsSeparatedByString:@"\n"];
     NSMutableArray *preLines = [NSMutableArray array];
@@ -196,8 +196,7 @@
         if (!path || [path length] == 0) {
             continue;
         }
-        NSURL *url = [NSURL URLWithString:path];
-        [playList addObject:url];
+        [playList addObject:path];
     }
     NSLog(@"从XList读取到：%lu个视频文件",(unsigned long)playList.count);
     return [playList copy];

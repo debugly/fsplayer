@@ -23,7 +23,7 @@
     [self.player shutdown];
 }
 
-- (void)setContentURL:(NSURL *)contentURL
+- (void)setContentURL:(NSString *)contentURL
 {
     if (_contentURL != contentURL) {
         _contentURL = contentURL;
@@ -31,7 +31,7 @@
     }
 }
 
-- (void)playURL:(NSURL *)url
+- (void)playURL:(NSString *)url
 {
     if (self.player) {
         [self.player stop];
@@ -80,7 +80,7 @@
     [videoAux addRenderView:render1];
     [videoAux addRenderView:render2];
     
-    self.player = [[FSPlayer alloc] initWithMoreContent:url withOptions:options withViewRendering:videoAux withAudioRendering:[FSAudioRendering createAudioQueueRendering]];
+    self.player = [[FSPlayer alloc] initWithContent:url options:options videoRendering:videoAux audioRendering:[FSAudioRendering createAudioQueueRendering]];
     
     videoAux.scalingMode = FSScalingModeAspectFill;
     self.player.shouldAutoplay = YES;

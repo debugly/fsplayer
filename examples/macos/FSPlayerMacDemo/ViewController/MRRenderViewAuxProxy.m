@@ -30,6 +30,8 @@
 
 @synthesize showHdrAnimation = _showHdrAnimation;
 
+@synthesize displayDelegate;
+
 - (void)dealloc
 {
     

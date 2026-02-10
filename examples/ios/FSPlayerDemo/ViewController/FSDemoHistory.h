@@ -19,7 +19,7 @@
 @interface FSDemoHistoryItem : NSObject <NSCoding>
 
 @property(nonatomic,strong) NSString *title;
-@property(nonatomic,strong) NSURL *url;
+@property(nonatomic,strong) NSString *url;
 
 @end
 

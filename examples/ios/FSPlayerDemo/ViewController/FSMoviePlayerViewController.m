@@ -32,7 +32,7 @@
 {
 }
 
-+ (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSURL *)url completion:(void (^)(void))completion {
++ (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSString *)url completion:(void (^)(void))completion {
     FSDemoHistoryItem *historyItem = [[FSDemoHistoryItem alloc] init];
     
     historyItem.title = title;
@@ -46,14 +46,13 @@
     self = [self initWithNibName:@"FSMoviePlayerViewController" bundle:nil];
     if (self) {
         NSString *fake_url = @"http://fakeurl_for_manifest";
-        NSURL   *url  = [NSURL URLWithString:fake_url];
-        self.url = url;
+        self.url = fake_url;
     }
     self.manifest = manifest_string;
     return self;
 }
 
-- (instancetype)initWithURL:(NSURL *)url {
+- (instancetype)initWithURL:(NSString *)url {
     self = [self initWithNibName:@"FSMoviePlayerViewController" bundle:nil];
     if (self) {
         self.url = url;
@@ -117,7 +116,7 @@
     options.automaticallySetupAudioSession = YES;
     options.currentPlaybackTimeNotificationInterval = 0.5;
     
-    self.player = [[FSPlayer alloc] initWithContentURL:self.url withOptions:options];
+    self.player = [[FSPlayer alloc] initWithContent:self.url options:options];
     self.player.playbackLoop = 2;
     //设置代理，拿到当前渲染帧
     [self.player.view setDisplayDelegate:self];
@@ -344,7 +343,7 @@ static NSString *recordVideoPath = nil;
         // 获取当前时间戳（毫秒级）
         NSDate *now = [NSDate date];
         long long timestamp = (long long)([now timeIntervalSince1970] * 1000);
-        NSString *extension = [[self.player.contentURL lastPathComponent] pathExtension];
+        NSString *extension = [[self.player.content lastPathComponent] pathExtension];
         if (!extension) {
             extension = [[self.player getInputFormatExtensions] firstObject];
         }

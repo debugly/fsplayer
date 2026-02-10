@@ -126,7 +126,7 @@
 
             fileName = [fileName stringByStandardizingPath];
             
-            [FSVideoViewController presentFromViewController:self withTitle:[NSString stringWithFormat:@"File: %@", fileName] URL:[NSURL fileURLWithPath:fileName] completion:^{
+            [FSVideoViewController presentFromViewController:self withTitle:[NSString stringWithFormat:@"File: %@", fileName] URL:fileName completion:^{
             }];
             
         } break;

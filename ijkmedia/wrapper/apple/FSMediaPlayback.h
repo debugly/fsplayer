@@ -78,7 +78,8 @@ typedef enum FSAudioChannel {
 
 @protocol FSMediaPlayback <NSObject>
 
-- (NSURL *)contentURL;
+- (NSURL *)contentURL __deprecated_msg("Use -content instead");
+- (NSString *)content;
 - (void)prepareToPlay;
 
 - (void)play;

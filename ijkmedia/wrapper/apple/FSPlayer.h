@@ -103,16 +103,28 @@ NS_ASSUME_NONNULL_BEGIN
 @interface FSPlayer : NSObject <FSMediaPlayback>
 
 - (id)initWithContentURL:(NSURL *)aUrl
-             withOptions:(FSOptions * _Nullable)options;
+             withOptions:(FSOptions * _Nullable)options __deprecated_msg("Use -initWithContent:options: instead");
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions * _Nullable)options
-               withGLView:(UIView<FSVideoRenderingProtocol> *)glView;
+               withGLView:(UIView<FSVideoRenderingProtocol> * _Nullable)glView __deprecated_msg("Use -initWithContent:options:videoRendering instead");
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions * _Nullable)options
-        withViewRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)viewRendering
-       withAudioRendering:(id<FSAudioRenderingProtocol>)audioRendering;
+        withViewRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+       withAudioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering __deprecated_msg("Use -initWithContent:options:videoRendering:audioRendering instead");
+
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options;
+
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options
+       videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering;
+
+- (id)initWithContent:(NSString *)content
+              options:(FSOptions * _Nullable)options
+        videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+       audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering;
 
 - (void)prepareToPlay;
 - (void)play;

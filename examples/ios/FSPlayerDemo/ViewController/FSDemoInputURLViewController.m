@@ -40,8 +40,7 @@
 }
 
 - (void)onClickPlayButton {
-    NSURL *url = [NSURL URLWithString:self.textView.text];
-    NSString *scheme = [[url scheme] lowercaseString];
+    NSString *url = self.textView.text;
     
     [FSVideoViewController presentFromViewController:self withTitle:[NSString stringWithFormat:@"URL: %@", url] URL:url completion:^{
 //            [self.navigationController popViewControllerAnimated:NO];
