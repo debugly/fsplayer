@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION_NAME=1.0.3
+VERSION_NAME=1.0.4
 VERSION_TARGET=$1
 
 echo "alter version to $VERSION_NAME"
@@ -13,9 +13,7 @@ do_version_readme() {
 
 do_version_xcode() {
     sed -i "" "s/\([[:space:]]*MARKETING_VERSION:[[:space:]]\)[[:digit:].]*[[:digit:]]/\1$VERSION_NAME/g" FSPlayer.yml
-    ./examples/ios/generate-fsplayer.sh
-    ./examples/tvos/generate-fsplayer.sh
-    ./examples/macos/generate-fsplayer.sh
+    ./generate-proj.sh
 }
 
 if [ "$VERSION_TARGET" = "readme" ]; then
