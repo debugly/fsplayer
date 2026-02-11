@@ -142,9 +142,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)setLogHandler:(void (^_Nullable)(FSLogLevel level,  NSString * _Nonnull tag,  NSString * _Nonnull msg))handler;
 
 + (NSDictionary *)supportedDecoders;
-+ (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;
++ (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert __deprecated_msg("will be removed in version 1.0.6");
 + (BOOL)checkIfPlayerVersionMatch:(BOOL)showAlert
-                          version:(NSString *)version;
+                          version:(NSString *)version __deprecated_msg("will be removed in version 1.0.6");
 
 @property(nonatomic, readonly) CGFloat fpsInMeta;
 @property(nonatomic, readonly) CGFloat fpsAtOutput;
