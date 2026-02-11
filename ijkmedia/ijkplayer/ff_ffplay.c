@@ -4380,6 +4380,22 @@ int ijkav_register_all(void);
 
 int jik_log_callback_is_set = 0;
 
+static const char *ijk_version_info(void)
+{
+    return FSPLAYER_VERSION;
+}
+
+static void show_ffmpeg_lib_int_version(const char *module, unsigned version)
+{
+#define FFP_VERSION_MODULE_NAME_LENGTH 13
+    av_log(NULL, AV_LOG_DEBUG, "%-*s: %u.%u.%u\n",
+           FFP_VERSION_MODULE_NAME_LENGTH, module,
+           (unsigned int)FSVERSION_GET_MAJOR(version),
+           (unsigned int)FSVERSION_GET_MINOR(version),
+           (unsigned int)FSVERSION_GET_MICRO(version));
+#undef FFP_VERSION_MODULE_NAME_LENGTH
+}
+
 void ffp_global_init(void)
 {
     if (g_ffmpeg_global_inited)
@@ -4387,14 +4403,24 @@ void ffp_global_init(void)
 #if CONFIG_AVDEVICE
     avdevice_register_all();
 #endif
-
-    ijkav_register_all();
-
-    avformat_network_init();
-
+    
     if (!jik_log_callback_is_set) {
         av_log_set_callback(ffp_log_callback_brief);
     }
+    
+    av_log(NULL, AV_LOG_INFO, "fsplayer:%s\n",  ijk_version_info());
+    av_log(NULL, AV_LOG_INFO, "FFmpeg:%s\n",    av_version_info());
+    av_log_set_flags(AV_LOG_SKIP_REPEATED);
+    
+    show_ffmpeg_lib_int_version("libavutil",    avutil_version());
+    show_ffmpeg_lib_int_version("libavcodec",   avcodec_version());
+    show_ffmpeg_lib_int_version("libavformat",  avformat_version());
+    show_ffmpeg_lib_int_version("libswscale",   swscale_version());
+    show_ffmpeg_lib_int_version("libswresample",swresample_version());
+    
+    ijkav_register_all();
+
+    avformat_network_init();
 
     g_ffmpeg_global_inited = true;
 }
@@ -4467,11 +4493,6 @@ const AVClass ffp_context_class = {
     .child_next       = ffp_context_child_next,
 //    .child_class_next = ffp_context_child_class_next,
 };
-
-static const char *ijk_version_info(void)
-{
-    return FSPLAYER_VERSION;
-}
 
 FFPlayer *ffp_create(void)
 {
@@ -4688,21 +4709,6 @@ static void ffp_show_dict(FFPlayer *ffp, const char *tag, AVDictionary *dict)
     }
 }
 
-#define FFP_VERSION_MODULE_NAME_LENGTH 13
-static void ffp_show_version_str(FFPlayer *ffp, const char *module, const char *version)
-{
-        av_log(ffp, AV_LOG_INFO, "%-*s: %s\n", FFP_VERSION_MODULE_NAME_LENGTH, module, version);
-}
-
-static void ffp_show_version_int(FFPlayer *ffp, const char *module, unsigned version)
-{
-    av_log(ffp, AV_LOG_INFO, "%-*s: %u.%u.%u\n",
-           FFP_VERSION_MODULE_NAME_LENGTH, module,
-           (unsigned int)FSVERSION_GET_MAJOR(version),
-           (unsigned int)FSVERSION_GET_MINOR(version),
-           (unsigned int)FSVERSION_GET_MICRO(version));
-}
-
 #if CONFIG_VIDEO_AVFILTER
 static int grow_array(void **array, int elem_size, int *size, int new_size)
 {
@@ -4753,20 +4759,6 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
         av_dict_set(&ffp->format_opts, "timeout", NULL, 0);
     }
 
-    static int once_flag = 1;
-    
-    if (once_flag) {
-        once_flag = 0;
-        av_log(NULL, AV_LOG_INFO, "===== versions =====\n");
-        ffp_show_version_str(ffp, "fsplayer",       ijk_version_info());
-        ffp_show_version_str(ffp, "FFmpeg",         av_version_info());
-        ffp_show_version_int(ffp, "libavutil",      avutil_version());
-        ffp_show_version_int(ffp, "libavcodec",     avcodec_version());
-        ffp_show_version_int(ffp, "libavformat",    avformat_version());
-        ffp_show_version_int(ffp, "libswscale",     swscale_version());
-        ffp_show_version_int(ffp, "libswresample",  swresample_version());
-    }
-    
     av_log(NULL, AV_LOG_INFO, "===== options =====\n");
     ffp_show_dict(ffp, "player-opts", ffp->player_opts);
     ffp_show_dict(ffp, "format-opts", ffp->format_opts);
