@@ -112,8 +112,6 @@
     self.windowCtrl.window = window;
     [window center];
     [self.windowCtrl showWindow:nil];
-    BOOL match = [FSPlayer checkIfFFmpegVersionMatch:YES];
-    NSLog(@"==FFmpegVersionMatch:%d",match);
     
     if ([self.waitHandleArr count] > 0) {
         [self application:NSApp openURLs:self.waitHandleArr];

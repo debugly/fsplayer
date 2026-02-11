@@ -201,8 +201,6 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     ijkmp_global_init();
     ijkmp_global_set_inject_callback(ijkff_inject_callback);
 
-    [FSPlayer checkIfFFmpegVersionMatch:NO];
-
     if (options == nil)
         options = [FSOptions optionsByDefault];
 
@@ -729,6 +727,16 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
         [codecArr addObject:dic];
     }
     return [codesByType copy];
+}
+
++ (NSString *)playerVersion
+{
+    return [[NSString alloc] initWithUTF8String:ijkmp_version()];
+}
+
++ (NSString *)ffmpegVersion
+{
+    return [[NSString alloc] initWithUTF8String:av_version_info()];
 }
 
 + (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;

@@ -142,6 +142,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)setLogHandler:(void (^_Nullable)(FSLogLevel level,  NSString * _Nonnull tag,  NSString * _Nonnull msg))handler;
 
 + (NSDictionary *)supportedDecoders;
+///n7.1.1-32-gabb799e
++ (NSString *)playerVersion;
+///1.0.3 or 1.0.4-2-g43b15f94
++ (NSString *)ffmpegVersion;
 + (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert __deprecated_msg("will be removed in version 1.0.6");
 + (BOOL)checkIfPlayerVersionMatch:(BOOL)showAlert
                           version:(NSString *)version __deprecated_msg("will be removed in version 1.0.6");
