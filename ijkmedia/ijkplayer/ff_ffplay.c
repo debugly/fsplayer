@@ -2753,11 +2753,14 @@ static double consume_audio_buffer(FFPlayer *ffp, double diff)
 static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 {
     FFPlayer *ffp = opaque;
-    VideoState *is = ffp->is;
+    if (!ffp) {
+        return;
+    }
     int audio_size, rest_len = 0;
     const int len_want = len;
     Uint8 *origin_stream = stream;
-    if (!ffp || !is) {
+    VideoState *is = ffp->is;
+    if (!is) {
         memset(stream, 0, len);
         return;
     }

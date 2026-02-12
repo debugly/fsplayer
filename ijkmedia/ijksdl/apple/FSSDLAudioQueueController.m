@@ -27,11 +27,21 @@
 #import "FSSDLAudioQueueController.h"
 #import "FSSDLAudioKit.h"
 #import "ijksdl_log.h"
-#include "ijksdl/ijksdl_aout.h"
-
 #import <AVFoundation/AVFoundation.h>
+#include "ijksdl/ijksdl_aout.h"
+#include <libavutil/log.h>
 
 #define kIJKAudioQueueNumberBuffers (3)
+
+@interface FSSDLAudioQueueWeakHolder : NSObject
+@property (nonatomic, weak) FSSDLAudioQueueController *controller;
+@end
+
+@implementation FSSDLAudioQueueWeakHolder
+- (void)dealloc {
+    av_log(NULL, AV_LOG_DEBUG, "FSSDLAudioQueueWeakHolder dealloc\n");
+}
+@end
 
 @implementation FSSDLAudioQueueController {
     AudioQueueRef _audioQueueRef;
@@ -41,6 +51,8 @@
     
     volatile BOOL _isAborted;
     NSLock *_lock;
+    
+    __weak FSSDLAudioQueueWeakHolder *_weakHolder;
 }
 @synthesize automaticallySetupAudioSession = _automaticallySetupAudioSession;
 
@@ -52,7 +64,7 @@
         }
         return NO;
     }
-
+    
     if (aSpec.format != FSAudioSpecS16) {
         if (outErr) *outErr = [NSError errorWithDomain:@"fsplayer.audioqueue" code:2 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"unsupported format %d", (int)aSpec.format]}];
         return NO;
@@ -74,11 +86,17 @@
         return NO;
     }
     
+    FSSDLAudioQueueWeakHolder *weakHolder = [[FSSDLAudioQueueWeakHolder alloc] init];
+    weakHolder.controller = self;
+    _weakHolder = weakHolder;
+    
+    // WeakHolder引用计数+1
+    void *retainWeakHolder = (void *)CFRetain((__bridge CFTypeRef)weakHolder);
     /* Set the desired format */
     AudioQueueRef audioQueueRef;
     OSStatus status = AudioQueueNewOutput(&streamDescription,
                                           FSSDLAudioQueueOuptutCallback,
-                                          (__bridge void *) self,
+                                          retainWeakHolder,
                                           NULL,
                                           kCFRunLoopCommonModes,
                                           0,
@@ -126,12 +144,18 @@
 
 - (void)play
 {
-    if (!_audioQueueRef)
-    return;
-    
-    self.spec.callback(self.spec.userdata, NULL, 0);
-    
-    @synchronized(_lock) {
+    [self synchronized:^{
+        if (!_audioQueueRef) {
+            return;
+        }
+        if (_isStopped) {
+            return;
+        }
+        
+        if (self.spec.callback) {
+            self.spec.callback(self.spec.userdata, NULL, 0);
+        }
+        
         _isPaused = NO;
 #if TARGET_OS_IOS
         if (_automaticallySetupAudioSession) {
@@ -150,34 +174,36 @@
         if (status != noErr) {
             ALOGE("AudioQueueStart failed (%d)\n", (int)status);
         }
-    }
+    }];
 }
 
 - (void)pause
 {
-    if (!_audioQueueRef)
-    return;
-    
-    @synchronized(_lock) {
-        if (_isStopped)
-        return;
+    [self synchronized:^{
+        if (!_audioQueueRef) {
+            return;
+        }
+        if (_isStopped) {
+            return;
+        }
         
         _isPaused = YES;
         OSStatus status = AudioQueuePause(_audioQueueRef);
         if (status != noErr) {
             ALOGE("AudioQueuePause failed (%d)\n", (int)status);
         }
-    }
+    }];
 }
 
 - (void)flush
 {
-    if (!_audioQueueRef)
-    return;
-    
-    @synchronized(_lock) {
-        if (_isStopped)
-        return;
+    [self synchronized:^{
+        if (!_audioQueueRef) {
+            return;
+        }
+        if (_isStopped) {
+            return;
+        }
         
         if (_isPaused == YES) {
             for (int i = 0; i < kIJKAudioQueueNumberBuffers; i++)
@@ -190,53 +216,71 @@
         } else {
             AudioQueueFlush(_audioQueueRef);
         }
-    }
+    }];
 }
 
 - (void)stop
 {
-    if (!_audioQueueRef)
-    return;
-    
-    @synchronized(_lock) {
-        if (_isStopped)
-        return;
-        
+    [self synchronized:^{
+        if (!_audioQueueRef) {
+            return;
+        }
+        if (_isStopped) {
+            return;
+        }
         _isStopped = YES;
-    }
-    
-    // do not lock AudioQueueStop, or may be run into deadlock
-    AudioQueueStop(_audioQueueRef, true);
-    AudioQueueDispose(_audioQueueRef, true);
+        
+        // do not lock AudioQueueStop, or may be run into deadlock
+        AudioQueueStop(_audioQueueRef, true);
+        AudioQueueDispose(_audioQueueRef, true);
+    }];
 }
 
 - (void)close
 {
     [self stop];
-    _audioQueueRef = nil;
+    
+    [self synchronized:^{
+        _audioQueueRef = nil;
+        
+        if (_weakHolder) {
+            CFRelease((__bridge CFTypeRef)_weakHolder);
+            _weakHolder = nil;
+        }
+    }];
 }
 
 - (void)setPlaybackRate:(float)playbackRate
 {
-    if (fabsf(playbackRate - 1.0f) <= 0.000001) {
-        UInt32 propValue = 1;
-        AudioQueueSetProperty(_audioQueueRef, kAudioQueueProperty_TimePitchBypass, &propValue, sizeof(propValue));
-        AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_PlayRate, 1.0f);
-    } else {
-        UInt32 propValue = 0;
-        AudioQueueSetProperty(_audioQueueRef, kAudioQueueProperty_TimePitchBypass, &propValue, sizeof(propValue));
-        AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_PlayRate, playbackRate);
-    }
+    [self synchronized:^{
+        if (!_audioQueueRef) {
+            return;
+        }
+        if (fabsf(playbackRate - 1.0f) <= 0.000001) {
+            UInt32 propValue = 1;
+            AudioQueueSetProperty(_audioQueueRef, kAudioQueueProperty_TimePitchBypass, &propValue, sizeof(propValue));
+            AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_PlayRate, 1.0f);
+        } else {
+            UInt32 propValue = 0;
+            AudioQueueSetProperty(_audioQueueRef, kAudioQueueProperty_TimePitchBypass, &propValue, sizeof(propValue));
+            AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_PlayRate, playbackRate);
+        }
+    }];
 }
 
 - (void)setPlaybackVolume:(float)playbackVolume
 {
-    float aq_volume = playbackVolume;
-    if (fabsf(aq_volume - 1.0f) <= 0.000001) {
-        AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_Volume, 1.f);
-    } else {
-        AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_Volume, aq_volume);
-    }
+    [self synchronized:^{
+        if (!_audioQueueRef) {
+            return;
+        }
+        float aq_volume = playbackVolume;
+        if (fabsf(aq_volume - 1.0f) <= 0.000001) {
+            AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_Volume, 1.f);
+        } else {
+            AudioQueueSetParameter(_audioQueueRef, kAudioQueueParam_Volume, aq_volume);
+        }
+    }];
 }
 
 - (double)get_latency_seconds
@@ -244,16 +288,30 @@
     return ((double)(kIJKAudioQueueNumberBuffers)) * _spec.samples / _spec.freq;
 }
 
+- (void)synchronized:(NS_NOESCAPE void(^)(void))work
+{
+    [_lock lock];
+    work();
+    [_lock unlock];
+}
+
 static void FSSDLAudioQueueOuptutCallback(void * inUserData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer) {
     @autoreleasepool {
-        FSSDLAudioQueueController* aqController = (__bridge FSSDLAudioQueueController *) inUserData;
+        if (inUserData == NULL) {
+            return;
+        }
         
+        FSSDLAudioQueueWeakHolder *weakHolder = (__bridge FSSDLAudioQueueWeakHolder *)inUserData;
+        FSSDLAudioQueueController *aqController = weakHolder.controller;
         if (!aqController) {
-            // do nothing;
-        } else if (aqController->_isPaused || aqController->_isStopped) {
+            return;
+        }
+        if (aqController->_isPaused || aqController->_isStopped) {
             memset(inBuffer->mAudioData, aqController.spec.silence, inBuffer->mAudioDataByteSize);
         } else {
-            (*aqController.spec.callback)(aqController.spec.userdata, inBuffer->mAudioData, inBuffer->mAudioDataByteSize);
+            if (*aqController.spec.callback != NULL) {
+                (*aqController.spec.callback)(aqController.spec.userdata, inBuffer->mAudioData, inBuffer->mAudioDataByteSize);
+            }
         }
         
         AudioQueueEnqueueBuffer(inAQ, inBuffer, 0, NULL);
