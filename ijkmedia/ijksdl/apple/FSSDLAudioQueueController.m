@@ -50,7 +50,7 @@
     BOOL _isStopped;
     
     volatile BOOL _isAborted;
-    NSLock *_lock;
+    NSRecursiveLock *_lock;
     
     __weak FSSDLAudioQueueWeakHolder *_weakHolder;
 }
@@ -132,7 +132,7 @@
     _spec = aSpec;
     _isStopped = NO;
     
-    _lock = [[NSLock alloc] init];
+    _lock = [[NSRecursiveLock alloc] init];
     
     return YES;
 }
