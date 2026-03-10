@@ -1538,7 +1538,7 @@ static BOOL useExact = NO;
         idx ++;
     }
     
-    NSURL *url = self.playList[idx];
+    NSString *url = self.playList[idx];
     [self resetPreferenceEachPlay];
     [self playURL:url];
 }
