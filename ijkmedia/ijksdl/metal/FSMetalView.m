@@ -618,6 +618,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 + (NSArray<id<MTLTexture>> *)doGenerateTexture:(CVPixelBufferRef)pixelBuffer
                                   textureCache:(CVMetalTextureCacheRef)textureCache
+                                        device:(id<MTLDevice>)device
 {
     if (!pixelBuffer) {
         return nil;
@@ -640,7 +641,8 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         size_t width  = CVPixelBufferGetWidthOfPlane(pixelBuffer, i);
         size_t height = CVPixelBufferGetHeightOfPlane(pixelBuffer, i);
         MTLPixelFormat format = ft->formats[i];
-        CVMetalTextureRef textureRef = NULL; // CoreVideo的Metal纹理
+#if TARGET_CPU_ARM64
+        CVMetalTextureRef textureRef = NULL;
         CVReturn status = CVMetalTextureCacheCreateTextureFromImage(NULL, textureCache, pixelBuffer, NULL, format, width, height, i, &textureRef);
         if (status == kCVReturnSuccess) {
             id<MTLTexture> texture = CVMetalTextureGetTexture(textureRef); // 转成Metal用的纹理
@@ -649,6 +651,23 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
             }
             CFRelease(textureRef);
         }
+#else
+        //YUV420P 下面一半显示一层红色条纹，上面一半连续多个绿色方块 (Intel Iris Graphics 6100 1536MB,macOS 10.14,A1502)
+        //NV12 的 UV 像素上下拉伸（在shader里采样时乘以2可以和y对上，下半部分不对，数据错乱）(MacBook Pro Intel Iris Plus Graphics 640 1536 MB,macOS 13.6.1)
+        MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
+                                                                                               width:width
+                                                                                              height:height
+                                                                                           mipmapped:NO];
+        void *data = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, i);
+        size_t stride = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, i);
+
+        id<MTLTexture> texture = [device newTextureWithDescriptor:textureDesc];
+        [texture replaceRegion:MTLRegionMake2D(0, 0, width, height)
+                           mipmapLevel:0
+                             withBytes:data
+                           bytesPerRow:stride];
+        [result addObject:texture];
+#endif
     }
     
     CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
@@ -671,7 +690,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         return NO;
     }
     
-    attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache];
+    attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache device:self.device];
     
 #if TARGET_OS_IOS || TARGET_OS_TV
     // Execution of the command buffer was aborted due to an error during execution. Insufficient Permission (to submit GPU work from background) (00000006:kIOGPUCommandBufferCallbackErrorBackgroundExecutionNotPermitted)

@@ -1410,7 +1410,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             } else
         #endif
         // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics
-        #if TARGET_CPU_ARM64
+        
             if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
                 overlay_format = SDL_FCC_J420;
             } else if (src_format == AV_PIX_FMT_YUV420P) {
@@ -1430,7 +1430,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
                 overlay_format = SDL_FCC_AYUV64;
             } else
-        #endif
+        
             {
                 const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
                 if (pfd->nb_components > 0) {
