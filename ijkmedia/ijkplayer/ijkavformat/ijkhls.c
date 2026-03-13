@@ -27,7 +27,7 @@
  * https://www.rfc-editor.org/rfc/rfc8216.txt
  */
 
-#include "config_components.h"
+#include "libffmpeg/config_components.h"
 
 #include "libavformat/http.h"
 #include "libavutil/aes.h"
@@ -39,14 +39,16 @@
 #include "libavutil/opt.h"
 #include "libavutil/dict.h"
 #include "libavutil/time.h"
-#include "avformat.h"
-#include "demux.h"
-#include "internal.h"
-#include "avio_internal.h"
-#include "id3v2.h"
-#include "url.h"
+#include "libavformat/avformat.h"
+#include "libavformat/demux.h"
+#include "libavutil/internal.h"
+#include "libavformat/avio_internal.h"
+#include "libavformat/id3v2.h"
+#include "libavformat/url.h"
 
-#include "hls_sample_encryption.h"
+#include "libavformat/hls_sample_encryption.h"
+#include "libavformat/internal.h"
+#include "../ff_version.h"
 
 #define INITIAL_BUFFER_SIZE 32768
 
@@ -204,7 +206,7 @@ struct variant {
     char subtitles_group[MAX_FIELD_LEN];
 };
 
-typedef struct HLSContext {
+typedef struct FS_HLSContext {
     AVClass *class;
     AVFormatContext *ctx;
     int n_variants;
@@ -234,7 +236,7 @@ typedef struct HLSContext {
     AVIOContext *playlist_pb;
     HLSCryptoContext  crypto_ctx;
     char *seg_inherit_opts;
-} HLSContext;
+} FS_HLSContext;
 
 static void free_segment_dynarray(struct segment **segments, int n_segments)
 {
@@ -265,7 +267,7 @@ static void free_init_section_list(struct playlist *pls)
     pls->n_init_sections = 0;
 }
 
-static void free_playlist_list(HLSContext *c)
+static void free_playlist_list(FS_HLSContext *c)
 {
     int i;
     for (i = 0; i < c->n_playlists; i++) {
@@ -294,7 +296,7 @@ static void free_playlist_list(HLSContext *c)
     c->n_playlists = 0;
 }
 
-static void free_variant_list(HLSContext *c)
+static void free_variant_list(FS_HLSContext *c)
 {
     int i;
     for (i = 0; i < c->n_variants; i++) {
@@ -306,7 +308,7 @@ static void free_variant_list(HLSContext *c)
     c->n_variants = 0;
 }
 
-static void free_rendition_list(HLSContext *c)
+static void free_rendition_list(FS_HLSContext *c)
 {
     int i;
     for (i = 0; i < c->n_renditions; i++)
@@ -315,7 +317,7 @@ static void free_rendition_list(HLSContext *c)
     c->n_renditions = 0;
 }
 
-static struct playlist *new_playlist(HLSContext *c, const char *url,
+static struct playlist *new_playlist(FS_HLSContext *c, const char *url,
                                      const char *base)
 {
     struct playlist *pls = av_mallocz(sizeof(struct playlist));
@@ -349,7 +351,7 @@ struct variant_info {
     char subtitles[MAX_FIELD_LEN];
 };
 
-static struct variant *new_variant(HLSContext *c, struct variant_info *info,
+static struct variant *new_variant(FS_HLSContext *c, struct variant_info *info,
                                    const char *url, const char *base)
 {
     struct variant *var;
@@ -487,7 +489,7 @@ struct rendition_info {
     char characteristics[MAX_CHARACTERISTICS_LEN];
 };
 
-static struct rendition *new_rendition(HLSContext *c, struct rendition_info *info,
+static struct rendition *new_rendition(FS_HLSContext *c, struct rendition_info *info,
                                       const char *url_base)
 {
     struct rendition *rend;
@@ -620,7 +622,7 @@ static void handle_rendition_args(struct rendition_info *info, const char *key,
  * allocated the variant and playlist already)
  * *pls == NULL  => Master Playlist or parentless Media Playlist
  * *pls != NULL => parented Media Playlist, playlist+variant allocated */
-static int ensure_playlist(HLSContext *c, struct playlist **pls, const char *url)
+static int ensure_playlist(FS_HLSContext *c, struct playlist **pls, const char *url)
 {
     if (*pls)
         return 0;
@@ -651,7 +653,7 @@ static int open_url_keepalive(AVFormatContext *s, AVIOContext **pb,
 static int open_url(AVFormatContext *s, AVIOContext **pb, const char *url,
                     AVDictionary **opts, AVDictionary *opts2, int *is_http_out)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     AVDictionary *tmp = NULL;
     const char *proto_name = NULL;
     int ret;
@@ -737,7 +739,7 @@ static int open_url(AVFormatContext *s, AVIOContext **pb, const char *url,
 
 static int test_segment(AVFormatContext *s, const AVInputFormat *in_fmt, struct playlist *pls, struct segment *seg)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     int matchA = 3;
     int matchF = 0;
 
@@ -775,7 +777,7 @@ static int test_segment(AVFormatContext *s, const AVInputFormat *in_fmt, struct 
     return 0;
 }
 
-static int parse_playlist(HLSContext *c, const char *url,
+static int parse_playlist(FS_HLSContext *c, const char *url,
                           struct playlist *pls, AVIOContext *in)
 {
     int64_t previous_duration1 = 0, previous_duration = 0, total_duration = 0;
@@ -1346,7 +1348,7 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
         pls->is_id3_timestamped = (pls->id3_mpegts_timestamp != AV_NOPTS_VALUE);
 }
 
-static int open_input(HLSContext *c, struct playlist *pls, struct segment *seg, AVIOContext **in)
+static int open_input(FS_HLSContext *c, struct playlist *pls, struct segment *seg, AVIOContext **in)
 {
     AVDictionary *opts = NULL;
     int ret;
@@ -1432,7 +1434,7 @@ cleanup:
 static int update_init_section(struct playlist *pls, struct segment *seg)
 {
     static const int max_init_section_size = 1024*1024;
-    HLSContext *c = pls->parent->priv_data;
+    FS_HLSContext *c = pls->parent->priv_data;
     int64_t sec_size;
     int64_t urlsize;
     int ret;
@@ -1542,7 +1544,7 @@ static int playlist_needed(struct playlist *pls)
 static int read_data(void *opaque, uint8_t *buf, int buf_size)
 {
     struct playlist *v = opaque;
-    HLSContext *c = v->parent->priv_data;
+    FS_HLSContext *c = v->parent->priv_data;
     int ret;
     int just_opened = 0;
     int reload_count = 0;
@@ -1709,7 +1711,7 @@ reload:
     goto restart;
 }
 
-static void add_renditions_to_variant(HLSContext *c, struct variant *var,
+static void add_renditions_to_variant(FS_HLSContext *c, struct variant *var,
                                       enum AVMediaType type, const char *group_id)
 {
     int i;
@@ -1765,7 +1767,7 @@ static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pl
 
 /* if timestamp was in valid range: returns 1 and sets seq_no
  * if not: returns 0 and sets seq_no to closest segment */
-static int find_timestamp_in_playlist(HLSContext *c, struct playlist *pls,
+static int find_timestamp_in_playlist(FS_HLSContext *c, struct playlist *pls,
                                       int64_t timestamp, int64_t *seq_no,
                                       int64_t *seg_start_ts)
 {
@@ -1798,7 +1800,7 @@ static int find_timestamp_in_playlist(HLSContext *c, struct playlist *pls,
     return 0;
 }
 
-static int64_t select_cur_seq_no(HLSContext *c, struct playlist *pls)
+static int64_t select_cur_seq_no(FS_HLSContext *c, struct playlist *pls)
 {
     int64_t seq_no;
 
@@ -1885,7 +1887,7 @@ static int nested_io_open(AVFormatContext *s, AVIOContext **pb, const char *url,
 
 static void add_stream_to_programs(AVFormatContext *s, struct playlist *pls, AVStream *stream)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     int i, j;
     int bandwidth = -1;
 
@@ -1960,7 +1962,7 @@ static int update_streams_from_subdemuxer(AVFormatContext *s, struct playlist *p
 
 static void update_noheader_flag(AVFormatContext *s)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     int flag_needed = 0;
     int i;
 
@@ -1981,7 +1983,7 @@ static void update_noheader_flag(AVFormatContext *s)
 
 static int hls_close(AVFormatContext *s)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
 
     free_playlist_list(c);
     free_variant_list(c);
@@ -2023,7 +2025,7 @@ static int copy_hls_headers_for_http(AVDictionary **dst, const AVDictionary *src
 
 static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     int ret = 0, i;
     int64_t highest_cur_seq_no = 0;
 
@@ -2321,7 +2323,7 @@ static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
 
 static int recheck_discard_flags(AVFormatContext *s, int first)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     int i, changed = 0;
     int cur_needed;
 
@@ -2403,7 +2405,7 @@ static int compare_ts_with_wrapdetect(int64_t ts_a, struct playlist *pls_a,
 
 static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     int ret, i, minplaylist = -1;
 
     recheck_discard_flags(s, c->first_packet);
@@ -2578,7 +2580,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
 static int hls_read_seek(AVFormatContext *s, int stream_index,
                                int64_t timestamp, int flags)
 {
-    HLSContext *c = s->priv_data;
+    FS_HLSContext *c = s->priv_data;
     struct playlist *seek_pls = NULL;
     int i, j;
     int stream_subdemuxer_index;
@@ -2698,14 +2700,14 @@ static int hls_probe(const AVProbeData *p)
         if (mime_x)
             av_log(NULL, AV_LOG_WARNING, "mime type is not rfc8216 compliant\n");
 
-        return AVPROBE_SCORE_MAX;
+        return AVPROBE_SCORE_MAX + 1;
     }
     return 0;
 }
 
-#define OFFSET(x) offsetof(HLSContext, x)
+#define OFFSET(x) offsetof(FS_HLSContext, x)
 #define FLAGS AV_OPT_FLAG_DECODING_PARAM
-static const AVOption hls_options[] = {
+static const AVOption fs_hls_options[] = {
     {"live_start_index", "segment index to start live streams at (negative values are from the end)",
         OFFSET(live_start_index), AV_OPT_TYPE_INT, {.i64 = -3}, INT_MIN, INT_MAX, FLAGS},
     {"prefer_x_start", "prefer to use #EXT-X-START if it's in playlist instead of live_start_index",
@@ -2734,23 +2736,41 @@ static const AVOption hls_options[] = {
     {NULL}
 };
 
-static const AVClass hls_class = {
+static const AVClass fs_hls_class = {
     .class_name = "hls demuxer",
     .item_name  = av_default_item_name,
-    .option     = hls_options,
+    .option     = fs_hls_options,
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-const FFInputFormat ff_hls_demuxer = {
-    .p.name         = "hls",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Apple HTTP Live Streaming"),
-    .p.priv_class   = &hls_class,
+#if IS_FFMPEG_7
+const FFInputFormat ijkff_ijkplaceholder1_demuxer = {
+    .p.name         = "debug_hls",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("FSPlayer HLS"),
+    .p.priv_class   = &fs_hls_class,
     .p.flags        = AVFMT_NOGENSEARCH | AVFMT_TS_DISCONT | AVFMT_NO_BYTE_SEEK,
-    .priv_data_size = sizeof(HLSContext),
+    .priv_data_size = sizeof(FS_HLSContext),
     .flags_internal = FF_INFMT_FLAG_INIT_CLEANUP,
     .read_probe     = hls_probe,
-    .read_header2    = hls_read_header2,
+    .read_header2   = hls_read_header2,
     .read_packet    = hls_read_packet,
     .read_close     = hls_close,
     .read_seek      = hls_read_seek,
 };
+
+#else
+
+const AVInputFormat ijkff_ijkplaceholder1_demuxer = {
+    .name           = "fs_hls",
+    .long_name      = NULL_IF_CONFIG_SMALL("FSPlayer HLS"),
+    .priv_class     = &fs_hls_class,
+    .priv_data_size = sizeof(FS_HLSContext),
+    .flags          = AVFMT_NOGENSEARCH | AVFMT_TS_DISCONT | AVFMT_NO_BYTE_SEEK,
+    .flags_internal = FF_FMT_INIT_CLEANUP,
+    .read_probe     = hls_probe,
+    .read_header2   = hls_read_header2,
+    .read_packet    = hls_read_packet,
+    .read_close     = hls_close,
+    .read_seek      = hls_read_seek,
+};
+#endif

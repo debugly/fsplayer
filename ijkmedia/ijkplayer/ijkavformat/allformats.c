@@ -183,5 +183,7 @@ void ijkav_register_all(void)
     FS_REGISTER_PROTOCOL(ijksegment);
     /* demuxers */
     FS_REGISTER_DEMUXER(ijklivehook);
+    //private hls demuxer
+    FS_REGISTER_DEMUXER(ijkplaceholder1);
     av_log(NULL, AV_LOG_INFO, "===== custom modules end =====\n");
 }
