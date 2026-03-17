@@ -212,8 +212,6 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(ijkmeta_delay_init),      OPTION_INT(0, 0, 1) },
     { "render-wait-start",          "render wait start",
         OPTION_OFFSET(render_wait_start),      OPTION_INT(0, 0, 1) },
-    { "is-manifest",          "is manifest string",
-      OPTION_OFFSET(is_manifest),      OPTION_INT(0, 0, 1) },
     { "icy-update-period",                  "set icy meta update period,default is 2000ms",
         OPTION_OFFSET(icy_update_period),       OPTION_INT64(2000, 0, INT_MAX) },
     { NULL }

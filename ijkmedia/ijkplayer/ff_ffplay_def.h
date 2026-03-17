@@ -64,7 +64,6 @@
 #include "ff_ffmsg_queue.h"
 #include "ff_ffpipenode.h"
 #include "ff_subtitle_def.h"
-#include "ijkavformat/ijklas.h"
 #include "ijkavformat/ijkiomanager.h"
 #include "ijkavformat/ijkioapplication.h"
 
@@ -254,7 +253,6 @@ typedef struct Decoder {
 } Decoder;
 
 typedef struct FFSubtitle FFSubtitle;
-typedef struct ijk_custom_avio_protocol ijk_custom_avio_protocol;
 
 typedef struct VideoState {
     SDL_Thread *read_tid;
@@ -385,7 +383,6 @@ typedef struct VideoState {
     volatile int initialized_decoder;
     int seek_buffering;
     FFSubtitle *ffSub;
-    ijk_custom_avio_protocol * ijk_io;
 } VideoState;
 
 /*****************************************************************************
@@ -602,9 +599,6 @@ typedef struct FFPlayer {
     char *mediacodec_default_name;
     int ijkmeta_delay_init;
     int render_wait_start;
-    int is_manifest;
-    
-    LasPlayerStatistic las_player_statistic;
 
     ijk_audio_samples_callback audio_samples_callback;
     
@@ -739,7 +733,6 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->mediacodec_default_name        = NULL; // option
     ffp->ijkmeta_delay_init             = 0; // option
     ffp->render_wait_start              = 0;
-    ffp->is_manifest                    = 0;
 
     ijkmeta_reset(ffp->meta);
 
