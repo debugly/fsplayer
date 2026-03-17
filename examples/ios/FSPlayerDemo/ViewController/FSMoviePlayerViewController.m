@@ -42,16 +42,6 @@
     [viewController presentViewController:[[FSVideoViewController alloc] initWithURL:url] animated:YES completion:completion];
 }
 
-- (instancetype)initWithManifest: (NSString*)manifest_string {
-    self = [self initWithNibName:@"FSMoviePlayerViewController" bundle:nil];
-    if (self) {
-        NSString *fake_url = @"http://fakeurl_for_manifest";
-        self.url = fake_url;
-    }
-    self.manifest = manifest_string;
-    return self;
-}
-
 - (instancetype)initWithURL:(NSString *)url {
     self = [self initWithNibName:@"FSMoviePlayerViewController" bundle:nil];
     if (self) {
@@ -109,10 +99,6 @@
     //开启硬解
     [options setPlayerOptionIntValue:isVideoToolBox forKey:@"videotoolbox_hwaccel"];
 
-    if (self.manifest != nil){
-        [options setFormatOptionValue:self.manifest forKey:@"manifest_string"];
-        [options setPlayerOptionIntValue:1 forKey:@"is-manifest"];
-    }
     options.metalRenderer = YES;
     options.automaticallySetupAudioSession = YES;
     options.currentPlaybackTimeNotificationInterval = 0.5;

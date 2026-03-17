@@ -24,11 +24,9 @@
 @interface FSVideoViewController : UIViewController
 
 @property(atomic,strong) NSString *url;
-@property(strong,nonatomic) NSString* manifest;
 @property(atomic, retain) id<FSMediaPlayback> player;
 
 - (id)initWithURL:(NSString *)url;
-- (id)initWithManifest:(NSString*)manifest_string;
 
 + (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSString *)url completion:(void(^)(void))completion;
 
