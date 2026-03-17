@@ -1235,13 +1235,16 @@ static int get_z_rotate_degrees(AVStream *video_st)
         return 0;
     int32_t *displaymatrix = NULL;
 #if IS_FFMPEG_5
-    displaymatrix = (int32_t *)av_stream_get_side_data(video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
-#else
     const AVPacketSideData *sideData = av_packet_side_data_get(video_st->codecpar->coded_side_data, video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
     if (sideData && sideData->size >= 36) {
         displaymatrix = (int32_t *)sideData->data;
     }
+#else
+    displaymatrix = (int32_t *)av_stream_get_side_data(video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
 #endif
+    if (displaymatrix == NULL) {
+        return 0;
+    }
     return get_degree_with_displaymatrix(displaymatrix);
 }
 
