@@ -1,5 +1,11 @@
 tag 1.0.5
 --------------------------------
+- upgrade FFmpeg to 7.1.3
+- enable crypto protocol, support aes128 encrypted hls
+- fix Metal display garbage color on Intel Iris Graphics
+- deprecate checkIfFFmpegVersionMatch
+- fix FSSDLAudioQueueController crash
+- clean ijklas
 
 tag 1.0.4
 --------------------------------
