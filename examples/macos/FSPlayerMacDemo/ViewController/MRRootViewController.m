@@ -723,6 +723,10 @@ static BOOL hdrAnimationShown = 0;
 //    [options setFormatOptionValue:@"ijkhttp2" forKey:@"selected_http"];
 //    options.protocolWhitelist = @"ijkhttp2";
     options.protocolWhitelist = @"ftp";
+    //解决FFmpeg7代，百度云盘无法播放问题
+    [options setFormatOptionIntValue:0 forKey:@"extension_picky"];
+    //[options setFormatOptionValue:@"ts,png" forKey:@"allowed_segment_extensions"];
+    //[options setFormatOptionValue:@"ts,png" forKey:@"allowed_extensions"];
     
     self.player = [[FSPlayer alloc] initWithContent:urlStr options:options];
     
