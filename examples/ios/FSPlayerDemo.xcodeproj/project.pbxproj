@@ -57,6 +57,13 @@
 			remoteGlobalIDString = 46E445F92BD65C0F4498DCC8;
 			remoteInfo = "FSPlayer-tvOS";
 		};
+		C9CD43D72F694A2A00EDBE7F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = CDC1800CA57DF462877E973D;
+			remoteInfo = "FSPlayer-iOS";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -245,6 +252,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				C9CD43D82F694A2A00EDBE7F /* PBXTargetDependency */,
 			);
 			name = FSPlayerDemo;
 			productName = IJKMediaDemo;
@@ -361,6 +369,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C9CD43D82F694A2A00EDBE7F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "FSPlayer-iOS";
+			targetProxy = C9CD43D72F694A2A00EDBE7F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		E6903F0817EAF70200CFD954 /* InfoPlist.strings */ = {

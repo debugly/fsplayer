@@ -28,9 +28,9 @@
     [FSPlayer setLogLevel:FS_LOG_WARN];
 #endif
     
-    [FSPlayer checkIfFFmpegVersionMatch:YES];
-    // [FSPlayer checkIfPlayerVersionMatch:YES major:1 minor:0 micro:0];
-
+    NSLog(@"ffmpegVersion:%@", [FSPlayer ffmpegVersion]);
+    NSLog(@"playerVersion:%@", [FSPlayer playerVersion]);
+    
     FSOptions *options = [FSOptions optionsByDefault];
     
     BOOL isVideoToolBox = YES;

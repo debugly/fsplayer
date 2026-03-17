@@ -39,6 +39,13 @@
 			remoteGlobalIDString = 46E445F92BD65C0F4498DCC8;
 			remoteInfo = "FSPlayer-tvOS";
 		};
+		C9CD43DD2F694A4700EDBE7F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B16845D2DC4B5A400A1BA88 /* FSPlayer.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = C1FE2AF2E541B82455BDE862;
+			remoteInfo = "FSPlayer-tvOS";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -145,6 +152,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				C9CD43DE2F694A4700EDBE7F /* PBXTargetDependency */,
 			);
 			name = FSPlayerTVDemo;
 			productName = FSPlayerTVDemo;
@@ -241,6 +249,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C9CD43DE2F694A4700EDBE7F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "FSPlayer-tvOS";
+			targetProxy = C9CD43DD2F694A4700EDBE7F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		1B16844E2DC4B33300A1BA88 /* Main.storyboard */ = {

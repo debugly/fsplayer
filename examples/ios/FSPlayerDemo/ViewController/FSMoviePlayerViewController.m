@@ -88,7 +88,8 @@
     [FSPlayer setLogLevel:FS_LOG_WARN];
 #endif
 
-    [FSPlayer checkIfFFmpegVersionMatch:YES];
+    NSLog(@"ffmpegVersion:%@", [FSPlayer ffmpegVersion]);
+    NSLog(@"playerVersion:%@", [FSPlayer playerVersion]);
     // [FSPlayer checkIfPlayerVersionMatch:YES major:1 minor:0 micro:0];
 
     FSOptions *options = [FSOptions optionsByDefault];
