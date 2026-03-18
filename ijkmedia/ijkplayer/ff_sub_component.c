@@ -327,6 +327,10 @@ static int subtitle_thread(void *arg)
         AVSubtitle sub;
         int result = decode_a_frame(com, &com->decoder, &sub);
         
+        if (result < 0) {
+            av_log(NULL, AV_LOG_ERROR,"sub stream decode frame err:%d\n", result);
+        }
+        
         if (result == -1000) {
             if (com->retry_callback) {
                 com->retry_callback(com->retry_opaque);

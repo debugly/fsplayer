@@ -460,7 +460,7 @@ static int open_any_stream(FFSubtitle *sub, int stream, const char *enc)
     }
     if (stream < sub->ic_internal->nb_streams) {
         //open internal
-        AVStream *st = sub->ic_internal->streams[sub->need_update_stream];
+        AVStream *st = sub->ic_internal->streams[stream];
         int r = subComponent_open(&sub->com, stream, st, &sub->packetq, &sub->frameq, enc, &retry_callback, (void *)sub, sub->video_w, sub->video_h, 0.0);
         if (!r) {
             subComponent_update_preference(sub->com, &sub->sp);
