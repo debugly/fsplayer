@@ -110,7 +110,7 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
                                       void *displayLinkContext) {
     
     FSMetalView *renderer = (__bridge FSMetalView *)displayLinkContext;
-    CFTimeInterval timestamp = inOutputTime->hostTime * 1e-9;
+    CFTimeInterval timestamp = inOutputTime->hostTime / CVGetHostClockFrequency();
     // 执行同步刷新逻辑
     [renderer displayAttachWithTimestamp:timestamp];
     
