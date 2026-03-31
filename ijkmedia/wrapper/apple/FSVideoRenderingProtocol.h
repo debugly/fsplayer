@@ -67,6 +67,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 @property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
 @property(nonatomic) id _Nullable subTexture;
+@property(nonatomic) long tag;
 
 @end
 
@@ -175,6 +176,11 @@ typedef enum : NSUInteger {
 
 @protocol FSVideoRenderingDelegate <NSObject>
 
+@optional
+//you can replace the video frame
+- (CVPixelBufferRef _Nullable)videoRenderingWillDisplay:(id<FSVideoRenderingProtocol>_Nonnull)renderer videoFrame:(CVPixelBufferRef)videoFrame;
+
+@optional
 - (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach;
 
 @end

@@ -22,7 +22,10 @@
 #import "ijksdl_vout_ios_gles2.h"
 #import "FSMediaPlayback.h"
 
-#if TARGET_OS_IPHONE
+#if TARGET_OS_OSX
+#import <CoreVideo/CVDisplayLink.h>
+#else
+//TODO
 typedef CGRect NSRect;
 #endif
 
@@ -30,20 +33,28 @@ typedef CGRect NSRect;
 
 // The command queue used to pass commands to the device.
 @property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
+#if TARGET_CPU_ARM64
 @property (nonatomic, assign) CVMetalTextureCacheRef pictureTextureCache;
+#endif
 @property (atomic, strong) FSMetalRenderer *picturePipeline;
 @property (atomic, strong) FSMetalSubtitlePipeline *subPipeline;
 @property (nonatomic, strong) FSMetalOffscreenRendering *offscreenRendering;
 @property (atomic, strong) FSOverlayAttach *currentAttach;
+@property (nonatomic, strong) FSOverlayAttach *drawingAttach;
 @property (assign) int hdrAnimationFrameCount;
-@property (atomic, strong) NSLock *pilelineLock;
+@property (atomic, strong) NSLock *renderSnapshotLock;
 @property (assign) BOOL needCleanBackgroundColor;
 @property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
-
 #if TARGET_OS_IOS || TARGET_OS_TV
 @property (atomic, assign) BOOL isEnterBackground;
 #endif
-
+#if TARGET_OS_OSX
+@property (nonatomic, assign) CVDisplayLinkRef displayLink;
+#else
+//TODO
+#endif
+@property (nonatomic, assign) CFTimeInterval presentationTime;
+@property (atomic, assign) long previousTag;
 @end
 
 @implementation FSMetalView
@@ -66,12 +77,109 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
-    [NSNotificationCenter.defaultCenter removeObserver:self];
-    
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+#if TARGET_CPU_ARM64
     if (_pictureTextureCache) {
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
     }
+#endif
+#if TARGET_OS_OSX
+    if (_displayLink) {
+        CVDisplayLinkStop(_displayLink);
+        CVDisplayLinkRelease(_displayLink);
+        _displayLink = NULL;
+    }
+#else
+#endif
+}
+
+#if TARGET_OS_OSX
+// ----------------------------------------------------------------
+// 核心回调：由系统高优先级线程触发（通常是 60Hz 或 120Hz）
+// ----------------------------------------------------------------
+static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
+                                      const CVTimeStamp *inNow,
+                                      const CVTimeStamp *inOutputTime,
+                                      CVOptionFlags flagsIn,
+                                      CVOptionFlags *flagsOut,
+                                      void *displayLinkContext) {
+    
+    FSMetalView *renderer = (__bridge FSMetalView *)displayLinkContext;
+    
+    // 执行同步刷新逻辑
+    [renderer displayAttachWithTimestamp:inOutputTime];
+    
+    return kCVReturnSuccess;
+}
+
+- (void)viewDidMoveToWindow
+{
+    [super viewDidMoveToWindow];
+    if (self.window) {
+        NSNumber * screenNumber = [[self.window screen] deviceDescription][@"NSScreenNumber"];
+        if (screenNumber && _displayLink) {
+            CGDirectDisplayID displayID = (CGDirectDisplayID)[screenNumber unsignedIntValue];
+            CVDisplayLinkSetCurrentCGDisplay(_displayLink, displayID);
+        }
+    }
+}
+
+- (void)setupDisplayLink {
+    // 1. 创建基于当前活跃显示器的 DisplayLink
+    CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
+    
+    // 2. 设置回调
+    CVDisplayLinkSetOutputCallback(_displayLink, MyDisplayLinkCallback, (__bridge void *)self);
+    
+    // 3. 关联到主显示器（初始状态）
+    CGDirectDisplayID displayID = CGMainDisplayID();
+    CVDisplayLinkSetCurrentCGDisplay(_displayLink, displayID);
+    
+    // 4. 启动渲染循环
+    CVDisplayLinkStart(_displayLink);
+}
+
+// ----------------------------------------------------------------
+// 多显示器支持：当窗口拖动到外接显示器时，刷新率可能改变
+// ----------------------------------------------------------------
+- (void)registerScreenNotifications {
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(windowDidChangeScreen:)
+                                                 name:NSWindowDidChangeScreenNotification
+                                               object:nil];
+}
+
+- (void)windowDidChangeScreen:(NSNotification *)notification {
+    NSWindow *window = notification.object;
+    NSNumber *screenNumber = [[window screen] deviceDescription][@"NSScreenNumber"];
+    if (screenNumber && _displayLink) {
+        CGDirectDisplayID displayID = (CGDirectDisplayID)[screenNumber unsignedIntValue];
+        CVDisplayLinkSetCurrentCGDisplay(_displayLink, displayID);
+    }
+}
+#else
+//TODO
+- (void)setupDisplayLink {
+    
+}
+#endif
+
+- (void)displayAttachWithTimestamp:(const CVTimeStamp *)timestamp {
+    
+    [self.renderSnapshotLock lock];
+    FSOverlayAttach *currentAttach = self.currentAttach;
+
+    if (currentAttach.tag == self.previousTag) {
+        [self.renderSnapshotLock unlock];
+        return;
+    }
+    
+    [self.renderSnapshotLock unlock];
+    self.presentationTime = (CFTimeInterval)timestamp->hostTime * 1e-9;
+    self.drawingAttach = currentAttach;
+    //use current DisplayLink thread
+    [self draw];
 }
 
 - (BOOL)prepareMetal
@@ -79,20 +187,23 @@ typedef CGRect NSRect;
     _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
     _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
     _darPreference      = (FSDARPreference){0.0};
-    _pilelineLock = [[NSLock alloc]init];
+    _renderSnapshotLock = [[NSLock alloc]init];
+    
+    [self setupDisplayLink];
     
     self.device = MTLCreateSystemDefaultDevice();
     if (!self.device) {
-        NSLog(@"No Support Metal.");
+        ALOGE("Can't Create Metal Device.");
         return NO;
     }
-    
+#if TARGET_CPU_ARM64
     CVReturn ret = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_pictureTextureCache);
     if (ret != kCVReturnSuccess) {
-        NSLog(@"Create MetalTextureCache Failed:%d.",ret);
+        ALOGE("Create MetalTextureCache Failed:%d.",ret);
         self.device = nil;
         return NO;
     }
+#endif
     // default is kCAGravityResize,the content will be filled to new bounds when change view's frame by Implicit Animation
 #if TARGET_OS_OSX
     //#76 设置了 kCAGravityCenter 之后发现 macOS 外接1倍屏会出现画面显示到中央，无法填充满的问题，Retina屏幕没有问题
@@ -223,9 +334,7 @@ typedef CGRect NSRect;
         subPipeline = nil;
     }
     
-    [self.pilelineLock lock];
     self.subPipeline = subPipeline;
-    [self.pilelineLock unlock];
     
     return subPipeline != nil;
 }
@@ -247,13 +356,11 @@ typedef CGRect NSRect;
     BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
     
     if (!created) {
-        ALOGI("create RenderPipeline failed.");
+        ALOGE("create RenderPipeline failed.");
         picturePipeline = nil;
     }
     
-    [self.pilelineLock lock];
     self.picturePipeline = picturePipeline;
-    [self.pilelineLock unlock];
     
     return picturePipeline != nil;
 }
@@ -264,7 +371,6 @@ typedef CGRect NSRect;
                 ratio:(CGSize)ratio
         hdrPercentage:(float)hdrPercentage
 {
-    [self.pilelineLock lock];
     self.picturePipeline.hdrPercentage = hdrPercentage;
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
@@ -281,14 +387,12 @@ typedef CGRect NSRect;
     //upload textures
     [self.picturePipeline uploadTextureWithEncoder:renderEncoder
                                           textures:attach.videoTextures];
-    [self.pilelineLock unlock];
 }
 
 - (void)encodeSubtitle:(id<MTLRenderCommandEncoder>)renderEncoder
               viewport:(CGSize)viewport
                texture:(id<MTLTexture>)subTexture
 {
-    [self.pilelineLock lock];
     // Set the region of the drawable to draw into.
     [renderEncoder setViewport:(MTLViewport){0.0, 0.0, viewport.width, viewport.height, -1.0, 1.0}];
     //upload textures
@@ -308,7 +412,6 @@ typedef CGRect NSRect;
     
     [self.subPipeline updateSubtitleVertexIfNeed:subRect];
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
-    [self.pilelineLock unlock];
 }
 
 - (void)sendHDRAnimationNotifiOnMainThread:(int)state
@@ -318,7 +421,7 @@ typedef CGRect NSRect;
     });
 }
 
-/// Called whenever the view needs to render a frame.
+// [self draw] drived
 - (void)drawRect:(NSRect)dirtyRect
 {
 #if TARGET_OS_IOS || TARGET_OS_TV
@@ -327,41 +430,65 @@ typedef CGRect NSRect;
     }
 #endif
     
-    FSOverlayAttach * attach = self.currentAttach;
-    if (attach.videoTextures.count == 0) {
+    id<CAMetalDrawable> drawable = self.currentDrawable;
+    // 拿不到 Drawable 直接放弃这一帧，不要强行 commit
+    if (!drawable) {
+        return;
+    }
+    
+    FSOverlayAttach *currentAttach = self.drawingAttach;
+    
+    //Clean Background Color
+    if (!currentAttach.videoPicture) {
         if (self.needCleanBackgroundColor) {
-            id<CAMetalDrawable> drawable = self.currentDrawable;
-            if (drawable) {
-                id<MTLTexture> texture = drawable.texture;
+            id<MTLTexture> texture = drawable.texture;
 
-                MTLRenderPassDescriptor *passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
-                passDescriptor.colorAttachments[0].texture = texture;
-                passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-                passDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-                passDescriptor.colorAttachments[0].clearColor = self.clearColor;
-                
-                id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-                id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
+            MTLRenderPassDescriptor *passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
+            passDescriptor.colorAttachments[0].texture = texture;
+            passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+            passDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+            passDescriptor.colorAttachments[0].clearColor = self.clearColor;
             
-                [commandEncoder endEncoding];
-                [commandBuffer presentDrawable:drawable];
-                [commandBuffer commit];
-                self.needCleanBackgroundColor = NO;
-            }
+            id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
+            id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
+            [commandEncoder endEncoding];
+            [commandBuffer presentDrawable:drawable];
+            [commandBuffer commit];
+            self.needCleanBackgroundColor = NO;
         }
         return;
     }
     
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+    [self.renderSnapshotLock lock];
+    self.drawingAttach = nil;
+    
+    if (![self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha]) {
+        [self.renderSnapshotLock unlock];
         return;
     }
     
-    if (attach.subTexture && ![self setupSubPipelineIfNeed]) {
+    if (currentAttach.subTexture && ![self setupSubPipelineIfNeed]) {
+        [self.renderSnapshotLock unlock];
         return;
     }
+    
+    //generate textures
+    if (!currentAttach.videoTextures) {
+        CVMetalTextureCacheRef textureCache = NULL;
+    #if TARGET_CPU_ARM64
+        textureCache = _pictureTextureCache;
+    #endif
+        currentAttach.videoTextures = [[self class] doGenerateTexture:currentAttach.videoPicture textureCache:textureCache device:self.device];
+    }
+    
+    if (self.displayDelegate && [self.displayDelegate respondsToSelector:@selector(videoRenderingDidDisplay:attach:)]) {
+        [self.displayDelegate videoRenderingDidDisplay:self attach:currentAttach];
+    }
+    
+    //draw textures
     CGSize viewport = self.drawableSize;
     
-    CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:viewport];
+    CGSize ratio = [self computeNormalizedVerticesRatio:currentAttach drawableSize:viewport];
     
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     
@@ -370,8 +497,10 @@ typedef CGRect NSRect;
     //MTLRenderPassDescriptor描述一系列attachments的值，类似GL的FrameBuffer；同时也用来创建MTLRenderCommandEncoder
     if(!renderPassDescriptor) {
         ALOGE("renderPassDescriptor can't be nil");
+        [self.renderSnapshotLock unlock];
         return;
     }
+    
     // Create a render command encoder.
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
     
@@ -379,7 +508,7 @@ typedef CGRect NSRect;
     
     float hdrPer = 1.0;
     if (self.showHdrAnimation && [self.picturePipeline isHDR]) {
-#define _C(c) (attach.fps > 0 ? (int)ceil(attach.fps * c / 24.0) : c)
+#define _C(c) (currentAttach.fps > 0 ? (int)ceil(currentAttach.fps * c / 24.0) : c)
         int delay = _C(100);
         int maxCount = _C(100);
 #undef _C
@@ -398,36 +527,37 @@ typedef CGRect NSRect;
         }
     }
     
-    [self encodePicture:attach
+    [self encodePicture:currentAttach
           renderEncoder:renderEncoder
                viewport:viewport
                   ratio:ratio
           hdrPercentage:hdrPer];
     
-    if (attach.subTexture) {
+    if (currentAttach.subTexture) {
         [self encodeSubtitle:renderEncoder
                     viewport:viewport
-                     texture:attach.subTexture];
+                     texture:currentAttach.subTexture];
     }
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
-    // Schedule a present once the framebuffer is complete using the current drawable.
-    id <CAMetalDrawable> currentDrawable = self.currentDrawable;
-    if (!currentDrawable) {
-        ALOGE("wtf?currentDrawable is nil!");
-        return;
-    }
-    [commandBuffer presentDrawable:currentDrawable];
+    //[commandBuffer presentDrawable:drawable];
+    [commandBuffer presentDrawable:drawable atTime:self.presentationTime];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
+    self.previousTag = currentAttach.tag;
+    
+    [self.renderSnapshotLock unlock];
 }
 
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
 {
+    [self.renderSnapshotLock lock];
+    
     FSOverlayAttach *attach = self.currentAttach;
     
     CVPixelBufferRef pixelBuffer = attach.videoPicture;
     if (!pixelBuffer) {
+        [self.renderSnapshotLock unlock];
         return NULL;
     }
     
@@ -469,15 +599,21 @@ typedef CGRect NSRect;
     CGSize viewport = CGSizeMake(floorf(width), floorf(height));
     
     if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+        [self.renderSnapshotLock unlock];
         return NULL;
     }
     
     if (drawSub && attach.subTexture && ![self setupSubPipelineIfNeed]) {
+        [self.renderSnapshotLock unlock];
         return NULL;
     }
     
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-    return [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
+    CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
+        
+        if (!attach.videoTextures) {
+            attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:self.pictureTextureCache device:self.device];
+        }
         
         [self encodePicture:attach
               renderEncoder:renderEncoder
@@ -491,6 +627,8 @@ typedef CGRect NSRect;
                          texture:attach.subTexture];
         }
     }];
+    [self.renderSnapshotLock unlock];
+    return result;
 }
 
 - (CGImageRef)_snapshotOrigin:(FSOverlayAttach *)attach
@@ -515,10 +653,13 @@ typedef CGRect NSRect;
 
 - (CGImageRef)_snapshotScreen
 {
+    [self.renderSnapshotLock lock];
+    
     FSOverlayAttach *attach = self.currentAttach;
     
     CVPixelBufferRef pixelBuffer = attach.videoPicture;
     if (!pixelBuffer) {
+        [self.renderSnapshotLock unlock];
         return NULL;
     }
     
@@ -529,15 +670,17 @@ typedef CGRect NSRect;
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
    
     if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+        [self.renderSnapshotLock unlock];
         return NULL;
     }
     
     if (attach.subTexture && ![self setupSubPipelineIfNeed]) {
+        [self.renderSnapshotLock unlock];
         return NULL;
     }
     
     CGSize viewport = self.drawableSize;
-    return [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
+    CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
         CVPixelBufferRef pixelBuffer = attach.videoPicture;
         if (pixelBuffer) {
             CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:viewport];
@@ -554,6 +697,8 @@ typedef CGRect NSRect;
                          texture:attach.subTexture];
         }
     }];
+    [self.renderSnapshotLock unlock];
+    return result;
 }
 
 - (CGImageRef)snapshot:(FSSnapshotType)aType
@@ -653,7 +798,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         }
 #else
         //YUV420P 下面一半显示一层红色条纹，上面一半连续多个绿色方块 (Intel Iris Graphics 6100 1536MB,macOS 10.14,A1502)
-        //NV12 的 UV 像素上下拉伸（在shader里采样时乘以2可以和y对上，下半部分不对，数据错乱）(MacBook Pro Intel Iris Plus Graphics 640 1536 MB,macOS 13.6.1)
+        //NV12 的 UV 像素上下拉伸（在shader里采样时乘以2可以和y对上，下半部分不对，数据错乱）(MacBook Pro 13-inch, 2017 Intel Iris Plus Graphics 640 1536 MB,macOS 13.6.1)
         MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
                                                                                                width:width
                                                                                               height:height
@@ -682,37 +827,26 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 - (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
-    //hold the attach as current.
-    self.currentAttach = attach;
+    //call form (ff_vout thread)
+    
+    attach.tag = self.previousTag + 1;
+    
+    if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
+        attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
+    }
     
     if (!attach.videoPicture) {
         ALOGW("FSMetalView: videoPicture is nil\n");
         return NO;
     }
     
-    attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:_pictureTextureCache device:self.device];
-    
-#if TARGET_OS_IOS || TARGET_OS_TV
-    // Execution of the command buffer was aborted due to an error during execution. Insufficient Permission (to submit GPU work from background) (00000006:kIOGPUCommandBufferCallbackErrorBackgroundExecutionNotPermitted)
-    if (self.isEnterBackground) {
-        return NO;
-    }
-#endif
-    
     if (self.preventDisplay) {
         return YES;
     }
     
-    if (CGSizeEqualToSize(CGSizeZero, self.drawableSize)) {
-        return NO;
-    }
-    
-    //not dispatch to main thread, use current sub thread (ff_vout) draw
-    [self draw];
-    
-    if (self.displayDelegate) {
-        [self.displayDelegate videoRenderingDidDisplay:self attach:attach];
-    }
+    [self.renderSnapshotLock lock];
+    self.currentAttach = attach;
+    [self.renderSnapshotLock unlock];
     
     return YES;
 }
@@ -765,7 +899,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 - (NSString *)name
 {
-    return @"Metal";
+    return @"MetalN";
 }
 
 #if TARGET_OS_OSX
