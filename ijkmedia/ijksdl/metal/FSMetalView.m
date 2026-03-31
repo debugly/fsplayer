@@ -25,7 +25,7 @@
 #if TARGET_OS_OSX
 #import <CoreVideo/CVDisplayLink.h>
 #else
-//TODO
+#import <QuartzCore/QuartzCore.h>
 typedef CGRect NSRect;
 #endif
 
@@ -51,7 +51,7 @@ typedef CGRect NSRect;
 #if TARGET_OS_OSX
 @property (nonatomic, assign) CVDisplayLinkRef displayLink;
 #else
-//TODO
+@property (nonatomic, strong) CADisplayLink *displayLink;
 #endif
 @property (nonatomic, assign) CFTimeInterval presentationTime;
 @property (atomic, assign) long previousTag;
@@ -91,6 +91,10 @@ typedef CGRect NSRect;
         _displayLink = NULL;
     }
 #else
+    if (_displayLink) {
+        [_displayLink invalidate];
+        _displayLink = nil;
+    }
 #endif
 }
 
@@ -106,9 +110,9 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
                                       void *displayLinkContext) {
     
     FSMetalView *renderer = (__bridge FSMetalView *)displayLinkContext;
-    
+    CFTimeInterval timestamp = inOutputTime->hostTime * 1e-9;
     // 执行同步刷新逻辑
-    [renderer displayAttachWithTimestamp:inOutputTime];
+    [renderer displayAttachWithTimestamp:timestamp];
     
     return kCVReturnSuccess;
 }
@@ -159,14 +163,26 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
     }
 }
 #else
-//TODO
-- (void)setupDisplayLink {
-    
-}
-#endif
 
-- (void)displayAttachWithTimestamp:(const CVTimeStamp *)timestamp {
-    
+- (void)setupDisplayLink {
+    if (_displayLink) {
+        return;
+    }
+    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
+    if (@available(iOS 15.0,tvOS 15.0, *)) {
+        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(1, 60, 30);
+    } else {
+        _displayLink.preferredFramesPerSecond = 30;
+    }
+    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+}
+
+- (void)displayLinkFired:(CADisplayLink *)displayLink {
+    [self displayAttachWithTimestamp:displayLink.targetTimestamp];
+}
+
+#endif
+- (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
     [self.renderSnapshotLock lock];
     FSOverlayAttach *currentAttach = self.currentAttach;
 
@@ -176,7 +192,7 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
     }
     
     [self.renderSnapshotLock unlock];
-    self.presentationTime = (CFTimeInterval)timestamp->hostTime * 1e-9;
+    self.presentationTime = timestamp;
     self.drawingAttach = currentAttach;
     //use current DisplayLink thread
     [self draw];
@@ -719,10 +735,16 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
 
 - (void)applicationDidEnterBackground {
     self.isEnterBackground = YES;
+    if (_displayLink) {
+        _displayLink.paused = YES;
+    }
 }
 
 - (void)applicationWillEnterForeground {
     self.isEnterBackground = NO;
+    if (_displayLink) {
+        _displayLink.paused = NO;
+    }
 }
 
 - (UIImage *)snapshot
