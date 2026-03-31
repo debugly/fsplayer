@@ -156,6 +156,39 @@ av_unused static void print_all_decodes(void)
     printf("---all decoders:%d\n", sum);
 }
 
+av_unused static void print_all_error(void)
+{
+    printf("---all errors ------------------------\n");
+    printf("AVERROR_BSF_NOT_FOUND:%d\n", AVERROR_BSF_NOT_FOUND);
+    printf("AVERROR_BUG:%d\n", AVERROR_BUG);
+    printf("AVERROR_BUFFER_TOO_SMALL:%d\n", AVERROR_BUFFER_TOO_SMALL);
+    printf("AVERROR_DECODER_NOT_FOUND:%d\n", AVERROR_DECODER_NOT_FOUND);
+    printf("AVERROR_DEMUXER_NOT_FOUND:%d\n", AVERROR_DEMUXER_NOT_FOUND);
+    printf("AVERROR_ENCODER_NOT_FOUND:%d\n", AVERROR_ENCODER_NOT_FOUND);
+    printf("AVERROR_EOF:%d\n", AVERROR_EOF);
+    printf("AVERROR_EXIT:%d\n", AVERROR_EXIT);
+    printf("AVERROR_EXTERNAL:%d\n", AVERROR_EXTERNAL);
+    printf("AVERROR_FILTER_NOT_FOUND:%d\n", AVERROR_FILTER_NOT_FOUND);
+    printf("AVERROR_INVALIDDATA:%d\n", AVERROR_INVALIDDATA);
+    printf("AVERROR_MUXER_NOT_FOUND:%d\n", AVERROR_MUXER_NOT_FOUND);
+    printf("AVERROR_OPTION_NOT_FOUND:%d\n", AVERROR_OPTION_NOT_FOUND);
+    printf("AVERROR_PATCHWELCOME:%d\n", AVERROR_PATCHWELCOME);
+    printf("AVERROR_PROTOCOL_NOT_FOUND:%d\n", AVERROR_PROTOCOL_NOT_FOUND);
+    printf("AVERROR_STREAM_NOT_FOUND:%d\n", AVERROR_STREAM_NOT_FOUND);
+    printf("AVERROR_BUG2:%d\n", AVERROR_BUG2);
+    printf("AVERROR_UNKNOWN:%d\n", AVERROR_UNKNOWN);
+    printf("AVERROR_EXPERIMENTAL:%d\n", AVERROR_EXPERIMENTAL);
+    printf("AVERROR_INPUT_CHANGED:%d\n", AVERROR_INPUT_CHANGED);
+    printf("AVERROR_OUTPUT_CHANGED:%d\n", AVERROR_OUTPUT_CHANGED);
+    printf("AVERROR_HTTP_BAD_REQUEST:%d\n", AVERROR_HTTP_BAD_REQUEST);
+    printf("AVERROR_HTTP_UNAUTHORIZED:%d\n", AVERROR_HTTP_UNAUTHORIZED);
+    printf("AVERROR_HTTP_FORBIDDEN:%d\n", AVERROR_HTTP_FORBIDDEN);
+    printf("AVERROR_HTTP_NOT_FOUND:%d\n", AVERROR_HTTP_NOT_FOUND);
+    printf("AVERROR_HTTP_TOO_MANY_REQUESTS:%d\n", AVERROR_HTTP_TOO_MANY_REQUESTS);
+    printf("AVERROR_HTTP_OTHER_4XX:%d\n", AVERROR_HTTP_OTHER_4XX);
+    printf("AVERROR_HTTP_SERVER_ERROR:%d\n", AVERROR_HTTP_SERVER_ERROR);
+}
+
 void ijkav_register_all(void)
 {
     static int initialized;
@@ -170,7 +203,7 @@ void ijkav_register_all(void)
 //    print_all_input_protocols();
 //    print_all_encodes();
 //    print_all_decodes();
-    
+//    print_all_error();
     /* protocols */
     av_log(NULL, AV_LOG_INFO, "===== custom modules begin =====\n");
 #ifdef __ANDROID__
