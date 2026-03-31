@@ -69,6 +69,8 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
+    [_displayLinkWrapper invalidate];
+    _displayLinkWrapper = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 #if TARGET_CPU_ARM64
     if (_pictureTextureCache) {
@@ -76,8 +78,6 @@ typedef CGRect NSRect;
         _pictureTextureCache = NULL;
     }
 #endif
-    [_displayLinkWrapper invalidate];
-    _displayLinkWrapper = nil;
 }
 
 - (void)setupDisplayLink {
