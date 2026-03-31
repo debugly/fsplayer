@@ -204,7 +204,8 @@ end:
 static int decode_a_frame(FFSubComponent *com, Decoder *d, AVSubtitle *pkt)
 {
     int ret = AVERROR(EAGAIN);
-
+    //some ass subtitle maybe has few different character encoding
+    int fault_tolerance = 2;
     for (;com->packetq->abort_request == 0;) {
         
         if (d->packet_pending) {
@@ -260,9 +261,15 @@ static int decode_a_frame(FFSubComponent *com, Decoder *d, AVSubtitle *pkt)
         //av_log(NULL, AV_LOG_DEBUG, "sub stream decoder pkt serial:%d,pts:%lld\n",d->pkt_serial,pkt->pts/1000);
         //Invalid UTF-8 in decoded subtitles text; maybe missing -sub_charenc option
         if (ret == AVERROR_INVALIDDATA) {
+            if (fault_tolerance-- > 0) {
+                continue;
+            }
             return -1000;
         } else if (ret == -92) {
             //iconv convert failed
+            if (fault_tolerance-- > 0) {
+                continue;
+            }
             return -1000;
         }
         if (ret >= 0)
