@@ -6,6 +6,9 @@ tag 1.0.5
 - deprecate checkIfFFmpegVersionMatch
 - fix FSSDLAudioQueueController crash
 - clean ijklas
+- use cvdisplaylink drive metalview refresh frame
+- fix subtitle crash
+- add videoRenderingWillDisplay method,you can handle the video frame before display
 
 tag 1.0.4
 --------------------------------
