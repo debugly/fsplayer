@@ -7,7 +7,6 @@
 //
 
 #import "FSMetalView.h"
-#import <QuartzCore/QuartzCore.h>
 #import <AVFoundation/AVUtilities.h>
 #import <CoreImage/CIContext.h>
 #import <mach/mach_time.h>
@@ -21,11 +20,9 @@
 
 #import "ijksdl_vout_ios_gles2.h"
 #import "FSMediaPlayback.h"
+#import "FSDisplayLinkWrapper.h"
 
-#if TARGET_OS_OSX
-#import <CoreVideo/CVDisplayLink.h>
-#else
-#import <QuartzCore/QuartzCore.h>
+#if TARGET_OS_IOS || TARGET_OS_TV
 typedef CGRect NSRect;
 #endif
 
@@ -48,12 +45,7 @@ typedef CGRect NSRect;
 #if TARGET_OS_IOS || TARGET_OS_TV
 @property (atomic, assign) BOOL isEnterBackground;
 #endif
-#if TARGET_OS_OSX
-@property (nonatomic, assign) CVDisplayLinkRef displayLink;
-#else
-@property (nonatomic, strong) CADisplayLink *displayLink;
-#endif
-@property (nonatomic, assign) CFTimeInterval presentationTime;
+@property (nonatomic, strong) FSDisplayLinkWrapper *displayLinkWrapper;
 @property (atomic, assign) long previousTag;
 @end
 
@@ -84,104 +76,44 @@ typedef CGRect NSRect;
         _pictureTextureCache = NULL;
     }
 #endif
-#if TARGET_OS_OSX
-    if (_displayLink) {
-        CVDisplayLinkStop(_displayLink);
-        CVDisplayLinkRelease(_displayLink);
-        _displayLink = NULL;
-    }
-#else
-    if (_displayLink) {
-        [_displayLink invalidate];
-        _displayLink = nil;
-    }
-#endif
-}
-
-#if TARGET_OS_OSX
-// ----------------------------------------------------------------
-// 核心回调：由系统高优先级线程触发（通常是 60Hz 或 120Hz）
-// ----------------------------------------------------------------
-static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
-                                      const CVTimeStamp *inNow,
-                                      const CVTimeStamp *inOutputTime,
-                                      CVOptionFlags flagsIn,
-                                      CVOptionFlags *flagsOut,
-                                      void *displayLinkContext) {
-    
-    FSMetalView *renderer = (__bridge FSMetalView *)displayLinkContext;
-    CFTimeInterval timestamp = inOutputTime->hostTime / CVGetHostClockFrequency();
-    // 执行同步刷新逻辑
-    [renderer displayAttachWithTimestamp:timestamp];
-    
-    return kCVReturnSuccess;
-}
-
-- (void)viewDidMoveToWindow
-{
-    [super viewDidMoveToWindow];
-    if (self.window) {
-        NSNumber * screenNumber = [[self.window screen] deviceDescription][@"NSScreenNumber"];
-        if (screenNumber && _displayLink) {
-            CGDirectDisplayID displayID = (CGDirectDisplayID)[screenNumber unsignedIntValue];
-            CVDisplayLinkSetCurrentCGDisplay(_displayLink, displayID);
-        }
-    }
+    [_displayLinkWrapper invalidate];
+    _displayLinkWrapper = nil;
 }
 
 - (void)setupDisplayLink {
-    // 1. 创建基于当前活跃显示器的 DisplayLink
-    CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
-    
-    // 2. 设置回调
-    CVDisplayLinkSetOutputCallback(_displayLink, MyDisplayLinkCallback, (__bridge void *)self);
-    
-    // 3. 关联到主显示器（初始状态）
-    CGDirectDisplayID displayID = CGMainDisplayID();
-    CVDisplayLinkSetCurrentCGDisplay(_displayLink, displayID);
-    
-    // 4. 启动渲染循环
-    CVDisplayLinkStart(_displayLink);
-}
-
-// ----------------------------------------------------------------
-// 多显示器支持：当窗口拖动到外接显示器时，刷新率可能改变
-// ----------------------------------------------------------------
-- (void)registerScreenNotifications {
+    if (_displayLinkWrapper) {
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    _displayLinkWrapper = [[FSDisplayLinkWrapper alloc] initWithCallback:^(CFTimeInterval timestamp) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self displayAttachWithTimestamp:timestamp];
+    }];
+#if TARGET_OS_OSX
+    [_displayLinkWrapper updateWithWindow:self.window];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(windowDidChangeScreen:)
-                                                 name:NSWindowDidChangeScreenNotification
-                                               object:nil];
+                                                  name:NSWindowDidChangeScreenNotification
+                                                object:nil];
+#endif
+    [_displayLinkWrapper start];
+}
+
+#if TARGET_OS_OSX
+- (void)viewDidMoveToWindow {
+    [super viewDidMoveToWindow];
+    [_displayLinkWrapper updateWithWindow:self.window];
 }
 
 - (void)windowDidChangeScreen:(NSNotification *)notification {
     NSWindow *window = notification.object;
-    NSNumber *screenNumber = [[window screen] deviceDescription][@"NSScreenNumber"];
-    if (screenNumber && _displayLink) {
-        CGDirectDisplayID displayID = (CGDirectDisplayID)[screenNumber unsignedIntValue];
-        CVDisplayLinkSetCurrentCGDisplay(_displayLink, displayID);
+    if (window == self.window) {
+        [_displayLinkWrapper updateWithWindow:window];
     }
 }
-#else
-
-- (void)setupDisplayLink {
-    if (_displayLink) {
-        return;
-    }
-    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
-    if (@available(iOS 15.0,tvOS 15.0, *)) {
-        _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(1, 60, 30);
-    } else {
-        _displayLink.preferredFramesPerSecond = 30;
-    }
-    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-}
-
-- (void)displayLinkFired:(CADisplayLink *)displayLink {
-    [self displayAttachWithTimestamp:displayLink.targetTimestamp];
-}
-
 #endif
+
 - (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
     [self.renderSnapshotLock lock];
     FSOverlayAttach *currentAttach = self.currentAttach;
@@ -190,9 +122,9 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
         [self.renderSnapshotLock unlock];
         return;
     }
-    
+    currentAttach.presentationTime = timestamp;
     [self.renderSnapshotLock unlock];
-    self.presentationTime = timestamp;
+    
     self.drawingAttach = currentAttach;
     //use current DisplayLink thread
     [self draw];
@@ -557,7 +489,7 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
     //[commandBuffer presentDrawable:drawable];
-    [commandBuffer presentDrawable:drawable atTime:self.presentationTime];
+    [commandBuffer presentDrawable:drawable atTime:currentAttach.presentationTime];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
     self.previousTag = currentAttach.tag;
@@ -735,16 +667,12 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
 
 - (void)applicationDidEnterBackground {
     self.isEnterBackground = YES;
-    if (_displayLink) {
-        _displayLink.paused = YES;
-    }
+    _displayLinkWrapper.paused = YES;
 }
 
 - (void)applicationWillEnterForeground {
     self.isEnterBackground = NO;
-    if (_displayLink) {
-        _displayLink.paused = NO;
-    }
+    _displayLinkWrapper.paused = NO;
 }
 
 - (UIImage *)snapshot

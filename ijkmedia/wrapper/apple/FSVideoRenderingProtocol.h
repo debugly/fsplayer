@@ -68,6 +68,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
 @property(nonatomic) id _Nullable subTexture;
 @property(nonatomic) long tag;
+@property(nonatomic) CFTimeInterval presentationTime;
 
 @end
 
