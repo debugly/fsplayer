@@ -560,7 +560,11 @@ typedef CGRect NSRect;
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
         
         if (!attach.videoTextures) {
-            attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:self.pictureTextureCache device:self.device];
+            CVMetalTextureCacheRef textureCache = NULL;
+        #if TARGET_CPU_ARM64
+            textureCache = self.pictureTextureCache;
+        #endif
+            attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
         }
         
         [self encodePicture:attach
