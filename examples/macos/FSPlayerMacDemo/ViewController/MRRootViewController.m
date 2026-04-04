@@ -1192,6 +1192,10 @@ static BOOL hdrAnimationShown = 0;
 
 - (NSString *)decodeURL:(NSURL *)url
 {
+    if ([url isFileURL]) {
+        return [url path];
+    }
+    
     NSURLComponents *comp = [[NSURLComponents alloc] initWithURL:url resolvingAgainstBaseURL:NO];
     NSString *scheme = comp.scheme ?: @"file";
     NSString *host = comp.host ?: @"";

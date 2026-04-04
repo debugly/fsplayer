@@ -11,14 +11,7 @@
 
 - (void)registerDragTypes
 {
-    if (@available(macOS 10.13, *)) {
-        [self registerForDraggedTypes:[NSArray arrayWithObjects:NSPasteboardTypeFileURL, nil]];
-    } else if (@available(macOS 10.0, *)){
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored"-Wdeprecated-declarations"
-        [self registerForDraggedTypes:[NSArray arrayWithObjects:NSFilenamesPboardType, nil]];
-#pragma clang diagnostic pop
-    }
+    [self registerForDraggedTypes:[NSArray arrayWithObjects:NSPasteboardTypeFileURL, nil]];
 }
 
 - (id)initWithFrame:(NSRect)frameRect
@@ -46,25 +39,19 @@
 {
     NSPasteboard *pboard = [sender draggingPasteboard];
     NSArray *list = nil;
-    if (@available(macOS 10.13, *)) {
-        if ([[pboard types] containsObject:NSPasteboardTypeFileURL]) {
-            list = [pboard readObjectsForClasses:@[[NSURL class]] options:nil];
-        }
-    } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored"-Wdeprecated-declarations"
-        if ([[pboard types] containsObject:NSFilenamesPboardType]) {
-            list = [pboard propertyListForType:NSFilenamesPboardType];
-        }
-#pragma clang diagnostic pop
+    if ([[pboard types] containsObject:NSPasteboardTypeFileURL]) {
+        list = [pboard readObjectsForClasses:@[[NSURL class]] options:nil];
     }
     
-    NSMutableArray *result = [NSMutableArray arrayWithArray:list];
+    NSMutableArray <NSURL *>*result = [NSMutableArray arrayWithArray:list];
     for (int i = 0; i < [result count]; i ++) {
-        id obj = result[i];
+        NSURL * obj = result[i];
         if ([obj isKindOfClass:[NSString class]]) {
             obj = [NSURL fileURLWithPath:(NSString *)obj];
             result[i] = obj;
+        } else {
+            //convert file:///.file/id=6571367.2701401 to normal path
+            result[i] = [NSURL fileURLWithPath:[obj path]];;
         }
     }
     return [result copy];
