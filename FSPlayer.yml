@@ -5,7 +5,7 @@ targets:
   FSPlayer-macOS:
     platform: macOS
     type: framework
-    deploymentTarget: 10.11
+    deploymentTarget: 10.14
     preBuildScripts:
       - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
         name: ijkversion.h

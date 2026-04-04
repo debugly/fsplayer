@@ -1,3 +1,7 @@
+tag 1.0.6
+--------------------------------
+- dropped support for older OS versions, required minimum of macOS 10.14 and iOS 12
+
 tag 1.0.5
 --------------------------------
 - upgrade FFmpeg to 7.1.3
