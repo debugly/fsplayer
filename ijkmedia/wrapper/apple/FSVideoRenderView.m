@@ -21,19 +21,9 @@
  */
 
 #import "FSVideoRenderView.h"
-#if TARGET_OS_OSX
-#import "FSSDLGLView.h"
-#endif
 #import "FSMetalView.h"
 
 @implementation FSVideoRenderView
-
-#if TARGET_OS_OSX
-+ (UIView<FSVideoRenderingProtocol> *)createGLRenderView
-{
-    return [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-}
-#endif
 
 + (UIView<FSVideoRenderingProtocol> *)createMetalRenderView
 {

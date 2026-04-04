@@ -33,8 +33,6 @@
 #include "string.h"
 #if TARGET_OS_IOS || TARGET_OS_TV
 #import <AVFoundation/AVFoundation.h>
-#else
-#import "FSSDLGLView.h"
 #endif
 
 #include "../ijkmedia/ijkplayer/apple/ijkplayer_ios.h"
@@ -348,20 +346,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
 {
-    UIView<FSVideoRenderingProtocol> *videoRendering = nil;
-#if TARGET_OS_IOS || TARGET_OS_TV
-    videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
-#else
-    if (!options.metalRenderer) {
-        videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-    } else {
-        if (@available(macOS 10.13, *)) {
-            videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
-        } else {
-            videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-        }
-    }
-#endif
+    UIView<FSVideoRenderingProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+
     return [self initWithContent:content options:options videoRendering:videoRendering];
 }
 
@@ -376,20 +362,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
               options:(FSOptions * _Nullable)options
        audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
 {
-    UIView<FSVideoRenderingProtocol> *videoRendering = nil;
-#if TARGET_OS_IOS || TARGET_OS_TV
-    videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
-#else
-    if (!options.metalRenderer) {
-        videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-    } else {
-        if (@available(macOS 10.13, *)) {
-            videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
-        } else {
-            videoRendering = [[FSSDLGLView alloc] initWithFrame:CGRectZero];
-        }
-    }
-#endif
+    UIView<FSVideoRenderingProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+
     return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:audioRendering];
 }
 

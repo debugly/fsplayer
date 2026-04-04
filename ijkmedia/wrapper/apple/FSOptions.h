@@ -62,8 +62,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setPlayerOptionIntValue:    (int64_t)value forKey:(NSString *)key;
 
 @property(nonatomic) BOOL showHudView;
-//default is auto; you can set to NO means force use opengl.
-@property(nonatomic) BOOL metalRenderer;
 //append extra protocol whitelist
 @property(nonatomic, copy) NSString *protocolWhitelist;
 //setup audio session use AVAudioSessionCategoryPlayback, observer and handle interrupt event on iOS platform

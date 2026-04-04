@@ -47,12 +47,10 @@
 		DD9B13BA22C24017002D1D79 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13B922C24017002D1D79 /* libc++.tbd */; };
 		DD9B13BC22C2401F002D1D79 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13BB22C2401F002D1D79 /* libbz2.tbd */; };
 		DD9B13BE22C24026002D1D79 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13BD22C24026002D1D79 /* AVFoundation.framework */; };
-		DD9B13C022C2402D002D1D79 /* GLKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13BF22C2402D002D1D79 /* GLKit.framework */; };
 		DD9B13C222C24037002D1D79 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13C122C24037002D1D79 /* CoreGraphics.framework */; };
 		DD9B13C422C24040002D1D79 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13C322C24040002D1D79 /* CoreMedia.framework */; };
 		DD9B13C622C24048002D1D79 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13C522C24048002D1D79 /* CoreVideo.framework */; };
 		DD9B13C822C24053002D1D79 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13C722C24053002D1D79 /* VideoToolbox.framework */; };
-		DD9B13CA22C24063002D1D79 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13C922C24063002D1D79 /* OpenGL.framework */; };
 		DD9B13CC22C2406C002D1D79 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13CB22C2406C002D1D79 /* QuartzCore.framework */; };
 		DD9B13CE22C24073002D1D79 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13CD22C24073002D1D79 /* AudioToolbox.framework */; };
 		DD9B13D022C2407B002D1D79 /* AudioUnit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD9B13CF22C2407B002D1D79 /* AudioUnit.framework */; };
@@ -180,12 +178,10 @@
 		DD9B13B922C24017002D1D79 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		DD9B13BB22C2401F002D1D79 /* libbz2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libbz2.tbd; path = usr/lib/libbz2.tbd; sourceTree = SDKROOT; };
 		DD9B13BD22C24026002D1D79 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
-		DD9B13BF22C2402D002D1D79 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
 		DD9B13C122C24037002D1D79 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		DD9B13C322C24040002D1D79 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		DD9B13C522C24048002D1D79 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		DD9B13C722C24053002D1D79 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
-		DD9B13C922C24063002D1D79 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		DD9B13CB22C2406C002D1D79 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		DD9B13CD22C24073002D1D79 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		DD9B13CF22C2407B002D1D79 /* AudioUnit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioUnit.framework; path = System/Library/Frameworks/AudioUnit.framework; sourceTree = SDKROOT; };
@@ -213,12 +209,10 @@
 				DD9B13D022C2407B002D1D79 /* AudioUnit.framework in Frameworks */,
 				DD9B13CE22C24073002D1D79 /* AudioToolbox.framework in Frameworks */,
 				DD9B13CC22C2406C002D1D79 /* QuartzCore.framework in Frameworks */,
-				DD9B13CA22C24063002D1D79 /* OpenGL.framework in Frameworks */,
 				DD9B13C822C24053002D1D79 /* VideoToolbox.framework in Frameworks */,
 				DD9B13C622C24048002D1D79 /* CoreVideo.framework in Frameworks */,
 				DD9B13C422C24040002D1D79 /* CoreMedia.framework in Frameworks */,
 				DD9B13C222C24037002D1D79 /* CoreGraphics.framework in Frameworks */,
-				DD9B13C022C2402D002D1D79 /* GLKit.framework in Frameworks */,
 				C969F8F22DCAF64100EB31DF /* FSPlayer-macOS.framework in Frameworks */,
 				DD9B13BE22C24026002D1D79 /* AVFoundation.framework in Frameworks */,
 				DD9B13BC22C2401F002D1D79 /* libbz2.tbd in Frameworks */,
@@ -383,12 +377,10 @@
 				DD9B13CF22C2407B002D1D79 /* AudioUnit.framework */,
 				DD9B13CD22C24073002D1D79 /* AudioToolbox.framework */,
 				DD9B13CB22C2406C002D1D79 /* QuartzCore.framework */,
-				DD9B13C922C24063002D1D79 /* OpenGL.framework */,
 				DD9B13C722C24053002D1D79 /* VideoToolbox.framework */,
 				DD9B13C522C24048002D1D79 /* CoreVideo.framework */,
 				DD9B13C322C24040002D1D79 /* CoreMedia.framework */,
 				DD9B13C122C24037002D1D79 /* CoreGraphics.framework */,
-				DD9B13BF22C2402D002D1D79 /* GLKit.framework */,
 				DD9B13BD22C24026002D1D79 /* AVFoundation.framework */,
 				DD9B13BB22C2401F002D1D79 /* libbz2.tbd */,
 				DD9B13B922C24017002D1D79 /* libc++.tbd */,

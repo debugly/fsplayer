@@ -635,7 +635,6 @@ static BOOL hdrAnimationShown = 0;
     [options setPlayerOptionIntValue:hwaccel forKey:@"videotoolbox_hwaccel"];
     [options setPlayerOptionIntValue:[MRCocoaBindingUserDefault accurate_seek] forKey:@"enable-accurate-seek"];
     [options setPlayerOptionIntValue:1500 forKey:@"accurate-seek-timeout"];
-    options.metalRenderer = ![MRCocoaBindingUserDefault use_opengl];
     options.showHudView = self.shouldShowHudView;
     //指定使用 HTTP 1.0 Basic auth 授权认证，可避免一次试探请求。重定向后仍旧有效
     [options setFormatOptionValue:@"1" forKey:@"auth_type2"];

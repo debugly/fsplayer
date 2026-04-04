@@ -32,13 +32,6 @@
 #include "ijkplayer/ff_subtitle_def.h"
 #import "ijksdl_gpu_metal.h"
 
-#if TARGET_OS_OSX
-#include "../mac/FSSDLGLView.h"
-#import "ijksdl_gpu_opengl_macos.h"
-#import <OpenGL/gl3.h>
-#endif
-
-
 @implementation FSOverlayAttach
 
 - (void)dealloc
@@ -204,49 +197,6 @@ void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* vie
     SDL_UnlockMutex(vout->mutex);
 }
 
-#if TARGET_OS_OSX
-@interface _IJKSDLGLTextureWrapper : NSObject<FSSDLSubtitleTextureWrapper>
-
-@property(nonatomic) GLuint texture;
-@property(nonatomic) int w;
-@property(nonatomic) int h;
-
-@end
-
-@implementation _IJKSDLGLTextureWrapper
-
-- (void)dealloc
-{
-    if (_texture) {
-        glDeleteTextures(1, &_texture);
-        _texture = 0;
-    }
-}
-
-- (GLuint)texture
-{
-    return _texture;
-}
-
-- (instancetype)initWith:(uint32_t)texture w:(int)w h:(int)h
-{
-    self = [super init];
-    if (self) {
-        self.w = w;
-        self.h = h;
-        self.texture = texture;
-    }
-    return self;
-}
-
-@end
-
-id<FSSDLSubtitleTextureWrapper> FSSDL_crate_openglTextureWrapper(uint32_t texture, int w, int h)
-{
-    return [[_IJKSDLGLTextureWrapper alloc] initWith:texture w:w h:h];
-}
-#endif
-
 SDL_TextureOverlay * SDL_TextureOverlay_Retain(SDL_TextureOverlay *t)
 {
     if (t) {
@@ -281,21 +231,7 @@ void SDL_FBOOverlayFreeP(SDL_FBOOverlay **poverlay)
 
 SDL_GPU *SDL_CreateGPU_WithContext(id context)
 {
-#if TARGET_OS_OSX
-    if ([context isKindOfClass:[NSOpenGLContext class]]) {
-        return SDL_CreateGPU_WithGLContext(context);
-    } else if (context){
-        if (@available(macOS 10.13, iOS 11.0, tvOS 12.0, *)) {
-            return SDL_CreateGPU_WithMTLDevice(context);
-        } else {
-            ALOGE("this version can't use metal!");
-            assert(0);
-        }
-    }
-#else
     return SDL_CreateGPU_WithMTLDevice(context);
-#endif
-    return NULL;
 }
 
 void SDL_GPUFreeP(SDL_GPU **pgpu)

@@ -51,7 +51,7 @@
     [options setPlayerOptionIntValue:1 forKey:@"videotoolbox_hwaccel"];
     
     
-    UIView<FSVideoRenderingProtocol> *render1 = [FSVideoRenderView createGLRenderView];
+    UIView<FSVideoRenderingProtocol> *render1 = [FSVideoRenderView createMetalRenderView];
     UIView<FSVideoRenderingProtocol> *render2 = [FSVideoRenderView createMetalRenderView];
     
     {

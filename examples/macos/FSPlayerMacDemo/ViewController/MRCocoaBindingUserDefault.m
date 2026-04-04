@@ -382,11 +382,6 @@
     return [self stringForKey:@"overlay_format"];
 }
 
-+ (BOOL)use_opengl
-{
-    return [self boolForKey:@"use_opengl"];
-}
-
 + (int)snapshot_type
 {
     return [self intForKey:@"snapshot_type"];

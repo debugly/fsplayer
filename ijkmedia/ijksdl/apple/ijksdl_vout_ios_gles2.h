@@ -28,65 +28,6 @@
 
 #import "FSVideoRenderingProtocol.h"
 
-#if TARGET_OS_OSX
-@protocol FSSDLSubtitleTextureWrapper <NSObject>
-
-@property(nonatomic) uint32_t texture;
-@property(nonatomic) int w;
-@property(nonatomic) int h;
-
-@end
-
-id<FSSDLSubtitleTextureWrapper> FSSDL_crate_openglTextureWrapper(uint32_t texture, int w, int h);
-
-// Normalized Device Coordinates
-static inline CGRect FSSDL_make_openGL_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
-{
-    float swidth  = frame.w * scale;
-    float sheight = frame.h * scale;
-    
-    float width  = viewport.width;
-    float height = viewport.height;
-    
-    //处理缩放导致的坐标变化
-    float sx = frame.x - (scale - 1.0) * frame.w * 0.5;
-    float sy = frame.y;
-    
-    if (sy > height - sheight) {
-        sy = height - sheight;
-    }
-    
-    if (sy < 0) {
-        sy = 0;
-    }
-    
-#define NDC(x) (x * 2.0 - 1.0)
-    float x = NDC(sx / width);
-    //将 y 的原始值范围 [0,(height - sheight) / height] 转化到 [-1,1] 标准化范围
-    //计算的是从上往下的距离
-    float y = NDC(sy / height);
-#undef NDC
-    
-    /*
-     (x,y)在左上角，y轴，-1在最上面，1在最下面
-     x,y--------
-     |          |
-     |----------
-     */
-    
-    if (width != 0 && height != 0) {
-        return (CGRect){
-            x,
-            y,
-            2.0 * (swidth / width),
-            2.0 * (sheight / height)
-        };
-    }
-    return CGRectZero;
-}
-
-#endif
-
 // Normalized Device Coordinates
 static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
 {

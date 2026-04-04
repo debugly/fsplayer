@@ -69,7 +69,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (float)audio_delay;
 + (NSString *)overlay_format;
-+ (BOOL)use_opengl;
 + (int)snapshot_type;
 
 @end

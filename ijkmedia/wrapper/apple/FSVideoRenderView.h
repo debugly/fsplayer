@@ -28,11 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FSVideoRenderView : NSObject
 
-#if TARGET_OS_OSX
-+ (UIView<FSVideoRenderingProtocol> *)createGLRenderView;
-#endif
-
-+ (UIView<FSVideoRenderingProtocol> *)createMetalRenderView NS_AVAILABLE(10_13, 11_0);
++ (UIView<FSVideoRenderingProtocol> *)createMetalRenderView;
 
 @end
 

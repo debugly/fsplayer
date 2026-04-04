@@ -48,8 +48,8 @@
     //the user-agent option is deprecated, please use user_agent option
     [options setFormatOptionValue:@"fsplayer"           forKey:@"user_agent"];
 
-    options.showHudView   = NO;
-    options.metalRenderer = YES;
+    options.showHudView = NO;
+    
     options.automaticallySetupAudioSession = YES;
     if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
         options.currentPlaybackTimeNotificationInterval = 0;

@@ -99,7 +99,6 @@
     //开启硬解
     [options setPlayerOptionIntValue:isVideoToolBox forKey:@"videotoolbox_hwaccel"];
 
-    options.metalRenderer = YES;
     options.automaticallySetupAudioSession = YES;
     options.currentPlaybackTimeNotificationInterval = 0.5;
     
@@ -189,6 +188,7 @@
 
 - (IBAction)onClickOrientation:(UIBarButtonItem *)sender
 {
+#ifdef __IPHONE_16_0
     if (@available(iOS 16.0, *)) {
         [self setNeedsUpdateOfSupportedInterfaceOrientations];
         
@@ -203,6 +203,7 @@
             
         }];
     }
+#endif
 }
 
 - (IBAction)onClickPlay:(id)sender
