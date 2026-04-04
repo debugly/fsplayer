@@ -31,7 +31,7 @@ targets:
         headerVisibility: public
     settings:
       PRODUCT_NAME: FSPlayer
-      MARKETING_VERSION: 1.0.5
+      MARKETING_VERSION: 1.0.6
       DEFINES_MODULE: YES
       CLANG_WARN_DOCUMENTATION_COMMENTS: NO
       MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-macos.modulemap"
@@ -147,7 +147,7 @@ targets:
         headerVisibility: public
     settings:
       PRODUCT_NAME: FSPlayer
-      MARKETING_VERSION: 1.0.5
+      MARKETING_VERSION: 1.0.6
       DEFINES_MODULE: YES
       CLANG_WARN_DOCUMENTATION_COMMENTS: NO
       MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-ios.modulemap"
@@ -257,7 +257,7 @@ targets:
         headerVisibility: public
     settings:
       PRODUCT_NAME: FSPlayer
-      MARKETING_VERSION: 1.0.5
+      MARKETING_VERSION: 1.0.6
       DEFINES_MODULE: YES
       CLANG_WARN_DOCUMENTATION_COMMENTS: NO
       MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-tvos.modulemap"
