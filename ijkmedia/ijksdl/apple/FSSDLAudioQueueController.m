@@ -124,9 +124,11 @@
     for (int i = 0;i < kIJKAudioQueueNumberBuffers; i++)
     {
         AudioQueueAllocateBuffer(audioQueueRef, aSpec.size, &_audioQueueBufferRefArray[i]);
-        _audioQueueBufferRefArray[i]->mAudioDataByteSize = aSpec.size;
-        memset(_audioQueueBufferRefArray[i]->mAudioData, 0, aSpec.size);
-        AudioQueueEnqueueBuffer(audioQueueRef, _audioQueueBufferRefArray[i], 0, NULL);
+        if (_audioQueueBufferRefArray[i] && _audioQueueBufferRefArray[i]->mAudioData) {
+            _audioQueueBufferRefArray[i]->mAudioDataByteSize = aSpec.size;
+            memset(_audioQueueBufferRefArray[i]->mAudioData, 0, aSpec.size);
+            AudioQueueEnqueueBuffer(audioQueueRef, _audioQueueBufferRefArray[i], 0, NULL);
+        }
     }
     
     _spec = aSpec;
@@ -297,7 +299,7 @@
 
 static void FSSDLAudioQueueOuptutCallback(void * inUserData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer) {
     @autoreleasepool {
-        if (inUserData == NULL) {
+        if (inUserData == NULL || inAQ == NULL || inBuffer == NULL) {
             return;
         }
         
