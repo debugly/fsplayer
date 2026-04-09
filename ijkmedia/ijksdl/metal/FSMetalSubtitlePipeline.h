@@ -19,7 +19,6 @@ typedef enum : NSUInteger {
     FSMetalSubtitleInFormatA8,
 } FSMetalSubtitleInFormat;
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 @interface FSMetalSubtitlePipeline : NSObject
 
 - (instancetype)initWithDevice:(id<MTLDevice>)device

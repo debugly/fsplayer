@@ -10,7 +10,7 @@
 #import <CoreVideo/CVPixelBuffer.h>
 
 NS_ASSUME_NONNULL_BEGIN
-NS_CLASS_AVAILABLE(10_13, 11_0)
+
 @interface FSMetalPipelineMeta : NSObject
 
 @property (nonatomic) BOOL hdr;

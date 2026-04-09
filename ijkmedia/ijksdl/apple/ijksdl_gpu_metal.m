@@ -37,8 +37,7 @@ typedef struct SDL_TextureOverlay_Opaque_Metal {
     id<MTLTexture>texture;
 } SDL_TextureOverlay_Opaque_Metal;
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
-typedef struct API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0)) SDL_FBOOverlay_Opaque_Metal {
+typedef struct SDL_FBOOverlay_Opaque_Metal {
     SDL_TextureOverlay *texture;
     FSMetalFBO* fbo;
     id<MTLCommandQueue>commandQueue;
@@ -203,7 +202,6 @@ static SDL_TextureOverlay *createTexture(SDL_GPU *gpu, int w, int h, SDL_TEXTURE
 
 #pragma mark - FBO Metal
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static SDL_FBOOverlay *createMetalFBO(id<MTLDevice> device, int w, int h)
 {
     if (!device) {
@@ -236,7 +234,6 @@ static SDL_FBOOverlay *createMetalFBO(id<MTLDevice> device, int w, int h)
 
 #pragma mark - FBO
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static void beginDraw_fbo(SDL_GPU *gpu, SDL_FBOOverlay *overlay, int ass)
 {
     if (!gpu || !gpu->opaque || !overlay || !overlay->opaque) {
@@ -249,13 +246,9 @@ static void beginDraw_fbo(SDL_GPU *gpu, SDL_FBOOverlay *overlay, int ass)
         
     } else {
         if (!fop->subPipeline) {
-            if (@available(macOS 10.13, *)) {
-                FSMetalSubtitlePipeline *subPipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:gop->device inFormat:FSMetalSubtitleInFormatA8 outFormat:FSMetalSubtitleOutFormatDIRECT];
-                if ([subPipeline createRenderPipelineIfNeed]) {
-                    fop->subPipeline = subPipeline;
-                }
-            } else {
-                // Fallback on earlier versions
+            FSMetalSubtitlePipeline *subPipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:gop->device inFormat:FSMetalSubtitleInFormatA8 outFormat:FSMetalSubtitleOutFormatDIRECT];
+            if ([subPipeline createRenderPipelineIfNeed]) {
+                fop->subPipeline = subPipeline;
             }
         }
         
@@ -273,7 +266,6 @@ static void beginDraw_fbo(SDL_GPU *gpu, SDL_FBOOverlay *overlay, int ass)
     }
 }
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static void drawTexture_fbo(SDL_GPU *gpu, SDL_FBOOverlay *foverlay, SDL_TextureOverlay *toverlay, SDL_Rectangle frame)
 {
     if (!foverlay || !toverlay) {
@@ -288,7 +280,6 @@ static void drawTexture_fbo(SDL_GPU *gpu, SDL_FBOOverlay *foverlay, SDL_TextureO
     [fop->subPipeline drawTexture:texture encoder:fop->renderEncoder colors:toverlay->palette];
 }
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static void endDraw_fbo(SDL_GPU *gpu, SDL_FBOOverlay *overlay)
 {
     if (!overlay || !overlay->opaque) {
@@ -313,7 +304,6 @@ static void clear_fbo(SDL_FBOOverlay *overlay)
     
 }
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static void dealloc_fbo(SDL_FBOOverlay *overlay)
 {
     if (!overlay || !overlay->opaque) {
@@ -331,7 +321,6 @@ static void dealloc_fbo(SDL_FBOOverlay *overlay)
     free(fop);
 }
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static SDL_TextureOverlay * getTexture_fbo(SDL_FBOOverlay *foverlay)
 {
     if (!foverlay || !foverlay->opaque) {
@@ -346,7 +335,6 @@ static SDL_TextureOverlay * getTexture_fbo(SDL_FBOOverlay *foverlay)
     return SDL_TextureOverlay_Retain(fop->texture);
 }
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 static SDL_FBOOverlay *createFBO(SDL_GPU *gpu, int w, int h)
 {
     if (!gpu || !gpu->opaque) {
@@ -383,7 +371,6 @@ static void dealloc_gpu(SDL_GPU *gpu)
     free(gop);
 }
 
-API_AVAILABLE(macos(10.13),ios(11.0),tvos(12.0))
 SDL_GPU *SDL_CreateGPU_WithMTLDevice(id<MTLDevice>device)
 {
     if (!device) {

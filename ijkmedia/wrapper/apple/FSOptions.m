@@ -51,11 +51,7 @@
     options.showHudView = NO;
     
     options.automaticallySetupAudioSession = YES;
-    if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
-        options.currentPlaybackTimeNotificationInterval = 0;
-    } else {
-        // Fallback on earlier versions
-    }
+    options.currentPlaybackTimeNotificationInterval = 0;
     return options;
 }
 

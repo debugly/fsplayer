@@ -10,7 +10,7 @@
 #import "FSMetalShaderTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
-NS_CLASS_AVAILABLE(10_13, 11_0)
+
 @interface FSMetalRenderer : NSObject
 
 @property (nonatomic, assign) float rotateDegrees;

@@ -67,7 +67,7 @@ NS_ASSUME_NONNULL_BEGIN
 //setup audio session use AVAudioSessionCategoryPlayback, observer and handle interrupt event on iOS platform
 @property(nonatomic) BOOL automaticallySetupAudioSession;
 //default is 0, when the value is 0, it is not turned on.
-@property(nonatomic) NSTimeInterval currentPlaybackTimeNotificationInterval API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0));
+@property(nonatomic) NSTimeInterval currentPlaybackTimeNotificationInterval;
 
 @end
 NS_ASSUME_NONNULL_END
