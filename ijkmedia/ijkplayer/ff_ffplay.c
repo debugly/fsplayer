@@ -3296,64 +3296,104 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     st->discard = AVDISCARD_DEFAULT;
     switch (avctx->codec_type) {
     case AVMEDIA_TYPE_AUDIO:
-#if CONFIG_AUDIO_AVFILTER
         {
-            AVFilterContext *sink;
-
-            is->audio_filter_src.freq           = avctx->sample_rate;
-            ret = av_channel_layout_copy(&is->audio_filter_src.ch_layout, &avctx->ch_layout);
-            if (ret < 0)
-                goto fail;
-            is->audio_filter_src.fmt            = avctx->sample_fmt;
-            SDL_LockMutex(ffp->af_mutex);
-            if ((ret = configure_audio_filters(ffp, ffp->afilters, 0)) < 0) {
-                SDL_UnlockMutex(ffp->af_mutex);
-                goto fail;
+            // [Audio] Some codecs (e.g. pcm_dvd in DVD-ISO) cannot expose their
+            // parameters (channels / sample_rate / sample_fmt) during probing because
+            // the values are embedded in each packet's private header and are only
+            // revealed after the first decode.  avcodec_open2 still succeeds but the
+            // context fields remain 0 / NONE.  Set DVD-safe defaults here so that
+            // audio_open can initialise the Audio output.
+            // The audio_thread will detect the mismatch on the first real frame and
+            // call swr_init again with frame's true parameters.
+            // I see the avctx's sample_fmt also update,but use the frame is better.
+            int is_inband_param_codec = avctx->codec_id == AV_CODEC_ID_PCM_DVD ||
+                avctx->codec_id == AV_CODEC_ID_PCM_S16BE_PLANAR ||
+                avctx->codec_id == AV_CODEC_ID_ADPCM_G722 ||
+                avctx->codec_id == AV_CODEC_ID_ADPCM_G726;
+            
+            if (is_inband_param_codec) {
+                if (avctx->ch_layout.nb_channels == 0) {
+                    av_log(NULL, AV_LOG_WARNING,
+                        "[Audio] codec '%s' reports 0 channels after avcodec_open2,"
+                        " defaulting to stereo\n",
+                        avcodec_get_name(avctx->codec_id));
+                    av_channel_layout_uninit(&avctx->ch_layout);
+                    av_channel_layout_default(&avctx->ch_layout, 2);
+                }
+                if (avctx->sample_rate == 0) {
+                    av_log(NULL, AV_LOG_WARNING,
+                        "[Audio] codec '%s' reports 0 sample_rate after avcodec_open2,"
+                        " defaulting to 48000 Hz\n",
+                        avcodec_get_name(avctx->codec_id));
+                    avctx->sample_rate = 48000;
+                }
+                if (avctx->sample_fmt == AV_SAMPLE_FMT_NONE) {
+                    av_log(NULL, AV_LOG_WARNING,
+                        "[Audio] codec '%s' reports no sample_fmt after avcodec_open2,"
+                        " defaulting to s32\n",
+                        avcodec_get_name(avctx->codec_id));
+                    avctx->sample_fmt = AV_SAMPLE_FMT_S16;
+                }
             }
-            ffp->af_changed = 0;
-            SDL_UnlockMutex(ffp->af_mutex);
-            sink = is->out_audio_filter;
-            sample_rate    = av_buffersink_get_sample_rate(sink);
-            ret = av_buffersink_get_ch_layout(sink, &ch_layout);
+    #if CONFIG_AUDIO_AVFILTER
+            {
+                AVFilterContext *sink;
+
+                is->audio_filter_src.freq           = avctx->sample_rate;
+                ret = av_channel_layout_copy(&is->audio_filter_src.ch_layout, &avctx->ch_layout);
+                if (ret < 0)
+                    goto fail;
+                is->audio_filter_src.fmt            = avctx->sample_fmt;
+                SDL_LockMutex(ffp->af_mutex);
+                if ((ret = configure_audio_filters(ffp, ffp->afilters, 0)) < 0) {
+                    SDL_UnlockMutex(ffp->af_mutex);
+                    goto fail;
+                }
+                ffp->af_changed = 0;
+                SDL_UnlockMutex(ffp->af_mutex);
+                sink = is->out_audio_filter;
+                sample_rate    = av_buffersink_get_sample_rate(sink);
+                ret = av_buffersink_get_ch_layout(sink, &ch_layout);
+                if (ret < 0)
+                    goto fail;
+            }
+    #else
+            sample_rate    = avctx->sample_rate;
+            ret = av_channel_layout_copy(&ch_layout, &avctx->ch_layout);
             if (ret < 0)
                 goto fail;
+    #endif
+            /* prepare audio output */
+            if ((ret = audio_open(ffp, &ch_layout, sample_rate, &is->audio_tgt)) < 0)
+                goto fail;
+            ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
+            is->audio_hw_buf_size = ret;
+            is->audio_src = is->audio_tgt;
+            is->audio_buf_size  = 0;
+            is->audio_buf_index = 0;
+
+            /* init averaging filter */
+            is->audio_diff_avg_coef  = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
+            is->audio_diff_avg_count = 0;
+            /* since we do not have a precise anough audio FIFO fullness,
+               we correct audio sync only if larger than this threshold */
+            is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
+
+            is->audio_stream = stream_index;
+            is->audio_st = st;
+
+            if((ret = decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread)) < 0)
+                goto fail;
+
+            if (is->ic->iformat->flags & AVFMT_NOTIMESTAMPS) {
+                is->auddec.start_pts = is->audio_st->start_time;
+                is->auddec.start_pts_tb = is->audio_st->time_base;
+            }
+            if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
+                goto out;
+            SDL_AoutPauseAudio(ffp->aout, 0);
+            _ijkmeta_set_stream(ffp, avctx->codec_type, stream_index);
         }
-#else
-        sample_rate    = avctx->sample_rate;
-        ret = av_channel_layout_copy(&ch_layout, &avctx->ch_layout);
-        if (ret < 0)
-            goto fail;
-#endif
-        /* prepare audio output */
-        if ((ret = audio_open(ffp, &ch_layout, sample_rate, &is->audio_tgt)) < 0)
-            goto fail;
-        ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
-        is->audio_hw_buf_size = ret;
-        is->audio_src = is->audio_tgt;
-        is->audio_buf_size  = 0;
-        is->audio_buf_index = 0;
-
-        /* init averaging filter */
-        is->audio_diff_avg_coef  = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
-        is->audio_diff_avg_count = 0;
-        /* since we do not have a precise anough audio FIFO fullness,
-           we correct audio sync only if larger than this threshold */
-        is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
-
-        is->audio_stream = stream_index;
-        is->audio_st = st;
-
-        if((ret = decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread)) < 0)
-            goto fail;
-
-        if (is->ic->iformat->flags & AVFMT_NOTIMESTAMPS) {
-            is->auddec.start_pts = is->audio_st->start_time;
-            is->auddec.start_pts_tb = is->audio_st->time_base;
-        }
-        if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
-            goto out;
-        SDL_AoutPauseAudio(ffp->aout, 0);
-        _ijkmeta_set_stream(ffp, avctx->codec_type, stream_index);
         break;
     case AVMEDIA_TYPE_VIDEO:
         is->video_stream = stream_index;
@@ -3698,12 +3738,42 @@ static int read_thread(void *arg)
         st_index[AVMEDIA_TYPE_VIDEO] =
             av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO,
                                 st_index[AVMEDIA_TYPE_VIDEO], -1, NULL, 0);
-    if (!ffp->audio_disable)
+    
+    if (!ffp->audio_disable) {
         st_index[AVMEDIA_TYPE_AUDIO] =
             av_find_best_stream(ic, AVMEDIA_TYPE_AUDIO,
                                 st_index[AVMEDIA_TYPE_AUDIO],
                                 st_index[AVMEDIA_TYPE_VIDEO],
                                 NULL, 0);
+        // [Audio] Fallback: av_find_best_stream skips audio streams whose codec params
+        // (nb_channels / sample_rate) are 0 – this happens with pcm_dvd in DVD-ISO
+        // files when avformat_find_stream_info hits max_analyze_duration before it can
+        // decode the first LPCM private-stream header.  Scan all streams manually and
+        // select the first audio stream for which a decoder exists.
+        if (st_index[AVMEDIA_TYPE_AUDIO] < 0) {
+            for (int fbs_i = 0; fbs_i < (int)ic->nb_streams; fbs_i++) {
+                AVStream *fbs_st = ic->streams[fbs_i];
+                if (fbs_st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+                    enum AVCodecID codec_id = fbs_st->codecpar->codec_id;
+                    int is_inband_param_codec = codec_id == AV_CODEC_ID_PCM_DVD ||
+                                                codec_id == AV_CODEC_ID_PCM_S16BE_PLANAR ||
+                                                codec_id == AV_CODEC_ID_ADPCM_G722 ||
+                                                codec_id == AV_CODEC_ID_ADPCM_G726;
+                    if (avcodec_find_decoder(codec_id) != NULL && is_inband_param_codec) {
+                        av_log(NULL, AV_LOG_WARNING,
+                            "[Audio] av_find_best_stream returned -1 (incomplete codec params),"
+                            " fallback to stream %d codec=%s channels=%d sample_rate=%d\n",
+                            fbs_i, avcodec_get_name(fbs_st->codecpar->codec_id),
+                            fbs_st->codecpar->ch_layout.nb_channels,
+                            fbs_st->codecpar->sample_rate);
+                        st_index[AVMEDIA_TYPE_AUDIO] = fbs_i;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+   
     if (!ffp->video_disable && !ffp->subtitle_disable)
         st_index[AVMEDIA_TYPE_SUBTITLE] =
             av_find_best_stream(ic, AVMEDIA_TYPE_SUBTITLE,
