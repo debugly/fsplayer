@@ -56,6 +56,9 @@ static void apply_preference(FFSubComponent *com)
 {
     if (com->assRenderer) {
         int playResY = com->assRenderer->iformat->get_PlayResY(com->assRenderer);
+        if (playResY < 0) {
+            return;
+        }
         int marginV = com->sp.BottomMargin * playResY;
         com->assRenderer->iformat->set_font_scale(com->assRenderer, com->sp.Scale);
         char style[256] = {0};
