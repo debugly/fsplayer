@@ -77,7 +77,6 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) NSArray * _Nullable videoTextures;
 
 // HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
-// videoPicture 一般为 nil（或仅作占位用）。
 @property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
 
 @property(nonatomic) SDL_TextureOverlay * _Nullable overlay;

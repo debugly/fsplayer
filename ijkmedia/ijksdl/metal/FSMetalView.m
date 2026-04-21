@@ -315,7 +315,7 @@ typedef CGRect NSRect;
 
 - (void)encodePicture:(FSOverlayAttach *)attach
         renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
-             viewport:(CGSize)viewport
+         drawableSize:(CGSize)drawableSize
                 ratio:(CGSize)ratio
         hdrPercentage:(float)hdrPercentage
 {
@@ -331,14 +331,14 @@ typedef CGRect NSRect;
     self.picturePipeline.textureCrop = CGSizeMake(1.0 * (attach.pixelW - attach.w) / attach.pixelW, 1.0 * (attach.pixelH - attach.h) / attach.pixelH);
     
     // Set the region of the drawable to draw into.
-    [renderEncoder setViewport:(MTLViewport){0.0, 0.0, viewport.width, viewport.height, -1.0, 1.0}];
+    [renderEncoder setViewport:(MTLViewport){0.0, 0.0, drawableSize.width, drawableSize.height, -1.0, 1.0}];
     //upload textures
     [self.picturePipeline uploadTextureWithEncoder:renderEncoder
                                           textures:attach.videoTextures];
 }
 
 - (void)encodeSubtitle:(id<MTLRenderCommandEncoder>)renderEncoder
-              viewport:(CGSize)viewport
+          drawableSize:(CGSize)viewport
                texture:(id<MTLTexture>)subTexture
 {
     // Set the region of the drawable to draw into.
@@ -385,15 +385,10 @@ typedef CGRect NSRect;
 
 - (void)encodeTilePieces:(FSOverlayAttach *)attach
            renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
-                viewport:(CGSize)drawableSize
+            drawableSize:(CGSize)drawableSize
                    ratio:(CGSize)ratio
            hdrPercentage:(float)hdrPercentage
 {
-    // 先算出 canvas 在屏幕上的目标矩形
-    MTLViewport canvas_vp = [self computeCanvasViewport:attach drawableSize:drawableSize ratio:ratio];
-    double canvas_w = attach.w > 0 ? attach.w : 1;
-    double canvas_h = attach.h > 0 ? attach.h : 1;
-
     self.picturePipeline.hdrPercentage = hdrPercentage;
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
@@ -403,13 +398,21 @@ typedef CGRect NSRect;
     [self.picturePipeline updateColorAdjustment:(vector_float4){_colorPreference.brightness,_colorPreference.saturation,_colorPreference.contrast,applyAdjust ? 1.0 : 0.0}];
     // tile 绘制：顶点全屏、不裁剪（每个 tile 视口就是它在 canvas 的对应位置）
     self.picturePipeline.vertexRatio = CGSizeMake(1.0, 1.0);
-    self.picturePipeline.textureCrop = CGSizeZero;
-
+    
+    // 先算出合并后区域在屏幕上的目标矩形
+    MTLViewport display_vp = [self computeCanvasViewport:attach drawableSize:drawableSize ratio:ratio];
+    
+    //canvas=3584x2560   (pixelW,pixelH)
+    //display=3464x2130 （w,h）
+    
+    double display_w = attach.w;
+    double display_h = attach.h;
+    
     CVMetalTextureCacheRef textureCache = NULL;
 #if TARGET_CPU_ARM64
     textureCache = _pictureTextureCache;
 #endif
-
+    
     for (FSTilePiece *piece in attach.tilePieces) {
         if (!piece.pixelBuffer || piece.w <= 0 || piece.h <= 0) continue;
         if (!piece.textures) {
@@ -419,21 +422,40 @@ typedef CGRect NSRect;
         }
         if (!piece.textures) continue;
 
-        // tile 在 canvas 上的归一化位置
-        double nx = (double)piece.x / canvas_w;
-        double ny = (double)piece.y / canvas_h;
-        double nw = (double)piece.w / canvas_w;
-        double nh = (double)piece.h / canvas_h;
-
-        // 映射到屏幕
+        // 边缘处理：如果这个 Tile 位于最右边或最下面，它的物理尺寸可能包含了 Padding
+        // 我们需要通过计算实际的显示区域，然后确定出一个 Viewport，和纹理的裁剪区域
+        double valid_w = piece.w;
+        if (piece.x + piece.w > display_w) {
+            valid_w = display_w - piece.x;
+        }
+        
+        double valid_h = piece.h;
+        if (piece.y + piece.h > display_h) {
+            valid_h = display_h - piece.y;
+        }
+        
+        // tile 在 显示尺寸 上的归一化位置
+        double nx = (double)piece.x / display_w;
+        double ny = (double)piece.y / display_h;
+        double nw = (double)valid_w / display_w;
+        double nh = (double)valid_h / display_h;
+        
+        // 映射到显示到屏幕的区域
         // 注意 Metal viewport 的原点在左上（y 向下），drawable 坐标同向，直接计算即可
         MTLViewport tile_vp;
-        tile_vp.originX = canvas_vp.originX + nx * canvas_vp.width;
-        tile_vp.originY = canvas_vp.originY + ny * canvas_vp.height;
-        tile_vp.width   = nw * canvas_vp.width;
-        tile_vp.height  = nh * canvas_vp.height;
+        tile_vp.originX = display_vp.originX + nx * display_vp.width;
+        tile_vp.originY = display_vp.originY + ny * display_vp.height;
+        tile_vp.width   = nw * display_vp.width;
+        tile_vp.height  = nh * display_vp.height;
         tile_vp.znear   = -1.0;
         tile_vp.zfar    =  1.0;
+
+        // 计算该 Tile 纹理内部的裁剪比例
+        // textureCrop 的定义是：需要减去的百分比
+        // 比如 Tile 宽 512，有效 392，则需剪掉 (512-392)/512
+        float cropX = (float)(piece.w - valid_w) / piece.w;
+        float cropY = (float)(piece.h - valid_h) / piece.h;
+        self.picturePipeline.textureCrop = CGSizeMake(cropX, cropY);
 
         [renderEncoder setViewport:tile_vp];
         [self.picturePipeline uploadTextureWithEncoder:renderEncoder textures:piece.textures];
@@ -512,9 +534,9 @@ typedef CGRect NSRect;
     }
     
     //draw textures
-    CGSize viewport = self.drawableSize;
+    CGSize drawableSize = self.drawableSize;
     
-    CGSize ratio = [self computeNormalizedVerticesRatio:currentAttach drawableSize:viewport];
+    CGSize ratio = [self computeNormalizedVerticesRatio:currentAttach drawableSize:drawableSize];
     
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     
@@ -556,20 +578,20 @@ typedef CGRect NSRect;
     if (hasTileGrid) {
         [self encodeTilePieces:currentAttach
                  renderEncoder:renderEncoder
-                      viewport:viewport
+                  drawableSize:drawableSize
                          ratio:ratio
                  hdrPercentage:hdrPer];
     } else {
         [self encodePicture:currentAttach
               renderEncoder:renderEncoder
-                   viewport:viewport
+               drawableSize:drawableSize
                       ratio:ratio
               hdrPercentage:hdrPer];
     }
     
     if (currentAttach.subTexture) {
         [self encodeSubtitle:renderEncoder
-                    viewport:viewport
+                drawableSize:drawableSize
                      texture:currentAttach.subTexture];
     }
     //[renderEncoder popDebugGroup];
@@ -655,13 +677,13 @@ typedef CGRect NSRect;
         
         [self encodePicture:attach
               renderEncoder:renderEncoder
-                   viewport:viewport
+               drawableSize:viewport
                       ratio:CGSizeMake(1.0, 1.0)
               hdrPercentage:1.0];
         
         if (drawSub && attach.subTexture) {
             [self encodeSubtitle:renderEncoder
-                        viewport:viewport
+                    drawableSize:viewport
                          texture:attach.subTexture];
         }
     }];
@@ -717,21 +739,21 @@ typedef CGRect NSRect;
         return NULL;
     }
     
-    CGSize viewport = self.drawableSize;
-    CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
+    CGSize drawableSize = self.drawableSize;
+    CGImageRef result = [self.offscreenRendering snapshot:drawableSize device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
         CVPixelBufferRef pixelBuffer = attach.videoPicture;
         if (pixelBuffer) {
-            CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:viewport];
+            CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:drawableSize];
             [self encodePicture:attach
                   renderEncoder:renderEncoder
-                       viewport:viewport
+                   drawableSize:drawableSize
                           ratio:ratio
                   hdrPercentage:1.0];
         }
         
         if (attach.subTexture) {
             [self encodeSubtitle:renderEncoder
-                        viewport:viewport
+                    drawableSize:drawableSize
                          texture:attach.subTexture];
         }
     }];

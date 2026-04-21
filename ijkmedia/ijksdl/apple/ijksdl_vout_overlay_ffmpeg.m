@@ -420,8 +420,8 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             overlay->is_tile_grid   = 1;
             overlay->tile_canvas_w  = tmeta->canvas_w;
             overlay->tile_canvas_h  = tmeta->canvas_h;
-            overlay->w              = tmeta->canvas_w;
-            overlay->h              = tmeta->canvas_h;
+            overlay->w              = tmeta->w;
+            overlay->h              = tmeta->h;
         }
 
         int idx = tmeta->tile_index;

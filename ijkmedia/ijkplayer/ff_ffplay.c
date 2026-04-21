@@ -4159,6 +4159,8 @@ static int read_thread(void *arg)
                                 meta->nb_tiles   = (int)grid->nb_tiles;
                                 meta->canvas_w   = grid->coded_width;
                                 meta->canvas_h   = grid->coded_height;
+                                meta->w          = grid->width;
+                                meta->h          = grid->height;
                                 meta->tile_x     = tile_x;
                                 meta->tile_y     = tile_y;
                                 meta->tile_w     = tile_st->codecpar ? tile_st->codecpar->width  : 0;

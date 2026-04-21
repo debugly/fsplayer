@@ -16,8 +16,10 @@
 typedef struct FSTileGridMetadata {
     int tile_index;     // 0-based index within the tile-grid group
     int nb_tiles;       // total tile count of this group
-    int canvas_w;       // full canvas width  (grid->coded_width)
-    int canvas_h;       // full canvas height (grid->coded_height)
+    int canvas_w;       // full canvas width  (grid->coded_width) contain padding
+    int canvas_h;       // full canvas height (grid->coded_height) contain padding
+    int w;              // display width  (grid->width)
+    int h;              // display height (grid->height)
     int tile_x;         // tile's top-left x on canvas
     int tile_y;         // tile's top-left y on canvas
     int tile_w;         // tile's intrinsic width

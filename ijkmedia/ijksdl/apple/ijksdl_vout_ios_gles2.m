@@ -165,8 +165,8 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         int got = SDL_VoutOverlay_GetTileCVPixelBuffers(overlay, bufs, xs, ys, ws, hs, count);
 
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
-        attach.w = overlay->tile_canvas_w;
-        attach.h = overlay->tile_canvas_h;
+        attach.w = overlay->w;
+        attach.h = overlay->h;
         attach.pixelW = overlay->tile_canvas_w;
         attach.pixelH = overlay->tile_canvas_h;
         attach.fps    = overlay->fps;
