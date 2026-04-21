@@ -369,6 +369,77 @@ typedef CGRect NSRect;
     });
 }
 
+// 计算 canvas 在 drawable 中按 scalingMode + sar + rotate 贴合后的目标矩形 (viewport 坐标系, origin 左下)
+- (MTLViewport)computeCanvasViewport:(FSOverlayAttach *)attach
+                        drawableSize:(CGSize)drawableSize
+                               ratio:(CGSize)ratio
+{
+    // 这里复用 encodePicture 的思路：顶点用 [-ratio.w,+ratio.w] × [-ratio.h,+ratio.h]
+    // 最终映射到 [0,drawable.w]×[0,drawable.h]。直接按 ratio 算 canvas 在屏幕的矩形。
+    double cw = drawableSize.width  * ratio.width;
+    double ch = drawableSize.height * ratio.height;
+    double cx = (drawableSize.width  - cw) * 0.5;
+    double cy = (drawableSize.height - ch) * 0.5;
+    return (MTLViewport){cx, cy, cw, ch, -1.0, 1.0};
+}
+
+- (void)encodeTilePieces:(FSOverlayAttach *)attach
+           renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
+                viewport:(CGSize)drawableSize
+                   ratio:(CGSize)ratio
+           hdrPercentage:(float)hdrPercentage
+{
+    // 先算出 canvas 在屏幕上的目标矩形
+    MTLViewport canvas_vp = [self computeCanvasViewport:attach drawableSize:drawableSize ratio:ratio];
+    double canvas_w = attach.w > 0 ? attach.w : 1;
+    double canvas_h = attach.h > 0 ? attach.h : 1;
+
+    self.picturePipeline.hdrPercentage = hdrPercentage;
+    self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
+    self.picturePipeline.rotateType = self.rotatePreference.type;
+    self.picturePipeline.rotateDegrees = self.rotatePreference.degrees;
+
+    bool applyAdjust = _colorPreference.brightness != 1.0 || _colorPreference.saturation != 1.0 || _colorPreference.contrast != 1.0;
+    [self.picturePipeline updateColorAdjustment:(vector_float4){_colorPreference.brightness,_colorPreference.saturation,_colorPreference.contrast,applyAdjust ? 1.0 : 0.0}];
+    // tile 绘制：顶点全屏、不裁剪（每个 tile 视口就是它在 canvas 的对应位置）
+    self.picturePipeline.vertexRatio = CGSizeMake(1.0, 1.0);
+    self.picturePipeline.textureCrop = CGSizeZero;
+
+    CVMetalTextureCacheRef textureCache = NULL;
+#if TARGET_CPU_ARM64
+    textureCache = _pictureTextureCache;
+#endif
+
+    for (FSTilePiece *piece in attach.tilePieces) {
+        if (!piece.pixelBuffer || piece.w <= 0 || piece.h <= 0) continue;
+        if (!piece.textures) {
+            piece.textures = [[self class] doGenerateTexture:piece.pixelBuffer
+                                                textureCache:textureCache
+                                                      device:self.device];
+        }
+        if (!piece.textures) continue;
+
+        // tile 在 canvas 上的归一化位置
+        double nx = (double)piece.x / canvas_w;
+        double ny = (double)piece.y / canvas_h;
+        double nw = (double)piece.w / canvas_w;
+        double nh = (double)piece.h / canvas_h;
+
+        // 映射到屏幕
+        // 注意 Metal viewport 的原点在左上（y 向下），drawable 坐标同向，直接计算即可
+        MTLViewport tile_vp;
+        tile_vp.originX = canvas_vp.originX + nx * canvas_vp.width;
+        tile_vp.originY = canvas_vp.originY + ny * canvas_vp.height;
+        tile_vp.width   = nw * canvas_vp.width;
+        tile_vp.height  = nh * canvas_vp.height;
+        tile_vp.znear   = -1.0;
+        tile_vp.zfar    =  1.0;
+
+        [renderEncoder setViewport:tile_vp];
+        [self.picturePipeline uploadTextureWithEncoder:renderEncoder textures:piece.textures];
+    }
+}
+
 // [self draw] drived
 - (void)drawRect:(NSRect)dirtyRect
 {
@@ -385,9 +456,10 @@ typedef CGRect NSRect;
     }
     
     FSOverlayAttach *currentAttach = self.drawingAttach;
-    
+    BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
+
     //Clean Background Color
-    if (!currentAttach.videoPicture) {
+    if (!currentAttach.videoPicture && !hasTileGrid) {
         if (self.needCleanBackgroundColor) {
             id<MTLTexture> texture = drawable.texture;
 
@@ -409,8 +481,14 @@ typedef CGRect NSRect;
     
     [self.renderSnapshotLock lock];
     self.drawingAttach = nil;
-    
-    if (![self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha]) {
+
+    // pipeline 需要一个参考 pixelBuffer（用第一个 tile 的）
+    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
+    if (!pipelineRef && hasTileGrid) {
+        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
+    }
+
+    if (![self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return;
     }
@@ -419,9 +497,9 @@ typedef CGRect NSRect;
         [self.renderSnapshotLock unlock];
         return;
     }
-    
-    //generate textures
-    if (!currentAttach.videoTextures) {
+
+    //generate textures (single-frame path)
+    if (!hasTileGrid && !currentAttach.videoTextures) {
         CVMetalTextureCacheRef textureCache = NULL;
     #if TARGET_CPU_ARM64
         textureCache = _pictureTextureCache;
@@ -474,12 +552,20 @@ typedef CGRect NSRect;
             hdrPer = 0.5;
         }
     }
-    
-    [self encodePicture:currentAttach
-          renderEncoder:renderEncoder
-               viewport:viewport
-                  ratio:ratio
-          hdrPercentage:hdrPer];
+
+    if (hasTileGrid) {
+        [self encodeTilePieces:currentAttach
+                 renderEncoder:renderEncoder
+                      viewport:viewport
+                         ratio:ratio
+                 hdrPercentage:hdrPer];
+    } else {
+        [self encodePicture:currentAttach
+              renderEncoder:renderEncoder
+                   viewport:viewport
+                      ratio:ratio
+              hdrPercentage:hdrPer];
+    }
     
     if (currentAttach.subTexture) {
         [self encodeSubtitle:renderEncoder
@@ -788,9 +874,11 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
         attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
     }
-    
-    if (!attach.videoPicture) {
-        ALOGW("FSMetalView: videoPicture is nil\n");
+
+    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
+    BOOL hasTiles = (attach.tilePieces.count > 0);
+    if (!attach.videoPicture && !hasTiles) {
+        ALOGW("FSMetalView: videoPicture is nil and no tile pieces\n");
         return NO;
     }
     

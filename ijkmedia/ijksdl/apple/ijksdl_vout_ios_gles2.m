@@ -32,6 +32,18 @@
 #include "ijkplayer/ff_subtitle_def.h"
 #import "ijksdl_gpu_metal.h"
 
+@implementation FSTilePiece
+
+- (void)dealloc
+{
+    if (_pixelBuffer) {
+        CVPixelBufferRelease(_pixelBuffer);
+        _pixelBuffer = NULL;
+    }
+}
+
+@end
+
 @implementation FSOverlayAttach
 
 - (void)dealloc
@@ -40,6 +52,8 @@
         CVPixelBufferRelease(self.videoPicture);
         self.videoPicture = NULL;
     }
+    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer
+    self.tilePieces = nil;
     self.subTexture = nil;
     if (self.overlay) {
         SDL_TextureOverlay_Release(&self->_overlay);
@@ -135,7 +149,49 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
         return -4;
     }
-    
+
+    /* HEIC tile grid 路径：把所有 tile 打包到 FSOverlayAttach.tilePieces */
+    if (overlay->is_tile_grid) {
+        int count = SDL_VoutOverlay_GetTileCount(overlay);
+        if (count <= 0) {
+            ALOGE("vout_display_overlay_l: tile-grid overlay with 0 tiles\n");
+            return -5;
+        }
+        CVPixelBufferRef *bufs = (CVPixelBufferRef *)calloc(count, sizeof(CVPixelBufferRef));
+        int *xs = (int *)calloc(count, sizeof(int));
+        int *ys = (int *)calloc(count, sizeof(int));
+        int *ws = (int *)calloc(count, sizeof(int));
+        int *hs = (int *)calloc(count, sizeof(int));
+        int got = SDL_VoutOverlay_GetTileCVPixelBuffers(overlay, bufs, xs, ys, ws, hs, count);
+
+        FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
+        attach.w = overlay->tile_canvas_w;
+        attach.h = overlay->tile_canvas_h;
+        attach.pixelW = overlay->tile_canvas_w;
+        attach.pixelH = overlay->tile_canvas_h;
+        attach.fps    = overlay->fps;
+        attach.sarNum = overlay->sar_num;
+        attach.sarDen = overlay->sar_den;
+        attach.autoZRotate = overlay->auto_z_rotate_degrees;
+        attach.hasAlpha = overlay->has_alpha;
+        attach.videoPicture = NULL;
+
+        NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
+        for (int i = 0; i < got; i++) {
+            if (!bufs[i]) continue;
+            FSTilePiece *p = [[FSTilePiece alloc] init];
+            p.pixelBuffer = CVPixelBufferRetain(bufs[i]);
+            p.x = xs[i]; p.y = ys[i];
+            p.w = ws[i]; p.h = hs[i];
+            [pieces addObject:p];
+        }
+        attach.tilePieces = pieces;
+        attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
+
+        free(bufs); free(xs); free(ys); free(ws); free(hs);
+        return [gl_view displayAttach:attach];
+    }
+
     CVPixelBufferRef videoPic = SDL_Overlay_getCVPixelBufferRef(overlay);
     if (videoPic) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];

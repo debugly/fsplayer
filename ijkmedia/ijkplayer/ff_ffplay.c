@@ -43,6 +43,7 @@
 #include "libavutil/samplefmt.h"
 #include "libavutil/time.h"
 #include "libavutil/bprint.h"
+#include "libavutil/buffer.h"
 #include "libavformat/avformat.h"
 #if CONFIG_AVDEVICE
 #include "libavdevice/avdevice.h"
@@ -131,6 +132,8 @@ int cmp_audio_fmts(enum AVSampleFormat fmt1, int64_t channel_count1,
 static void free_picture(Frame *vp);
 static double consume_audio_buffer(FFPlayer *ffp, double diff);
 static void update_sample_display(FFPlayer *ffp, uint8_t *samples, int samples_size);
+
+#include "ff_heic_tile.h"
 
 static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
 {
@@ -1393,6 +1396,21 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         return -1;
 
     vp->sar = src_frame->sample_aspect_ratio;
+
+    /* HEIC tile-grid: decode 输出是每个 tile 的独立 AVFrame，
+     * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
+     * 以避免 alloc_picture 在 tile 切换时反复重建 overlay。
+     */
+    int tile_canvas_w_fix = 0;
+    int tile_canvas_h_fix = 0;
+    if (src_frame->opaque_ref &&
+        src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
+        FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
+        if (tmeta->nb_tiles > 0 && tmeta->canvas_w > 0 && tmeta->canvas_h > 0) {
+            tile_canvas_w_fix = tmeta->canvas_w;
+            tile_canvas_h_fix = tmeta->canvas_h;
+        }
+    }
     
     //TODO: windows and android plat.
     //软解时，上层指定了明确的overlay-format时需要转格式
@@ -1522,17 +1540,19 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     }
     
     /* alloc or resize hardware picture buffer */
+    int cmp_w = tile_canvas_w_fix > 0 ? tile_canvas_w_fix : src_frame->width;
+    int cmp_h = tile_canvas_h_fix > 0 ? tile_canvas_h_fix : src_frame->height;
     if (!vp->bmp || !vp->allocated ||
-        vp->width  != src_frame->width ||
-        vp->height != src_frame->height ||
+        vp->width  != cmp_w ||
+        vp->height != cmp_h ||
         vp->format != src_frame->format) {
 
-        if (vp->width != src_frame->width || vp->height != src_frame->height)
-            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, src_frame->width, src_frame->height);
+        if (vp->width != cmp_w || vp->height != cmp_h)
+            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, cmp_w, cmp_h);
 
         vp->allocated = 0;
-        vp->width = src_frame->width;
-        vp->height = src_frame->height;
+        vp->width = cmp_w;
+        vp->height = cmp_h;
         vp->format = src_frame->format;
 
         /* the allocation must be done in the main thread to avoid
@@ -1560,6 +1580,13 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         
         /* update the bitmap content */
         SDL_VoutUnlockYUVOverlay(vp->bmp);
+
+        /* HEIC tile-grid: 如果 overlay 还在累积 tile，不要 push 到渲染队列，
+         * 保留 writable 槽位给下一个 tile 继续写入。
+         */
+        if (SDL_VoutOverlay_IsTilePending(vp->bmp)) {
+            return 0;
+        }
 
         vp->pts = pts;
         vp->duration = duration;
@@ -4072,36 +4099,119 @@ static int read_thread(void *arg)
                     //packet_queue_put(&is->videoq, &flush_pkt);
                 }
             }
-            AVStream *st = ic->streams[pkt->stream_index];
-            /* check if packet is in play range specified by user, then queue, otherwise discard */
-            stream_start_time = st->start_time;
-            pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
-            pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
-                    (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
-                    av_q2d(ic->streams[pkt->stream_index]->time_base) -
-                    (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / AV_TIME_BASE
-                    <= ((double)ffp->duration / AV_TIME_BASE);
-            if (!pkt_in_play_range) {
-                av_packet_unref(pkt);
-            } else {
-                int stream_index = pkt->stream_index;
-                if (stream_index == is->audio_stream) {
-                    packet_queue_put(&is->audioq, pkt);
-                } else if (stream_index == is->video_stream
-                           && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
-                    packet_queue_put(&is->videoq, pkt);
+            
+            do {
+                
+                if (ic->nb_stream_groups > 0) {
+                    for (unsigned int i = 0; i < ic->nb_stream_groups; i++) {
+                        AVStreamGroup *group = ic->stream_groups[i];
+                        // 1. 获取该组内包含的 stream 数量
+                        unsigned int count = group->nb_streams;
+
+                        av_log(NULL, AV_LOG_INFO,
+                               "Group %u (Type: %d) contains %u streams.\n",
+                               i, group->type, count);
+
+                        // 2. 只有当类型是 Tile Grid 时，才进行拼图逻辑判断
+                        if (group->type == AV_STREAM_GROUP_PARAMS_TILE_GRID) {
+                            AVStreamGroupTileGrid *grid = group->params.tile_grid;
+                            av_log(NULL, AV_LOG_INFO,
+                                   "  Tile grid: nb_tiles=%u, canvas=%dx%d, roi=(%d,%d %dx%d)\n",
+                                   grid->nb_tiles, grid->coded_width, grid->coded_height,
+                                   grid->horizontal_offset, grid->vertical_offset,
+                                   grid->width, grid->height);
+
+                            // 3. 找到 pkt->stream_index 在 group 中的位置 j
+                            int group_stream_idx = -1;
+                            for (unsigned int j = 0; j < group->nb_streams; j++) {
+                                if (group->streams[j]->index == pkt->stream_index) {
+                                    group_stream_idx = (int)j;
+                                    break;
+                                }
+                            }
+                            if (group_stream_idx < 0) {
+                                // packet 不属于该 group，跳过
+                                continue;
+                            }
+
+                            // 4. 通过 grid->offsets[].idx 找到对应 tile
+                            int tile_index = -1;
+                            int tile_x = 0, tile_y = 0;
+                            for (unsigned int t = 0; t < grid->nb_tiles; t++) {
+                                if ((int)grid->offsets[t].idx == group_stream_idx) {
+                                    tile_index = (int)t;
+                                    tile_x = grid->offsets[t].horizontal;
+                                    tile_y = grid->offsets[t].vertical;
+                                    break;
+                                }
+                            }
+                            if (tile_index < 0) {
+                                continue;
+                            }
+
+                            AVStream *tile_st = group->streams[group_stream_idx];
+
+                            // 5. 为 packet 附加 tile 元数据 (opaque_ref)
+                            AVBufferRef *meta_buf = av_buffer_alloc(sizeof(FSTileGridMetadata));
+                            if (meta_buf) {
+                                FSTileGridMetadata *meta = (FSTileGridMetadata *)meta_buf->data;
+                                meta->tile_index = tile_index;
+                                meta->nb_tiles   = (int)grid->nb_tiles;
+                                meta->canvas_w   = grid->coded_width;
+                                meta->canvas_h   = grid->coded_height;
+                                meta->tile_x     = tile_x;
+                                meta->tile_y     = tile_y;
+                                meta->tile_w     = tile_st->codecpar ? tile_st->codecpar->width  : 0;
+                                meta->tile_h     = tile_st->codecpar ? tile_st->codecpar->height : 0;
+
+                                // 释放之前可能挂载的 opaque_ref，以防重复 put 叠加
+                                if (pkt->opaque_ref) {
+                                    av_buffer_unref(&pkt->opaque_ref);
+                                }
+                                pkt->opaque_ref = meta_buf;
+                            }
+
+                            av_log(NULL, AV_LOG_DEBUG,
+                                   "put tile packet: group=%u stream=%d tile_idx=%d pos=(%d,%d)\n",
+                                   i, pkt->stream_index, tile_index, tile_x, tile_y);
+
+                            packet_queue_put(&is->videoq, pkt);
+                        }
+                    }
+                    break;
+                }
+                
+                AVStream *st = ic->streams[pkt->stream_index];
+                /* check if packet is in play range specified by user, then queue, otherwise discard */
+                stream_start_time = st->start_time;
+                pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
+                pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
+                        (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
+                        av_q2d(ic->streams[pkt->stream_index]->time_base) -
+                        (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / AV_TIME_BASE
+                        <= ((double)ffp->duration / AV_TIME_BASE);
+                if (!pkt_in_play_range) {
+                    av_packet_unref(pkt);
                 } else {
-                    int sub_pending_stream;
-                    int sub_stream = ff_sub_get_current_stream(is->ffSub, &sub_pending_stream);
-                    if (stream_index == sub_stream && sub_pending_stream == -2) {
-                        ff_sub_put_packet(is->ffSub, pkt);
-                    } else if (stream_index == sub_pending_stream) {
-                        ff_sub_put_packet_backup(is->ffSub, pkt);
+                    int stream_index = pkt->stream_index;
+                    if (stream_index == is->audio_stream) {
+                        packet_queue_put(&is->audioq, pkt);
+                    } else if (stream_index == is->video_stream
+                               && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
+                        packet_queue_put(&is->videoq, pkt);
                     } else {
-                        av_packet_unref(pkt);
+                        int sub_pending_stream;
+                        int sub_stream = ff_sub_get_current_stream(is->ffSub, &sub_pending_stream);
+                        if (stream_index == sub_stream && sub_pending_stream == -2) {
+                            ff_sub_put_packet(is->ffSub, pkt);
+                        } else if (stream_index == sub_pending_stream) {
+                            ff_sub_put_packet_backup(is->ffSub, pkt);
+                        } else {
+                            av_packet_unref(pkt);
+                        }
                     }
                 }
-            }
+            } while (0);
             
             //ffp_statistic_l(ffp);
 
