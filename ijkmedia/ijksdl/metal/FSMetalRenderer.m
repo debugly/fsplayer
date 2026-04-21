@@ -21,8 +21,6 @@
 // The render pipeline generated from the vertex and fragment shaders in the .metal shader file.
 @property (nonatomic, strong) id<MTLRenderPipelineState> renderPipeline;
 @property (nonatomic, strong) id<MTLBuffer> vertexBuffer;
-// The buffer that contains arguments for the fragment shader.
-@property (nonatomic, strong) id<MTLBuffer> fragmentShaderArgumentBuffer;
 @property (nonatomic, strong) id<MTLArgumentEncoder> argumentEncoder;
 @property (nonatomic, strong) id<MTLBuffer> convertMatrixBuff;
 @property (nonatomic, assign) BOOL convertMatrixChanged;
@@ -91,14 +89,6 @@
     NSAssert(vertexFunction, @"can't find Fragment Function:%@",self.pipelineMeta.fragmentName);
     id <MTLArgumentEncoder> argumentEncoder =
         [fragmentFunction newArgumentEncoderWithBufferIndex:FSFragmentBufferLocation0];
-    
-    NSUInteger argumentBufferLength = argumentEncoder.encodedLength;
-
-    _fragmentShaderArgumentBuffer = [_device newBufferWithLength:argumentBufferLength options:0];
-
-    _fragmentShaderArgumentBuffer.label = @"Argument Buffer";
-    
-    [argumentEncoder setArgumentBuffer:_fragmentShaderArgumentBuffer offset:0];
 
     // Configure a pipeline descriptor that is used to create a pipeline state.
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
@@ -298,8 +288,11 @@
  
     [self updateConvertMatrixBufferIfNeed];
     
-    //Fragment Function(nv12FragmentShader): missing buffer binding at index 0 for fragmentShaderArgs[0].
-    [self.argumentEncoder setArgumentBuffer:self.fragmentShaderArgumentBuffer offset:0];
+    // Each draw needs its own argument buffer snapshot. Reusing one mutable buffer for
+    // multiple draw calls in the same command encoder can make earlier draws observe
+    // later texture bindings when the GPU executes asynchronously.
+    id<MTLBuffer> drawArgumentBuffer = [_device newBufferWithLength:self.argumentEncoder.encodedLength options:0];
+    [self.argumentEncoder setArgumentBuffer:drawArgumentBuffer offset:0];
     
     for (int i = 0; i < [textures count]; i++) {
         id<MTLTexture>t = textures[i];
@@ -325,7 +318,7 @@
         [encoder useResource:self.convertMatrixBuff usage:MTLResourceUsageRead];
     }
     
-    [encoder setFragmentBuffer:self.fragmentShaderArgumentBuffer
+    [encoder setFragmentBuffer:drawArgumentBuffer
                         offset:0
                        atIndex:FSFragmentBufferLocation0];
     
