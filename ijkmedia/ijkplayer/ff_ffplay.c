@@ -2892,7 +2892,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
                 double threshold = is->step ? AV_SYNC_THRESHOLD_MIN : AV_SYNC_THRESHOLD_MAX;
                 double diff = video_pts - get_clock(&is->audclk) - get_clock_extral_delay(&is->audclk);
                 //when set audio delay, can not drop audio, because the diff will be handle by video repeat or drop.
-                int auto_drop = (is->step || get_clock_extral_delay(&is->audclk) == 0) && !isnan(video_pts) && diff > threshold;
+                int auto_drop = (is->step || get_clock_extral_delay(&is->audclk) == 0) && !isnan(video_pts) && (int)(ffp->pf_playback_rate * 10 == 10) && diff > threshold;
                 if (auto_drop) {
                     av_log(NULL, AV_LOG_INFO, "audio pts is behind,need fast forwad,diff:%f\n", diff);
                     int counter = 3;
