@@ -610,9 +610,9 @@ typedef CGRect NSRect;
     [self.renderSnapshotLock lock];
     
     FSOverlayAttach *attach = self.currentAttach;
-    
+    BOOL hasTileGrid = (attach.tilePieces.count > 0);
     CVPixelBufferRef pixelBuffer = attach.videoPicture;
-    if (!pixelBuffer) {
+    if (!pixelBuffer && !hasTileGrid) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -621,8 +621,8 @@ typedef CGRect NSRect;
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
     
-    float width  = (float)CVPixelBufferGetWidth(pixelBuffer);
-    float height = (float)CVPixelBufferGetHeight(pixelBuffer);
+    float width  = attach.w;
+    float height = attach.h;
     
     //keep video AVRational
     if (attach.sarNum > 0 && attach.sarDen > 0) {
@@ -653,8 +653,12 @@ typedef CGRect NSRect;
     }
     
     CGSize viewport = CGSizeMake(floorf(width), floorf(height));
-    
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+    // pipeline 需要一个参考 pixelBuffer（用第一个 tile 的）
+    CVPixelBufferRef pipelineRef = attach.videoPicture;
+    if (!pipelineRef && hasTileGrid) {
+        pipelineRef = ((FSTilePiece *)attach.tilePieces.firstObject).pixelBuffer;
+    }
+    if (![self setupPipelineIfNeed:pipelineRef blend:attach.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -667,20 +671,27 @@ typedef CGRect NSRect;
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
         
-        if (!attach.videoTextures) {
-            CVMetalTextureCacheRef textureCache = NULL;
-        #if TARGET_CPU_ARM64
-            textureCache = self.pictureTextureCache;
-        #endif
-            attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
+        if (hasTileGrid) {
+            [self encodeTilePieces:attach
+                     renderEncoder:renderEncoder
+                      drawableSize:viewport
+                             ratio:CGSizeMake(1.0, 1.0)
+                     hdrPercentage:1.0];
+        } else {
+            if (!attach.videoTextures) {
+                CVMetalTextureCacheRef textureCache = NULL;
+            #if TARGET_CPU_ARM64
+                textureCache = self.pictureTextureCache;
+            #endif
+                attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
+            }
+            
+            [self encodePicture:attach
+                  renderEncoder:renderEncoder
+                   drawableSize:viewport
+                          ratio:CGSizeMake(1.0, 1.0)
+                  hdrPercentage:1.0];
         }
-        
-        [self encodePicture:attach
-              renderEncoder:renderEncoder
-               drawableSize:viewport
-                      ratio:CGSizeMake(1.0, 1.0)
-              hdrPercentage:1.0];
-        
         if (drawSub && attach.subTexture) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:viewport
@@ -691,6 +702,7 @@ typedef CGRect NSRect;
     return result;
 }
 
+//not support heic tile grid
 - (CGImageRef)_snapshotOrigin:(FSOverlayAttach *)attach
 {
     CVPixelBufferRef pixelBuffer = CVPixelBufferRetain(attach.videoPicture);
@@ -716,9 +728,9 @@ typedef CGRect NSRect;
     [self.renderSnapshotLock lock];
     
     FSOverlayAttach *attach = self.currentAttach;
-    
+    BOOL hasTileGrid = (attach.tilePieces.count > 0);
     CVPixelBufferRef pixelBuffer = attach.videoPicture;
-    if (!pixelBuffer) {
+    if (!pixelBuffer && !hasTileGrid) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -727,9 +739,12 @@ typedef CGRect NSRect;
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
     
-    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-   
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+    // pipeline 需要一个参考 pixelBuffer（用第一个 tile 的）
+    CVPixelBufferRef pipelineRef = attach.videoPicture;
+    if (!pipelineRef && hasTileGrid) {
+        pipelineRef = ((FSTilePiece *)attach.tilePieces.firstObject).pixelBuffer;
+    }
+    if (![self setupPipelineIfNeed:pipelineRef blend:attach.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -740,9 +755,22 @@ typedef CGRect NSRect;
     }
     
     CGSize drawableSize = self.drawableSize;
+    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:drawableSize device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
-        CVPixelBufferRef pixelBuffer = attach.videoPicture;
-        if (pixelBuffer) {
+        if (hasTileGrid) {
+            [self encodeTilePieces:attach
+                     renderEncoder:renderEncoder
+                      drawableSize:drawableSize
+                             ratio:CGSizeMake(1.0, 1.0)
+                     hdrPercentage:1.0];
+        } else {
+            if (!attach.videoTextures) {
+                CVMetalTextureCacheRef textureCache = NULL;
+            #if TARGET_CPU_ARM64
+                textureCache = self.pictureTextureCache;
+            #endif
+                attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
+            }
             CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:drawableSize];
             [self encodePicture:attach
                   renderEncoder:renderEncoder
