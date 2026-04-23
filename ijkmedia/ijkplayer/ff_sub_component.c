@@ -92,14 +92,7 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
     }
     
     if (com->sp_changed) {
-        while (frame_queue_nb_remaining(com->frameq) > 0) {
-            Frame *af = frame_queue_peek_readable(com->frameq);
-            if (af) {
-                frame_queue_next(com->frameq);
-            } else {
-                break;
-            }
-        }
+        frame_queue_flush_readable(com->frameq);
         if (com->previous_uploading >= 0) {
             //let the pts can display right now.
             com->pre_loading = com->previous_uploading;
@@ -232,14 +225,7 @@ static int decode_a_frame(FFSubComponent *com, Decoder *d, AVSubtitle *pkt)
                 d->next_pts = d->start_pts;
                 d->next_pts_tb = d->start_pts_tb;
                 ff_ass_flush_events(com->assRenderer);
-                while (frame_queue_nb_remaining(com->frameq) > 0) {
-                    Frame *af = frame_queue_peek_readable(com->frameq);
-                    if (af && af->frame_serial != d->pkt_serial) {
-                        frame_queue_next(com->frameq);
-                    } else {
-                        break;
-                    }
-                }
+                frame_queue_flush_old_serial(com->frameq, d->pkt_serial);
                 com->pre_loading = -1;
                 com->ass_processed = -1;
                 com->previous_uploading = -1;

@@ -238,3 +238,34 @@ int64_t frame_queue_last_pos(FrameQueue *f)
     else
         return -1;
 }
+
+void frame_queue_flush_readable(FrameQueue *f)
+{
+    frame_queue_flush_old_serial(f, -1);
+}
+
+int frame_queue_flush_old_serial(FrameQueue *f, int new_serial)
+{
+    SDL_LockMutex(f->mutex);
+    int count = 0;
+    while (f->size - f->rindex_shown > 0) {
+        Frame *frame = &f->queue[f->rindex];
+        if (frame->frame_serial != new_serial) {
+            count++;
+            
+            frame_queue_unref_item(frame);
+            f->duration -= frame->duration;
+            f->size--;
+            
+            if (++f->rindex == f->max_size)
+                f->rindex = 0;
+        } else {
+            break;
+        }
+    }
+    
+    SDL_CondSignal(f->cond);
+    SDL_UnlockMutex(f->mutex);
+    return count;
+}
+

@@ -3975,14 +3975,7 @@ static int read_thread(void *arg)
                  because the audio is paused,nobody cunsume the samples in sampq,and audio thread is waiting
                  sampq empty condition,can't drop any audio frmame,so video decoder thread wait forever.
                  */
-                while (frame_queue_nb_remaining(&is->sampq) > 0) {
-                    Frame *af = frame_queue_peek_readable(&is->sampq);
-                    if (af && af->frame_serial != is->audioq.serial) {
-                        frame_queue_next(&is->sampq);
-                    } else {
-                        break;
-                    }
-                }
+                frame_queue_flush_old_serial(&is->sampq, is->audioq.serial);
                 is->audio_buf_index = 0;
                 is->audio_buf_size = 0;
                 
