@@ -28,7 +28,7 @@
 #include "ff_subtitle_preference.h"
 
 #define SUB_MAX_KEEP_DU 3.0
-#define A_ASS_IMG_DURATION 0.035
+#define A_ASS_IMG_DURATION 0.016
 
 typedef struct FFSubComponent{
     int st_idx;
@@ -126,6 +126,12 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
             result = -4;
             break;
         }
+        //fetch writable slot is important because when read a new event you must put to the frameq other than drop.libass already record the diff,when use ask again will give you no change！
+        Frame *sp = frame_queue_peek_writable_noblock(com->frameq);
+        if (!sp) {
+            result = -7;
+            break;
+        }
         
         float delta = com->previous_uploading - com->pre_loading;
         if (delta > 0.08) {
@@ -175,12 +181,6 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
             break;
         }
         
-        Frame *sp = frame_queue_peek_writable_noblock(com->frameq);
-        if (!sp) {
-            ff_subtitle_buffer_release(&buffer);
-            result = -7;
-            break;
-        }
         com->pre_loading += A_ASS_IMG_DURATION;
         sp->pts = pts;
         sp->duration = A_ASS_IMG_DURATION;
