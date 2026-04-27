@@ -370,8 +370,7 @@ typedef CGRect NSRect;
 }
 
 // 计算 canvas 在 drawable 中按 scalingMode + sar + rotate 贴合后的目标矩形 (viewport 坐标系, origin 左下)
-- (MTLViewport)computeCanvasViewport:(FSOverlayAttach *)attach
-                        drawableSize:(CGSize)drawableSize
+- (MTLViewport)computeCanvasViewport:(CGSize)drawableSize
                                ratio:(CGSize)ratio
 {
     // 这里复用 encodePicture 的思路：顶点用 [-ratio.w,+ratio.w] × [-ratio.h,+ratio.h]
@@ -400,7 +399,7 @@ typedef CGRect NSRect;
     self.picturePipeline.vertexRatio = CGSizeMake(1.0, 1.0);
     
     // 先算出合并后区域在屏幕上的目标矩形
-    MTLViewport display_vp = [self computeCanvasViewport:attach drawableSize:drawableSize ratio:ratio];
+    MTLViewport display_vp = [self computeCanvasViewport:drawableSize ratio:ratio];
     
     //canvas=3584x2560   (pixelW,pixelH)
     //display=3464x2130 （w,h）
