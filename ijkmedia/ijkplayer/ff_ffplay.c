@@ -1578,13 +1578,15 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             return -3;
         }
         
-        /* update the bitmap content */
-        SDL_VoutUnlockYUVOverlay(vp->bmp);
-
         /* HEIC tile-grid: 如果 overlay 还在累积 tile，不要 push 到渲染队列，
          * 保留 writable 槽位给下一个 tile 继续写入。
          */
-        if (SDL_VoutOverlay_IsTilePending(vp->bmp)) {
+        int isPending = SDL_VoutOverlay_IsTilePending(vp->bmp);
+
+        /* update the bitmap content */
+        SDL_VoutUnlockYUVOverlay(vp->bmp);
+
+        if (isPending) {
             return 0;
         }
 
