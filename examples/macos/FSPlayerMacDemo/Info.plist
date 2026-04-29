@@ -207,6 +207,7 @@
 				<string>h265</string>
 				<string>avc</string>
 				<string>xlist</string>
+				<string>zlist</string>
 				<string>swf</string>
 				<string>m3u8</string>
 				<string>mjpeg</string>

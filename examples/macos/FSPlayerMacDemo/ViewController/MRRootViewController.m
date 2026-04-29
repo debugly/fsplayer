@@ -1195,7 +1195,8 @@ static BOOL hdrAnimationShown = 0;
     if ([url isFileURL]) {
         return [url path];
     }
-    
+    //不解析了，路径里可能包含 #33.mp3，原本#是编码的%23，走了下面的逻辑就导致解码了
+    return [url absoluteString];
     NSURLComponents *comp = [[NSURLComponents alloc] initWithURL:url resolvingAgainstBaseURL:NO];
     NSString *scheme = comp.scheme ?: @"file";
     NSString *host = comp.host ?: @"";
@@ -1225,15 +1226,22 @@ static BOOL hdrAnimationShown = 0;
     
     for (NSDictionary *dic in bookmarkArr) {
         NSURL *url = dic[@"url"];
-        NSString *str = [self decodeURL:url];
-        if ([[[str pathExtension] lowercaseString] isEqualToString:@"xlist"]) {
-            for (NSString *u in [MRUtil parseXPlayList:str]) {
+        if ([[[url pathExtension] lowercaseString] isEqualToString:@"xlist"]) {
+            for (NSString *u in [MRUtil parseXPlayList:url]) {
+                if ([self existingInPlayList:u]) {
+                    continue;
+                }
+                [videos addObject:u];
+            }
+        } else if ([[[url pathExtension] lowercaseString] isEqualToString:@"zlist"]) {
+            for (NSString *u in [MRUtil parseZPlayList:url]) {
                 if ([self existingInPlayList:u]) {
                     continue;
                 }
                 [videos addObject:u];
             }
         } else if ([dic[@"type"] intValue] == 0) {
+            NSString *str = [self decodeURL:url];
             if ([self existingInPlayList:str]) {
                 continue;
             }
