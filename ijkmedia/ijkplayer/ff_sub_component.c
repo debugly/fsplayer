@@ -28,7 +28,7 @@
 #include "ff_subtitle_preference.h"
 
 #define SUB_MAX_KEEP_DU 3.0
-#define A_ASS_IMG_DURATION 0.035
+#define A_ASS_IMG_DURATION 0.016
 
 typedef struct FFSubComponent{
     int st_idx;
@@ -56,6 +56,9 @@ static void apply_preference(FFSubComponent *com)
 {
     if (com->assRenderer) {
         int playResY = com->assRenderer->iformat->get_PlayResY(com->assRenderer);
+        if (playResY < 0) {
+            return;
+        }
         int marginV = com->sp.BottomMargin * playResY;
         com->assRenderer->iformat->set_font_scale(com->assRenderer, com->sp.Scale);
         char style[256] = {0};
@@ -89,14 +92,7 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
     }
     
     if (com->sp_changed) {
-        while (frame_queue_nb_remaining(com->frameq) > 0) {
-            Frame *af = frame_queue_peek_readable(com->frameq);
-            if (af) {
-                frame_queue_next(com->frameq);
-            } else {
-                break;
-            }
-        }
+        frame_queue_flush_readable(com->frameq);
         if (com->previous_uploading >= 0) {
             //let the pts can display right now.
             com->pre_loading = com->previous_uploading;
@@ -121,6 +117,12 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
         //prevent pre load overflow
         if (com->pre_loading >= com->ass_processed) {
             result = -4;
+            break;
+        }
+        //fetch writable slot is important because when read a new event you must put to the frameq other than drop.libass already record the diff,when use ask again will give you no change！
+        Frame *sp = frame_queue_peek_writable_noblock(com->frameq);
+        if (!sp) {
+            result = -7;
             break;
         }
         
@@ -172,12 +174,6 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
             break;
         }
         
-        Frame *sp = frame_queue_peek_writable_noblock(com->frameq);
-        if (!sp) {
-            ff_subtitle_buffer_release(&buffer);
-            result = -7;
-            break;
-        }
         com->pre_loading += A_ASS_IMG_DURATION;
         sp->pts = pts;
         sp->duration = A_ASS_IMG_DURATION;
@@ -229,14 +225,7 @@ static int decode_a_frame(FFSubComponent *com, Decoder *d, AVSubtitle *pkt)
                 d->next_pts = d->start_pts;
                 d->next_pts_tb = d->start_pts_tb;
                 ff_ass_flush_events(com->assRenderer);
-                while (frame_queue_nb_remaining(com->frameq) > 0) {
-                    Frame *af = frame_queue_peek_readable(com->frameq);
-                    if (af && af->frame_serial != d->pkt_serial) {
-                        frame_queue_next(com->frameq);
-                    } else {
-                        break;
-                    }
-                }
+                frame_queue_flush_old_serial(com->frameq, d->pkt_serial);
                 com->pre_loading = -1;
                 com->ass_processed = -1;
                 com->previous_uploading = -1;

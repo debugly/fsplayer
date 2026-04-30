@@ -432,9 +432,9 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     
     [self setHudUrl:[NSURL URLWithString:self.content]];
     
-    //如果是 iso 则使用 bluray:// 协议打开
+    //如果是 http://ss.com/xxx.iso?q=b&c=a 则使用 bluray:// 协议打开
     NSString *contentURL = self.content;
-    if ([@"iso" isEqualToString:[[contentURL pathExtension] lowercaseString]]) {
+    if ([[[contentURL pathExtension] lowercaseString] hasPrefix:@"iso"]) {
         contentURL = [@"bluray://" stringByAppendingString:contentURL];
     }
     

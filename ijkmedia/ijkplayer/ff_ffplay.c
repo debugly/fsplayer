@@ -43,6 +43,7 @@
 #include "libavutil/samplefmt.h"
 #include "libavutil/time.h"
 #include "libavutil/bprint.h"
+#include "libavutil/buffer.h"
 #include "libavformat/avformat.h"
 #if CONFIG_AVDEVICE
 #include "libavdevice/avdevice.h"
@@ -131,6 +132,8 @@ int cmp_audio_fmts(enum AVSampleFormat fmt1, int64_t channel_count1,
 static void free_picture(Frame *vp);
 static double consume_audio_buffer(FFPlayer *ffp, double diff);
 static void update_sample_display(FFPlayer *ffp, uint8_t *samples, int samples_size);
+
+#include "ff_heic_tile.h"
 
 static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
 {
@@ -1393,6 +1396,21 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         return -1;
 
     vp->sar = src_frame->sample_aspect_ratio;
+
+    /* HEIC tile-grid: decode 输出是每个 tile 的独立 AVFrame，
+     * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
+     * 以避免 alloc_picture 在 tile 切换时反复重建 overlay。
+     */
+    int tile_canvas_w_fix = 0;
+    int tile_canvas_h_fix = 0;
+    if (src_frame->opaque_ref &&
+        src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
+        FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
+        if (tmeta->nb_tiles > 0 && tmeta->canvas_w > 0 && tmeta->canvas_h > 0) {
+            tile_canvas_w_fix = tmeta->canvas_w;
+            tile_canvas_h_fix = tmeta->canvas_h;
+        }
+    }
     
     //TODO: windows and android plat.
     //软解时，上层指定了明确的overlay-format时需要转格式
@@ -1522,17 +1540,19 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     }
     
     /* alloc or resize hardware picture buffer */
+    int cmp_w = tile_canvas_w_fix > 0 ? tile_canvas_w_fix : src_frame->width;
+    int cmp_h = tile_canvas_h_fix > 0 ? tile_canvas_h_fix : src_frame->height;
     if (!vp->bmp || !vp->allocated ||
-        vp->width  != src_frame->width ||
-        vp->height != src_frame->height ||
+        vp->width  != cmp_w ||
+        vp->height != cmp_h ||
         vp->format != src_frame->format) {
 
-        if (vp->width != src_frame->width || vp->height != src_frame->height)
-            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, src_frame->width, src_frame->height);
+        if (vp->width != cmp_w || vp->height != cmp_h)
+            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, cmp_w, cmp_h);
 
         vp->allocated = 0;
-        vp->width = src_frame->width;
-        vp->height = src_frame->height;
+        vp->width = cmp_w;
+        vp->height = cmp_h;
         vp->format = src_frame->format;
 
         /* the allocation must be done in the main thread to avoid
@@ -1558,8 +1578,17 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             return -3;
         }
         
+        /* HEIC tile-grid: 如果 overlay 还在累积 tile，不要 push 到渲染队列，
+         * 保留 writable 槽位给下一个 tile 继续写入。
+         */
+        int isPending = SDL_VoutOverlay_IsTilePending(vp->bmp);
+
         /* update the bitmap content */
         SDL_VoutUnlockYUVOverlay(vp->bmp);
+
+        if (isPending) {
+            return 0;
+        }
 
         vp->pts = pts;
         vp->duration = duration;
@@ -2865,7 +2894,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
                 double threshold = is->step ? AV_SYNC_THRESHOLD_MIN : AV_SYNC_THRESHOLD_MAX;
                 double diff = video_pts - get_clock(&is->audclk) - get_clock_extral_delay(&is->audclk);
                 //when set audio delay, can not drop audio, because the diff will be handle by video repeat or drop.
-                int auto_drop = (is->step || get_clock_extral_delay(&is->audclk) == 0) && !isnan(video_pts) && diff > threshold;
+                int auto_drop = (is->step || get_clock_extral_delay(&is->audclk) == 0) && !isnan(video_pts) && (int)(ffp->pf_playback_rate * 10 == 10) && diff > threshold;
                 if (auto_drop) {
                     av_log(NULL, AV_LOG_INFO, "audio pts is behind,need fast forwad,diff:%f\n", diff);
                     int counter = 3;
@@ -3269,64 +3298,104 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     st->discard = AVDISCARD_DEFAULT;
     switch (avctx->codec_type) {
     case AVMEDIA_TYPE_AUDIO:
-#if CONFIG_AUDIO_AVFILTER
         {
-            AVFilterContext *sink;
-
-            is->audio_filter_src.freq           = avctx->sample_rate;
-            ret = av_channel_layout_copy(&is->audio_filter_src.ch_layout, &avctx->ch_layout);
-            if (ret < 0)
-                goto fail;
-            is->audio_filter_src.fmt            = avctx->sample_fmt;
-            SDL_LockMutex(ffp->af_mutex);
-            if ((ret = configure_audio_filters(ffp, ffp->afilters, 0)) < 0) {
-                SDL_UnlockMutex(ffp->af_mutex);
-                goto fail;
+            // [Audio] Some codecs (e.g. pcm_dvd in DVD-ISO) cannot expose their
+            // parameters (channels / sample_rate / sample_fmt) during probing because
+            // the values are embedded in each packet's private header and are only
+            // revealed after the first decode.  avcodec_open2 still succeeds but the
+            // context fields remain 0 / NONE.  Set DVD-safe defaults here so that
+            // audio_open can initialise the Audio output.
+            // The audio_thread will detect the mismatch on the first real frame and
+            // call swr_init again with frame's true parameters.
+            // I see the avctx's sample_fmt also update,but use the frame is better.
+            int is_inband_param_codec = avctx->codec_id == AV_CODEC_ID_PCM_DVD ||
+                avctx->codec_id == AV_CODEC_ID_PCM_S16BE_PLANAR ||
+                avctx->codec_id == AV_CODEC_ID_ADPCM_G722 ||
+                avctx->codec_id == AV_CODEC_ID_ADPCM_G726;
+            
+            if (is_inband_param_codec) {
+                if (avctx->ch_layout.nb_channels == 0) {
+                    av_log(NULL, AV_LOG_WARNING,
+                        "[Audio] codec '%s' reports 0 channels after avcodec_open2,"
+                        " defaulting to stereo\n",
+                        avcodec_get_name(avctx->codec_id));
+                    av_channel_layout_uninit(&avctx->ch_layout);
+                    av_channel_layout_default(&avctx->ch_layout, 2);
+                }
+                if (avctx->sample_rate == 0) {
+                    av_log(NULL, AV_LOG_WARNING,
+                        "[Audio] codec '%s' reports 0 sample_rate after avcodec_open2,"
+                        " defaulting to 48000 Hz\n",
+                        avcodec_get_name(avctx->codec_id));
+                    avctx->sample_rate = 48000;
+                }
+                if (avctx->sample_fmt == AV_SAMPLE_FMT_NONE) {
+                    av_log(NULL, AV_LOG_WARNING,
+                        "[Audio] codec '%s' reports no sample_fmt after avcodec_open2,"
+                        " defaulting to s32\n",
+                        avcodec_get_name(avctx->codec_id));
+                    avctx->sample_fmt = AV_SAMPLE_FMT_S16;
+                }
             }
-            ffp->af_changed = 0;
-            SDL_UnlockMutex(ffp->af_mutex);
-            sink = is->out_audio_filter;
-            sample_rate    = av_buffersink_get_sample_rate(sink);
-            ret = av_buffersink_get_ch_layout(sink, &ch_layout);
+    #if CONFIG_AUDIO_AVFILTER
+            {
+                AVFilterContext *sink;
+
+                is->audio_filter_src.freq           = avctx->sample_rate;
+                ret = av_channel_layout_copy(&is->audio_filter_src.ch_layout, &avctx->ch_layout);
+                if (ret < 0)
+                    goto fail;
+                is->audio_filter_src.fmt            = avctx->sample_fmt;
+                SDL_LockMutex(ffp->af_mutex);
+                if ((ret = configure_audio_filters(ffp, ffp->afilters, 0)) < 0) {
+                    SDL_UnlockMutex(ffp->af_mutex);
+                    goto fail;
+                }
+                ffp->af_changed = 0;
+                SDL_UnlockMutex(ffp->af_mutex);
+                sink = is->out_audio_filter;
+                sample_rate    = av_buffersink_get_sample_rate(sink);
+                ret = av_buffersink_get_ch_layout(sink, &ch_layout);
+                if (ret < 0)
+                    goto fail;
+            }
+    #else
+            sample_rate    = avctx->sample_rate;
+            ret = av_channel_layout_copy(&ch_layout, &avctx->ch_layout);
             if (ret < 0)
                 goto fail;
+    #endif
+            /* prepare audio output */
+            if ((ret = audio_open(ffp, &ch_layout, sample_rate, &is->audio_tgt)) < 0)
+                goto fail;
+            ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
+            is->audio_hw_buf_size = ret;
+            is->audio_src = is->audio_tgt;
+            is->audio_buf_size  = 0;
+            is->audio_buf_index = 0;
+
+            /* init averaging filter */
+            is->audio_diff_avg_coef  = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
+            is->audio_diff_avg_count = 0;
+            /* since we do not have a precise anough audio FIFO fullness,
+               we correct audio sync only if larger than this threshold */
+            is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
+
+            is->audio_stream = stream_index;
+            is->audio_st = st;
+
+            if((ret = decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread)) < 0)
+                goto fail;
+
+            if (is->ic->iformat->flags & AVFMT_NOTIMESTAMPS) {
+                is->auddec.start_pts = is->audio_st->start_time;
+                is->auddec.start_pts_tb = is->audio_st->time_base;
+            }
+            if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
+                goto out;
+            SDL_AoutPauseAudio(ffp->aout, 0);
+            _ijkmeta_set_stream(ffp, avctx->codec_type, stream_index);
         }
-#else
-        sample_rate    = avctx->sample_rate;
-        ret = av_channel_layout_copy(&ch_layout, &avctx->ch_layout);
-        if (ret < 0)
-            goto fail;
-#endif
-        /* prepare audio output */
-        if ((ret = audio_open(ffp, &ch_layout, sample_rate, &is->audio_tgt)) < 0)
-            goto fail;
-        ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
-        is->audio_hw_buf_size = ret;
-        is->audio_src = is->audio_tgt;
-        is->audio_buf_size  = 0;
-        is->audio_buf_index = 0;
-
-        /* init averaging filter */
-        is->audio_diff_avg_coef  = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
-        is->audio_diff_avg_count = 0;
-        /* since we do not have a precise anough audio FIFO fullness,
-           we correct audio sync only if larger than this threshold */
-        is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
-
-        is->audio_stream = stream_index;
-        is->audio_st = st;
-
-        if((ret = decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread)) < 0)
-            goto fail;
-
-        if (is->ic->iformat->flags & AVFMT_NOTIMESTAMPS) {
-            is->auddec.start_pts = is->audio_st->start_time;
-            is->auddec.start_pts_tb = is->audio_st->time_base;
-        }
-        if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
-            goto out;
-        SDL_AoutPauseAudio(ffp->aout, 0);
-        _ijkmeta_set_stream(ffp, avctx->codec_type, stream_index);
         break;
     case AVMEDIA_TYPE_VIDEO:
         is->video_stream = stream_index;
@@ -3671,12 +3740,42 @@ static int read_thread(void *arg)
         st_index[AVMEDIA_TYPE_VIDEO] =
             av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO,
                                 st_index[AVMEDIA_TYPE_VIDEO], -1, NULL, 0);
-    if (!ffp->audio_disable)
+    
+    if (!ffp->audio_disable) {
         st_index[AVMEDIA_TYPE_AUDIO] =
             av_find_best_stream(ic, AVMEDIA_TYPE_AUDIO,
                                 st_index[AVMEDIA_TYPE_AUDIO],
                                 st_index[AVMEDIA_TYPE_VIDEO],
                                 NULL, 0);
+        // [Audio] Fallback: av_find_best_stream skips audio streams whose codec params
+        // (nb_channels / sample_rate) are 0 – this happens with pcm_dvd in DVD-ISO
+        // files when avformat_find_stream_info hits max_analyze_duration before it can
+        // decode the first LPCM private-stream header.  Scan all streams manually and
+        // select the first audio stream for which a decoder exists.
+        if (st_index[AVMEDIA_TYPE_AUDIO] < 0) {
+            for (int fbs_i = 0; fbs_i < (int)ic->nb_streams; fbs_i++) {
+                AVStream *fbs_st = ic->streams[fbs_i];
+                if (fbs_st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+                    enum AVCodecID codec_id = fbs_st->codecpar->codec_id;
+                    int is_inband_param_codec = codec_id == AV_CODEC_ID_PCM_DVD ||
+                                                codec_id == AV_CODEC_ID_PCM_S16BE_PLANAR ||
+                                                codec_id == AV_CODEC_ID_ADPCM_G722 ||
+                                                codec_id == AV_CODEC_ID_ADPCM_G726;
+                    if (avcodec_find_decoder(codec_id) != NULL && is_inband_param_codec) {
+                        av_log(NULL, AV_LOG_WARNING,
+                            "[Audio] av_find_best_stream returned -1 (incomplete codec params),"
+                            " fallback to stream %d codec=%s channels=%d sample_rate=%d\n",
+                            fbs_i, avcodec_get_name(fbs_st->codecpar->codec_id),
+                            fbs_st->codecpar->ch_layout.nb_channels,
+                            fbs_st->codecpar->sample_rate);
+                        st_index[AVMEDIA_TYPE_AUDIO] = fbs_i;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+   
     if (!ffp->video_disable && !ffp->subtitle_disable)
         st_index[AVMEDIA_TYPE_SUBTITLE] =
             av_find_best_stream(ic, AVMEDIA_TYPE_SUBTITLE,
@@ -3876,14 +3975,7 @@ static int read_thread(void *arg)
                  because the audio is paused,nobody cunsume the samples in sampq,and audio thread is waiting
                  sampq empty condition,can't drop any audio frmame,so video decoder thread wait forever.
                  */
-                while (frame_queue_nb_remaining(&is->sampq) > 0) {
-                    Frame *af = frame_queue_peek_readable(&is->sampq);
-                    if (af && af->frame_serial != is->audioq.serial) {
-                        frame_queue_next(&is->sampq);
-                    } else {
-                        break;
-                    }
-                }
+                frame_queue_flush_old_serial(&is->sampq, is->audioq.serial);
                 is->audio_buf_index = 0;
                 is->audio_buf_size = 0;
                 
@@ -4072,36 +4164,121 @@ static int read_thread(void *arg)
                     //packet_queue_put(&is->videoq, &flush_pkt);
                 }
             }
-            AVStream *st = ic->streams[pkt->stream_index];
-            /* check if packet is in play range specified by user, then queue, otherwise discard */
-            stream_start_time = st->start_time;
-            pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
-            pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
-                    (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
-                    av_q2d(ic->streams[pkt->stream_index]->time_base) -
-                    (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / AV_TIME_BASE
-                    <= ((double)ffp->duration / AV_TIME_BASE);
-            if (!pkt_in_play_range) {
-                av_packet_unref(pkt);
-            } else {
-                int stream_index = pkt->stream_index;
-                if (stream_index == is->audio_stream) {
-                    packet_queue_put(&is->audioq, pkt);
-                } else if (stream_index == is->video_stream
-                           && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
-                    packet_queue_put(&is->videoq, pkt);
+            
+            do {
+                
+                if (ic->nb_stream_groups > 0) {
+                    for (unsigned int i = 0; i < ic->nb_stream_groups; i++) {
+                        AVStreamGroup *group = ic->stream_groups[i];
+                        // 1. 获取该组内包含的 stream 数量
+                        unsigned int count = group->nb_streams;
+
+                        av_log(NULL, AV_LOG_INFO,
+                               "Group %u (Type: %d) contains %u streams.\n",
+                               i, group->type, count);
+
+                        // 2. 只有当类型是 Tile Grid 时，才进行拼图逻辑判断
+                        if (group->type == AV_STREAM_GROUP_PARAMS_TILE_GRID) {
+                            AVStreamGroupTileGrid *grid = group->params.tile_grid;
+                            av_log(NULL, AV_LOG_INFO,
+                                   "  Tile grid: nb_tiles=%u, canvas=%dx%d, roi=(%d,%d %dx%d)\n",
+                                   grid->nb_tiles, grid->coded_width, grid->coded_height,
+                                   grid->horizontal_offset, grid->vertical_offset,
+                                   grid->width, grid->height);
+
+                            // 3. 找到 pkt->stream_index 在 group 中的位置 j
+                            int group_stream_idx = -1;
+                            for (unsigned int j = 0; j < group->nb_streams; j++) {
+                                if (group->streams[j]->index == pkt->stream_index) {
+                                    group_stream_idx = (int)j;
+                                    break;
+                                }
+                            }
+                            if (group_stream_idx < 0) {
+                                // packet 不属于该 group，跳过
+                                continue;
+                            }
+
+                            // 4. 通过 grid->offsets[].idx 找到对应 tile
+                            int tile_index = -1;
+                            int tile_x = 0, tile_y = 0;
+                            for (unsigned int t = 0; t < grid->nb_tiles; t++) {
+                                if ((int)grid->offsets[t].idx == group_stream_idx) {
+                                    tile_index = (int)t;
+                                    tile_x = grid->offsets[t].horizontal;
+                                    tile_y = grid->offsets[t].vertical;
+                                    break;
+                                }
+                            }
+                            if (tile_index < 0) {
+                                continue;
+                            }
+
+                            AVStream *tile_st = group->streams[group_stream_idx];
+
+                            // 5. 为 packet 附加 tile 元数据 (opaque_ref)
+                            AVBufferRef *meta_buf = av_buffer_alloc(sizeof(FSTileGridMetadata));
+                            if (meta_buf) {
+                                FSTileGridMetadata *meta = (FSTileGridMetadata *)meta_buf->data;
+                                meta->tile_index = tile_index;
+                                meta->nb_tiles   = (int)grid->nb_tiles;
+                                meta->canvas_w   = grid->coded_width;
+                                meta->canvas_h   = grid->coded_height;
+                                meta->w          = grid->width;
+                                meta->h          = grid->height;
+                                meta->tile_x     = tile_x;
+                                meta->tile_y     = tile_y;
+                                meta->tile_w     = tile_st->codecpar ? tile_st->codecpar->width  : 0;
+                                meta->tile_h     = tile_st->codecpar ? tile_st->codecpar->height : 0;
+
+                                // 释放之前可能挂载的 opaque_ref，以防重复 put 叠加
+                                if (pkt->opaque_ref) {
+                                    av_buffer_unref(&pkt->opaque_ref);
+                                }
+                                pkt->opaque_ref = meta_buf;
+                            }
+
+                            av_log(NULL, AV_LOG_DEBUG,
+                                   "put tile packet: group=%u stream=%d tile_idx=%d pos=(%d,%d)\n",
+                                   i, pkt->stream_index, tile_index, tile_x, tile_y);
+
+                            packet_queue_put(&is->videoq, pkt);
+                        }
+                    }
+                    break;
+                }
+                
+                AVStream *st = ic->streams[pkt->stream_index];
+                /* check if packet is in play range specified by user, then queue, otherwise discard */
+                stream_start_time = st->start_time;
+                pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
+                pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
+                        (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
+                        av_q2d(ic->streams[pkt->stream_index]->time_base) -
+                        (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / AV_TIME_BASE
+                        <= ((double)ffp->duration / AV_TIME_BASE);
+                if (!pkt_in_play_range) {
+                    av_packet_unref(pkt);
                 } else {
-                    int sub_pending_stream;
-                    int sub_stream = ff_sub_get_current_stream(is->ffSub, &sub_pending_stream);
-                    if (stream_index == sub_stream && sub_pending_stream == -2) {
-                        ff_sub_put_packet(is->ffSub, pkt);
-                    } else if (stream_index == sub_pending_stream) {
-                        ff_sub_put_packet_backup(is->ffSub, pkt);
+                    int stream_index = pkt->stream_index;
+                    if (stream_index == is->audio_stream) {
+                        packet_queue_put(&is->audioq, pkt);
+                    } else if (stream_index == is->video_stream
+                               && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
+                        packet_queue_put(&is->videoq, pkt);
                     } else {
-                        av_packet_unref(pkt);
+                        int sub_pending_stream;
+                        int sub_stream = ff_sub_get_current_stream(is->ffSub, &sub_pending_stream);
+                        if (stream_index == sub_stream && sub_pending_stream == -2) {
+                            ff_sub_put_packet(is->ffSub, pkt);
+                        } else if (stream_index == sub_pending_stream) {
+                            ff_sub_put_packet_backup(is->ffSub, pkt);
+                        } else {
+                            av_packet_unref(pkt);
+                        }
                     }
                 }
-            }
+            } while (0);
             
             //ffp_statistic_l(ffp);
 

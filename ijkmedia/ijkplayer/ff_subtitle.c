@@ -199,19 +199,7 @@ int ff_sub_drop_old_frames(FFSubtitle *sub)
     if (!sub) {
         return 0;
     }
-    int count = 0;
-    int serial = sub->packetq.serial;
-    while (frame_queue_nb_remaining(&sub->frameq) > 0) {
-        Frame *sp = frame_queue_peek(&sub->frameq);
-        if (sp->frame_serial != serial) {
-            frame_queue_next(&sub->frameq);
-            count++;
-            continue;
-        } else {
-            break;
-        }
-    }
-    return count;
+    return frame_queue_flush_old_serial(&sub->frameq, sub->packetq.serial);;
 }
 
 static int ff_sub_upload_buffer(FFSubtitle *sub, float pts, FFSubtitleBufferPacket *packet)

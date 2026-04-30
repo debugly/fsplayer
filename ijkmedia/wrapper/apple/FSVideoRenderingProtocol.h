@@ -46,6 +46,17 @@ typedef NS_ENUM(NSInteger, FSScalingMode) {
 };
 
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
+
+// HEIC tile grid: 单个 tile 的 CVPixelBuffer + 位置信息
+@interface FSTilePiece : NSObject
+@property(nonatomic) CVPixelBufferRef _Nullable pixelBuffer;    // 持有 (owned, Retain/Release by this class)
+@property(nonatomic) int x;         // canvas 上左上角
+@property(nonatomic) int y;
+@property(nonatomic) int w;         // tile 尺寸
+@property(nonatomic) int h;
+@property(nonatomic) NSArray * _Nullable textures;              // 首次使用时生成并缓存
+@end
+
 @interface FSOverlayAttach : NSObject
 
 //{w,h} is video frame normal size not alignmetn,maybe not equal to {pixelW,pixelH}.
@@ -64,6 +75,9 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 @property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
 @property(nonatomic) NSArray * _Nullable videoTextures;
+
+// HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
+@property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
 
 @property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
 @property(nonatomic) id _Nullable subTexture;

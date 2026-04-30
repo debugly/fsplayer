@@ -1,7 +1,12 @@
 tag 1.0.6
 --------------------------------
 - dropped support for older OS versions, required minimum of macOS 10.14 and iOS 12
-- Remove legacy OpenGL logic and cleanup 
+- cleanup legacy OpenGL logic
+- fix subtitle missing issue #33
+- fix ass force set marginV style fault
+- fix playback rate 1.0 drop audio bug
+- support tile grid HEIC
+- improve the iso judgment
 
 tag 1.0.5
 --------------------------------

@@ -194,17 +194,19 @@ static int upload_buffer(FF_ASS_Renderer *s, double time_ms, FFSubtitleBuffer **
     int changed;
     ASS_Image *imgs = ass_render_frame(ass->renderer, ass->track, time_ms, &changed);
     
-//    long sec = time_ms/1000;
-//    int h = 0,m = 0;
-//    if (sec > 3600) {
-//        h = sec / 3600;
+//    if (changed) {
+//        int sec = time_ms/1000;
+//        int h = 0,m = 0;
+//        if (sec > 3600) {
+//            h = sec / 3600;
+//        }
+//        if (sec > 60) {
+//            m = sec % 3600 / 60;
+//        }
+//        sec %= 60;
+//        
+//        av_log(NULL, AV_LOG_INFO, "ass_render_frame:%02d:%02d:%02d.%03d,changed:%d,imgs:%d\n",h,m,sec,(int)(time_ms - sec *1000),changed,!!imgs);
 //    }
-//    if (sec > 60) {
-//        m = sec % 3600 / 60;
-//    }
-//    sec %= 60;
-//    
-//    av_log(NULL, AV_LOG_INFO, "ass_render_frame:%02d:%02d:%02d,changed:%d,imgs:%d\n",h,m,sec,changed,!!imgs);
     
     if (!imgs) {
         if (ass->force_changed) {

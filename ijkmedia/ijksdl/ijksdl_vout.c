@@ -216,3 +216,30 @@ int SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame)
 
     return overlay->func_fill_frame(overlay, frame);
 }
+
+int SDL_VoutOverlay_IsTilePending(SDL_VoutOverlay *overlay)
+{
+    if (!overlay || !overlay->func_is_tile_pending)
+        return 0;
+    return overlay->func_is_tile_pending(overlay);
+}
+
+int SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay)
+{
+    if (!overlay || !overlay->func_get_tile_count)
+        return 0;
+    return overlay->func_get_tile_count(overlay);
+}
+
+#ifdef __APPLE__
+int SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
+                                          CVPixelBufferRef *out_buffers,
+                                          int *out_x, int *out_y,
+                                          int *out_w, int *out_h,
+                                          int max_count)
+{
+    if (!overlay || !overlay->func_get_tile_buffers)
+        return 0;
+    return overlay->func_get_tile_buffers(overlay, out_buffers, out_x, out_y, out_w, out_h, max_count);
+}
+#endif
