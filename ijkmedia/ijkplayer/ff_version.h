@@ -26,9 +26,9 @@
 #include "libavformat/version_major.h"
 
 #define IS_FFMPEG_7             (LIBAVFORMAT_VERSION_MAJOR >= 61)
-#define IS_LESS_THAN_FFMPEG_7   (LIBAVFORMAT_VERSION_MAJOR < 61)
+#define IS_LESS_THAN_FFMPEG_7   (LIBAVFORMAT_VERSION_MAJOR <  61)
 #define IS_FFMPEG_6             (LIBAVFORMAT_VERSION_MAJOR >= 60)
 #define IS_FFMPEG_5             (LIBAVFORMAT_VERSION_MAJOR >= 59)
 #define IS_FFMPEG_4             (LIBAVFORMAT_VERSION_MAJOR >= 58)
-
+#define IS_TILEGRID_HEIC_ENABLED IS_FFMPEG_7
 #endif /* ff_version_h */

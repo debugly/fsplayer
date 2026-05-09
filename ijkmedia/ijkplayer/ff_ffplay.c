@@ -1397,21 +1397,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
 
     vp->sar = src_frame->sample_aspect_ratio;
 
-    /* HEIC tile-grid: decode 输出是每个 tile 的独立 AVFrame，
-     * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
-     * 以避免 alloc_picture 在 tile 切换时反复重建 overlay。
-     */
-    int tile_canvas_w_fix = 0;
-    int tile_canvas_h_fix = 0;
-    if (src_frame->opaque_ref &&
-        src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
-        FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
-        if (tmeta->nb_tiles > 0 && tmeta->canvas_w > 0 && tmeta->canvas_h > 0) {
-            tile_canvas_w_fix = tmeta->canvas_w;
-            tile_canvas_h_fix = tmeta->canvas_h;
-        }
-    }
-    
     //TODO: windows and android plat.
     //软解时，上层指定了明确的overlay-format时需要转格式
     if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
@@ -1539,9 +1524,30 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         }
     }
     
-    /* alloc or resize hardware picture buffer */
+#if IS_TILEGRID_HEIC_ENABLED
+    /* HEIC tile-grid: decode 输出是每个 tile 的独立 AVFrame，
+     * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
+     * 以避免 alloc_picture 在 tile 切换时反复重建 overlay。
+     */
+    int tile_canvas_w_fix = 0;
+    int tile_canvas_h_fix = 0;
+    if (src_frame->opaque_ref &&
+        src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
+        FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
+        if (tmeta->nb_tiles > 0 && tmeta->canvas_w > 0 && tmeta->canvas_h > 0) {
+            tile_canvas_w_fix = tmeta->canvas_w;
+            tile_canvas_h_fix = tmeta->canvas_h;
+        }
+    }
     int cmp_w = tile_canvas_w_fix > 0 ? tile_canvas_w_fix : src_frame->width;
     int cmp_h = tile_canvas_h_fix > 0 ? tile_canvas_h_fix : src_frame->height;
+#else
+    int cmp_w = src_frame->width;
+    int cmp_h = src_frame->height;
+#endif
+    
+    /* alloc or resize hardware picture buffer */
+    
     if (!vp->bmp || !vp->allocated ||
         vp->width  != cmp_w ||
         vp->height != cmp_h ||
@@ -1577,7 +1583,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             av_log(NULL, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
             return -3;
         }
-        
+#if IS_TILEGRID_HEIC_ENABLED
         /* HEIC tile-grid: 如果 overlay 还在累积 tile，不要 push 到渲染队列，
          * 保留 writable 槽位给下一个 tile 继续写入。
          */
@@ -1589,7 +1595,10 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         if (isPending) {
             return 0;
         }
-
+#else
+        /* update the bitmap content */
+        SDL_VoutUnlockYUVOverlay(vp->bmp);
+#endif
         vp->pts = pts;
         vp->duration = duration;
         vp->pos = pos;
@@ -4166,7 +4175,7 @@ static int read_thread(void *arg)
             }
             
             do {
-                
+#if IS_TILEGRID_HEIC_ENABLED
                 if (ic->nb_stream_groups > 0) {
                     for (unsigned int i = 0; i < ic->nb_stream_groups; i++) {
                         AVStreamGroup *group = ic->stream_groups[i];
@@ -4247,7 +4256,7 @@ static int read_thread(void *arg)
                     }
                     break;
                 }
-                
+#endif
                 AVStream *st = ic->streams[pkt->stream_index];
                 /* check if packet is in play range specified by user, then queue, otherwise discard */
                 stream_start_time = st->start_time;
