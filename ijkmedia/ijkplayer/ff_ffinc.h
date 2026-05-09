@@ -37,7 +37,7 @@
 #include "libswresample/swresample.h"
 #include "libavformat/avformat.h"
 #include "libavformat/application.h"
-#include "libavcodec/avfft.h"
+//#include "libavcodec/avfft.h"
 #include "libswscale/swscale.h"
 #include "ijksdl/ijksdl.h"
 

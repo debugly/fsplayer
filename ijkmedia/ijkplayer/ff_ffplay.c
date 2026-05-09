@@ -50,7 +50,7 @@
 #endif
 #include "libswscale/swscale.h"
 #include "libavutil/opt.h"
-#include "libavcodec/avfft.h"
+//#include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 #include "ff_version.h"
 #if CONFIG_AUDIO_AVFILTER || CONFIG_VIDEO_AVFILTER
@@ -3663,7 +3663,7 @@ static int read_thread(void *arg)
         do {
             if (av_stristart(is->filename, "data:", NULL) && orig_nb_streams > 0) {
                 for (i = 0; i < orig_nb_streams; i++) {
-                    if (!ic->streams[i] || !ic->streams[i]->codecpar || ic->streams[i]->codecpar->profile == FF_PROFILE_UNKNOWN) {
+                    if (!ic->streams[i] || !ic->streams[i]->codecpar || ic->streams[i]->codecpar->profile == AV_PROFILE_UNKNOWN) {
                         break;
                     }
                 }
