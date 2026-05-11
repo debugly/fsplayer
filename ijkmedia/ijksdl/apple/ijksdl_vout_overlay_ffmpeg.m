@@ -29,12 +29,32 @@
 #include <libavutil/hwcontext_videotoolbox.h>
 #include <libavutil/buffer.h>
 #include "ijkplayer/ff_heic_tile.h"
+#include "ff_version.h"
 
 #define USE_VIMAGE_ACCELERATE 0
 
 #if USE_VIMAGE_ACCELERATE
 #import <Accelerate/Accelerate.h>
 #endif
+
+struct FSTileSlot;
+struct SDL_VoutOverlay_Opaque {
+    SDL_mutex *mutex;
+    Uint16 pitches[AV_NUM_DATA_POINTERS];
+
+    CVPixelBufferRef pixelBuffer;
+    CVPixelBufferPoolRef pixelBufferPool;
+#if IS_TILEGRID_HEIC_ENABLED
+    /* HEIC tile grid 模式 */
+    int         tile_mode;       // 1 表示当前正在累积 tile
+    int         tile_expected;   // 期望总数（grid->nb_tiles）
+    int         tile_received;   // 已收到并存入槽位的 tile 数
+    int         tile_ready;      // 1 表示已攒齐、可显示
+    int         tile_canvas_w;
+    int         tile_canvas_h;
+    struct FSTileSlot *tiles;           // 长度 tile_expected
+#endif
+};
 
 #if IS_TILEGRID_HEIC_ENABLED
 
@@ -105,25 +125,6 @@ static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
     return k;
 }
 #endif
-
-struct SDL_VoutOverlay_Opaque {
-    SDL_mutex *mutex;
-    Uint16 pitches[AV_NUM_DATA_POINTERS];
-
-    CVPixelBufferRef pixelBuffer;
-    CVPixelBufferPoolRef pixelBufferPool;
-
-    /* HEIC tile grid 模式 */
-    int         tile_mode;       // 1 表示当前正在累积 tile
-    int         tile_expected;   // 期望总数（grid->nb_tiles）
-    int         tile_received;   // 已收到并存入槽位的 tile 数
-    int         tile_ready;      // 1 表示已攒齐、可显示
-    int         tile_canvas_w;
-    int         tile_canvas_h;
-#if IS_TILEGRID_HEIC_ENABLED
-    FSTileSlot *tiles;           // 长度 tile_expected
-#endif
-};
 
 static SDL_Class g_vout_overlay_ffmpeg_class = {
     .name = "FFmpegVoutOverlay",

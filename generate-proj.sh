@@ -20,4 +20,9 @@ cd "$THIS_DIR"
 set -e
 
 export MY_PROJECT_DIR="$THIS_DIR"
-xcodegen -p . -s FSPlayer.yml
+
+if [[ -n $1 ]];then
+    xcodegen -p . -s FSPlayer-$1.yml
+else
+    xcodegen -p . -s FSPlayer.yml
+fi

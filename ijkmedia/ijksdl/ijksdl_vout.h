@@ -32,7 +32,7 @@
 #include "ijksdl_video.h"
 #include "ijksdl/ffmpeg/ijksdl_inc_ffmpeg.h"
 #include "ijksdl_fourcc.h"
-
+#include "ff_version.h"
 #ifdef __APPLE__
 #include <CoreVideo/CVPixelBuffer.h>
 #endif

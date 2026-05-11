@@ -26,8 +26,12 @@
 #include "libavutil/avstring.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
-
+#include "../ff_version.h"
+#if IS_FFMPEG_6
 #include "libavformat/application.h"
+#else
+#include "libavutil/application.h"
+#endif
 
 typedef struct Context {
     AVClass        *class;
