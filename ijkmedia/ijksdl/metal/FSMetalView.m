@@ -596,7 +596,7 @@ typedef CGRect NSRect;
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
     //[commandBuffer presentDrawable:drawable];
-    [commandBuffer presentDrawable:drawable atTime:currentAttach.presentationTime];
+    [commandBuffer presentDrawable:drawable];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
     self.previousTag = currentAttach.tag;

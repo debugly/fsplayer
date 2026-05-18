@@ -30,8 +30,13 @@
 #include "ijkplayer/ijkavutil/opt.h"
 
 #include "ijkavformat.h"
-#include "libavformat/application.h"
 #include "../ff_version.h"
+#if IS_FFMPEG_6
+#include "libavformat/application.h"
+#else
+#include "libavutil/application.h"
+#endif
+
 
 typedef struct {
     AVClass         *class;

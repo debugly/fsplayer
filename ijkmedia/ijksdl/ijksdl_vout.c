@@ -217,6 +217,7 @@ int SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame)
     return overlay->func_fill_frame(overlay, frame);
 }
 
+#if IS_TILEGRID_HEIC_ENABLED
 int SDL_VoutOverlay_IsTilePending(SDL_VoutOverlay *overlay)
 {
     if (!overlay || !overlay->func_is_tile_pending)
@@ -231,7 +232,6 @@ int SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay)
     return overlay->func_get_tile_count(overlay);
 }
 
-#ifdef __APPLE__
 int SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
                                           CVPixelBufferRef *out_buffers,
                                           int *out_x, int *out_y,

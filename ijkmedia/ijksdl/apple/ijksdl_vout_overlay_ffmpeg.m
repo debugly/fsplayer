@@ -29,12 +29,34 @@
 #include <libavutil/hwcontext_videotoolbox.h>
 #include <libavutil/buffer.h>
 #include "ijkplayer/ff_heic_tile.h"
+#include "ff_version.h"
 
 #define USE_VIMAGE_ACCELERATE 0
 
 #if USE_VIMAGE_ACCELERATE
 #import <Accelerate/Accelerate.h>
 #endif
+
+struct FSTileSlot;
+struct SDL_VoutOverlay_Opaque {
+    SDL_mutex *mutex;
+    Uint16 pitches[AV_NUM_DATA_POINTERS];
+
+    CVPixelBufferRef pixelBuffer;
+    CVPixelBufferPoolRef pixelBufferPool;
+#if IS_TILEGRID_HEIC_ENABLED
+    /* HEIC tile grid 模式 */
+    int         tile_mode;       // 1 表示当前正在累积 tile
+    int         tile_expected;   // 期望总数（grid->nb_tiles）
+    int         tile_received;   // 已收到并存入槽位的 tile 数
+    int         tile_ready;      // 1 表示已攒齐、可显示
+    int         tile_canvas_w;
+    int         tile_canvas_h;
+    struct FSTileSlot *tiles;           // 长度 tile_expected
+#endif
+};
+
+#if IS_TILEGRID_HEIC_ENABLED
 
 typedef struct FSTileSlot {
     CVPixelBufferRef pb;   // 已拷贝的 tile CVPixelBuffer（owned）
@@ -43,25 +65,66 @@ typedef struct FSTileSlot {
     int filled;            // 是否已填充
 } FSTileSlot;
 
-// forward declaration so func_free_l can call it before definition
-static void tile_slots_free(SDL_VoutOverlay_Opaque *opaque);
+static void tile_slots_free(SDL_VoutOverlay_Opaque *opaque)
+{
+    if (!opaque || !opaque->tiles)
+        return;
+    for (int i = 0; i < opaque->tile_expected; i++) {
+        if (opaque->tiles[i].pb) {
+            CVPixelBufferRelease(opaque->tiles[i].pb);
+            opaque->tiles[i].pb = NULL;
+        }
+    }
+    free(opaque->tiles);
+    opaque->tiles = NULL;
+    opaque->tile_expected = 0;
+    opaque->tile_received = 0;
+    opaque->tile_ready    = 0;
+    opaque->tile_mode     = 0;
+    opaque->tile_canvas_w = 0;
+    opaque->tile_canvas_h = 0;
+}
 
-struct SDL_VoutOverlay_Opaque {
-    SDL_mutex *mutex;
-    Uint16 pitches[AV_NUM_DATA_POINTERS];
+static int func_is_tile_pending(SDL_VoutOverlay *overlay)
+{
+    if (!overlay) return 0;
+    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+    if (!opaque || !opaque->tile_mode) return 0;
+    return opaque->tile_ready ? 0 : 1;
+}
 
-    CVPixelBufferRef pixelBuffer;
-    CVPixelBufferPoolRef pixelBufferPool;
+static int func_get_tile_count(SDL_VoutOverlay *overlay)
+{
+    if (!overlay) return 0;
+    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+    if (!opaque || !opaque->tile_mode) return 0;
+    return opaque->tile_received;
+}
 
-    /* HEIC tile grid 模式 */
-    int         tile_mode;       // 1 表示当前正在累积 tile
-    int         tile_expected;   // 期望总数（grid->nb_tiles）
-    int         tile_received;   // 已收到并存入槽位的 tile 数
-    int         tile_ready;      // 1 表示已攒齐、可显示
-    int         tile_canvas_w;
-    int         tile_canvas_h;
-    FSTileSlot *tiles;           // 长度 tile_expected
-};
+static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
+                                 CVPixelBufferRef *out_buffers,
+                                 int *out_x, int *out_y,
+                                 int *out_w, int *out_h,
+                                 int max_count)
+{
+    if (!overlay) return 0;
+    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+    if (!opaque || !opaque->tile_mode || !opaque->tiles) return 0;
+    int n = opaque->tile_expected < max_count ? opaque->tile_expected : max_count;
+    int k = 0;
+    for (int i = 0; i < n; i++) {
+        FSTileSlot *slot = &opaque->tiles[i];
+        if (!slot->filled || !slot->pb) continue;
+        if (out_buffers) out_buffers[k] = slot->pb;
+        if (out_x) out_x[k] = slot->x;
+        if (out_y) out_y[k] = slot->y;
+        if (out_w) out_w[k] = slot->w;
+        if (out_h) out_h[k] = slot->h;
+        k++;
+    }
+    return k;
+}
+#endif
 
 static SDL_Class g_vout_overlay_ffmpeg_class = {
     .name = "FFmpegVoutOverlay",
@@ -332,9 +395,9 @@ static void func_free_l(SDL_VoutOverlay *overlay)
         CVPixelBufferRelease(opaque->pixelBuffer);
         opaque->pixelBuffer = NULL;
     }
-
+#if IS_TILEGRID_HEIC_ENABLED
     tile_slots_free(opaque);
-
+#endif
     if (opaque->mutex)
         SDL_DestroyMutex(opaque->mutex);
     
@@ -353,33 +416,13 @@ static int func_unlock(SDL_VoutOverlay *overlay)
     return SDL_UnlockMutex(opaque->mutex);
 }
 
-static void tile_slots_free(SDL_VoutOverlay_Opaque *opaque)
-{
-    if (!opaque || !opaque->tiles)
-        return;
-    for (int i = 0; i < opaque->tile_expected; i++) {
-        if (opaque->tiles[i].pb) {
-            CVPixelBufferRelease(opaque->tiles[i].pb);
-            opaque->tiles[i].pb = NULL;
-        }
-    }
-    free(opaque->tiles);
-    opaque->tiles = NULL;
-    opaque->tile_expected = 0;
-    opaque->tile_received = 0;
-    opaque->tile_ready    = 0;
-    opaque->tile_mode     = 0;
-    opaque->tile_canvas_w = 0;
-    opaque->tile_canvas_h = 0;
-}
-
 static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AVFrame *frame)
 {
     if (!overlay || !frame)
         return -100;
 
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-
+#if IS_TILEGRID_HEIC_ENABLED
     /* ---------- HEIC tile grid 分支 ---------- */
     FSTileGridMetadata *tmeta = NULL;
     if (frame->opaque_ref && frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
@@ -476,7 +519,8 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
         overlay->tile_canvas_w = 0;
         overlay->tile_canvas_h = 0;
     }
-
+#endif
+    
     if (opaque->pixelBuffer) {
         CVPixelBufferRelease(opaque->pixelBuffer);
         opaque->pixelBuffer = NULL;
@@ -506,46 +550,6 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
         return 0;
     }
     return -100;
-}
-
-static int func_is_tile_pending(SDL_VoutOverlay *overlay)
-{
-    if (!overlay) return 0;
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    if (!opaque || !opaque->tile_mode) return 0;
-    return opaque->tile_ready ? 0 : 1;
-}
-
-static int func_get_tile_count(SDL_VoutOverlay *overlay)
-{
-    if (!overlay) return 0;
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    if (!opaque || !opaque->tile_mode) return 0;
-    return opaque->tile_received;
-}
-
-static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
-                                 CVPixelBufferRef *out_buffers,
-                                 int *out_x, int *out_y,
-                                 int *out_w, int *out_h,
-                                 int max_count)
-{
-    if (!overlay) return 0;
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    if (!opaque || !opaque->tile_mode || !opaque->tiles) return 0;
-    int n = opaque->tile_expected < max_count ? opaque->tile_expected : max_count;
-    int k = 0;
-    for (int i = 0; i < n; i++) {
-        FSTileSlot *slot = &opaque->tiles[i];
-        if (!slot->filled || !slot->pb) continue;
-        if (out_buffers) out_buffers[k] = slot->pb;
-        if (out_x) out_x[k] = slot->x;
-        if (out_y) out_y[k] = slot->y;
-        if (out_w) out_w[k] = slot->w;
-        if (out_h) out_h[k] = slot->h;
-        k++;
-    }
-    return k;
 }
 
 struct SDL_Vout_Opaque {
@@ -582,9 +586,11 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
     overlay->func_fill_frame    = func_fill_avframe_to_cvpixelbuffer;
+#if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;
     overlay->func_get_tile_buffers = func_get_tile_buffers;
+#endif
     
     SDL_Vout_Opaque * voutOpaque = display->opaque;
     if (display->cvpixelbufferpool && !voutOpaque->cvPixelBufferPool) {

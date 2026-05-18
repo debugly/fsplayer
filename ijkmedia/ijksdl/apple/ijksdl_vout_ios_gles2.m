@@ -149,7 +149,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
         return -4;
     }
-
+#if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 路径：把所有 tile 打包到 FSOverlayAttach.tilePieces */
     if (overlay->is_tile_grid) {
         int count = SDL_VoutOverlay_GetTileCount(overlay);
@@ -191,7 +191,8 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         free(bufs); free(xs); free(ys); free(ws); free(hs);
         return [gl_view displayAttach:attach];
     }
-
+#endif
+    
     CVPixelBufferRef videoPic = SDL_Overlay_getCVPixelBufferRef(overlay);
     if (videoPic) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];

@@ -27,6 +27,9 @@
  * https://www.rfc-editor.org/rfc/rfc8216.txt
  */
 
+#include "../ff_version.h"
+#include "libavformat/avformat.h"
+#if IS_FFMPEG_6
 #include "libffmpeg/config_components.h"
 
 #include "libavformat/http.h"
@@ -39,7 +42,7 @@
 #include "libavutil/opt.h"
 #include "libavutil/dict.h"
 #include "libavutil/time.h"
-#include "libavformat/avformat.h"
+
 #include "libavformat/demux.h"
 #include "libavutil/internal.h"
 #include "libavformat/avio_internal.h"
@@ -48,7 +51,6 @@
 
 #include "libavformat/hls_sample_encryption.h"
 #include "libavformat/internal.h"
-#include "../ff_version.h"
 
 #define INITIAL_BUFFER_SIZE 32768
 
@@ -2761,6 +2763,8 @@ static const AVClass fs_hls_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
+#endif
+
 #if IS_FFMPEG_7
 const FFInputFormat ijkff_ijkplaceholder1_demuxer = {
     .p.name         = "debug_hls",
@@ -2776,7 +2780,7 @@ const FFInputFormat ijkff_ijkplaceholder1_demuxer = {
     .read_seek      = hls_read_seek,
 };
 
-#else
+#elif IS_FFMPEG_6
 
 const AVInputFormat ijkff_ijkplaceholder1_demuxer = {
     .name           = "fs_hls",
@@ -2791,4 +2795,21 @@ const AVInputFormat ijkff_ijkplaceholder1_demuxer = {
     .read_close     = hls_close,
     .read_seek      = hls_read_seek,
 };
+
+#else
+
+#define IJK_DUMMY_DEMUXER(x)                                        \
+static const AVClass ijk_##x##_demuxer_class = {                    \
+    .class_name = #x,                                               \
+    .item_name  = av_default_item_name,                             \
+    .version    = LIBAVUTIL_VERSION_INT,                            \
+    };                                                              \
+                                                                    \
+AVInputFormat ff_##x##_demuxer = {                                  \
+    .name                = #x,                                      \
+    .priv_data_size      = 1,                                       \
+    .priv_class          = &ijk_##x##_demuxer_class,                \
+};
+
+IJK_DUMMY_DEMUXER(ijkplaceholder1);
 #endif
