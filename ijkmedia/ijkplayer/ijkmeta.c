@@ -26,6 +26,7 @@
 #include "ff_ffinc.h"
 #include "ijksdl/ijksdl_misc.h"
 #include "ff_ffplay.h"
+#include "ff_version.h"
 
 #define FS_META_INIT_CAPACITY 13
 
@@ -302,7 +303,7 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
         const char *codec_name = avcodec_get_name(codecpar->codec_id);
         if (codec_name)
             ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_NAME, codec_name);
-        if (codecpar->profile != FF_PROFILE_UNKNOWN) {
+        if (codecpar->profile != AV_PROFILE_UNKNOWN) {
             const AVCodec *codec = avcodec_find_decoder(codecpar->codec_id);
             if (codec) {
                 ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_PROFILE_ID, codecpar->profile);

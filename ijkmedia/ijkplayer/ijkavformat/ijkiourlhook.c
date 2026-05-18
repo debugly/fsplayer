@@ -26,7 +26,12 @@
 #include <stdlib.h>
 #include "ijkiourl.h"
 #include "ijkioprotocol.h"
+#include "../ff_version.h"
+#if IS_FFMPEG_6
 #include "libavformat/application.h"
+#else
+#include "libavutil/application.h"
+#endif
 #include "libavformat/avio.h"
 #include "libavutil/error.h"
 #include "libavutil/avstring.h"

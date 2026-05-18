@@ -1,0 +1,302 @@
+name: FSPlayer
+options:
+  bundleIdPrefix: com.debugly
+targets:
+  FSPlayer-macOS:
+    platform: macOS
+    type: framework
+    deploymentTarget: 10.14
+    preBuildScripts:
+      - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
+        name: ijkversion.h
+    sources:
+      - path: ijkmedia
+        headerVisibility: project
+        excludes:
+          - "ijkplayer/version.sh"
+          - "ijksdl/ijksdl_extra_log.c"
+          - "ijkplayer/ijkversion.h"
+          - "ijkplayer/ijkavformat/ijkioandroidio.c"
+          - "ijkplayer/android/**/*.*"
+          - "ijksdl/android/**/*.*"
+          - "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.[hc]"
+          - "ijksdl/ios/*.*"
+          - "wrapper/apple/*.*"
+          - "ijkplayer/ff_subtitle_preference.h"
+      - path: ijkmedia/ijkplayer/ff_subtitle_preference.h
+        headerVisibility: public
+      - path: ijkmedia/wrapper/apple
+        headerVisibility: public
+    settings:
+      PRODUCT_NAME: FSPlayer
+      MARKETING_VERSION: 1.0.7
+      DEFINES_MODULE: YES
+      CLANG_WARN_DOCUMENTATION_COMMENTS: NO
+      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-macos.modulemap"
+      MY_PROJECT_DIR: "${MY_PROJECT_DIR}"
+      SWIFT_INCLUDE_PATHS:
+        - "${MY_PROJECT_DIR}/ijkmedia/wrapper/apple"
+      GENERATE_INFOPLIST_FILE: YES
+      GCC_PREPROCESSOR_DEFINITIONS: "$(inherited)"
+      MTL_LANGUAGE_REVISION: Metal20
+      METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework/Resources"
+      ALWAYS_SEARCH_USER_PATHS: YES
+      HEADER_SEARCH_PATHS:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/ijkmedia"
+        - "${MY_PROJECT_DIR}/ijkmedia/ijkplayer"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/ffmpeg/include"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/ass/include"
+      LIBRARY_SEARCH_PATHS:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/ass/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/bluray/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/dav1d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/dvdread/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/ffmpeg/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/freetype/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/fribidi/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/harfbuzz/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/openssl/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/opus/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/smb2/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/uavs3d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/unibreak/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/xml2/lib"
+    dependencies:
+      - sdk: AppKit.framework
+      - sdk: AudioUnit.framework
+      - sdk: AudioToolbox.framework
+      - sdk: Metal.framework
+      - sdk: CoreFoundation.framework
+      - sdk: CoreVideo.framework
+      - sdk: CoreImage.framework
+      - sdk: VideoToolbox.framework
+      - sdk: CoreMedia.framework
+      - sdk: Security.framework
+      - sdk: libz.tbd
+      - sdk: libbz2.tbd
+      - sdk: libiconv.tbd
+      - sdk: liblzma.tbd
+      - sdk: ../../FFToolChain/build/product/macos/universal/ass/lib/libass.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/bluray/lib/libbluray.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/dav1d/lib/libdav1d.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/dvdread/lib/libdvdread.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavcodec.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavdevice.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavfilter.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavformat.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libavutil.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libswresample.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/ffmpeg/lib/libswscale.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/freetype/lib/libfreetype.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/fribidi/lib/libfribidi.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/harfbuzz/lib/libharfbuzz-subset.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/harfbuzz/lib/libharfbuzz.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/openssl/lib/libcrypto.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/openssl/lib/libssl.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/opus/lib/libopus.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/smb2/lib/libsmb2.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/uavs3d/lib/libuavs3d.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/unibreak/lib/libunibreak.a
+      - sdk: ../../FFToolChain/build/product/macos/universal/xml2/lib/libxml2.a
+  FSPlayer-iOS:
+    platform: iOS
+    supportedDestinations: [iOS]
+    type: framework
+    deploymentTarget: 12.0
+    preBuildScripts: 
+      - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
+        name: ijkversion.h
+    sources:
+      - path: ijkmedia
+        headerVisibility: project
+        excludes:
+          - "ijkplayer/version.sh"
+          - "ijksdl/ijksdl_extra_log.c"
+          - "ijkplayer/ijkversion.h"
+          - "ijkplayer/ijkavformat/ijkioandroidio.c"
+          - "ijkplayer/android/**/*.*"
+          - "ijksdl/android/**/*.*"
+          - "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.[hc]"
+          - "ijksdl/mac/*.*"
+          - "wrapper/apple/*.*"
+          - "ijkplayer/ff_subtitle_preference.h"
+      - path: ijkmedia/ijkplayer/ff_subtitle_preference.h
+        headerVisibility: public
+      - path: ijkmedia/wrapper/apple
+        headerVisibility: public
+    settings:
+      PRODUCT_NAME: FSPlayer
+      MARKETING_VERSION: 1.0.7
+      DEFINES_MODULE: YES
+      CLANG_WARN_DOCUMENTATION_COMMENTS: NO
+      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-ios.modulemap"
+      SWIFT_INCLUDE_PATHS:
+        - "${MY_PROJECT_DIR}/ijkmedia/wrapper/apple"
+      GENERATE_INFOPLIST_FILE: YES
+      GCC_PREPROCESSOR_DEFINITIONS: "$(inherited)"
+      MTL_LANGUAGE_REVISION: Metal20
+      METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework"
+      ALWAYS_SEARCH_USER_PATHS: YES
+      ENABLE_BITCODE: NO
+      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
+      HEADER_SEARCH_PATHS:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/ijkmedia"
+        - "${MY_PROJECT_DIR}/ijkmedia/ijkplayer"
+      HEADER_SEARCH_PATHS[sdk=iphoneos*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/ffmpeg/include"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/ass/include"
+      HEADER_SEARCH_PATHS[sdk=iphonesimulator*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/ffmpeg/include"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/ass/include"
+      LIBRARY_SEARCH_PATHS[sdk=iphoneos*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/ass/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/bluray/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/dav1d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/dvdread/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/ffmpeg/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/freetype/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/fribidi/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/harfbuzz/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/openssl/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/opus/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/smb2/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/uavs3d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/unibreak/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal/xml2/lib"
+      LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/ass/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/bluray/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/dav1d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/dvdread/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/ffmpeg/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/freetype/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/fribidi/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/harfbuzz/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/openssl/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/opus/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/smb2/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/uavs3d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/unibreak/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/xml2/lib"
+    dependencies: 
+      - sdk: UIKit.framework
+      - sdk: AudioToolbox.framework
+      - sdk: Metal.framework
+      - sdk: CoreFoundation.framework
+      - sdk: CoreVideo.framework
+      - sdk: CoreImage.framework
+      - sdk: VideoToolbox.framework
+      - sdk: CoreMedia.framework
+      - sdk: Security.framework
+      - sdk: libz.tbd
+      - sdk: libbz2.tbd
+      - sdk: libiconv.tbd
+      - sdk: liblzma.tbd
+  FSPlayer-tvOS:
+    platform: tvOS
+    type: framework
+    deploymentTarget: 12.0
+    preBuildScripts: 
+      - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
+        name: ijkversion.h
+    sources:
+      - path: ijkmedia
+        headerVisibility: project
+        excludes:
+          - "ijkplayer/version.sh"
+          - "ijkplayer/ijkversion.h"
+          - "ijkplayer/ijkavformat/ijkioandroidio.c"
+          - "ijkplayer/android/**/*.*"
+          - "ijksdl/ijksdl_extra_log.c"
+          - "ijksdl/ijksdl_container.*"
+          - "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.[hc]"
+          - "ijksdl/android/**/*.*"
+          - "ijksdl/mac/*.*"
+          - "wrapper/apple/*.*"
+          - "ijkplayer/ff_subtitle_preference.h"
+      - path: ijkmedia/ijkplayer/ff_subtitle_preference.h
+        headerVisibility: public
+      - path: ijkmedia/wrapper/apple
+        headerVisibility: public
+    settings:
+      PRODUCT_NAME: FSPlayer
+      MARKETING_VERSION: 1.0.7
+      DEFINES_MODULE: YES
+      CLANG_WARN_DOCUMENTATION_COMMENTS: NO
+      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-tvos.modulemap"
+      SWIFT_INCLUDE_PATHS:
+        - "${MY_PROJECT_DIR}/ijkmedia/wrapper/apple"
+      GENERATE_INFOPLIST_FILE: YES
+      GCC_PREPROCESSOR_DEFINITIONS: "$(inherited)"
+      MTL_LANGUAGE_REVISION: Metal20
+      METAL_LIBRARY_OUTPUT_DIR: "${CONFIGURATION_BUILD_DIR}/FSPlayer.framework"
+      ALWAYS_SEARCH_USER_PATHS: YES
+      ENABLE_BITCODE: NO
+      OTHER_LDFLAGS: $(inherited) -l"opus" -l"crypto" -l"ssl" -l"dav1d" -l"dvdread" -l"freetype" -l"fribidi" -l"harfbuzz" -l"harfbuzz-subset" -l"unibreak" -l"ass" -l"uavs3d" -l"avcodec" -l"avdevice" -l"avfilter" -l"avformat" -l"avutil" -l"swresample" -l"swscale" -l"smb2" -l"xml2" -l"bluray"
+      HEADER_SEARCH_PATHS:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/ijkmedia"
+        - "${MY_PROJECT_DIR}/ijkmedia/ijkplayer"
+      HEADER_SEARCH_PATHS[sdk=appletvos*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/ffmpeg/include"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/ass/include"
+      HEADER_SEARCH_PATHS[sdk=appletvsimulator*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/ffmpeg/include"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/ass/include"
+      LIBRARY_SEARCH_PATHS[sdk=appletvos*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/ass/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/bluray/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/dav1d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/dvdread/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/ffmpeg/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/freetype/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/fribidi/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/harfbuzz/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/openssl/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/opus/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/smb2/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/uavs3d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/unibreak/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal/xml2/lib"
+      LIBRARY_SEARCH_PATHS[sdk=appletvsimulator*]:
+        - "$(inherited)"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/ass/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/bluray/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/dav1d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/dvdread/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/ffmpeg/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/freetype/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/fribidi/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/harfbuzz/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/openssl/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/opus/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/smb2/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/uavs3d/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/unibreak/lib"
+        - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/xml2/lib"
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: AudioToolbox.framework
+      - sdk: Metal.framework
+      - sdk: CoreFoundation.framework
+      - sdk: CoreVideo.framework
+      - sdk: CoreImage.framework
+      - sdk: VideoToolbox.framework
+      - sdk: CoreMedia.framework
+      - sdk: Security.framework
+      - sdk: libz.tbd
+      - sdk: libbz2.tbd
+      - sdk: libiconv.tbd
+      - sdk: liblzma.tbd
+
+

@@ -32,7 +32,7 @@
 #include "ijksdl_video.h"
 #include "ijksdl/ffmpeg/ijksdl_inc_ffmpeg.h"
 #include "ijksdl_fourcc.h"
-
+#include "ff_version.h"
 #ifdef __APPLE__
 #include <CoreVideo/CVPixelBuffer.h>
 #endif
@@ -56,7 +56,7 @@ struct SDL_VoutOverlay {
     //for auto rotate video
     int auto_z_rotate_degrees;
     int has_alpha;
-
+#if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 支持：
      * 当 overlay 处于 tile-grid 模式时 is_tile_grid=1,
      * tile_canvas_w/h 为整张 canvas 的尺寸。
@@ -65,7 +65,8 @@ struct SDL_VoutOverlay {
     int is_tile_grid;
     int tile_canvas_w;
     int tile_canvas_h;
-
+#endif
+    
     SDL_Class               *opaque_class;
     SDL_VoutOverlay_Opaque  *opaque;
 
@@ -75,7 +76,7 @@ struct SDL_VoutOverlay {
     void    (*unref)(SDL_VoutOverlay *overlay);
 
     int     (*func_fill_frame)(SDL_VoutOverlay *overlay, const AVFrame *frame);
-
+#if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 查询接口（可选实现，NULL 表示不支持）
      *  func_is_tile_pending:  返回 1 表示当前还在累积 tile，上游不应把此帧 push 到渲染队列
      *  func_get_tile_count:   返回已收集到的 tile 数（一般等于 nb_tiles）
@@ -83,7 +84,6 @@ struct SDL_VoutOverlay {
      */
     int     (*func_is_tile_pending)(SDL_VoutOverlay *overlay);
     int     (*func_get_tile_count)(SDL_VoutOverlay *overlay);
-#ifdef __APPLE__
     int     (*func_get_tile_buffers)(SDL_VoutOverlay *overlay,
                                      CVPixelBufferRef *out_buffers,
                                      int *out_x, int *out_y,
@@ -124,11 +124,11 @@ void    SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay);
 void    SDL_VoutUnrefYUVOverlay(SDL_VoutOverlay *overlay);
 int     SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame);
 
+#if IS_TILEGRID_HEIC_ENABLED
 /* HEIC tile grid: 查询 overlay 是否还在累积 tile（未攒齐不要 push） */
 int     SDL_VoutOverlay_IsTilePending(SDL_VoutOverlay *overlay);
 /* HEIC tile grid: 已收集的 tile 数 */
 int     SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay);
-#ifdef __APPLE__
 /* HEIC tile grid: 批量取 tile CVPixelBufferRef 及位置（调用方负责 CVPixelBufferRetain/Release） */
 int     SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
                                               CVPixelBufferRef *out_buffers,

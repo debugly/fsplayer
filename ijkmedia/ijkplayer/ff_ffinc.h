@@ -36,8 +36,13 @@
 #include "libavutil/version.h"
 #include "libswresample/swresample.h"
 #include "libavformat/avformat.h"
+#include "ff_version.h"
+#if IS_FFMPEG_6
 #include "libavformat/application.h"
-#include "libavcodec/avfft.h"
+#else
+#include "libavutil/application.h"
+#endif
+//#include "libavcodec/avfft.h"
 #include "libswscale/swscale.h"
 #include "ijksdl/ijksdl.h"
 
