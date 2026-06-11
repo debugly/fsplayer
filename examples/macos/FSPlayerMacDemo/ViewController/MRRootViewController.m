@@ -580,10 +580,14 @@ static BOOL hdrAnimationShown = 0;
         // Param for living
         [options setPlayerOptionIntValue:1 forKey:@"infbuf"];
         [options setPlayerOptionIntValue:0 forKey:@"packet-buffering"];
+        //[options setFormatOptionValue:@"1000000" forKey:@"probesize"];
+        [options setFormatOptionValue:@"600000" forKey:@"analyzeduration"];
     } else {
         // Param for playback
         [options setPlayerOptionIntValue:0 forKey:@"infbuf"];
         [options setPlayerOptionIntValue:1 forKey:@"packet-buffering"];
+        [options setFormatOptionValue:@"1000000" forKey:@"analyzeduration"];
+        [options setFormatOptionValue:@"10000000" forKey:@"probesize"];
     }
     
     //视频帧处理不过来的时候丢弃一些帧达到同步的效果
@@ -597,7 +601,7 @@ static BOOL hdrAnimationShown = 0;
     //for mgeg-ts seek
     [options setFormatOptionIntValue:1 forKey:@"seek_flag_keyframe"];
     //    default is 5000000,but some high bit rate video probe faild cause no audio.
-    [options setFormatOptionValue:@"10000000" forKey:@"probesize"];
+//    [options setFormatOptionValue:@"10000000" forKey:@"probesize"];
     //    [options setFormatOptionValue:@"1" forKey:@"flush_packets"];
     //    [options setPlayerOptionIntValue:0      forKey:@"packet-buffering"];
     //    [options setPlayerOptionIntValue:1      forKey:@"render-wait-start"];
@@ -732,6 +736,8 @@ static BOOL hdrAnimationShown = 0;
     NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
     playerView.frame = self.playerContainer.bounds;
     playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    // Set allowHDRDisplay BEFORE addSubview so viewDidMoveToWindow sees the correct value.
+    playerView.allowHDRDisplay = [MRCocoaBindingUserDefault open_hdr];
     [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
     
     playerView.showHdrAnimation = !hdrAnimationShown;
@@ -1136,6 +1142,7 @@ static BOOL hdrAnimationShown = 0;
     [self destroyPlayer];
 #warning 根据地址，动态修改
     BOOL isLive = [urlStr hasPrefix:@"rtmp"] || [urlStr hasPrefix:@"rtsp"];
+    isLive = NO;
     
     [self perpareIJKPlayer:urlStr hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
     NSString *videoName = [urlStr lastPathComponent];
@@ -1509,9 +1516,10 @@ static BOOL useExact = NO;
 - (void)resetPreferenceEachPlay
 {
     self.usingHardwareAccelerate = [self preferHW];
-    
+    self.player.view.allowHDRDisplay = [MRCocoaBindingUserDefault open_hdr];
+
     [MRCocoaBindingUserDefault setValue:@(0.0) forKey:@"subtitle_delay"];
-    
+
     [MRCocoaBindingUserDefault setValue:@(0.0) forKey:@"audio_delay"];
 }
 
@@ -1927,9 +1935,10 @@ static BOOL useExact = NO;
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-#warning todo
+        BOOL allow = [MRCocoaBindingUserDefault open_hdr];
+        self.player.view.allowHDRDisplay = allow;
     } forKey:@"open_hdr"];
-    
+
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         if (![MRCocoaBindingUserDefault use_hw]) {

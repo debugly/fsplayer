@@ -263,6 +263,7 @@
         convertMatrix.transferFun = self.pipelineMeta.transferFunc;
         convertMatrix.hdrPercentage = self.hdrPercentage;
         convertMatrix.hdr = self.pipelineMeta.hdr;
+        convertMatrix.hdrDisplay = self.hdrDisplay ? 1 : 0;
         self.convertMatrixBuff = [_device newBufferWithBytes:&convertMatrix
                                                       length:sizeof(FSConvertMatrix)
                                                      options:MTLResourceStorageModeShared];
@@ -273,6 +274,14 @@
 {
     if (0.0 <= hdrPercentage && hdrPercentage <= 1.0 && _hdrPercentage != hdrPercentage) {
         _hdrPercentage = hdrPercentage;
+        self.convertMatrixChanged = YES;
+    }
+}
+
+- (void)setHdrDisplay:(BOOL)hdrDisplay
+{
+    if (_hdrDisplay != hdrDisplay) {
+        _hdrDisplay = hdrDisplay;
         self.convertMatrixChanged = YES;
     }
 }

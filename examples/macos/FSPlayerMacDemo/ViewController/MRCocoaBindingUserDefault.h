@@ -44,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (BOOL)copy_hw_frame;
 + (BOOL)use_hw;
++ (BOOL)open_hdr;
 
 + (BOOL)accurate_seek;
 + (int)seek_step;

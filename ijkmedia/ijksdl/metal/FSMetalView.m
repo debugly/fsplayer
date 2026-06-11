@@ -47,6 +47,8 @@ typedef CGRect NSRect;
 #endif
 @property (nonatomic, strong) FSDisplayLinkWrapper *displayLinkWrapper;
 @property (atomic, assign) long previousTag;
+// Whether the current display supports EDR/HDR and we have switched to HDR rendering mode.
+@property (nonatomic, assign) BOOL hdrDisplayEnabled;
 @end
 
 @implementation FSMetalView
@@ -64,6 +66,8 @@ typedef CGRect NSRect;
 @synthesize scaleFactor = _scaleFactor;
 #endif
 @synthesize showHdrAnimation = _showHdrAnimation;
+@synthesize hdrDisplayEnabled = _hdrDisplayEnabled;
+@synthesize allowHDRDisplay = _allowHDRDisplay;
 
 @synthesize displayDelegate = _displayDelegate;
 
@@ -98,21 +102,125 @@ typedef CGRect NSRect;
                                                 object:nil];
 #endif
     [_displayLinkWrapper start];
+
+#if TARGET_OS_OSX
+    // Re-check HDR capability whenever screen parameters change (brightness, display connection).
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(screenParametersDidChange:)
+                                                  name:NSApplicationDidChangeScreenParametersNotification
+                                                object:nil];
+#endif
+#if TARGET_OS_IOS || TARGET_OS_TV
+    if (@available(iOS 16.0, tvOS 16.0, *)) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(edrHeadroomDidChange:)
+                                                     name:UIScreen.edrHeadroomDidChangeNotification
+                                                   object:nil];
+    }
+#endif
 }
 
 #if TARGET_OS_OSX
 - (void)viewDidMoveToWindow {
     [super viewDidMoveToWindow];
     [_displayLinkWrapper updateWithWindow:self.window];
+    [self updateHDRDisplayMode];
 }
 
 - (void)windowDidChangeScreen:(NSNotification *)notification {
     NSWindow *window = notification.object;
     if (window == self.window) {
         [_displayLinkWrapper updateWithWindow:window];
+        [self updateHDRDisplayMode];
     }
 }
+
+- (void)screenParametersDidChange:(NSNotification *)notification {
+    [self updateHDRDisplayMode];
+}
 #endif
+
+#if TARGET_OS_IOS || TARGET_OS_TV
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    if (self.window) {
+        [self updateHDRDisplayMode];
+    }
+}
+
+- (void)edrHeadroomDidChange:(NSNotification *)notification {
+    [self updateHDRDisplayMode];
+}
+#endif
+
+/// Returns YES when the display supports EDR AND the user has not disabled HDR rendering.
+- (BOOL)currentDisplaySupportsHDR {
+    if (!_allowHDRDisplay) {
+        return NO;
+    }
+#if TARGET_OS_OSX
+    NSScreen *screen = self.window.screen ?: [NSScreen mainScreen];
+    // Use maximumPotentialExtendedDynamicRangeColorComponentValue (hardware capability),
+    // NOT maximumExtendedDynamicRangeColorComponentValue (current OS allocation), because
+    // the latter stays at 1.0 until the app has already opted the layer into EDR.
+    return screen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1.0;
+#elif TARGET_OS_TV
+    if (@available(tvOS 16.0, *)) {
+        return UIScreen.mainScreen.currentEDRHeadroom > 1.0;
+    }
+    return NO;
+#elif TARGET_OS_IOS
+    if (@available(iOS 16.0, *)) {
+        return UIScreen.mainScreen.currentEDRHeadroom > 1.0;
+    }
+    return NO;
+#else
+    return NO;
+#endif
+}
+
+/// Switches the Metal layer pixel format and color space based on whether the
+/// current display supports extended dynamic range. Rebuilds the render pipeline
+/// if the pixel format changes.
+- (void)updateHDRDisplayMode {
+    BOOL supportsHDR = [self currentDisplaySupportsHDR];
+
+    if (supportsHDR == self.hdrDisplayEnabled) {
+        return; // No change needed
+    }
+
+    self.hdrDisplayEnabled = supportsHDR;
+    ALOGI("HDR display mode: %s", supportsHDR ? "enabled" : "disabled");
+
+    // Update MTKView pixel format and CAMetalLayer properties.
+    if (supportsHDR) {
+        self.colorPixelFormat = MTLPixelFormatRGBA16Float;
+    } else {
+        self.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
+    }
+
+    CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
+    metalLayer.wantsExtendedDynamicRangeContent = supportsHDR;
+    if (supportsHDR) {
+        CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
+        metalLayer.colorspace = cs;
+        CGColorSpaceRelease(cs);
+    } else {
+        metalLayer.colorspace = nil; // revert to default
+    }
+
+    // Rebuild the render pipeline with the new pixel format.
+    self.picturePipeline = nil;
+}
+
+- (void)setAllowHDRDisplay:(BOOL)allowHDRDisplay {
+    if (_allowHDRDisplay == allowHDRDisplay) {
+        return;
+    }
+    _allowHDRDisplay = allowHDRDisplay;
+    // Re-evaluate: if we just disabled, force SDR; if we just enabled, check display capability.
+    [self updateHDRDisplayMode];
+}
 
 - (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
     [self.renderSnapshotLock lock];
@@ -136,6 +244,7 @@ typedef CGRect NSRect;
     _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
     _darPreference      = (FSDARPreference){0.0};
     _renderSnapshotLock = [[NSLock alloc]init];
+    _allowHDRDisplay    = YES;
     
     [self setupDisplayLink];
     
@@ -320,6 +429,7 @@ typedef CGRect NSRect;
         hdrPercentage:(float)hdrPercentage
 {
     self.picturePipeline.hdrPercentage = hdrPercentage;
+    self.picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
     self.picturePipeline.rotateDegrees = self.rotatePreference.degrees;
@@ -389,6 +499,7 @@ typedef CGRect NSRect;
            hdrPercentage:(float)hdrPercentage
 {
     self.picturePipeline.hdrPercentage = hdrPercentage;
+    self.picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
     self.picturePipeline.rotateDegrees = self.rotatePreference.degrees;

@@ -315,6 +315,27 @@ float3 rec_1886_eotf_vec(float3 v)
 // bt709]
 // mark -hdr helps
 
+// HDR direct output for EDR/HDR-capable displays.
+// Applies EOTF and gamut conversion (BT.2020 → linear sRGB) but skips tone-mapping.
+// Output is in linear light; 1.0 == SDR reference white (~203 nits per BT.2408).
+// Values above 1.0 represent HDR highlights delivered straight to the EDR layer.
+float3 hdr_direct(float3 rgb_2020, FSColorTransferFunc transferFun)
+{
+    float3 linear;
+    if (transferFun == FSColorTransferFuncPQ) {
+        // PQ EOTF → [0, 10000] nits; normalise: 203 nits (HDR ref white) == 1.0
+        linear = st_2084_eotf_vec(rgb_2020) * (10000.0 / 203.0);
+    } else if (transferFun == FSColorTransferFuncHLG) {
+        // HLG EOTF → [0, 1000] nits; normalise: 203 nits == 1.0
+        linear = arib_b67_eotf_vec(rgb_2020) * (1000.0 / 203.0);
+    } else {
+        // Linear or unrecognised: decode gamma only
+        linear = rec_1886_eotf_vec(rgb_2020);
+    }
+    // Gamut: BT.2020 primaries → linear sRGB primaries
+    return linear * RGB2020_TO_RGB709;
+}
+
 float3 hdr2sdr(float3 rgb_2020,float x,float hdrPercentage,FSColorTransferFunc transferFun)
 {
     //已经使用矩阵转为RGB了，这里的RGB是经过 伽马 校正的，因此是曲线的
@@ -355,10 +376,15 @@ float4 yuv2rgb(float3 yuv,device FSConvertMatrix* convertMatrix,float x)
 {
     //先把 [0.0,1.0] 范围的YUV 处理为 [0.0,1.0] 范围的RGB
     float3 rgb = convertMatrix->colorMatrix * (yuv + convertMatrix->offset);
-    //HDR 转 SDR
     float3 myFragColor;
     if (convertMatrix->hdr) {
-        myFragColor = hdr2sdr(rgb,x,convertMatrix->hdrPercentage,convertMatrix->transferFun);
+        if (convertMatrix->hdrDisplay) {
+            // HDR display mode: output linear light for EDR layer (no tone-mapping)
+            myFragColor = hdr_direct(rgb, convertMatrix->transferFun);
+        } else {
+            // SDR display mode: tone-map HDR → SDR
+            myFragColor = hdr2sdr(rgb,x,convertMatrix->hdrPercentage,convertMatrix->transferFun);
+        }
     } else {
         myFragColor = rgb;
     }

@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) CGSize textureCrop;
 //非HDR视频设置无效
 @property (nonatomic, assign) float hdrPercentage;
+// When YES, output linear light values for an EDR/HDR display instead of tone-mapping to SDR.
+// Only has effect when the content is HDR (isHDR == YES).
+@property (nonatomic, assign) BOOL hdrDisplay;
 
 - (BOOL)isHDR;
 - (instancetype)initWithDevice:(id<MTLDevice>)device

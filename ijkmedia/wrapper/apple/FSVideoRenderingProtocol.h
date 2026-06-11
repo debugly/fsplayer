@@ -169,6 +169,12 @@ typedef enum : NSUInteger {
 @property(atomic) BOOL preventDisplay;
 // hdr video show 'Gray mask' animation
 @property(nonatomic) BOOL showHdrAnimation;
+// YES when the current display supports EDR/HDR and HDR content is rendered natively
+// (no tone-mapping to SDR). Updated automatically when the display changes.
+@property(nonatomic, readonly) BOOL hdrDisplayEnabled;
+// Controls whether HDR direct rendering is permitted at all.
+// Default YES. Set to NO to always tone-map HDR content to SDR regardless of display capability.
+@property(nonatomic) BOOL allowHDRDisplay;
 // refresh current video picture and subtitle (when player paused change video pic preference, you can invoke this method)
 - (void)setNeedsRefreshCurrentPic;
 

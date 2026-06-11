@@ -286,6 +286,11 @@
     return [self boolForKey:@"use_hw"];
 }
 
++ (BOOL)open_hdr
+{
+    return [self boolForKey:@"open_hdr"];
+}
+
 + (NSString *)FontName
 {
     return [self stringForKey:@"FontName"];
