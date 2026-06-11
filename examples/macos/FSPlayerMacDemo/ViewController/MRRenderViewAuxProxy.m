@@ -28,8 +28,6 @@
 
 @synthesize scalingMode = _scalingMode;
 
-@synthesize showHdrAnimation = _showHdrAnimation;
-
 @synthesize displayDelegate;
 
 - (void)dealloc

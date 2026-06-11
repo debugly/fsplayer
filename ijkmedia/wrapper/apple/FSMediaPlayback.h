@@ -236,8 +236,6 @@ FS_EXTERN NSString *const FSPlayerAfterSeekFirstVideoFrameDisplayNotification;
 FS_EXTERN NSString *const FSPlayerVideoDecoderFatalNotification; /*useinfo's code is decoder's err code.*/
 FS_EXTERN NSString *const FSPlayerRecvWarningNotification; /*warning notifi.*/
 FS_EXTERN NSString *const FSPlayerWarningReasonUserInfoKey; /*useinfo's key,value is int.*/
-//user info's state key:1 means begin,2 means end.
-FS_EXTERN NSString *const FSPlayerHDRAnimationStateChanged;
 //select stream failed user info key
 FS_EXTERN NSString *const FSPlayerSelectingStreamIDUserInfoKey;
 //pre selected stream user info key

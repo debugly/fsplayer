@@ -52,7 +52,6 @@ typedef struct {
     vector_float3 offset;
     vector_float4 adjustment;
     FSColorTransferFunc transferFun;
-    float hdrPercentage;
     int hdr;
     // When 1, output linear light values for EDR/HDR display instead of tone-mapping to SDR.
     int hdrDisplay;

@@ -336,43 +336,33 @@ float3 hdr_direct(float3 rgb_2020, FSColorTransferFunc transferFun)
     return linear * RGB2020_TO_RGB709;
 }
 
-float3 hdr2sdr(float3 rgb_2020,float x,float hdrPercentage,FSColorTransferFunc transferFun)
+float3 hdr2sdr(float3 rgb_2020, FSColorTransferFunc transferFun)
 {
-    //已经使用矩阵转为RGB了，这里的RGB是经过 伽马 校正的，因此是曲线的
-    if (x > 0 && x <= hdrPercentage) {
-        
-        // 1、HDR 非线性电信号转为 HDR 线性光信号（EOTF）
-        float3 myFragColor;
-        float peak_luminance = 50.0;
-        if (transferFun == FSColorTransferFuncPQ) {
-            float to_linear_scale = 10000.0 / peak_luminance;
-            myFragColor = to_linear_scale * st_2084_eotf_vec(rgb_2020);
-        } else if (transferFun == FSColorTransferFuncHLG) {
-            float to_linear_scale = 1000.0 / peak_luminance;
-            myFragColor = to_linear_scale * arib_b67_eotf_vec(rgb_2020);
-        } else {
-            myFragColor = rec_1886_eotf_vec(rgb_2020);
-        }
-        
-        // 2、HDR 线性光信号做颜色空间转换（Color Space Converting）
-        
-        // RGB → XYZ：将源 RGB 颜色转换到 CIE XYZ 中间颜色空间
-        // XYZ → RGB：将 XYZ 颜色转换到目标 RGB 颜色空间
-        // 这两个步骤可以合并为一个矩阵运算：RGB_target = M * RGB_source，其中 M 是组合变换矩阵。
-        myFragColor = myFragColor * RGB2020_TO_RGB709;
-    
-        // 3、HDR 线性光信号色调映射为 SDR 线性光信号（Tone Mapping）
-        myFragColor = tonemap(myFragColor);
-
-        // 4、SDR 线性光信号转 SDR 非线性电信号（OETF）
-        myFragColor = rec_1886_inverse_eotf_vec(myFragColor);
-        return myFragColor;
+    // 1、HDR 非线性电信号转为 HDR 线性光信号（EOTF）
+    float3 myFragColor;
+    float peak_luminance = 50.0;
+    if (transferFun == FSColorTransferFuncPQ) {
+        float to_linear_scale = 10000.0 / peak_luminance;
+        myFragColor = to_linear_scale * st_2084_eotf_vec(rgb_2020);
+    } else if (transferFun == FSColorTransferFuncHLG) {
+        float to_linear_scale = 1000.0 / peak_luminance;
+        myFragColor = to_linear_scale * arib_b67_eotf_vec(rgb_2020);
     } else {
-        return rgb_2020;
+        myFragColor = rec_1886_eotf_vec(rgb_2020);
     }
+
+    // 2、HDR 线性光信号做颜色空间转换（Color Space Converting）
+    myFragColor = myFragColor * RGB2020_TO_RGB709;
+
+    // 3、HDR 线性光信号色调映射为 SDR 线性光信号（Tone Mapping）
+    myFragColor = tonemap(myFragColor);
+
+    // 4、SDR 线性光信号转 SDR 非线性电信号（OETF）
+    myFragColor = rec_1886_inverse_eotf_vec(myFragColor);
+    return myFragColor;
 }
 
-float4 yuv2rgb(float3 yuv,device FSConvertMatrix* convertMatrix,float x)
+float4 yuv2rgb(float3 yuv, device FSConvertMatrix* convertMatrix)
 {
     //先把 [0.0,1.0] 范围的YUV 处理为 [0.0,1.0] 范围的RGB
     float3 rgb = convertMatrix->colorMatrix * (yuv + convertMatrix->offset);
@@ -383,7 +373,7 @@ float4 yuv2rgb(float3 yuv,device FSConvertMatrix* convertMatrix,float x)
             myFragColor = hdr_direct(rgb, convertMatrix->transferFun);
         } else {
             // SDR display mode: tone-map HDR → SDR
-            myFragColor = hdr2sdr(rgb,x,convertMatrix->hdrPercentage,convertMatrix->transferFun);
+            myFragColor = hdr2sdr(rgb, convertMatrix->transferFun);
         }
     } else {
         myFragColor = rgb;
@@ -407,7 +397,7 @@ fragment float4 nv12FragmentShader(RasterizerData input [[stage_in]],
     
     float3 yuv = float3(textureY.sample(textureSampler,  input.textureCoordinate).r,
                         textureUV.sample(textureSampler, input.textureCoordinate).rg);
-    return yuv2rgb(yuv,fragmentShaderArgs.convertMatrix,input.textureCoordinate.x);
+    return yuv2rgb(yuv, fragmentShaderArgs.convertMatrix);
 }
 
 /// @brief yuv420p fragment shader
@@ -428,7 +418,7 @@ fragment float4 yuv420pFragmentShader(RasterizerData input [[stage_in]],
                         textureU.sample(textureSampler, input.textureCoordinate).r,
                         textureV.sample(textureSampler, input.textureCoordinate).r);
     
-    return yuv2rgb(yuv,fragmentShaderArgs.convertMatrix,input.textureCoordinate.x);
+    return yuv2rgb(yuv, fragmentShaderArgs.convertMatrix);
 }
 
 /// @brief uyvy422 fragment shader
@@ -445,7 +435,7 @@ fragment float4 uyvy422FragmentShader(RasterizerData input [[stage_in]],
     float3 tc = textureY.sample(textureSampler, input.textureCoordinate).rgb;
     float3 yuv = float3(tc.g, tc.b, tc.r);
     
-    return yuv2rgb(yuv,fragmentShaderArgs.convertMatrix,input.textureCoordinate.x);
+    return yuv2rgb(yuv, fragmentShaderArgs.convertMatrix);
 }
 
 /// @brief ayuv fragment shader
@@ -462,7 +452,7 @@ fragment float4 ayuvFragmentShader(RasterizerData input [[stage_in]],
     float4 tc = textureY.sample(textureSampler, input.textureCoordinate).rgba;
     float3 yuv = float3(tc.g, tc.b, tc.a);
     
-    return yuv2rgb(yuv,fragmentShaderArgs.convertMatrix,input.textureCoordinate.x);
+    return yuv2rgb(yuv, fragmentShaderArgs.convertMatrix);
 }
 
 /// @brief bgra fragment shader

@@ -41,7 +41,6 @@
         _device = device;
         _colorPixelFormat = colorPixelFormat;
         _colorAdjustment = (vector_float4){0.0};
-        _hdrPercentage = 0.0;
     }
     return self;
 }
@@ -261,7 +260,6 @@
         FSConvertMatrix convertMatrix = ijk_metal_create_color_matrix(self.pipelineMeta.convertMatrixType, self.pipelineMeta.fullRange);
         convertMatrix.adjustment = _colorAdjustment;
         convertMatrix.transferFun = self.pipelineMeta.transferFunc;
-        convertMatrix.hdrPercentage = self.hdrPercentage;
         convertMatrix.hdr = self.pipelineMeta.hdr;
         convertMatrix.hdrDisplay = self.hdrDisplay ? 1 : 0;
         self.convertMatrixBuff = [_device newBufferWithBytes:&convertMatrix
@@ -270,13 +268,7 @@
     }
 }
 
-- (void)setHdrPercentage:(float)hdrPercentage
-{
-    if (0.0 <= hdrPercentage && hdrPercentage <= 1.0 && _hdrPercentage != hdrPercentage) {
-        _hdrPercentage = hdrPercentage;
-        self.convertMatrixChanged = YES;
-    }
-}
+
 
 - (void)setHdrDisplay:(BOOL)hdrDisplay
 {

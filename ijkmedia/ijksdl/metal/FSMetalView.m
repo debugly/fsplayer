@@ -38,7 +38,6 @@ typedef CGRect NSRect;
 @property (nonatomic, strong) FSMetalOffscreenRendering *offscreenRendering;
 @property (atomic, strong) FSOverlayAttach *currentAttach;
 @property (nonatomic, strong) FSOverlayAttach *drawingAttach;
-@property (assign) int hdrAnimationFrameCount;
 @property (atomic, strong) NSLock *renderSnapshotLock;
 @property (assign) BOOL needCleanBackgroundColor;
 @property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
@@ -65,7 +64,6 @@ typedef CGRect NSRect;
 #if TARGET_OS_IOS
 @synthesize scaleFactor = _scaleFactor;
 #endif
-@synthesize showHdrAnimation = _showHdrAnimation;
 @synthesize hdrDisplayEnabled = _hdrDisplayEnabled;
 @synthesize allowHDRDisplay = _allowHDRDisplay;
 
@@ -311,14 +309,6 @@ typedef CGRect NSRect;
     return self;
 }
 
-- (void)setShowHdrAnimation:(BOOL)showHdrAnimation
-{
-    if (_showHdrAnimation != showHdrAnimation) {
-        _showHdrAnimation = showHdrAnimation;
-        self.hdrAnimationFrameCount = 0;
-    }
-}
-
 - (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize
 {
     if (_scalingMode == FSScalingModeFill) {
@@ -426,9 +416,7 @@ typedef CGRect NSRect;
         renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
          drawableSize:(CGSize)drawableSize
                 ratio:(CGSize)ratio
-        hdrPercentage:(float)hdrPercentage
 {
-    self.picturePipeline.hdrPercentage = hdrPercentage;
     self.picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
@@ -472,13 +460,6 @@ typedef CGRect NSRect;
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
 }
 
-- (void)sendHDRAnimationNotifiOnMainThread:(int)state
-{
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerHDRAnimationStateChanged object:self userInfo:@{@"state":@(state)}];
-    });
-}
-
 // 计算 canvas 在 drawable 中按 scalingMode + sar + rotate 贴合后的目标矩形 (viewport 坐标系, origin 左下)
 - (MTLViewport)computeCanvasViewport:(CGSize)drawableSize
                                ratio:(CGSize)ratio
@@ -496,9 +477,7 @@ typedef CGRect NSRect;
            renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
             drawableSize:(CGSize)drawableSize
                    ratio:(CGSize)ratio
-           hdrPercentage:(float)hdrPercentage
 {
-    self.picturePipeline.hdrPercentage = hdrPercentage;
     self.picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
@@ -664,39 +643,16 @@ typedef CGRect NSRect;
     
     //[renderEncoder pushDebugGroup:@"encodePicture"];
     
-    float hdrPer = 1.0;
-    if (self.showHdrAnimation && [self.picturePipeline isHDR]) {
-#define _C(c) (currentAttach.fps > 0 ? (int)ceil(currentAttach.fps * c / 24.0) : c)
-        int delay = _C(100);
-        int maxCount = _C(100);
-#undef _C
-        int frameCount = ++self.hdrAnimationFrameCount - delay;
-        if (frameCount >= 0) {
-            if (frameCount <= maxCount) {
-                if (frameCount == 0) {
-                    [self sendHDRAnimationNotifiOnMainThread:1];
-                } else if (frameCount == maxCount) {
-                    [self sendHDRAnimationNotifiOnMainThread:2];
-                }
-                hdrPer = 0.5 + 0.5 * frameCount / maxCount;
-            }
-        } else {
-            hdrPer = 0.5;
-        }
-    }
-
     if (hasTileGrid) {
         [self encodeTilePieces:currentAttach
                  renderEncoder:renderEncoder
                   drawableSize:drawableSize
-                         ratio:ratio
-                 hdrPercentage:hdrPer];
+                         ratio:ratio];
     } else {
         [self encodePicture:currentAttach
               renderEncoder:renderEncoder
                drawableSize:drawableSize
-                      ratio:ratio
-              hdrPercentage:hdrPer];
+                      ratio:ratio];
     }
     
     if (currentAttach.subTexture) {
@@ -785,8 +741,7 @@ typedef CGRect NSRect;
             [self encodeTilePieces:attach
                      renderEncoder:renderEncoder
                       drawableSize:viewport
-                             ratio:CGSizeMake(1.0, 1.0)
-                     hdrPercentage:1.0];
+                             ratio:CGSizeMake(1.0, 1.0)];
         } else {
             if (!attach.videoTextures) {
                 CVMetalTextureCacheRef textureCache = NULL;
@@ -799,8 +754,7 @@ typedef CGRect NSRect;
             [self encodePicture:attach
                   renderEncoder:renderEncoder
                    drawableSize:viewport
-                          ratio:CGSizeMake(1.0, 1.0)
-                  hdrPercentage:1.0];
+                          ratio:CGSizeMake(1.0, 1.0)];
         }
         if (drawSub && attach.subTexture) {
             [self encodeSubtitle:renderEncoder
@@ -871,8 +825,7 @@ typedef CGRect NSRect;
             [self encodeTilePieces:attach
                      renderEncoder:renderEncoder
                       drawableSize:drawableSize
-                             ratio:CGSizeMake(1.0, 1.0)
-                     hdrPercentage:1.0];
+                             ratio:CGSizeMake(1.0, 1.0)];
         } else {
             if (!attach.videoTextures) {
                 CVMetalTextureCacheRef textureCache = NULL;
@@ -885,8 +838,7 @@ typedef CGRect NSRect;
             [self encodePicture:attach
                   renderEncoder:renderEncoder
                    drawableSize:drawableSize
-                          ratio:ratio
-                  hdrPercentage:1.0];
+                          ratio:ratio];
         }
         
         if (attach.subTexture) {

@@ -167,8 +167,6 @@ typedef enum : NSUInteger {
 @property(nonatomic) FSDARPreference darPreference;
 // not render picture and subtitle,but holder overlay content.
 @property(atomic) BOOL preventDisplay;
-// hdr video show 'Gray mask' animation
-@property(nonatomic) BOOL showHdrAnimation;
 // YES when the current display supports EDR/HDR and HDR content is rendered natively
 // (no tone-mapping to SDR). Updated automatically when the display changes.
 @property(nonatomic, readonly) BOOL hdrDisplayEnabled;

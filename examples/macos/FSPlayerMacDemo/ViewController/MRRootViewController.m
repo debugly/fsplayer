@@ -25,7 +25,6 @@
 #import "MRCocoaBindingUserDefault.h"
 
 static NSString* lastPlayedKey = @"__lastPlayedKey";
-static BOOL hdrAnimationShown = 0;
 
 @interface MRRootViewController ()<MRDragViewDelegate,SHBaseViewDelegate,NSMenuDelegate,FSVideoRenderingDelegate>
 
@@ -740,7 +739,6 @@ static BOOL hdrAnimationShown = 0;
     playerView.allowHDRDisplay = [MRCocoaBindingUserDefault open_hdr];
     [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
     
-    playerView.showHdrAnimation = !hdrAnimationShown;
     //playerView.preventDisplay = YES;
     //test
     [playerView setBackgroundColor:240 g:0 b:0];
@@ -767,8 +765,6 @@ static BOOL hdrAnimationShown = 0;
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSPlayerVideoDecoderFatalNotification object:self.player];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSPlayerRecvWarningNotification object:self.player];
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerHdrAnimationStateChanged:) name:FSPlayerHDRAnimationStateChanged object:self.player.view];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectingStreamDidFailed:) name:FSPlayerSelectingStreamDidFailed object:self.player];
     
@@ -838,19 +834,6 @@ static BOOL hdrAnimationShown = 0;
             //会收到很多次，所以立马取消掉监听
             [[NSNotificationCenter defaultCenter] removeObserver:self name:FSPlayerRecvWarningNotification object:notifi.object];
             [self retry];
-        }
-    }
-}
-
-- (void)ijkPlayerHdrAnimationStateChanged:(NSNotification *)notifi
-{
-    if (self.player.view == notifi.object) {
-        int state = [notifi.userInfo[@"state"] intValue];
-        if (state == 1) {
-            NSLog(@"hdr animation is begin.");
-        } else if (state == 2) {
-            NSLog(@"hdr animation is end.");
-            hdrAnimationShown = 1;
         }
     }
 }

@@ -73,8 +73,6 @@ NSString *const FSPlayerRecvWarningNotification = @"FSPlayerRecvWarningNotificat
 
 NSString *const FSPlayerWarningReasonUserInfoKey = @"FSPlayerWarningReasonUserInfoKey";
 
-NSString *const FSPlayerHDRAnimationStateChanged = @"FSPlayerHDRAnimationStateChanged";
-
 NSString *const FSPlayerSelectingStreamIDUserInfoKey = @"stream-id";
 NSString *const FSPlayerPreSelectingStreamIDUserInfoKey = @"pre-stream-id";
 NSString *const FSPlayerSelectingStreamErrUserInfoKey = @"err-code";
