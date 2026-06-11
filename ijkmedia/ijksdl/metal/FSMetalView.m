@@ -108,14 +108,6 @@ typedef CGRect NSRect;
                                                   name:NSApplicationDidChangeScreenParametersNotification
                                                 object:nil];
 #endif
-#if TARGET_OS_IOS || TARGET_OS_TV
-    if (@available(iOS 16.0, tvOS 16.0, *)) {
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(edrHeadroomDidChange:)
-                                                     name:UIScreen.edrHeadroomDidChangeNotification
-                                                   object:nil];
-    }
-#endif
 }
 
 #if TARGET_OS_OSX
@@ -146,9 +138,6 @@ typedef CGRect NSRect;
     }
 }
 
-- (void)edrHeadroomDidChange:(NSNotification *)notification {
-    [self updateHDRDisplayMode];
-}
 #endif
 
 /// Returns YES when the display supports EDR AND the user has not disabled HDR rendering.
