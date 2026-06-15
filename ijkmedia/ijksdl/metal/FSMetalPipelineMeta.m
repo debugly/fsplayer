@@ -121,14 +121,26 @@
     return meta;
 }
 
-- (NSString *)description
++ (BOOL)isHDRContentWithPixelBuffer:(CVPixelBufferRef)pixelBuffer
+{
+    if (!pixelBuffer) { return NO; }
+    CFStringRef colorMatrix = CVBufferGetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, NULL);
+    if (!colorMatrix) { return NO; }
+    return CFStringCompare(colorMatrix, kCVImageBufferYCbCrMatrix_ITU_R_2020, 0) == kCFCompareEqualTo;
+}
+
+- (NSString *)description:(BOOL)displayHDR
 {
     NSString *matrix = [@[@"None",@"BT601",@"BT709",@"BT2020"] objectAtIndex:self.convertMatrixType];
     if (self.hdrContent) {
-        NSString *tf = [@[@"LINEAR",@"PQ",@"HLG"] objectAtIndex:self.transferFunc];
-        return [NSString stringWithFormat:@"%@,hdr:%d,fullRange:%d,matrix:%@,transfer:%@",self.fragmentName,self.hdrContent,self.fullRange,matrix,tf];
+        if (displayHDR) {
+            return [NSString stringWithFormat:@"%@,hdr dispaly,fullRange:%d",self.fragmentName,self.fullRange];
+        } else {
+            NSString *tf = [@[@"LINEAR",@"PQ",@"HLG"] objectAtIndex:self.transferFunc];
+            return [NSString stringWithFormat:@"%@,hdr tone mapping,fullRange:%d,matrix:%@,transfer:%@",self.fragmentName,self.fullRange,matrix,tf];
+        }
     } else {
-        return [NSString stringWithFormat:@"%@,fullRange:%d,matrix:%@",self.fragmentName,self.fullRange,matrix];
+        return [NSString stringWithFormat:@"%@,sdr, fullRange:%d,matrix:%@",self.fragmentName,self.fullRange,matrix];
     }
 }
 

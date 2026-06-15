@@ -22,6 +22,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (FSMetalPipelineMeta *)createWithCVPixelbuffer:(CVPixelBufferRef)pixelBuffer;
 - (BOOL)metaMatchedCVPixelbuffer:(CVPixelBufferRef)pixelBuffer;
 
+/// Lightweight check: returns YES when the pixel buffer carries HDR content
+/// (BT.2020 color matrix). Does not allocate a full FSMetalPipelineMeta.
++ (BOOL)isHDRContentWithPixelBuffer:(CVPixelBufferRef)pixelBuffer;
+
+- (NSString *)description:(BOOL)displayHDR;
 @end
 
 NS_ASSUME_NONNULL_END

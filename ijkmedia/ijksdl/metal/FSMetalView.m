@@ -17,7 +17,7 @@
 #import "FSMetalRenderer.h"
 #import "FSMetalSubtitlePipeline.h"
 #import "FSMetalOffscreenRendering.h"
-
+#import "FSMetalPipelineMeta.h"
 #import "ijksdl_vout_ios_gles2.h"
 #import "FSMediaPlayback.h"
 #import "FSDisplayLinkWrapper.h"
@@ -176,40 +176,56 @@ typedef CGRect NSRect;
 #endif
 }
 
-/// Switches the Metal layer pixel format and color space based on whether the
-/// current display supports extended dynamic range. Rebuilds the render pipeline
-/// if the pixel format changes.
+/// Core implementation: switches pixel format, layer color space, and hdrDisplayEnabled
+/// based on whether the display supports EDR AND the content is HDR.
+/// If colorPixelFormat changes, nils the existing pipeline so it is rebuilt with the new format.
+- (void)updateHDRDisplayModeForHDRContent:(BOOL)isHDRContent {
+    BOOL supportsHDR = [self currentDisplaySupportsHDR] && isHDRContent;
+
+    if (supportsHDR != self.hdrDisplayEnabled) {
+        self.hdrDisplayEnabled = supportsHDR;
+        ALOGI("HDR display mode: %s", supportsHDR ? "enabled" : "disabled");
+
+        // 1. Update colorPixelFormat and pipeline FIRST.
+        MTLPixelFormat newFormat = supportsHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
+        BOOL formatChanged = (self.colorPixelFormat != newFormat);
+        self.colorPixelFormat = newFormat;
+
+        // MTLRenderPipelineState bakes in colorAttachments[0].pixelFormat at creation time.
+        if (formatChanged) {
+            self.picturePipeline = nil;
+        }
+     
+        // 2. Re-apply EDR layer properties AFTER any colorPixelFormat change.
+        //    wantsExtendedDynamicRangeContent and colorspace are CALayer properties that MUST
+        //    be written on the main thread — writing from the display-link thread is silently
+        //    ignored by the system (hence why resizing the window "fixed" HDR brightness: the
+        //    resize triggered a main-thread layout pass that re-applied them).
+        //    Use dispatch_async to avoid deadlock: renderSnapshotLock may be held on the render
+        //    thread, and a dispatch_sync would block if the main thread waits for the same lock.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
+            metalLayer.wantsExtendedDynamicRangeContent = supportsHDR;
+            if (supportsHDR) {
+                CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
+                metalLayer.colorspace = cs;
+                CGColorSpaceRelease(cs);
+            } else {
+                metalLayer.colorspace = nil;
+            }
+        });
+    }
+}
+
+/// Called from the main thread (screen change notifications, setAllowHDRDisplay:).
+/// Uses renderSnapshotLock to synchronise with the render thread, which holds the same
+/// lock for the entire setupPipelineIfNeed: → encode sequence in drawRect:.
 - (void)updateHDRDisplayMode {
-    // HDR mode requires BOTH a capable display AND HDR content.
-    // If no pipeline exists yet (no content), stay in SDR; we'll re-evaluate after the pipeline is built.
-    BOOL supportsHDR = [self currentDisplaySupportsHDR] && [self.picturePipeline isHDRContent];
-
-    if (supportsHDR == self.hdrDisplayEnabled) {
-        return; // No change needed
+    [self.renderSnapshotLock lock];
+    if (self.picturePipeline) {
+        [self updateHDRDisplayModeForHDRContent:[self.picturePipeline isHDRContent]];
     }
-
-    self.hdrDisplayEnabled = supportsHDR;
-    ALOGI("HDR display mode: %s", supportsHDR ? "enabled" : "disabled");
-
-    // Update MTKView pixel format and CAMetalLayer properties.
-    if (supportsHDR) {
-        self.colorPixelFormat = MTLPixelFormatRGBA16Float;
-    } else {
-        self.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
-    }
-
-    CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
-    metalLayer.wantsExtendedDynamicRangeContent = supportsHDR;
-    if (supportsHDR) {
-        CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
-        metalLayer.colorspace = cs;
-        CGColorSpaceRelease(cs);
-    } else {
-        metalLayer.colorspace = nil; // revert to default
-    }
-
-    // Rebuild the render pipeline with the new pixel format.
-    self.picturePipeline = nil;
+    [self.renderSnapshotLock unlock];
 }
 
 - (void)setAllowHDRDisplay:(BOOL)allowHDRDisplay {
@@ -233,6 +249,23 @@ typedef CGRect NSRect;
     [self.renderSnapshotLock unlock];
     
     self.drawingAttach = currentAttach;
+
+    // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
+    // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
+    // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
+    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
+    if (!pipelineRef && currentAttach.tilePieces.count > 0) {
+        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
+    }
+    if (pipelineRef) {
+        [self.renderSnapshotLock lock];
+        [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
+        if (currentAttach.subTexture) {
+            [self setupSubPipelineIfNeed];
+        }
+        [self.renderSnapshotLock unlock];
+    }
+    
     //use current DisplayLink thread
     [self draw];
 }
@@ -399,21 +432,24 @@ typedef CGRect NSRect;
         }
         ALOGI("pixel format not match,need rebuild pipeline");
     }
-    
+
+    // Determine HDR content BEFORE creating the pipeline so colorPixelFormat is
+    // already set to the correct value (RGBA16Float or BGRA8Unorm) when
+    // FSMetalRenderer is initialised. This avoids the "build → format mismatch → nil → rebuild" cycle.
+    BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pixelBuffer];
+    [self updateHDRDisplayModeForHDRContent:isHDRContent];
+
     FSMetalRenderer *picturePipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:self.colorPixelFormat];
-    BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
+    picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     
+    BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
+
     if (!created) {
         ALOGE("create RenderPipeline failed.");
         picturePipeline = nil;
     }
-    
+
     self.picturePipeline = picturePipeline;
-
-    // Re-evaluate HDR display mode now that we know whether the new content is HDR.
-    // This may switch colorPixelFormat and nil picturePipeline so it rebuilds with the right format.
-    [self updateHDRDisplayMode];
-
     return picturePipeline != nil;
 }
 
@@ -597,22 +633,6 @@ typedef CGRect NSRect;
     
     [self.renderSnapshotLock lock];
     self.drawingAttach = nil;
-
-    // pipeline 需要一个参考 pixelBuffer（用第一个 tile 的）
-    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
-    if (!pipelineRef && hasTileGrid) {
-        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
-    }
-
-    if (![self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha]) {
-        [self.renderSnapshotLock unlock];
-        return;
-    }
-    
-    if (currentAttach.subTexture && ![self setupSubPipelineIfNeed]) {
-        [self.renderSnapshotLock unlock];
-        return;
-    }
 
     //generate textures (single-frame path)
     if (!hasTileGrid && !currentAttach.videoTextures) {
