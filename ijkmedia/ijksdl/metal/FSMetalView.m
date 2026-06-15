@@ -151,16 +151,22 @@ typedef CGRect NSRect;
     // NOT maximumExtendedDynamicRangeColorComponentValue (current OS allocation), because
     // the latter stays at 1.0 until the app has already opted the layer into EDR.
     if (@available(macOS 10.15, *)) {
+        // maximumPotentialExtendedDynamicRangeColorComponentValue reflects hardware capability
+        // regardless of whether the layer has already opted into EDR.
         return screen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1.0;
-    } else {
-        return NO;
     }
+    // macOS 10.14: the only alternative (maximumExtendedDynamicRangeColorComponentValue,
+    // available since 10.11) always returns 1.0 until the layer is already opted into EDR,
+    // making reliable pre-opt-in detection impossible. Fall back to NO.
+    return NO;
 #elif TARGET_OS_TV
+    // currentEDRHeadroom is tvOS 16+. No public API exists on tvOS 12–15 to detect EDR capability.
     if (@available(tvOS 16.0, *)) {
         return UIScreen.mainScreen.currentEDRHeadroom > 1.0;
     }
     return NO;
 #elif TARGET_OS_IOS
+    // currentEDRHeadroom is iOS 16+. No public API exists on iOS 12–15 to detect EDR capability.
     if (@available(iOS 16.0, *)) {
         return UIScreen.mainScreen.currentEDRHeadroom > 1.0;
     }
