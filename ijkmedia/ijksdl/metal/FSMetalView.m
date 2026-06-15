@@ -150,7 +150,11 @@ typedef CGRect NSRect;
     // Use maximumPotentialExtendedDynamicRangeColorComponentValue (hardware capability),
     // NOT maximumExtendedDynamicRangeColorComponentValue (current OS allocation), because
     // the latter stays at 1.0 until the app has already opted the layer into EDR.
-    return screen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1.0;
+    if (@available(macOS 10.15, *)) {
+        return screen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1.0;
+    } else {
+        return NO;
+    }
 #elif TARGET_OS_TV
     if (@available(tvOS 16.0, *)) {
         return UIScreen.mainScreen.currentEDRHeadroom > 1.0;
@@ -170,7 +174,9 @@ typedef CGRect NSRect;
 /// current display supports extended dynamic range. Rebuilds the render pipeline
 /// if the pixel format changes.
 - (void)updateHDRDisplayMode {
-    BOOL supportsHDR = [self currentDisplaySupportsHDR];
+    // HDR mode requires BOTH a capable display AND HDR content.
+    // If no pipeline exists yet (no content), stay in SDR; we'll re-evaluate after the pipeline is built.
+    BOOL supportsHDR = [self currentDisplaySupportsHDR] && [self.picturePipeline isHDR];
 
     if (supportsHDR == self.hdrDisplayEnabled) {
         return; // No change needed
@@ -397,7 +403,11 @@ typedef CGRect NSRect;
     }
     
     self.picturePipeline = picturePipeline;
-    
+
+    // Re-evaluate HDR display mode now that we know whether the new content is HDR.
+    // This may switch colorPixelFormat and nil picturePipeline so it rebuilds with the right format.
+    [self updateHDRDisplayMode];
+
     return picturePipeline != nil;
 }
 
