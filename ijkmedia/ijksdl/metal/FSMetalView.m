@@ -203,6 +203,11 @@ typedef CGRect NSRect;
         //    resize triggered a main-thread layout pass that re-applied them).
         //    Use dispatch_async to avoid deadlock: renderSnapshotLock may be held on the render
         //    thread, and a dispatch_sync would block if the main thread waits for the same lock.
+        // wantsExtendedDynamicRangeContent is unavailable on tvOS (the symbol does not exist
+        // there), so this must be a compile-time guard — a runtime @available check cannot
+        // resolve a missing symbol. tvOS handles HDR output at the system level, so there is
+        // nothing to do for that platform.
+#if !TARGET_OS_TV
         dispatch_async(dispatch_get_main_queue(), ^{
             CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
             metalLayer.wantsExtendedDynamicRangeContent = supportsHDR;
@@ -214,6 +219,7 @@ typedef CGRect NSRect;
                 metalLayer.colorspace = nil;
             }
         });
+#endif
     }
 }
 

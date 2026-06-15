@@ -48,7 +48,6 @@
     //开启硬解
     [options setPlayerOptionIntValue:isVideoToolBox forKey:@"videotoolbox_hwaccel"];
 
-    options.metalRenderer = YES;
     self.player = [[FSPlayer alloc] initWithContentURL:[NSURL URLWithString:kURL] withOptions:options];
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
