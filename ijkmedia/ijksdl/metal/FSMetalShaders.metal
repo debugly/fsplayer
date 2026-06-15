@@ -367,7 +367,7 @@ float4 yuv2rgb(float3 yuv, device FSConvertMatrix* convertMatrix)
     //先把 [0.0,1.0] 范围的YUV 处理为 [0.0,1.0] 范围的RGB
     float3 rgb = convertMatrix->colorMatrix * (yuv + convertMatrix->offset);
     float3 myFragColor;
-    if (convertMatrix->hdr) {
+    if (convertMatrix->hdrContent) {
         if (convertMatrix->hdrDisplay) {
             // HDR display mode: output linear light for EDR layer (no tone-mapping)
             myFragColor = hdr_direct(rgb, convertMatrix->transferFun);

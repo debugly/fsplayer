@@ -52,7 +52,7 @@ typedef struct {
     vector_float3 offset;
     vector_float4 adjustment;
     FSColorTransferFunc transferFun;
-    int hdr;
+    int hdrContent;  // 1 when the video content itself is HDR (PQ/HLG transfer function)
     // When 1, output linear light values for EDR/HDR display instead of tone-mapping to SDR.
     int hdrDisplay;
 } FSConvertMatrix;

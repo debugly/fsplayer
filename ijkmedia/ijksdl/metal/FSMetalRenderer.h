@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Only has effect when the content is HDR (isHDR == YES).
 @property (nonatomic, assign) BOOL hdrDisplay;
 
-- (BOOL)isHDR;
+- (BOOL)isHDRContent;
 - (instancetype)initWithDevice:(id<MTLDevice>)device
               colorPixelFormat:(MTLPixelFormat)colorPixelFormat;
 

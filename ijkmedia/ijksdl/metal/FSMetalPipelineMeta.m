@@ -100,7 +100,7 @@
     meta.convertMatrixType = colorMatrixType;
     //HDR color space.
     if (colorMatrixType == FSYUV2RGBColorMatrixBT2020) {
-        meta.hdr = YES;
+        meta.hdrContent = YES;
         
         FSColorTransferFunc tf;
         CFStringRef transferFuntion = CVBufferGetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, NULL);
@@ -124,9 +124,9 @@
 - (NSString *)description
 {
     NSString *matrix = [@[@"None",@"BT601",@"BT709",@"BT2020"] objectAtIndex:self.convertMatrixType];
-    if (self.hdr) {
+    if (self.hdrContent) {
         NSString *tf = [@[@"LINEAR",@"PQ",@"HLG"] objectAtIndex:self.transferFunc];
-        return [NSString stringWithFormat:@"%@,hdr:%d,fullRange:%d,matrix:%@,transfer:%@",self.fragmentName,self.hdr,self.fullRange,matrix,tf];
+        return [NSString stringWithFormat:@"%@,hdr:%d,fullRange:%d,matrix:%@,transfer:%@",self.fragmentName,self.hdrContent,self.fullRange,matrix,tf];
     } else {
         return [NSString stringWithFormat:@"%@,fullRange:%d,matrix:%@",self.fragmentName,self.fullRange,matrix];
     }
@@ -152,7 +152,7 @@
     if (self.fullRange != meta.fullRange) {
         return NO;
     }
-    if (self.hdr != meta.hdr) {
+    if (self.hdrContent != meta.hdrContent) {
         return NO;
     }
     if (self.convertMatrixType != meta.convertMatrixType) {

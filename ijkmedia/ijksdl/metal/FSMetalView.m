@@ -176,7 +176,7 @@ typedef CGRect NSRect;
 - (void)updateHDRDisplayMode {
     // HDR mode requires BOTH a capable display AND HDR content.
     // If no pipeline exists yet (no content), stay in SDR; we'll re-evaluate after the pipeline is built.
-    BOOL supportsHDR = [self currentDisplaySupportsHDR] && [self.picturePipeline isHDR];
+    BOOL supportsHDR = [self currentDisplaySupportsHDR] && [self.picturePipeline isHDRContent];
 
     if (supportsHDR == self.hdrDisplayEnabled) {
         return; // No change needed

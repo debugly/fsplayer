@@ -45,9 +45,9 @@
     return self;
 }
 
-- (BOOL)isHDR
+- (BOOL)isHDRContent
 {
-    return self.pipelineMeta.hdr;
+    return self.pipelineMeta.hdrContent;
 }
 
 - (BOOL)matchPixelBuffer:(CVPixelBufferRef)pixelBuffer
@@ -260,7 +260,7 @@
         FSConvertMatrix convertMatrix = ijk_metal_create_color_matrix(self.pipelineMeta.convertMatrixType, self.pipelineMeta.fullRange);
         convertMatrix.adjustment = _colorAdjustment;
         convertMatrix.transferFun = self.pipelineMeta.transferFunc;
-        convertMatrix.hdr = self.pipelineMeta.hdr;
+        convertMatrix.hdrContent = self.pipelineMeta.hdrContent;
         convertMatrix.hdrDisplay = self.hdrDisplay ? 1 : 0;
         self.convertMatrixBuff = [_device newBufferWithBytes:&convertMatrix
                                                       length:sizeof(FSConvertMatrix)

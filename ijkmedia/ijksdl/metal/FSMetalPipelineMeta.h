@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FSMetalPipelineMeta : NSObject
 
-@property (nonatomic) BOOL hdr;
+@property (nonatomic) BOOL hdrContent;
 @property (nonatomic) BOOL fullRange;
 @property (nonatomic) NSString* fragmentName;
 @property (nonatomic) FSColorTransferFunc transferFunc;
