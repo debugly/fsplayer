@@ -758,7 +758,21 @@ typedef CGRect NSRect;
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
+
+    // FSMetalFBO render target is always BGRA8Unorm; HDR pipelines use RGBA16Float.
+    // Use a temporary SDR pipeline for the snapshot so pixel formats match.
+    // (Snapshots are saved as SDR image files, so tone-mapping is correct here.)
+    FSMetalRenderer *savedPipeline = nil;
+    if (self.hdrDisplayEnabled) {
+        savedPipeline = self.picturePipeline;
+        FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
+        if (![sdrPipeline createRenderPipelineIfNeed:pipelineRef blend:attach.hasAlpha]) {
+            [self.renderSnapshotLock unlock];
+            return NULL;
+        }
+        self.picturePipeline = sdrPipeline;
+    }
+
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
         
@@ -787,6 +801,9 @@ typedef CGRect NSRect;
                          texture:attach.subTexture];
         }
     }];
+    if (savedPipeline) {
+        self.picturePipeline = savedPipeline;
+    }
     [self.renderSnapshotLock unlock];
     return result;
 }
@@ -837,12 +854,25 @@ typedef CGRect NSRect;
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
+
     if (attach.subTexture && ![self setupSubPipelineIfNeed]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
+
+    // FSMetalFBO render target is always BGRA8Unorm; HDR pipelines use RGBA16Float.
+    // Use a temporary SDR pipeline for the snapshot so pixel formats match.
+    FSMetalRenderer *savedPipeline = nil;
+    if (self.hdrDisplayEnabled) {
+        savedPipeline = self.picturePipeline;
+        FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
+        if (![sdrPipeline createRenderPipelineIfNeed:pipelineRef blend:attach.hasAlpha]) {
+            [self.renderSnapshotLock unlock];
+            return NULL;
+        }
+        self.picturePipeline = sdrPipeline;
+    }
+
     CGSize drawableSize = self.drawableSize;
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:drawableSize device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
@@ -865,13 +895,16 @@ typedef CGRect NSRect;
                    drawableSize:drawableSize
                           ratio:ratio];
         }
-        
+
         if (attach.subTexture) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:drawableSize
                          texture:attach.subTexture];
         }
     }];
+    if (savedPipeline) {
+        self.picturePipeline = savedPipeline;
+    }
     [self.renderSnapshotLock unlock];
     return result;
 }
