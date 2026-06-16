@@ -26,11 +26,14 @@
 typedef CGRect NSRect;
 #endif
 
+//TARGET_CPU_ARM64
+#define USE_METAL_TEXTURE_CACHE 1
+
 @interface FSMetalView ()
 
 // The command queue used to pass commands to the device.
 @property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
-#if TARGET_CPU_ARM64
+#if USE_METAL_TEXTURE_CACHE
 @property (nonatomic, assign) CVMetalTextureCacheRef pictureTextureCache;
 #endif
 @property (atomic, strong) FSMetalRenderer *picturePipeline;
@@ -74,7 +77,7 @@ typedef CGRect NSRect;
     [_displayLinkWrapper invalidate];
     _displayLinkWrapper = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-#if TARGET_CPU_ARM64
+#if USE_METAL_TEXTURE_CACHE
     if (_pictureTextureCache) {
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
@@ -291,7 +294,7 @@ typedef CGRect NSRect;
         ALOGE("Can't Create Metal Device.");
         return NO;
     }
-#if TARGET_CPU_ARM64
+#if USE_METAL_TEXTURE_CACHE
     CVReturn ret = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_pictureTextureCache);
     if (ret != kCVReturnSuccess) {
         ALOGE("Create MetalTextureCache Failed:%d.",ret);
@@ -545,7 +548,7 @@ typedef CGRect NSRect;
     double display_h = attach.h;
     
     CVMetalTextureCacheRef textureCache = NULL;
-#if TARGET_CPU_ARM64
+#if USE_METAL_TEXTURE_CACHE
     textureCache = _pictureTextureCache;
 #endif
     
@@ -643,7 +646,7 @@ typedef CGRect NSRect;
     //generate textures (single-frame path)
     if (!hasTileGrid && !currentAttach.videoTextures) {
         CVMetalTextureCacheRef textureCache = NULL;
-    #if TARGET_CPU_ARM64
+    #if USE_METAL_TEXTURE_CACHE
         textureCache = _pictureTextureCache;
     #endif
         currentAttach.videoTextures = [[self class] doGenerateTexture:currentAttach.videoPicture textureCache:textureCache device:self.device];
@@ -790,7 +793,7 @@ typedef CGRect NSRect;
         } else {
             if (!attach.videoTextures) {
                 CVMetalTextureCacheRef textureCache = NULL;
-            #if TARGET_CPU_ARM64
+            #if USE_METAL_TEXTURE_CACHE
                 textureCache = self.pictureTextureCache;
             #endif
                 attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
@@ -890,7 +893,7 @@ typedef CGRect NSRect;
         } else {
             if (!attach.videoTextures) {
                 CVMetalTextureCacheRef textureCache = NULL;
-            #if TARGET_CPU_ARM64
+            #if USE_METAL_TEXTURE_CACHE
                 textureCache = self.pictureTextureCache;
             #endif
                 attach.videoTextures = [[self class] doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
@@ -1002,7 +1005,7 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         size_t width  = CVPixelBufferGetWidthOfPlane(pixelBuffer, i);
         size_t height = CVPixelBufferGetHeightOfPlane(pixelBuffer, i);
         MTLPixelFormat format = ft->formats[i];
-#if TARGET_CPU_ARM64
+#if USE_METAL_TEXTURE_CACHE
         CVMetalTextureRef textureRef = NULL;
         CVReturn status = CVMetalTextureCacheCreateTextureFromImage(NULL, textureCache, pixelBuffer, NULL, format, width, height, i, &textureRef);
         if (status == kCVReturnSuccess) {
