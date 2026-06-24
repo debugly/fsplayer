@@ -8,15 +8,8 @@
 #import "FSMetalTileGridPipeline.h"
 #import "FSMetalRenderer.h"
 #import "FSMetalFBO.h"
-#import "FSMetalView.h"
+#import "FSMetalTextureUtils.h"
 #include "../ijksdl_log.h"
-
-// 复用 FSMetalView 的纹理生成（支持 planar YUV 多平面），避免重复实现。
-@interface FSMetalView (TileTexture)
-+ (NSArray<id<MTLTexture>> *)doGenerateTexture:(CVPixelBufferRef)pixelBuffer
-                                  textureCache:(CVMetalTextureCacheRef)textureCache
-                                        device:(id<MTLDevice>)device;
-@end
 
 @interface FSMetalTileGridPipeline ()
 {
@@ -162,7 +155,7 @@
     for (FSTilePiece *piece in attach.tilePieces) {
         if (!piece.pixelBuffer || piece.w <= 0 || piece.h <= 0) continue;
         if (!piece.textures) {
-            piece.textures = [FSMetalView doGenerateTexture:piece.pixelBuffer
+            piece.textures = [FSMetalTextureUtils doGenerateTexture:piece.pixelBuffer
                                                textureCache:textureCache
                                                      device:_device];
         }
@@ -203,7 +196,7 @@
 
     // 从合成后的 BGRA 缓冲生成一张可采样显示的纹理（与显示路径采样方式一致）。
     CVPixelBufferRef composed = [fbo pixelBuffer];
-    id<MTLTexture> texture = [FSMetalView doGenerateTexture:composed
+    id<MTLTexture> texture = [FSMetalTextureUtils doGenerateTexture:composed
                                                textureCache:textureCache
                                                      device:_device].firstObject;
     if (!texture) {
