@@ -1,3 +1,11 @@
+tag 1.0.7
+--------------------------------
+- upgrade FFmpeg to 8.1.1
+- support display hdr directly, fix #30
+- tile grid HEIC support rotate
+- intel use uyvy format and enable metal texture cache
+- support Gaussian Blur
+
 tag 1.0.6
 --------------------------------
 - dropped support for older OS versions, required minimum of macOS 10.14 and iOS 12
