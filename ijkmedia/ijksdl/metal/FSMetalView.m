@@ -18,6 +18,8 @@
 #import "FSMetalSubtitlePipeline.h"
 #import "FSMetalOffscreenRendering.h"
 #import "FSMetalPipelineMeta.h"
+#import "FSMetalBlurFilter.h"
+
 #import "ijksdl_vout_ios_gles2.h"
 #import "FSMediaPlayback.h"
 #import "FSDisplayLinkWrapper.h"
@@ -51,6 +53,11 @@ typedef CGRect NSRect;
 @property (atomic, assign) long previousTag;
 // Whether the current display supports EDR/HDR and we have switched to HDR rendering mode.
 @property (nonatomic, assign) BOOL hdrDisplayEnabled;
+// 高斯模糊背景：复用字幕管线（BGRA/DIRECT）把模糊后的纹理铺满整个视图。
+@property (atomic, strong) FSMetalSubtitlePipeline *backgroundPipeline;
+@property (atomic, strong) FSMetalBlurFilter *blurFilter;
+@property (atomic, strong) id<MTLTexture> backgroundTexture;
+@property (atomic, assign) BOOL needRebuildBackgroundTexture;
 @end
 
 @implementation FSMetalView
@@ -284,6 +291,7 @@ typedef CGRect NSRect;
     _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
     _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
     _darPreference      = (FSDARPreference){0.0};
+    _backgroundBlurIterations = 3;
     _renderSnapshotLock = [[NSLock alloc]init];
     _allowHDRDisplay    = YES;
     
@@ -427,6 +435,69 @@ typedef CGRect NSRect;
     self.subPipeline = subPipeline;
     
     return subPipeline != nil;
+}
+
+#pragma mark - blurred background
+
+- (CGImageRef)cgImageFromBackgroundImage:(UIImage *)image CF_RETURNS_NOT_RETAINED
+{
+    if (!image) {
+        return NULL;
+    }
+#if TARGET_OS_OSX
+    return [image CGImageForProposedRect:NULL context:nil hints:nil];
+#else
+    return image.CGImage;
+#endif
+}
+
+// 惰性重建模糊纹理（渲染线程调用）。
+- (void)rebuildBackgroundTextureIfNeed
+{
+    if (!self.needRebuildBackgroundTexture) {
+        return;
+    }
+    self.needRebuildBackgroundTexture = NO;
+    UIImage *image = self.backgroundImage;
+    if (!image) {
+        self.backgroundTexture = nil;
+        return;
+    }
+    if (!self.blurFilter) {
+        self.blurFilter = [[FSMetalBlurFilter alloc] initWithDevice:self.device];
+    }
+    CGImageRef cgImage = [self cgImageFromBackgroundImage:image];
+    self.backgroundTexture = [self.blurFilter blurredTextureFromImage:cgImage
+                                                          iterations:self.backgroundBlurIterations
+                                                        commandQueue:self.commandQueue];
+    if (self.backgroundTexture && ![self setupBackgroundPipelineIfNeed]) {
+        self.backgroundTexture = nil;
+    }
+}
+
+- (BOOL)setupBackgroundPipelineIfNeed
+{
+    if (self.backgroundPipeline) {
+        return YES;
+    }
+    FSMetalSubtitlePipeline *pipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device
+                                                                               inFormat:FSMetalSubtitleInFormatBRGA
+                                                                              outFormat:FSMetalSubtitleOutFormatDIRECT];
+    if (![pipeline createRenderPipelineIfNeed]) {
+        ALOGE("create backgroundRenderPipeline failed.");
+        return NO;
+    }
+    self.backgroundPipeline = pipeline;
+    return YES;
+}
+
+// 把模糊纹理铺满整个 drawable（拉伸填充；背景已模糊，形变不可见）。
+- (void)encodeBackground:(id<MTLRenderCommandEncoder>)renderEncoder
+            drawableSize:(CGSize)drawableSize
+{
+    [renderEncoder setViewport:(MTLViewport){0.0, 0.0, drawableSize.width, drawableSize.height, -1.0, 1.0}];
+    [self.backgroundPipeline updateSubtitleVertexIfNeed:CGRectMake(-1.0, -1.0, 2.0, 2.0)];
+    [self.backgroundPipeline drawTexture:self.backgroundTexture encoder:renderEncoder];
 }
 
 - (BOOL)setupPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend
@@ -619,6 +690,8 @@ typedef CGRect NSRect;
     FSOverlayAttach *currentAttach = self.drawingAttach;
     BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
 
+    [self rebuildBackgroundTextureIfNeed];
+
     //Clean Background Color
     if (!currentAttach.videoPicture && !hasTileGrid) {
         if (self.needCleanBackgroundColor) {
@@ -632,6 +705,10 @@ typedef CGRect NSRect;
             
             id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
             id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
+            //无视频时，用高斯模糊背景填充，替代纯色背景。
+            if (self.backgroundTexture) {
+                [self encodeBackground:commandEncoder drawableSize:self.drawableSize];
+            }
             [commandEncoder endEncoding];
             [commandBuffer presentDrawable:drawable];
             [commandBuffer commit];
@@ -677,6 +754,11 @@ typedef CGRect NSRect;
     
     //[renderEncoder pushDebugGroup:@"encodePicture"];
     
+    //先铺高斯模糊背景，视频画面随后绘制在其上，黑边区域即显示模糊背景。
+    //只有 AspectFit 会留出黑边，其它模式视频铺满全屏，无需绘制背景。
+    if (self.backgroundTexture && _scalingMode == FSScalingModeAspectFit) {
+        [self encodeBackground:renderEncoder drawableSize:drawableSize];
+    }
     if (hasTileGrid) {
         [self encodeTilePieces:currentAttach
                  renderEncoder:renderEncoder
@@ -1111,6 +1193,38 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
     self.clearColor = (MTLClearColor){r/255.0, g/255.0, b/255.0, 1.0f};
     self.needCleanBackgroundColor = YES;
     [self setNeedsRefreshCurrentPic];
+}
+
+- (void)setBackgroundImage:(UIImage *)backgroundImage
+{
+    if (_backgroundImage == backgroundImage) {
+        return;
+    }
+    _backgroundImage = backgroundImage;
+    // 纹理在渲染线程惰性重建（那里 device / commandQueue 一定就绪）。
+    self.needRebuildBackgroundTexture = YES;
+    if (!backgroundImage) {
+        self.backgroundTexture = nil;
+    }
+    // 让背景立刻刷新（即使暂停或无视频）。
+    self.needCleanBackgroundColor = YES;
+    [self setNeedsRefreshCurrentPic];
+}
+
+- (void)setBackgroundBlurIterations:(int)backgroundBlurIterations
+{
+    if (backgroundBlurIterations < 1) {
+        backgroundBlurIterations = 1;
+    }
+    if (_backgroundBlurIterations == backgroundBlurIterations) {
+        return;
+    }
+    _backgroundBlurIterations = backgroundBlurIterations;
+    if (_backgroundImage) {
+        self.needRebuildBackgroundTexture = YES;
+        self.needCleanBackgroundColor = YES;
+        [self setNeedsRefreshCurrentPic];
+    }
 }
 
 - (id)context

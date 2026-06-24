@@ -70,6 +70,7 @@ targets:
       - sdk: AudioUnit.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
+      - sdk: MetalPerformanceShaders.framework
       - sdk: CoreFoundation.framework
       - sdk: CoreVideo.framework
       - sdk: CoreImage.framework
@@ -200,6 +201,7 @@ targets:
       - sdk: UIKit.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
+      - sdk: MetalPerformanceShaders.framework
       - sdk: CoreFoundation.framework
       - sdk: CoreVideo.framework
       - sdk: CoreImage.framework
@@ -303,6 +305,7 @@ targets:
       - sdk: UIKit.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
+      - sdk: MetalPerformanceShaders.framework
       - sdk: CoreFoundation.framework
       - sdk: CoreVideo.framework
       - sdk: CoreImage.framework

@@ -189,6 +189,10 @@ typedef enum : NSUInteger {
 
 @optional;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
+// 高斯模糊背景图片：替代默认纯色背景，填充无视频或黑边区域。传 nil 清除。
+@property(nonatomic, strong, nullable) UIImage *backgroundImage;
+// 生成高斯模糊的迭代次数，默认 3，推荐 2~4。
+@property(nonatomic) int backgroundBlurIterations;
 - (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
 
 @end

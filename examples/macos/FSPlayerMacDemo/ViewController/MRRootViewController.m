@@ -744,6 +744,9 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     //playerView.preventDisplay = YES;
     //test
     [playerView setBackgroundColor:240 g:0 b:0];
+    //test：高斯模糊背景，替代纯色背景填充黑边/无视频区域
+    playerView.backgroundBlurIterations = 3;
+    playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
     [playerView setDisplayDelegate:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
