@@ -3612,6 +3612,7 @@ static int read_thread(void *arg)
         // There is total different meaning for 'timeout' option in rtmp
         av_log(ffp, AV_LOG_WARNING, "remove 'timeout' option for rtmp.\n");
         av_dict_set(&ffp->format_opts, "timeout", NULL, 0);
+        //av_dict_set(&ffp->format_opts, "rw_timeout", "5000000", 0);
     }
 
     if (ffp->skip_calc_frame_rate) {

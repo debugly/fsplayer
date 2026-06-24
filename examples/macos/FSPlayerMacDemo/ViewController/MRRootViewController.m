@@ -581,6 +581,8 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         [options setPlayerOptionIntValue:0 forKey:@"packet-buffering"];
         //[options setFormatOptionValue:@"1000000" forKey:@"probesize"];
         [options setFormatOptionValue:@"600000" forKey:@"analyzeduration"];
+        //issue https://github.com/debugly/fsplayer/issues/91
+        [options setFormatOptionValue:@"5000000" forKey:@"rw_timeout"];
     } else {
         // Param for playback
         [options setPlayerOptionIntValue:0 forKey:@"infbuf"];
@@ -1125,8 +1127,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [self destroyPlayer];
 #warning 根据地址，动态修改
     BOOL isLive = [urlStr hasPrefix:@"rtmp"] || [urlStr hasPrefix:@"rtsp"];
-    isLive = NO;
-    
+//    isLive = NO;
     [self perpareIJKPlayer:urlStr hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
     NSString *videoName = [urlStr lastPathComponent];
     
