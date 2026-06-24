@@ -27,6 +27,7 @@
 }
 
 - (id<MTLTexture>)blurredTextureFromImage:(CGImageRef)cgImage
+                                    sigma:(float)sigma
                                iterations:(int)iterations
                              commandQueue:(id<MTLCommandQueue>)commandQueue
 {
@@ -78,7 +79,7 @@
         return texA;
     }
 
-    MPSImageGaussianBlur *blur = [[MPSImageGaussianBlur alloc] initWithDevice:_device sigma:30.0];
+    MPSImageGaussianBlur *blur = [[MPSImageGaussianBlur alloc] initWithDevice:_device sigma:sigma > 0 ? sigma : 30.0];
     blur.edgeMode = MPSImageEdgeModeClamp;
 
     id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];

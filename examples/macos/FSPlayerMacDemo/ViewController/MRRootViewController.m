@@ -744,8 +744,10 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     //playerView.preventDisplay = YES;
     //test
     [playerView setBackgroundColor:240 g:0 b:0];
+    
     //test：高斯模糊背景，替代纯色背景填充黑边/无视频区域
     playerView.backgroundBlurIterations = 3;
+    playerView.backgroundBlurSigma = 30.0;
     playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
     [playerView setDisplayDelegate:self];
     

@@ -193,6 +193,8 @@ typedef enum : NSUInteger {
 @property(nonatomic, strong, nullable) UIImage *backgroundImage;
 // 生成高斯模糊的迭代次数，默认 3，推荐 2~4。
 @property(nonatomic) int backgroundBlurIterations;
+// 单次高斯模糊的 sigma（模糊半径），默认 30，值越大越模糊。
+@property(nonatomic) float backgroundBlurSigma;
 - (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
 
 @end

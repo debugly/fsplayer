@@ -294,6 +294,7 @@ typedef CGRect NSRect;
     _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
     _darPreference      = (FSDARPreference){0.0};
     _backgroundBlurIterations = 3;
+    _backgroundBlurSigma = 30.0;
     _renderSnapshotLock = [[NSLock alloc]init];
     _allowHDRDisplay    = YES;
     
@@ -470,6 +471,7 @@ typedef CGRect NSRect;
     }
     CGImageRef cgImage = [self cgImageFromBackgroundImage:image];
     self.backgroundTexture = [self.blurFilter blurredTextureFromImage:cgImage
+                                                               sigma:self.backgroundBlurSigma
                                                           iterations:self.backgroundBlurIterations
                                                         commandQueue:self.commandQueue];
     if (self.backgroundTexture && ![self setupBackgroundPipelineIfNeed]) {
@@ -1162,6 +1164,22 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         return;
     }
     _backgroundBlurIterations = backgroundBlurIterations;
+    if (_backgroundImage) {
+        self.needRebuildBackgroundTexture = YES;
+        self.needCleanBackgroundColor = YES;
+        [self setNeedsRefreshCurrentPic];
+    }
+}
+
+- (void)setBackgroundBlurSigma:(float)backgroundBlurSigma
+{
+    if (backgroundBlurSigma <= 0) {
+        backgroundBlurSigma = 30.0;
+    }
+    if (_backgroundBlurSigma == backgroundBlurSigma) {
+        return;
+    }
+    _backgroundBlurSigma = backgroundBlurSigma;
     if (_backgroundImage) {
         self.needRebuildBackgroundTexture = YES;
         self.needCleanBackgroundColor = YES;

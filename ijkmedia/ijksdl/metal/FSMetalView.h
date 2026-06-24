@@ -22,6 +22,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 默认 3，推荐 2~4：1 次偏轻，2~4 次是清晰度与开销的最佳平衡，再多收益递减。
 @property (nonatomic) int backgroundBlurIterations;
 
+/// 单次高斯模糊的 sigma（模糊半径）。默认 30，值越大越模糊。
+@property (nonatomic) float backgroundBlurSigma;
+
 @end
 
 NS_ASSUME_NONNULL_END
