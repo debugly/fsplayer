@@ -9,6 +9,7 @@
 #import "FSMetalRenderer.h"
 #import "FSMetalFBO.h"
 #import "FSMetalTextureUtils.h"
+#import "FSVideoRenderingProtocol.h"
 #include "../ijksdl_log.h"
 
 @interface FSMetalTileGridPipeline ()

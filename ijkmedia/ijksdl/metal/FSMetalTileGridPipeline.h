@@ -6,7 +6,8 @@
 //
 
 @import MetalKit;
-#import "FSVideoRenderingProtocol.h" // FSOverlayAttach / FSTilePiece
+
+@class FSOverlayAttach;
 
 NS_ASSUME_NONNULL_BEGIN
 
