@@ -269,8 +269,6 @@
     }
 }
 
-
-
 - (void)setHdrDisplay:(BOOL)hdrDisplay
 {
     if (_hdrDisplay != hdrDisplay) {
