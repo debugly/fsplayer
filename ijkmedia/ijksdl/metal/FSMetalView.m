@@ -143,7 +143,7 @@ typedef CGRect NSRect;
 }
 #endif
 
-#if TARGET_OS_IOS || TARGET_OS_TV
+#if TARGET_OS_IOS
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (self.window) {
@@ -154,7 +154,6 @@ typedef CGRect NSRect;
         }
     }
 }
-
 #endif
 
 /// Returns YES when the display supports EDR AND the user has not disabled HDR rendering.
@@ -175,12 +174,6 @@ typedef CGRect NSRect;
     // macOS 10.14: the only alternative (maximumExtendedDynamicRangeColorComponentValue,
     // available since 10.11) always returns 1.0 until the layer is already opted into EDR,
     // making reliable pre-opt-in detection impossible. Fall back to NO.
-    return NO;
-#elif TARGET_OS_TV
-    // currentEDRHeadroom is tvOS 16+. No public API exists on tvOS 12–15 to detect EDR capability.
-    if (@available(tvOS 16.0, *)) {
-        return UIScreen.mainScreen.currentEDRHeadroom > 1.0;
-    }
     return NO;
 #elif TARGET_OS_IOS
     // currentEDRHeadroom is iOS 16+. No public API exists on iOS 12–15 to detect EDR capability.
@@ -225,6 +218,7 @@ typedef CGRect NSRect;
         // there), so this must be a compile-time guard — a runtime @available check cannot
         // resolve a missing symbol. tvOS handles HDR output at the system level, so there is
         // nothing to do for that platform.
+#if !TARGET_OS_TV
         dispatch_async(dispatch_get_main_queue(), ^{
             CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
             metalLayer.wantsExtendedDynamicRangeContent = supportsHDR;
@@ -236,6 +230,7 @@ typedef CGRect NSRect;
                 metalLayer.colorspace = nil;
             }
         });
+#endif
     }
 }
 
@@ -521,6 +516,7 @@ typedef CGRect NSRect;
         ALOGI("pixel format not match,need rebuild pipeline");
     }
     
+#if !TARGET_OS_TV
     if (@available(iOS 16.0, macOS 10.11, *)) {
         // Determine HDR content BEFORE creating the pipeline so colorPixelFormat is
         // already set to the correct value (RGBA16Float or BGRA8Unorm) when
@@ -528,11 +524,14 @@ typedef CGRect NSRect;
         BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pixelBuffer];
         [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
+#endif
 
     FSMetalRenderer *picturePipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:self.colorPixelFormat];
+#if !TARGET_OS_TV
     if (@available(iOS 16.0, macOS 10.11, *)) {
         picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     }
+#endif
     BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
 
     if (!created) {
@@ -549,11 +548,13 @@ typedef CGRect NSRect;
          drawableSize:(CGSize)drawableSize
                 ratio:(CGSize)ratio
 {
+#if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
         self.picturePipeline.hdrDisplay = self.hdrDisplayEnabled;
     } else {
         // Fallback on earlier versions
     }
+#endif
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
     self.picturePipeline.rotateType = self.rotatePreference.type;
     self.picturePipeline.rotateDegrees = self.rotatePreference.degrees;
@@ -781,6 +782,7 @@ typedef CGRect NSRect;
     // Use a temporary SDR pipeline for the snapshot so pixel formats match.
     // (Snapshots are saved as SDR image files, so tone-mapping is correct here.)
     FSMetalRenderer *savedPipeline = nil;
+#if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
         if (self.hdrDisplayEnabled) {
             savedPipeline = self.picturePipeline;
@@ -794,6 +796,7 @@ typedef CGRect NSRect;
     } else {
         // Fallback on earlier versions
     }
+#endif
 
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
@@ -880,6 +883,7 @@ typedef CGRect NSRect;
     // FSMetalFBO render target is always BGRA8Unorm; HDR pipelines use RGBA16Float.
     // Use a temporary SDR pipeline for the snapshot so pixel formats match.
     FSMetalRenderer *savedPipeline = nil;
+#if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
         if (self.hdrDisplayEnabled) {
             savedPipeline = self.picturePipeline;
@@ -893,6 +897,7 @@ typedef CGRect NSRect;
     } else {
         // Fallback on earlier versions
     }
+#endif
 
     CGSize drawableSize = self.drawableSize;
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];

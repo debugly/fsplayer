@@ -171,6 +171,7 @@ typedef enum : NSUInteger {
 @property(atomic) BOOL preventDisplay;
 // YES when the current display supports EDR/HDR and HDR content is rendered natively
 // (no tone-mapping to SDR). Updated automatically when the display changes.
+// HDR direct display is unavailable on tvOS
 @property(nonatomic, readonly) BOOL hdrDisplayEnabled HDR_API_AVAILABLE;
 // Controls whether HDR direct rendering is permitted at all.
 // Default YES. Set to NO to always tone-map HDR content to SDR regardless of display capability.
