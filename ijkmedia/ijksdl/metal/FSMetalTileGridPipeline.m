@@ -74,7 +74,8 @@
     CFStringRef matrix    = CVBufferGetAttachment(pb, kCVImageBufferYCbCrMatrixKey, NULL);
     CFStringRef primaries = CVBufferGetAttachment(pb, kCVImageBufferColorPrimariesKey, NULL);
     CFStringRef transfer  = CVBufferGetAttachment(pb, kCVImageBufferTransferFunctionKey, NULL);
-    CGColorSpaceRef cs    = CVImageBufferGetColorSpace(pb);
+    // CVImageBufferGetColorSpace 仅 macOS 可用；iOS 上 colorspace 以 attachment 形式存放。
+    CGColorSpaceRef cs    = (CGColorSpaceRef)CVBufferGetAttachment(pb, kCVImageBufferCGColorSpaceKey, NULL);
     CFStringRef csName    = cs ? CGColorSpaceGetName(cs) : NULL;
 
     ALOGD("[TileGrid] fmt=%s(0x%08x) matrix=%s primaries=%s transfer=%s colorspace=%s\n",
