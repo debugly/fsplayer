@@ -78,7 +78,7 @@ typedef CGRect NSRect;
 @synthesize scaleFactor = _scaleFactor;
 #endif
 @synthesize hdrDisplayEnabled = _hdrDisplayEnabled;
-@synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
+@synthesize allowHDRDisplay = _allowHDRDisplay;
 
 @synthesize displayDelegate = _displayDelegate;
 
@@ -158,7 +158,7 @@ typedef CGRect NSRect;
 
 /// Returns YES when the display supports EDR AND the user has not disabled HDR rendering.
 - (BOOL)currentDisplaySupportsHDR HDR_API_AVAILABLE {
-    if (!_allowHDRDirectDisplay) {
+    if (!_allowHDRDisplay) {
         return NO;
     }
 #if TARGET_OS_OSX
@@ -246,10 +246,10 @@ typedef CGRect NSRect;
 }
 
 - (void)setAllowHDRDisplay:(BOOL)allowHDRDisplay HDR_API_AVAILABLE {
-    if (_allowHDRDirectDisplay == allowHDRDisplay) {
+    if (_allowHDRDisplay == allowHDRDisplay) {
         return;
     }
-    _allowHDRDirectDisplay = allowHDRDisplay;
+    _allowHDRDisplay = allowHDRDisplay;
     // Re-evaluate: if we just disabled, force SDR; if we just enabled, check display capability.
     [self updateHDRDisplayMode];
 }
@@ -295,7 +295,7 @@ typedef CGRect NSRect;
     _backgroundBlurIterations = 3;
     _backgroundBlurSigma = 30.0;
     _renderSnapshotLock = [[NSLock alloc]init];
-    _allowHDRDirectDisplay = YES;
+    _allowHDRDisplay    = YES;
     
     [self setupDisplayLink];
     

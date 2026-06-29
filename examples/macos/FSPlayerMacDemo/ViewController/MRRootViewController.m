@@ -738,7 +738,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     playerView.frame = self.playerContainer.bounds;
     playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     // Set allowHDRDisplay BEFORE addSubview so viewDidMoveToWindow sees the correct value.
-    playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
+    playerView.allowHDRDisplay = [MRCocoaBindingUserDefault open_hdr];
     [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
     
     //playerView.preventDisplay = YES;
@@ -1505,7 +1505,7 @@ static BOOL useExact = NO;
 - (void)resetPreferenceEachPlay
 {
     self.usingHardwareAccelerate = [self preferHW];
-    self.player.view.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
+    self.player.view.allowHDRDisplay = [MRCocoaBindingUserDefault open_hdr];
 
     [MRCocoaBindingUserDefault setValue:@(0.0) forKey:@"subtitle_delay"];
 
@@ -1925,7 +1925,7 @@ static BOOL useExact = NO;
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         BOOL allow = [MRCocoaBindingUserDefault open_hdr];
-        self.player.view.allowHDRDirectDisplay = allow;
+        self.player.view.allowHDRDisplay = allow;
     } forKey:@"open_hdr"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
