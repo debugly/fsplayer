@@ -863,6 +863,7 @@ typedef CGRect NSRect;
     //[CIImage initWithCVPixelBuffer:options:] failed because its pixel format f420 is not supported.
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
     if (!ciImage) {
+        CVPixelBufferRelease(pixelBuffer);
         return NULL;
     }
     static CIContext *context = nil;
