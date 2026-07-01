@@ -2920,16 +2920,14 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
             set_clock_at(&is->audclk, pts, is->audio_clock_serial, ffp->audio_callback_time / 1000000.0);
             sync_clock_to_slave(&is->extclk, &is->audclk);
             
-            if (is->video_stream >= 0 && is->viddec.finished != is->videoq.serial && is->auddec.finished != is->audioq.serial && 0 == is->audio_accurate_seek_req) {
-                //when use step play mode,we use video pts sync audio,so drop the behind audio.
-                double video_pts = is->step ? is->vidclk.pts : get_clock(&is->vidclk);
-                //audio pts is behind,need fast forwad,otherwise cause video picture delay and not smoothly!
-                double threshold = is->step ? AV_SYNC_THRESHOLD_MIN : AV_SYNC_THRESHOLD_MAX;
+            //when use step play mode,we use video pts sync audio,so drop the behind audio.
+            if (is->step && is->video_stream >= 0 && is->viddec.finished != is->videoq.serial && is->auddec.finished != is->audioq.serial && 0 == is->audio_accurate_seek_req) {
+                double video_pts = is->vidclk.pts;
+                double threshold = AV_SYNC_THRESHOLD_MIN;
                 double diff = video_pts - get_clock(&is->audclk) - get_clock_extral_delay(&is->audclk);
-                //when set audio delay, can not drop audio, because the diff will be handle by video repeat or drop.
-                int auto_drop = (is->step || get_clock_extral_delay(&is->audclk) == 0) && !isnan(video_pts) && (int)(ffp->pf_playback_rate * 10 == 10) && diff > threshold;
+                int auto_drop = !isnan(video_pts) && diff > threshold;
                 if (auto_drop) {
-                    av_log(NULL, AV_LOG_INFO, "audio pts is behind,need fast forwad,diff:%f\n", diff);
+                    av_log(NULL, AV_LOG_INFO, "drop audio for step,diff:%f\n", diff);
                     int counter = 3;
                     while (counter--) {
                         if (diff >= 0.01) {
