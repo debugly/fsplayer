@@ -3,7 +3,7 @@
 //  FFmpegTutorial-macOS
 //
 //  Created by debugly on 2022/11/22.
-//  Copyright © 2022 debugly's Awesome FFmpeg Tutotial. All rights reserved.
+//  Copyright © 2022 debugly's Awesome FFmpeg Tutorial. All rights reserved.
 //
 
 #import "FSMetalView.h"
@@ -626,7 +626,7 @@ typedef CGRect NSRect;
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
 }
 
-// [self draw] drived
+// [self draw] driven
 - (void)drawRect:(NSRect)dirtyRect
 {
 #if TARGET_OS_IOS || TARGET_OS_TV
@@ -1052,7 +1052,7 @@ typedef CGRect NSRect;
     return YES;
 }
 
-#pragma mark HEIC tile-graid
+#pragma mark HEIC tile-grid
 
 // 合成成一张 BGRA 纹理并缓存到 attach 上，转成普通单帧。
 // 合成交给 FSMetalTileGridPipeline；之后旋转/缩放/调色/快照都走单帧路径作用于整张图，

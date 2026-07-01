@@ -3,7 +3,7 @@
 //  FFmpegTutorial-macOS
 //
 //  Created by debugly on 2022/12/2.
-//  Copyright © 2022 debugly's Awesome FFmpeg Tutotial. All rights reserved.
+//  Copyright © 2022 debugly's Awesome FFmpeg Tutorial. All rights reserved.
 //
 
 
