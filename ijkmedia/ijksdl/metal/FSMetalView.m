@@ -83,6 +83,8 @@ typedef CGRect NSRect;
 
 @synthesize displayDelegate = _displayDelegate;
 
+#pragma mark - Initialization & Lifecycle
+
 - (void)dealloc
 {
     [_displayLinkWrapper invalidate];
@@ -94,6 +96,86 @@ typedef CGRect NSRect;
         _pictureTextureCache = NULL;
     }
 #endif
+}
+
+- (BOOL)prepareMetal
+{
+    _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
+    _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
+    _darPreference      = (FSDARPreference){0.0};
+    _backgroundBlurIterations = 3;
+    _backgroundBlurSigma = 30.0;
+    _renderSnapshotLock = [[NSLock alloc]init];
+    _allowHDRDirectDisplay    = YES;
+#if !TARGET_OS_TV
+    if (@available(iOS 16.0, macOS 10.11, *)) {
+        _screenSupportsHDR = [self currentDisplaySupportsHDR];
+    }
+#endif
+    
+    [self setupDisplayLink];
+    
+    self.device = MTLCreateSystemDefaultDevice();
+    if (!self.device) {
+        ALOGE("Can't Create Metal Device.");
+        return NO;
+    }
+#if USE_METAL_TEXTURE_CACHE
+    CVReturn ret = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_pictureTextureCache);
+    if (ret != kCVReturnSuccess) {
+        ALOGE("Create MetalTextureCache Failed:%d.",ret);
+        self.device = nil;
+        return NO;
+    }
+#endif
+    // default is kCAGravityResize,the content will be filled to new bounds when change view's frame by Implicit Animation
+#if TARGET_OS_OSX
+    //#76 设置了 kCAGravityCenter 之后发现 macOS 外接1倍屏会出现画面显示到中央，无法填充满的问题，Retina屏幕没有问题
+    //self.layer.contentsGravity = kCAGravityCenter;
+#else
+    self.contentMode = UIViewContentModeCenter;
+#endif
+    
+    // Create the command queue
+    self.commandQueue = [self.device newCommandQueue];
+    self.autoResizeDrawable = YES;
+    // important;then use draw method drive rendering.
+    self.enableSetNeedsDisplay = NO;
+    self.paused = YES;
+    //set default bg color.
+    [self setBackgroundColor:0 g:0 b:0];
+    
+#if TARGET_OS_IOS || TARGET_OS_TV
+    self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
+    
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(applicationDidEnterBackground)
+                                               name:UIApplicationDidEnterBackgroundNotification
+                                             object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(applicationWillEnterForeground)
+                                               name:UIApplicationWillEnterForegroundNotification
+                                             object:nil];
+#endif
+    return YES;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        [self prepareMetal];
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        [self prepareMetal];
+    }
+    return self;
 }
 
 - (void)setupDisplayLink {
@@ -124,38 +206,7 @@ typedef CGRect NSRect;
 #endif
 }
 
-#if TARGET_OS_OSX
-- (void)viewDidMoveToWindow {
-    [super viewDidMoveToWindow];
-    [_displayLinkWrapper updateWithWindow:self.window];
-    [self updateHDRDisplayMode];
-}
-
-- (void)windowDidChangeScreen:(NSNotification *)notification {
-    NSWindow *window = notification.object;
-    if (window == self.window) {
-        [_displayLinkWrapper updateWithWindow:window];
-        [self updateHDRDisplayMode];
-    }
-}
-
-- (void)screenParametersDidChange:(NSNotification *)notification {
-    [self updateHDRDisplayMode];
-}
-#endif
-
-#if TARGET_OS_IOS
-- (void)didMoveToWindow {
-    [super didMoveToWindow];
-    if (self.window) {
-        if (@available(iOS 16.0, *)) {
-            [self updateHDRDisplayMode];
-        } else {
-            // Fallback on earlier versions
-        }
-    }
-}
-#endif
+#pragma mark - HDR / EDR Display Mode Support
 
 /// Returns YES when the display supports EDR
 - (BOOL)currentDisplaySupportsHDR HDR_API_AVAILABLE {
@@ -294,125 +345,6 @@ typedef CGRect NSRect;
     [self setNeedsRefreshCurrentPic];
 }
 
-- (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
-    FSOverlayAttach *currentAttach = self.currentAttach;
-
-    if (!currentAttach || currentAttach.tag == self.previousTag) {
-        return;
-    }
-    currentAttach.presentationTime = timestamp;
-    
-    self.drawingAttach = currentAttach;
-
-    // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
-    // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
-    // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
-    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
-    if (!pipelineRef && currentAttach.tilePieces.count > 0) {
-        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
-    }
-    
-    if (!pipelineRef) {
-        return;
-    }
-    
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, macOS 10.11, *)) {
-        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pipelineRef];
-        [self updateHDRDisplayModeForHDRContent:isHDRContent];
-    }
-#endif
-    
-    [self.renderSnapshotLock lock];
-    [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
-    if (currentAttach.subTexture) {
-        [self setupSubPipelineIfNeed];
-    }
-    [self.renderSnapshotLock unlock];
-    //use current DisplayLink thread
-    [self draw];
-}
-
-- (BOOL)prepareMetal
-{
-    _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
-    _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
-    _darPreference      = (FSDARPreference){0.0};
-    _backgroundBlurIterations = 3;
-    _backgroundBlurSigma = 30.0;
-    _renderSnapshotLock = [[NSLock alloc]init];
-    _allowHDRDirectDisplay    = YES;
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, macOS 10.11, *)) {
-        _screenSupportsHDR = [self currentDisplaySupportsHDR];
-    }
-#endif
-    
-    [self setupDisplayLink];
-    
-    self.device = MTLCreateSystemDefaultDevice();
-    if (!self.device) {
-        ALOGE("Can't Create Metal Device.");
-        return NO;
-    }
-#if USE_METAL_TEXTURE_CACHE
-    CVReturn ret = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_pictureTextureCache);
-    if (ret != kCVReturnSuccess) {
-        ALOGE("Create MetalTextureCache Failed:%d.",ret);
-        self.device = nil;
-        return NO;
-    }
-#endif
-    // default is kCAGravityResize,the content will be filled to new bounds when change view's frame by Implicit Animation
-#if TARGET_OS_OSX
-    //#76 设置了 kCAGravityCenter 之后发现 macOS 外接1倍屏会出现画面显示到中央，无法填充满的问题，Retina屏幕没有问题
-    //self.layer.contentsGravity = kCAGravityCenter;
-#else
-    self.contentMode = UIViewContentModeCenter;
-#endif
-    
-    // Create the command queue
-    self.commandQueue = [self.device newCommandQueue];
-    self.autoResizeDrawable = YES;
-    // important;then use draw method drive rendering.
-    self.enableSetNeedsDisplay = NO;
-    self.paused = YES;
-    //set default bg color.
-    [self setBackgroundColor:0 g:0 b:0];
-    
-#if TARGET_OS_IOS || TARGET_OS_TV
-    self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
-    
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(applicationDidEnterBackground)
-                                               name:UIApplicationDidEnterBackgroundNotification
-                                             object:nil];
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(applicationWillEnterForeground)
-                                               name:UIApplicationWillEnterForegroundNotification
-                                             object:nil];
-#endif
-    return YES;
-}
-
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super initWithCoder:coder];
-    if (self) {
-        [self prepareMetal];
-    }
-    return self;
-}
-
-- (instancetype)initWithFrame:(NSRect)frameRect
-{
-    self = [super initWithFrame:frameRect];
-    if (self) {
-        [self prepareMetal];
-    }
-    return self;
-}
-
 - (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize
 {
     if (_scalingMode == FSScalingModeFill) {
@@ -470,27 +402,7 @@ typedef CGRect NSRect;
     return CGSizeMake(nW, nH);
 }
 
-- (BOOL)setupSubPipelineIfNeed
-{
-    if (self.subPipeline) {
-        return YES;
-    }
-    
-    FSMetalSubtitlePipeline *subPipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device inFormat:FSMetalSubtitleInFormatBRGA outFormat:FSMetalSubtitleOutFormatDIRECT];
-    
-    BOOL created = [subPipeline createRenderPipelineIfNeed];
-    
-    if (!created) {
-        ALOGE("create subRenderPipeline failed.");
-        subPipeline = nil;
-    }
-    
-    self.subPipeline = subPipeline;
-    
-    return subPipeline != nil;
-}
-
-#pragma mark - blurred background
+#pragma mark - Blurred Background & Gaussian Filter
 
 - (CGImageRef)cgImageFromBackgroundImage:(UIImage *)image CF_RETURNS_NOT_RETAINED
 {
@@ -554,6 +466,28 @@ typedef CGRect NSRect;
     [renderEncoder setViewport:(MTLViewport){0.0, 0.0, drawableSize.width, drawableSize.height, -1.0, 1.0}];
     [self.backgroundPipeline updateSubtitleVertexIfNeed:CGRectMake(-1.0, -1.0, 2.0, 2.0)];
     [self.backgroundPipeline drawTexture:self.backgroundTexture encoder:renderEncoder];
+}
+
+#pragma mark - Pipeline & Upload Textures
+
+- (BOOL)setupSubPipelineIfNeed
+{
+    if (self.subPipeline) {
+        return YES;
+    }
+    
+    FSMetalSubtitlePipeline *subPipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device inFormat:FSMetalSubtitleInFormatBRGA outFormat:FSMetalSubtitleOutFormatDIRECT];
+    
+    BOOL created = [subPipeline createRenderPipelineIfNeed];
+    
+    if (!created) {
+        ALOGE("create subRenderPipeline failed.");
+        subPipeline = nil;
+    }
+    
+    self.subPipeline = subPipeline;
+    
+    return subPipeline != nil;
 }
 
 - (BOOL)setupPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend
@@ -640,6 +574,88 @@ typedef CGRect NSRect;
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
 }
 
+#pragma mark - Display Link & Core Rendering Flow
+
+- (void)setNeedsRefreshCurrentPic
+{
+    if (self.refreshCurrentPicBlock) {
+        self.refreshCurrentPicBlock();
+    } else {
+        [self draw];
+    }
+}
+
+- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block
+{
+    self.refreshCurrentPicBlock = block;
+}
+
+- (BOOL)displayAttach:(FSOverlayAttach *)attach
+{
+    //call form (ff_vout thread)
+    
+    attach.tag = self.previousTag + 1;
+    
+    if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
+        attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
+    }
+
+    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
+    BOOL hasTiles = (attach.tilePieces.count > 0);
+    if (!attach.videoPicture && !hasTiles) {
+        ALOGW("FSMetalView: videoPicture is nil and no tile pieces\n");
+        return NO;
+    }
+    
+    if (self.preventDisplay) {
+        return YES;
+    }
+    
+    [self.renderSnapshotLock lock];
+    self.currentAttach = attach;
+    [self.renderSnapshotLock unlock];
+    
+    return YES;
+}
+
+- (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
+    FSOverlayAttach *currentAttach = self.currentAttach;
+
+    if (!currentAttach || currentAttach.tag == self.previousTag) {
+        return;
+    }
+    currentAttach.presentationTime = timestamp;
+    
+    self.drawingAttach = currentAttach;
+
+    // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
+    // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
+    // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
+    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
+    if (!pipelineRef && currentAttach.tilePieces.count > 0) {
+        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
+    }
+    
+    if (!pipelineRef) {
+        return;
+    }
+    
+#if !TARGET_OS_TV
+    if (@available(iOS 16.0, macOS 10.11, *)) {
+        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pipelineRef];
+        [self updateHDRDisplayModeForHDRContent:isHDRContent];
+    }
+#endif
+    
+    [self.renderSnapshotLock lock];
+    [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
+    if (currentAttach.subTexture) {
+        [self setupSubPipelineIfNeed];
+    }
+    [self.renderSnapshotLock unlock];
+    //use current DisplayLink thread
+    [self draw];
+}
 // [self draw] driven
 - (void)drawRect:(NSRect)dirtyRect
 {
@@ -755,6 +771,8 @@ typedef CGRect NSRect;
     
     [self.renderSnapshotLock unlock];
 }
+
+#pragma mark - snapshot
 
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
 {
@@ -1026,50 +1044,6 @@ typedef CGRect NSRect;
 
 #endif
 
-- (void)setNeedsRefreshCurrentPic
-{
-    if (self.refreshCurrentPicBlock) {
-        self.refreshCurrentPicBlock();
-    } else {
-        [self draw];
-    }
-}
-
-
-
-- (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block
-{
-    self.refreshCurrentPicBlock = block;
-}
-
-- (BOOL)displayAttach:(FSOverlayAttach *)attach
-{
-    //call form (ff_vout thread)
-    
-    attach.tag = self.previousTag + 1;
-    
-    if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
-        attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
-    }
-
-    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
-    BOOL hasTiles = (attach.tilePieces.count > 0);
-    if (!attach.videoPicture && !hasTiles) {
-        ALOGW("FSMetalView: videoPicture is nil and no tile pieces\n");
-        return NO;
-    }
-    
-    if (self.preventDisplay) {
-        return YES;
-    }
-    
-    [self.renderSnapshotLock lock];
-    self.currentAttach = attach;
-    [self.renderSnapshotLock unlock];
-    
-    return YES;
-}
-
 #pragma mark HEIC tile-grid
 
 // 合成成一张 BGRA 纹理并缓存到 attach 上，转成普通单帧。
@@ -1110,7 +1084,7 @@ typedef CGRect NSRect;
     return YES;
 }
 
-#pragma mark - override setter methods
+#pragma mark - Property Setters & Informational Getters
 
 - (void)setScalingMode:(FSScalingMode)scalingMode
 {
@@ -1209,6 +1183,39 @@ typedef CGRect NSRect;
     return @"MetalN";
 }
 
+#pragma mark - OS Event Notifications & Layout
+#if TARGET_OS_OSX
+- (void)viewDidMoveToWindow {
+    [super viewDidMoveToWindow];
+    [_displayLinkWrapper updateWithWindow:self.window];
+    [self updateHDRDisplayMode];
+}
+
+- (void)windowDidChangeScreen:(NSNotification *)notification {
+    NSWindow *window = notification.object;
+    if (window == self.window) {
+        [_displayLinkWrapper updateWithWindow:window];
+        [self updateHDRDisplayMode];
+    }
+}
+
+- (void)screenParametersDidChange:(NSNotification *)notification {
+    [self updateHDRDisplayMode];
+}
+#endif
+
+#if TARGET_OS_IOS
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    if (self.window) {
+        if (@available(iOS 16.0, *)) {
+            [self updateHDRDisplayMode];
+        } else {
+            // Fallback on earlier versions
+        }
+    }
+}
+#endif
 #if TARGET_OS_OSX
 - (NSView *)hitTest:(NSPoint)point
 {
