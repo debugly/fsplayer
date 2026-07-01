@@ -61,6 +61,7 @@ typedef CGRect NSRect;
 @property (atomic, strong) FSMetalBlurFilter *blurFilter;
 @property (atomic, strong) id<MTLTexture> backgroundTexture;
 @property (atomic, assign) BOOL needRebuildBackgroundTexture;
+@property (nonatomic, assign) BOOL screenSupportsHDR;
 @end
 
 @implementation FSMetalView
@@ -183,64 +184,51 @@ typedef CGRect NSRect;
 #endif
 }
 
-- (void)updateHDRDisplayModeForHDRContentAvailable:(BOOL)isHDRContent completion:(dispatch_block_t)completion
-{
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, macOS 10.11, *)) {
-        // Determine HDR content BEFORE creating the pipeline so colorPixelFormat is
-        // already set to the correct value (RGBA16Float or BGRA8Unorm) when
-        // FSMetalRenderer is initialised. This avoids the "build → format mismatch → nil → rebuild" cycle.
-        [self updateHDRDisplayModeForHDRContent:isHDRContent completion:completion];
-        return;
-    }
-#endif
-    
-    if (completion) {
-        completion();
-    }
-}
 /// Core implementation: switches pixel format, layer color space, and hdrDisplayEnabled
 /// based on whether the display supports EDR AND the content is HDR.
 /// If colorPixelFormat changes, nils the existing pipeline so it is rebuilt with the new format.
-- (void)updateHDRDisplayModeForHDRContent:(BOOL)isHDRContent completion:(dispatch_block_t)completion HDR_API_AVAILABLE
+- (void)updateHDRDisplayModeForHDRContent:(BOOL)isHDRContent HDR_API_AVAILABLE
 {
-    //content and device supported
-    BOOL supportsHDR = [self currentDisplaySupportsHDR] && isHDRContent;
+    // Fast path: Check if we actually need to change display mode before hopping to the main thread.
+    [self.renderSnapshotLock lock];
+    BOOL supportsHDR = _screenSupportsHDR && isHDRContent;
     
     if (supportsHDR != self.directDisplayHDRSupportted) {
         _directDisplayHDRSupportted = supportsHDR;
         ALOGI("content and display support HDR: %d", supportsHDR);
     }
     
-    //and user allow direct display
     BOOL activeHDR = supportsHDR && _allowHDRDirectDisplay;
-    if (self.hdrDirectDisplayActive == activeHDR) {
-        if (completion) {
-            completion();
-        }
-        return;
-    }
+    BOOL activeChanged = (self.hdrDirectDisplayActive == activeHDR);
     self.hdrDirectDisplayActive = activeHDR;
     
-    //direct display status need update
-    MTLPixelFormat newFormat = activeHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
-    BOOL formatChanged = (self.colorPixelFormat != newFormat);
-   
-    if (formatChanged) {
-        // MTLRenderPipelineState bakes in colorAttachments[0].pixelFormat at creation time.
-        // 字幕/背景管线也把像素格式烤进了 PSO，目标格式变化后必须一并重建，
-        // 否则在新的渲染目标上 setRenderPipelineState: 会触发 Metal 断言崩溃。
-        self.picturePipeline = nil;
-        self.subPipeline = nil;
-        // 背景管线只在 rebuildBackgroundTextureIfNeed 里重建，需置位让其下一帧用新格式重建。
-        self.backgroundPipeline = nil;
-        self.needRebuildBackgroundTexture = (self.backgroundImage != nil);
+    [self.renderSnapshotLock unlock];
+    
+    if (activeChanged) {
+        return;
     }
- 
+    
+    void (^updateBlock)(void) = ^{
+        [self.renderSnapshotLock lock];
+        
+        //direct display status need update
+        MTLPixelFormat newFormat = activeHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
+        BOOL formatChanged = (self.colorPixelFormat != newFormat);
+       
+        if (formatChanged) {
+            // MTLRenderPipelineState bakes in colorAttachments[0].pixelFormat at creation time.
+            // 字幕/背景管线也把像素格式烤进了 PSO，目标格式变化后必须一并重建，
+            // 否则在新的渲染目标上 setRenderPipelineState: 会触发 Metal 断言崩溃。
+            self.picturePipeline = nil;
+            self.subPipeline = nil;
+            // 背景管线只在 rebuildBackgroundTextureIfNeed 里重建，需置位让其下一帧用新格式重建。
+            self.backgroundPipeline = nil;
+            self.needRebuildBackgroundTexture = (self.backgroundImage != nil);
+        }
+     
 #if !TARGET_OS_TV
-    dispatch_async(dispatch_get_main_queue(), ^{
         CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
-        metalLayer.wantsExtendedDynamicRangeContent = supportsHDR;
+        metalLayer.wantsExtendedDynamicRangeContent = activeHDR;
         // Update colorPixelFormat and metalLayer's colorspace
         self.colorPixelFormat = newFormat;
         if (activeHDR) {
@@ -252,51 +240,67 @@ typedef CGRect NSRect;
             metalLayer.colorspace = nil;
             ALOGI("update layer colorspace:nil");
         }
-        
-        if (completion) {
-            completion();
-        }
-    });
-#else
-    if (completion) {
-        completion();
-    }
 #endif
+        
+        [self.renderSnapshotLock unlock];
+    };
+    
+    if ([NSThread isMainThread]) {
+        updateBlock();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), updateBlock);
+    }
 }
 
 /// Called from the main thread (screen change notifications, setAllowHDRDisplay:).
 /// Uses renderSnapshotLock to synchronise with the render thread, which holds the same
 /// lock for the entire setupPipelineIfNeed: → encode sequence in drawRect:.
 - (void)updateHDRDisplayMode HDR_API_AVAILABLE {
+#if !TARGET_OS_TV
+    BOOL displaySupportsHDR = [self currentDisplaySupportsHDR];
     [self.renderSnapshotLock lock];
+    _screenSupportsHDR = displaySupportsHDR;
     if (self.picturePipeline) {
-        [self updateHDRDisplayModeForHDRContentAvailable:[self.picturePipeline isHDRContent] completion:^{
-            [self.renderSnapshotLock unlock];
-        }];
+        BOOL isHDRContent = [self.picturePipeline isHDRContent];
+        [self.renderSnapshotLock unlock];
+        
+        if (@available(iOS 16.0, macOS 10.11, *)) {
+            [self updateHDRDisplayModeForHDRContent:isHDRContent];
+        }
     } else {
         [self.renderSnapshotLock unlock];
     }
+#endif
+}
+
+- (BOOL)allowHDRDirectDisplay HDR_API_AVAILABLE {
+    [self.renderSnapshotLock lock];
+    BOOL value = _allowHDRDirectDisplay;
+    [self.renderSnapshotLock unlock];
+    return value;
 }
 
 - (void)setAllowHDRDirectDisplay:(BOOL)allowHDRDirectDisplay HDR_API_AVAILABLE {
-    if (_allowHDRDirectDisplay == allowHDRDirectDisplay) {
-        return;
-    }
-    _allowHDRDirectDisplay = allowHDRDirectDisplay;
-    // Re-evaluate: if we just disabled, force SDR; if we just enabled, check display capability.
-    [self updateHDRDisplayMode];
-}
-
-- (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
     [self.renderSnapshotLock lock];
-    FSOverlayAttach *currentAttach = self.currentAttach;
-
-    if (currentAttach.tag == self.previousTag) {
+    if (_allowHDRDirectDisplay == allowHDRDirectDisplay) {
         [self.renderSnapshotLock unlock];
         return;
     }
-    currentAttach.presentationTime = timestamp;
+    _allowHDRDirectDisplay = allowHDRDirectDisplay;
     [self.renderSnapshotLock unlock];
+    
+    // Re-evaluate: if we just disabled, force SDR; if we just enabled, check display capability.
+    [self updateHDRDisplayMode];
+    [self setNeedsRefreshCurrentPic];
+}
+
+- (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
+    FSOverlayAttach *currentAttach = self.currentAttach;
+
+    if (!currentAttach || currentAttach.tag == self.previousTag) {
+        return;
+    }
+    currentAttach.presentationTime = timestamp;
     
     self.drawingAttach = currentAttach;
 
@@ -307,21 +311,26 @@ typedef CGRect NSRect;
     if (!pipelineRef && currentAttach.tilePieces.count > 0) {
         pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
     }
+    
     if (!pipelineRef) {
         return;
     }
     
+#if !TARGET_OS_TV
+    if (@available(iOS 16.0, macOS 10.11, *)) {
+        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pipelineRef];
+        [self updateHDRDisplayModeForHDRContent:isHDRContent];
+    }
+#endif
+    
     [self.renderSnapshotLock lock];
-    BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pipelineRef];
-    [self updateHDRDisplayModeForHDRContentAvailable:isHDRContent completion:^{
-        [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
-        if (currentAttach.subTexture) {
-            [self setupSubPipelineIfNeed];
-        }
-        [self.renderSnapshotLock unlock];
-        //use current DisplayLink thread
-        [self draw];
-    }];
+    [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
+    if (currentAttach.subTexture) {
+        [self setupSubPipelineIfNeed];
+    }
+    [self.renderSnapshotLock unlock];
+    //use current DisplayLink thread
+    [self draw];
 }
 
 - (BOOL)prepareMetal
@@ -333,6 +342,11 @@ typedef CGRect NSRect;
     _backgroundBlurSigma = 30.0;
     _renderSnapshotLock = [[NSLock alloc]init];
     _allowHDRDirectDisplay    = YES;
+#if !TARGET_OS_TV
+    if (@available(iOS 16.0, macOS 10.11, *)) {
+        _screenSupportsHDR = [self currentDisplaySupportsHDR];
+    }
+#endif
     
     [self setupDisplayLink];
     
@@ -859,6 +873,9 @@ typedef CGRect NSRect;
 //not support heic tile grid
 - (CGImageRef)_snapshotOrigin:(FSOverlayAttach *)attach
 {
+    if (!attach.videoPicture) {
+        return NULL;
+    }
     CVPixelBufferRef pixelBuffer = CVPixelBufferRetain(attach.videoPicture);
     //[CIImage initWithCVPixelBuffer:options:] failed because its pixel format f420 is not supported.
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
