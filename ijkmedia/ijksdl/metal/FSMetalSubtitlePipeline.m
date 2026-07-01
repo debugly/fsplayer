@@ -14,6 +14,7 @@
     id<MTLDevice> _device;
     FSMetalSubtitleOutFormat _outFormat;
     FSMetalSubtitleInFormat _inFormat;
+    MTLPixelFormat _colorPixelFormat;
 }
 
 // The render pipeline generated from the vertex and fragment shaders in the .metal shader file.
@@ -30,12 +31,24 @@
                      inFormat:(FSMetalSubtitleInFormat)inFormat
                      outFormat:(FSMetalSubtitleOutFormat)outFormat
 {
+    return [self initWithDevice:device
+                       inFormat:inFormat
+                      outFormat:outFormat
+               colorPixelFormat:MTLPixelFormatBGRA8Unorm];
+}
+
+- (instancetype)initWithDevice:(id<MTLDevice>)device
+                     inFormat:(FSMetalSubtitleInFormat)inFormat
+                     outFormat:(FSMetalSubtitleOutFormat)outFormat
+              colorPixelFormat:(MTLPixelFormat)colorPixelFormat
+{
     self = [super init];
     if (self) {
         NSAssert(device, @"device can't be nil!");
         _device = device;
         _inFormat = inFormat;
         _outFormat = outFormat;
+        _colorPixelFormat = colorPixelFormat;
     }
     return self;
 }
@@ -80,8 +93,7 @@
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     pipelineStateDescriptor.vertexFunction = vertexFunction;
     pipelineStateDescriptor.fragmentFunction = fragmentFunction;
-    pipelineStateDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-    
+    pipelineStateDescriptor.colorAttachments[0].pixelFormat = _colorPixelFormat;
     //important! set subtitle need blending.
     //https://developer.apple.com/documentation/metal/mtlblendfactor/oneminussourcealpha
     pipelineStateDescriptor.colorAttachments[0].blendingEnabled = YES;

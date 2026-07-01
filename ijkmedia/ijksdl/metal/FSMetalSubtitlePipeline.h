@@ -25,6 +25,11 @@ typedef enum : NSUInteger {
                       inFormat:(FSMetalSubtitleInFormat)inFormat
                      outFormat:(FSMetalSubtitleOutFormat)outFormat;
 
+- (instancetype)initWithDevice:(id<MTLDevice>)device
+                     inFormat:(FSMetalSubtitleInFormat)inFormat
+                     outFormat:(FSMetalSubtitleOutFormat)outFormat
+              colorPixelFormat:(MTLPixelFormat)colorPixelFormat;
+
 - (BOOL)createRenderPipelineIfNeed;
 - (void)updateSubtitleVertexIfNeed:(CGRect)rect;
 - (void)drawTexture:(id)subTexture encoder:(id<MTLRenderCommandEncoder>)encoder;

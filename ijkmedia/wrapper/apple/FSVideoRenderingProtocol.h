@@ -172,10 +172,10 @@ typedef enum : NSUInteger {
 // YES when the current display supports EDR/HDR and HDR content is rendered natively
 // (no tone-mapping to SDR). Updated automatically when the display changes.
 // HDR direct display is unavailable on tvOS
-@property(nonatomic, readonly) BOOL hdrDisplayEnabled HDR_API_AVAILABLE;
+@property(nonatomic, readonly) BOOL directDisplayHDRSupportted HDR_API_AVAILABLE;
 // Controls whether HDR direct rendering is permitted at all.
 // Default YES. Set to NO to always tone-map HDR content to SDR regardless of display capability.
-@property(nonatomic) BOOL allowHDRDisplay HDR_API_AVAILABLE;
+@property(nonatomic) BOOL allowHDRDirectDisplay HDR_API_AVAILABLE;
 // refresh current video picture and subtitle (when player paused change video pic preference, you can invoke this method)
 - (void)setNeedsRefreshCurrentPic;
 
