@@ -1,6 +1,6 @@
 tag 1.0.7
 --------------------------------
-- upgrade FFmpeg to 8.1.1
+- upgrade FFmpeg to 8.1.2
 - support display hdr directly, fix #30
 - tile grid HEIC support rotate
 - intel use uyvy format and enable metal texture cache
