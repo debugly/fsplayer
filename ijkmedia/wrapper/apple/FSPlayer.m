@@ -39,8 +39,6 @@
 #include "../ijkmedia/ijkplayer/ijkmeta.h"
 #include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 
-static const char *kIJKFFRequiredFFmpegVersion = "n7.1.1-32";
-
 static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 // It means you didn't call shutdown if you found this object leaked.
@@ -703,39 +701,6 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 + (NSString *)ffmpegVersion
 {
     return [[NSString alloc] initWithUTF8String:av_version_info()];
-}
-
-+ (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;
-{
-    //n4.0-16-g1c96997 -> n4.0-16
-    //not compare last commit sha1,because it will chang after source code apply patches.
-    const char *actualVersion = av_version_info();
-    char dst[128] = { 0 };
-    strcpy(dst, actualVersion);
-    if (strrchr(dst, '-') != NULL) {
-        *strrchr(dst, '-') = '\0';
-    }
-    
-    const char *expectVersion = kIJKFFRequiredFFmpegVersion;
-    if (0 == strcmp(dst, expectVersion)) {
-        return YES;
-    } else {
-        av_log(NULL, AV_LOG_WARNING, "actual ffmpeg: %s,but expect: %s\n", actualVersion, expectVersion);
-        return NO;
-    }
-}
-
-+ (BOOL)checkIfPlayerVersionMatch:(BOOL)showAlert
-                          version:(NSString *)version
-{
-    const char *actualVersion = ijkmp_version();
-    const char *expectVersion = version.UTF8String;
-    if (0 == strcmp(actualVersion, expectVersion)) {
-        return YES;
-    } else {
-        av_log(NULL, AV_LOG_WARNING, "actual ijkplayer: %s,but expect: %s\n", actualVersion, expectVersion);
-        return NO;
-    }
 }
 
 - (FSPlayerPlaybackSchedule)playbackScheduleFromState:(int)state
