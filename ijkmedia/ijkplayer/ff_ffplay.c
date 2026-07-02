@@ -1252,6 +1252,39 @@ static int get_z_rotate_degrees(AVStream *video_st)
     return get_degree_with_displaymatrix(displaymatrix);
 }
 
+//after seek when audio pts is behind,need fast forwad,otherwise cause video picture delay and not smoothly!
+static void ffp_calculate_accurate_seek_drop_diff(FFPlayer *ffp) {
+    if (!ffp || !ffp->is) return;
+    VideoState *is = ffp->is;
+    if (is->video_stream < 0 || is->audio_stream < 0) return;
+
+    double video_pts = NAN;
+    double audio_pts = NAN;
+
+    if (is->accurate_seek_vframe_pts > 0) {
+        video_pts = is->accurate_seek_vframe_pts / 1000000.0;
+    }
+    if (is->accurate_seek_aframe_pts > 0) {
+        audio_pts = is->accurate_seek_aframe_pts / 1000000.0;
+    }
+
+    if (isnan(video_pts) || video_pts <= 0 || isnan(audio_pts) || audio_pts <= 0) {
+        return;
+    }
+
+    double diff = video_pts - audio_pts;
+    if (diff > 0) {
+        if (diff > 0.5) {
+            av_log(ffp, AV_LOG_INFO, "seek_drop_diff is big (%0.3f), no drop\n", diff);
+        } else {
+            is->audio_accurate_seek_drop_diff = diff;
+            av_log(ffp, AV_LOG_INFO, "seek_drop_diff is %0.3fs, scheduling drop\n", diff);
+        }
+    } else {
+        //av_log(ffp, AV_LOG_DEBUG, "seek_drop_diff: audio_pts(%0.3f) >= video_pts(%0.3f) by %0.3fs, no drop needed\n", audio_pts, video_pts, -diff);
+    }
+}
+
 static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
 {
     VideoState *is = ffp->is;
@@ -1337,6 +1370,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
                         SDL_CondWaitTimeout(is->video_accurate_seek_cond, is->accurate_seek_mutex, ffp->accurate_seek_timeout);
                     } else {
                         av_log(NULL, AV_LOG_INFO, "accurate_seek is ok, video drop frame=%d, target diff=%0.3f\n", dropped, is->seek_pos/1000000.0 - pts);
+                        ffp_calculate_accurate_seek_drop_diff(ffp);
                         ffp_notify_msg2(ffp, FFP_MSG_ACCURATE_SEEK_COMPLETE, (int)(pts * 1000));
                     }
                     
@@ -1373,6 +1407,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             if (is->audio_accurate_seek_req && !is->abort_request) {
                 SDL_CondWaitTimeout(is->video_accurate_seek_cond, is->accurate_seek_mutex, ffp->accurate_seek_timeout);
             } else {
+                ffp_calculate_accurate_seek_drop_diff(ffp);
                 if (!isnan(pts)) {
                     ffp_notify_msg2(ffp, FFP_MSG_ACCURATE_SEEK_COMPLETE, (int)(pts * 1000));
                 } else {
@@ -2192,6 +2227,7 @@ static int audio_thread(void *arg)
                                 SDL_CondWaitTimeout(is->audio_accurate_seek_cond, is->accurate_seek_mutex, ffp->accurate_seek_timeout);
                             } else {
                                 av_log(NULL, AV_LOG_INFO, "accurate_seek is ok, audio drop frame=%d, target diff=%0.3f\n", dropped, is->seek_pos/1000000.0 - audio_clock);
+                                ffp_calculate_accurate_seek_drop_diff(ffp);
                                 ffp_notify_msg2(ffp, FFP_MSG_ACCURATE_SEEK_COMPLETE, (int)(audio_clock * 1000));
                             }
                             
@@ -2225,6 +2261,7 @@ static int audio_thread(void *arg)
                         if (is->video_accurate_seek_req && !is->abort_request) {
                             SDL_CondWaitTimeout(is->audio_accurate_seek_cond, is->accurate_seek_mutex, ffp->accurate_seek_timeout);
                         } else {
+                            ffp_calculate_accurate_seek_drop_diff(ffp);
                             ffp_notify_msg2(ffp, FFP_MSG_ACCURATE_SEEK_COMPLETE, (int)(audio_clock * 1000));
                         }
                         SDL_UnlockMutex(is->accurate_seek_mutex);
@@ -2842,6 +2879,14 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
         ffp->pf_playback_volume_changed = 0;
         SDL_AoutSetPlaybackVolume(ffp->aout, ffp->pf_playback_volume);
     }
+    
+    if (is->audio_accurate_seek_drop_diff > 0.0) {
+        double drop_diff = is->audio_accurate_seek_drop_diff;
+        is->audio_accurate_seek_drop_diff = 0.0;
+        av_log(ffp, AV_LOG_INFO, "drop audio for after seek,diff:%0.3f\n", drop_diff);
+        consume_audio_buffer(ffp, drop_diff);
+    }
+
     int gotFrame = 0;
     while (len > 0) {
         if (is->audio_buf_index >= is->audio_buf_size) {
@@ -4048,6 +4093,7 @@ static int read_thread(void *arg)
                 
                 is->drop_aframe_count = 0;
                 is->drop_vframe_count = 0;
+                is->audio_accurate_seek_drop_diff = 0.0;
                 SDL_LockMutex(is->accurate_seek_mutex);
                 if (is->video_stream >= 0) {
                     is->video_accurate_seek_req = 1;
