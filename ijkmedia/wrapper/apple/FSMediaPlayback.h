@@ -144,6 +144,8 @@ typedef enum FSAudioChannel {
 @property(nonatomic) FSSubtitlePreference subtitlePreference;
 //load spped (byte)
 - (int64_t)currentDownloadSpeed;
+//toggle videotoolbox_hwaccel decoder no need stop player
+- (BOOL)switchVideoDecoder:(BOOL)hardware;
 
 - (void)exchangeSelectedStream:(int)streamIdx;
 // FS_VAL_TYPE__VIDEO, FS_VAL_TYPE__AUDIO, FS_VAL_TYPE__SUBTITLE

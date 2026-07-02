@@ -1683,6 +1683,9 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
         }
         case FFP_MSG_VIDEO_DECODER_OPEN: {
             [self updateMonitor4VideoDecoder:avmsg->arg1];
+            if (self.shouldShowHudView && _hudCtrl != nil) {
+                [self refreshHudView];
+            }
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerVideoDecoderOpenNotification
              object:self];
@@ -2234,6 +2237,29 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 - (void)setMaxBufferSize:(int)maxBufferSize
 {
     [self setPlayerOptionIntValue:maxBufferSize forKey:@"max-buffer-size"];
+}
+
+- (BOOL)switchVideoDecoder:(BOOL)hardware
+{
+    if (!_mediaPlayer)
+        return NO;
+        
+    // 1. Set the option "videotoolbox_hwaccel"
+    [self setPlayerOptionIntValue:hardware forKey:@"videotoolbox_hwaccel"];
+    
+    // 2. Reload the video stream/decoder (which internally caches current position and seeks)
+    int r = ijkmp_reload_video_stream(_mediaPlayer);
+    if (r <= 0) {
+        return NO;
+    }
+    
+    // Update monitor value immediately and refresh HUD!
+    [self updateMonitor4VideoDecoder:hardware ? FFP_PROPV_DECODER_AVCODEC_HW : FFP_PROPV_DECODER_AVCODEC];
+    if (self.shouldShowHudView && _hudCtrl != nil) {
+        [self refreshHudView];
+    }
+    
+    return YES;
 }
 
 #if TARGET_OS_IOS

@@ -530,6 +530,7 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
     case AVMEDIA_TYPE_VIDEO:
         decoder_abort(&is->viddec, &is->pictq);
         decoder_destroy(&is->viddec);
+        ffpipenode_free_p(&ffp->node_vdec);
         break;
     default:
         break;
@@ -5610,6 +5611,49 @@ int ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected)
         }
         return r;
     }
+}
+
+int ffp_reload_video_stream(FFPlayer *ffp)
+{
+    VideoState *is = ffp->is;
+    if (!is)
+        return -1;
+    AVFormatContext *ic = is->ic;
+    if (!ic)
+        return -2;
+    
+    int stream = is->video_stream;
+    if (stream < 0) {
+        // Try to find the first video stream if none is currently active
+        for (int i = 0; i < ic->nb_streams; i++) {
+            if (ic->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+                stream = i;
+                break;
+            }
+        }
+    }
+    
+    if (stream >= 0) {
+        av_log(ffp, AV_LOG_INFO, "ffp_reload_video_stream: reloading stream %d\n", stream);
+        
+        // 1. Get current position/playback time before closing the component
+        long current_pos = ffp_get_current_position_l(ffp);
+
+        // Sync dynamic player options from options dictionary to struct fields
+        av_opt_set_dict(ffp, &ffp->player_opts);
+        
+        if (is->video_stream >= 0) {
+            stream_component_close(ffp, is->video_stream);
+        }
+        int opened = stream_component_open(ffp, stream) == 0;
+        if (opened) {
+            // 2. Seek back to current position to trigger decoding from nearest keyframe
+            ffp_seek_to_l(ffp, current_pos);
+            return 1;
+        }
+        return -3;
+    }
+    return 0;
 }
 
 float ffp_get_property_float(FFPlayer *ffp, int id, float default_value)

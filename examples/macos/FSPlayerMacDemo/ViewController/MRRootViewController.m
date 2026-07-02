@@ -861,10 +861,9 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     if (self.player == notifi.object) {
         if (self.isUsingHardwareAccelerate) {
             self.usingHardwareAccelerate = NO;
-            NSLog(@"decoder fatal:%@;close videotoolbox hwaccel.",notifi.userInfo);
-            NSString *playingUrl = self.playingUrl;
-            [self onStop];
-            [self playURL:playingUrl];
+            [MRCocoaBindingUserDefault setValue:@(NO) forKey:@"use_hw"];
+            NSLog(@"decoder fatal:%@;close videotoolbox hwaccel and fall back to software decoder.", notifi.userInfo);
+            [self.player switchVideoDecoder:NO];
             return;
         }
     }
@@ -1907,7 +1906,13 @@ static BOOL useExact = NO;
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-        [self retry];
+        BOOL use_hw = [v boolValue];
+        self.usingHardwareAccelerate = use_hw;
+        if (self.player) {
+            [self.player switchVideoDecoder:use_hw];
+        } else {
+            [self retry];
+        }
     } forKey:@"use_hw"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {

@@ -89,6 +89,7 @@ void      ffp_set_subtitle_codec_info(FFPlayer *ffp, const char *module, const c
 void      ffp_set_playback_rate(FFPlayer *ffp, float rate);
 void      ffp_set_playback_volume(FFPlayer *ffp, float volume);
 int       ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected);
+int       ffp_reload_video_stream(FFPlayer *ffp);
 
 float     ffp_get_property_float(FFPlayer *ffp, int id, float default_value);
 void      ffp_set_property_float(FFPlayer *ffp, int id, float value);

@@ -240,6 +240,18 @@ int ijkmp_set_stream_selected(IjkMediaPlayer *mp, int stream, int selected)
     return ret;
 }
 
+int ijkmp_reload_video_stream(IjkMediaPlayer *mp)
+{
+    assert(mp);
+
+    MPTRACE("%s()\n", __func__);
+    pthread_mutex_lock(&mp->mutex);
+    int ret = ffp_reload_video_stream(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("%s()=%d\n", __func__, ret);
+    return ret;
+}
+
 float ijkmp_get_property_float(IjkMediaPlayer *mp, int id, float default_value)
 {
     assert(mp);
