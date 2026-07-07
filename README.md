@@ -9,7 +9,7 @@
 
 ## 功能&特点
 
-- [x] FFmpeg 7.1.1
+- [x] FFmpeg 8.1.2
 - [x] 支持透传 FFmpeg option 参数
 - [x] 支持获取下载速度
 - [x] 支持获取预加载进度
@@ -46,7 +46,7 @@
 - [x] 支持将画面同时渲染到多个 View 上
 - [x] 支持实时获取音频 PCM 数据
 - [x] 支持自定义渲染 View
-- [x] 支持 4K/HDR/HDR10/HDR10+/Dolby Vision，不支持 Dolby Vision P5
+- [x] 支持 4K/HDR/HDR10/HDR10+/Dolby Vision，Pro版本支持 Dolby Vision P5
 - [x] 智能识别 iso (blury、dvd、普通视频)
 - [x] mpegts 视频快进不花屏
 - [x] 支持网络协议播放 iso 镜像和 BDMV 文件夹
@@ -60,7 +60,13 @@
 - [x] 支持设定播放器不管理 AudioSession 状态
 - [x] 优化播放器 View 旋转时的动画效果
 
-最近支持
+最新支持
+
+- [x] 支持播放瓦片网格 HEIC
+- [x] 支持高斯模糊背景
+- [x] 播放 HDR 视频时支持点亮 HDR 屏幕
+- [x] 优化了音频比视频短，只剩下视频时可以正常观看和seek
+- [x] 软硬解切换不需要重启播放器
 
 调研中
 
@@ -69,7 +75,6 @@
 - [ ] 音视频可变速变调
 - [ ] 支持透明视频
 - [ ] 画中画
-- [ ] Dolby Vision P5
 
 如果之前使用的 ijkplayer，可以轻松迁移到 fsplayer，请参考 [迁移指南](./doc/migration.md) 。
 
@@ -80,8 +85,8 @@
 
 | 最低支持平台  | 架构                                     |
 | ----------- | --------------------------------------- |
-| iOS 11.0    | arm64、arm64_simulator、x86_64_simulator |
-| macOS 10.11 | arm64、x86_64                            |
+| iOS 12.0    | arm64、arm64_simulator、x86_64_simulator |
+| macOS 10.14 | arm64、x86_64                            |
 | tvOS 12.0   | arm64、arm64_simulator、x86_64_simulator |
 
 ## 更新记录
@@ -97,7 +102,7 @@ FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，�
 - 通过 Cocoapods 集成:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.6/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.7/FSPlayer.spec.json'
 ```
 
 ### 调用
@@ -139,6 +144,7 @@ self.player.shouldAutoplay = YES;
 
 在 FSPlayer 的基础上提供了更加强劲的功能，以动态库的形式提供。
 
+- Dolby Vision P5
 - HLS 点播边播边缓存，已经缓存的 seek 回去播放不再耗流量，起播速度更快
 - 可无缝切换音轨，避免了普通方式切换后需要seek到当前位置，播放器重新加载短暂没有声音并且黑屏的问题
 - 播放网络 iso 镜像和 BDMV 文件夹时，首帧起播速度提升x倍，Seek 后首帧起播速度提升x倍
