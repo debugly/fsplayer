@@ -6,6 +6,9 @@ tag 1.0.7
 - intel use uyvy format and enable metal texture cache
 - support display hdr directly, fix #30
 - improve drop audio pcm data logic, fix #35
+- when audio stream is over, use video clock position as current position
+- toggle videotoolbox_hwaccel decoder no need stop player
+- rm methods: checkIfFFmpegVersionMatch and checkIfPlayerVersionMatch
 
 tag 1.0.6
 --------------------------------
