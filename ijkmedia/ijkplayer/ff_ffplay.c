@@ -638,8 +638,13 @@ static void set_clock_at(Clock *c, double pts, int serial, double time)
     c->last_updated = time;
     c->pts_drift = c->pts - time;
     c->clock_serial = serial;
+    if (isnan(pts)) {
+        av_log(NULL,AV_LOG_DEBUG,"set %s clock %f\n",c->name,c->pts);
+    }
 #ifdef FFP_SHOW_SYNC_CLOCK
-    av_log(NULL,AV_LOG_INFO,"set %s clock %f\n",c->name,c->pts);
+    else {
+        av_log(NULL,AV_LOG_INFO,"set %s clock %f\n",c->name,c->pts);
+    }
 #endif
 }
 
@@ -5194,7 +5199,17 @@ long ffp_get_current_position_l(FFPlayer *ffp)
     int64_t pos = 0;
     double pos_clock = get_master_clock(is);
     if (isnan(pos_clock)) {
-        pos = fftime_to_milliseconds(is->seek_pos);
+        if (is->seek_buffering) {
+            pos = fftime_to_milliseconds(is->seek_pos);
+        } else {
+            //when audio stream is over,use video clock position as current position
+            pos_clock = get_clock(&is->vidclk);
+            if (isnan(pos_clock)) {
+                pos = fftime_to_milliseconds(is->seek_pos);
+            } else {
+                pos = pos_clock * 1000;
+            }
+        }
     } else {
         pos = pos_clock * 1000;
     }
