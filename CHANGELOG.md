@@ -3,7 +3,7 @@ tag 1.0.7
 - upgrade FFmpeg to 8.1.2
 - support Gaussian Blur
 - tile grid HEIC support rotate
-- intel use uyvy format and enable metal texture cache
+- fix intel crash, use uyvy format and enable metal texture cache
 - support display hdr directly, fix #30
 - improve drop audio pcm data logic, fix #35
 - when audio stream is over, use video clock position as current position
