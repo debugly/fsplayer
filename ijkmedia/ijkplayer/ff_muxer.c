@@ -91,7 +91,11 @@ int ff_create_muxer(void **out_ffr, const char *file_name, const AVFormatContext
                 av_log(NULL, AV_LOG_ERROR, "recrod Failed to copy context from input to output stream codec context\n");
                 goto end;
             }
-            out_stream->codecpar->codec_tag = 0;
+            if (in_codecpar->codec_id == AV_CODEC_ID_HEVC) {
+                out_stream->codecpar->codec_tag = MKTAG('h', 'v', 'c', '1');
+            } else {
+                out_stream->codecpar->codec_tag = 0;
+            }
             // 设置start_time
             out_stream->start_time = AV_NOPTS_VALUE;
             out_stream->index = i;
