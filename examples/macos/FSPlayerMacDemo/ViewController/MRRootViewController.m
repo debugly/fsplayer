@@ -1359,12 +1359,23 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 static BOOL useExact = NO;
 
-- (int)startRecord:(NSString *)filePath
+- (void)startRecord:(NSString *)filePath
 {
+    int error;
+    NSString *type;
+    
     if (useExact) {
-        return [self.player startExactRecord:filePath];
+        type = @"exact";
+        error = [self.player startExactRecord:filePath];
     } else {
-        return [self.player startFastRecord:filePath];
+        type = @"fast";
+        error = [self.player startFastRecord:filePath];
+    }
+    
+    if (error) {
+        NSLog(@"开始录制 %@,error:%d" ,type ,error);
+    } else {
+        NSLog(@"开始录制 %@,path:%@" ,type ,filePath);
     }
 }
 
@@ -1400,12 +1411,7 @@ static BOOL useExact = NO;
         NSString *fileName = [NSString stringWithFormat:@"%lld.%@", timestamp, extension];
         // 构建完整文件路径
         NSString *filePath = [cacheDirectory stringByAppendingPathComponent:fileName];
-        int error = [self.player startFastRecord:filePath];
-        if (error) {
-            NSLog(@"开始录制:%d",error);
-        } else {
-            NSLog(@"开始录制:%@",filePath);
-        }
+        [self startRecord:filePath];
     }
 }
 
