@@ -772,7 +772,6 @@ typedef CGRect NSRect;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buf) {
         keepAliveAttach = nil;
     }];
-    [commandBuffer commit];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
     self.previousTag = currentAttach.tag;
