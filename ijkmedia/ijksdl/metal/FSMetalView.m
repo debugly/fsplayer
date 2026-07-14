@@ -765,6 +765,14 @@ typedef CGRect NSRect;
     [renderEncoder endEncoding];
     //[commandBuffer presentDrawable:drawable];
     [commandBuffer presentDrawable:drawable atTime:currentAttach.presentationTime];
+    // Extend the lifetime of currentAttach until the GPU finishes rendering.
+    // This prevents the underlying CVPixelBuffer from being returned to the pool
+    // and recycled/overwritten by the decoder too early, especially at high playback speeds.
+    __block FSOverlayAttach *keepAliveAttach = currentAttach;
+    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buf) {
+        keepAliveAttach = nil;
+    }];
+    [commandBuffer commit];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
     self.previousTag = currentAttach.tag;
