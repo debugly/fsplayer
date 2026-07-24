@@ -15,6 +15,8 @@ typedef void(^MRPlayerSettingsCloseStreamBlock)(NSString *);
 
 @interface MRPlayerSettingsViewController : NSViewController
 
+@property (nonatomic, copy, nullable) void (^onMultiRendererToggled)(BOOL enabled);
+
 - (void)exchangeToNextSubtitle;
 - (void)updateTracks:(NSDictionary *)dic;
 - (void)onCloseCurrentStream:(MRPlayerSettingsCloseStreamBlock)block;

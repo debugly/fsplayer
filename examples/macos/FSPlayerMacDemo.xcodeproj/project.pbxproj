@@ -22,8 +22,6 @@
 		C986F7BA2DADF2C6006D5F4E /* MRInputURLViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C986F7B82DADF2C6006D5F4E /* MRInputURLViewController.m */; };
 		C986F7BB2DADF2C6006D5F4E /* MRInputURLViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C986F7B92DADF2C6006D5F4E /* MRInputURLViewController.xib */; };
 		C99B0F1A29DE76B100E88ECB /* MRRenderViewAuxProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */; };
-		C99B0F9229DE9D2500E88ECB /* MultiRenderSample.m in Sources */ = {isa = PBXBuildFile; fileRef = C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */; };
-		C99B0F9329DE9D2500E88ECB /* MultiRenderSample.xib in Resources */ = {isa = PBXBuildFile; fileRef = C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */; };
 		C9C291D02B623A7400C42B5C /* MRCocoaBindingUserDefault.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */; };
 		C9C291D32B623A7400C42B5C /* MRHoverColorButton.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C291D22B6234FB00C42B5C /* MRHoverColorButton.m */; };
 		C9C7E27A2B60E37200D5F2E0 /* MRPlaylistViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */; };
@@ -135,9 +133,6 @@
 		C986F7B92DADF2C6006D5F4E /* MRInputURLViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MRInputURLViewController.xib; sourceTree = "<group>"; };
 		C99B0F1829DE76B100E88ECB /* MRRenderViewAuxProxy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRRenderViewAuxProxy.h; sourceTree = "<group>"; };
 		C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRRenderViewAuxProxy.m; sourceTree = "<group>"; };
-		C99B0F8F29DE9D2500E88ECB /* MultiRenderSample.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MultiRenderSample.h; sourceTree = "<group>"; };
-		C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MultiRenderSample.m; sourceTree = "<group>"; };
-		C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MultiRenderSample.xib; sourceTree = "<group>"; };
 		C9C291CC2B6234FB00C42B5C /* MRCocoaBindingUserDefault.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRCocoaBindingUserDefault.h; sourceTree = "<group>"; };
 		C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRCocoaBindingUserDefault.m; sourceTree = "<group>"; };
 		C9C291D12B6234FB00C42B5C /* MRHoverColorButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRHoverColorButton.h; sourceTree = "<group>"; };
@@ -284,9 +279,6 @@
 				C9C291D22B6234FB00C42B5C /* MRHoverColorButton.m */,
 				C9C7E27C2B60E54A00D5F2E0 /* MRPlaylistRowView.h */,
 				C9C7E27D2B60E54A00D5F2E0 /* MRPlaylistRowView.m */,
-				C99B0F8F29DE9D2500E88ECB /* MultiRenderSample.h */,
-				C99B0F9029DE9D2500E88ECB /* MultiRenderSample.m */,
-				C99B0F9129DE9D2500E88ECB /* MultiRenderSample.xib */,
 			);
 			path = ViewController;
 			sourceTree = "<group>";
@@ -497,7 +489,6 @@
 				C9C7E2832B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib in Resources */,
 				C905CF222B55163C00D59730 /* MRRootViewController.xib in Resources */,
 				C9CCCB032BF5B51400A13FE2 /* MRPlayerSettingsView.xib in Resources */,
-				C99B0F9329DE9D2500E88ECB /* MultiRenderSample.xib in Resources */,
 				C9C7E27B2B60E37200D5F2E0 /* MRPlaylistViewController.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -529,7 +520,6 @@
 				C9C7E27E2B60E54A00D5F2E0 /* MRPlaylistRowView.m in Sources */,
 				DDE9FC70273BD3CF00481560 /* NSFileManager+Sandbox.m in Sources */,
 				C905CF212B55163C00D59730 /* MRRootViewController.m in Sources */,
-				C99B0F9229DE9D2500E88ECB /* MultiRenderSample.m in Sources */,
 				C9FFF21527C864C100284B46 /* MRProgressSlider.m in Sources */,
 				C97674EE2A1F333D00B7627E /* MRTextInfoViewController.m in Sources */,
 				DD050F9D25A43A1300F01E2F /* MRUtil.m in Sources */,

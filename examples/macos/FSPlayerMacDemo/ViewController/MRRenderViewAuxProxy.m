@@ -28,6 +28,8 @@
 
 @synthesize scalingMode = _scalingMode;
 
+@synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
+
 @synthesize displayDelegate;
 
 - (void)dealloc
@@ -162,6 +164,28 @@
     for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setScalingMode:scalingMode];
     }
+}
+
+- (void)setAllowHDRDirectDisplay:(BOOL)allowHDRDirectDisplay
+{
+    _allowHDRDirectDisplay = allowHDRDirectDisplay;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        [view setAllowHDRDirectDisplay:allowHDRDirectDisplay];
+    }
+}
+
+- (BOOL)directDisplayHDRSupportted
+{
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    NSView<FSVideoRenderingProtocol> *view = [renderViewArr firstObject];
+    return [view directDisplayHDRSupportted];
 }
 
 @end

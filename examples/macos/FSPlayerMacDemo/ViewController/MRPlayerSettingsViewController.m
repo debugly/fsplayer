@@ -11,6 +11,21 @@
 #import "MRCocoaBindingUserDefault.h"
 #import <objc/runtime.h>
 
+static NSButton *MRCreateSwitch(void) {
+    if (@available(macOS 10.15, *)) {
+        NSSwitch *sw = [[NSSwitch alloc] init];
+        sw.translatesAutoresizingMaskIntoConstraints = NO;
+        sw.controlSize = NSControlSizeMini;
+        return (NSButton *)sw;
+    } else {
+        NSButton *chk = [[NSButton alloc] init];
+        chk.translatesAutoresizingMaskIntoConstraints = NO;
+        chk.buttonType = NSButtonTypeOnOff;
+        chk.title = @"";
+        return chk;
+    }
+}
+
 @interface MRPlayerSettingsViewController ()
 
 @property (nonatomic, strong) NSScrollView *scrollView;
@@ -681,7 +696,7 @@
     // Section 3: Player Settings
     [self.moreDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"播放器设置"]];
     
-    // Playback History Row with NSSwitch and Reset Button
+    // Playback History Row with NSSwitch
     NSView *historyRow = [[NSView alloc] init];
     historyRow.translatesAutoresizingMaskIntoConstraints = NO;
     [historyRow.heightAnchor constraintEqualToConstant:24].active = YES;
@@ -689,27 +704,11 @@
     NSTextField *historyLbl = [self createLabelWithText:@"播放记录:"];
     [historyRow addSubview:historyLbl];
     
-    NSView *toggle = nil;
-    if (@available(macOS 10.15, *)) {
-        NSSwitch *sw = [[NSSwitch alloc] init];
-        sw.translatesAutoresizingMaskIntoConstraints = NO;
-        sw.controlSize = NSControlSizeMini;
-        [sw bind:@"value"
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:@"values.play_from_history"
-             options:nil];
-        toggle = sw;
-    } else {
-        NSButton *chk = [[NSButton alloc] init];
-        chk.translatesAutoresizingMaskIntoConstraints = NO;
-        chk.buttonType = NSButtonTypeOnOff;
-        chk.title = @"";
-        [chk bind:@"value"
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:@"values.play_from_history"
-             options:nil];
-        toggle = chk;
-    }
+    NSButton *toggle = MRCreateSwitch();
+    [toggle bind:@"value"
+        toObject:[NSUserDefaultsController sharedUserDefaultsController]
+     withKeyPath:@"values.play_from_history"
+         options:nil];
     [historyRow addSubview:toggle];
     
     NSButton *resetBtn = [[NSButton alloc] init];
@@ -742,27 +741,11 @@
     NSTextField *seekLbl = [self createLabelWithText:@"精准Seek:"];
     [seekRow addSubview:seekLbl];
     
-    NSView *seekToggle = nil;
-    if (@available(macOS 10.15, *)) {
-        NSSwitch *sw = [[NSSwitch alloc] init];
-        sw.translatesAutoresizingMaskIntoConstraints = NO;
-        sw.controlSize = NSControlSizeMini;
-        [sw bind:@"value"
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:@"values.accurate_seek"
-             options:nil];
-        seekToggle = sw;
-    } else {
-        NSButton *chk = [[NSButton alloc] init];
-        chk.translatesAutoresizingMaskIntoConstraints = NO;
-        chk.buttonType = NSButtonTypeOnOff;
-        chk.title = @"";
-        [chk bind:@"value"
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:@"values.accurate_seek"
-             options:nil];
-        seekToggle = chk;
-    }
+    NSButton *seekToggle = MRCreateSwitch();
+    [seekToggle bind:@"value"
+        toObject:[NSUserDefaultsController sharedUserDefaultsController]
+     withKeyPath:@"values.accurate_seek"
+         options:nil];
     [seekRow addSubview:seekToggle];
     
     [NSLayoutConstraint activateConstraints:@[
@@ -781,27 +764,11 @@
     NSTextField *ratioLbl = [self createLabelWithText:@"锁定比例:"];
     [ratioRow addSubview:ratioLbl];
     
-    NSView *ratioToggle = nil;
-    if (@available(macOS 10.15, *)) {
-        NSSwitch *sw = [[NSSwitch alloc] init];
-        sw.translatesAutoresizingMaskIntoConstraints = NO;
-        sw.controlSize = NSControlSizeMini;
-        [sw bind:@"value"
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:@"values.lock_screen_ratio"
-             options:nil];
-        ratioToggle = sw;
-    } else {
-        NSButton *chk = [[NSButton alloc] init];
-        chk.translatesAutoresizingMaskIntoConstraints = NO;
-        chk.buttonType = NSButtonTypeOnOff;
-        chk.title = @"";
-        [chk bind:@"value"
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:@"values.lock_screen_ratio"
-             options:nil];
-        ratioToggle = chk;
-    }
+    NSButton *ratioToggle = MRCreateSwitch();
+    [ratioToggle bind:@"value"
+        toObject:[NSUserDefaultsController sharedUserDefaultsController]
+     withKeyPath:@"values.lock_screen_ratio"
+         options:nil];
     [ratioRow addSubview:ratioToggle];
     
     [NSLayoutConstraint activateConstraints:@[
@@ -811,6 +778,30 @@
         [ratioToggle.centerYAnchor constraintEqualToAnchor:ratioRow.centerYAnchor]
     ]];
     [self.moreDocView addArrangedSubview:ratioRow];
+
+    // Multi-renderer Row
+    NSView *mrRow = [[NSView alloc] init];
+    mrRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [mrRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    
+    NSTextField *mrLbl = [self createLabelWithText:@"多路渲染:"];
+    [mrRow addSubview:mrLbl];
+    
+    BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"multi_renderer_enabled"];
+    NSButton *mrToggle = MRCreateSwitch();
+    mrToggle.state = enabled ? NSControlStateValueOn : NSControlStateValueOff;
+    mrToggle.target = self;
+    mrToggle.action = @selector(onMultiRendererSwitchToggled:);
+    [mrRow addSubview:mrToggle];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [mrLbl.leadingAnchor constraintEqualToAnchor:mrRow.leadingAnchor],
+        [mrLbl.centerYAnchor constraintEqualToAnchor:mrRow.centerYAnchor],
+        
+        [mrToggle.leadingAnchor constraintEqualToAnchor:mrLbl.trailingAnchor constant:8],
+        [mrToggle.centerYAnchor constraintEqualToAnchor:mrRow.centerYAnchor]
+    ]];
+    [self.moreDocView addArrangedSubview:mrRow];
 }
 
 - (void)onPathCtrlChanged:(NSPathControl *)sender
@@ -818,6 +809,16 @@
     NSURL *selectedURL = sender.URL;
     if (selectedURL) {
         [MRCocoaBindingUserDefault setSnapshotDirectoryURL:selectedURL];
+    }
+}
+
+- (void)onMultiRendererSwitchToggled:(NSButton *)sender
+{
+    BOOL enabled = sender.state == NSControlStateValueOn;
+    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:@"multi_renderer_enabled"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    if (self.onMultiRendererToggled) {
+        self.onMultiRendererToggled(enabled);
     }
 }
 
@@ -1314,27 +1315,11 @@
         label.textColor = [NSColor whiteColor];
         [row addSubview:label];
         
-        NSView *toggle = nil;
-        if (@available(macOS 10.15, *)) {
-            NSSwitch *sw = [[NSSwitch alloc] init];
-            sw.translatesAutoresizingMaskIntoConstraints = NO;
-            sw.controlSize = NSControlSizeMini;
-            [sw bind:NSValueBinding
-                toObject:[NSUserDefaultsController sharedUserDefaultsController]
-             withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
-                 options:nil];
-            toggle = sw;
-        } else {
-            NSButton *chk = [[NSButton alloc] init];
-            chk.translatesAutoresizingMaskIntoConstraints = NO;
-            chk.buttonType = NSButtonTypeOnOff;
-            chk.title = @"";
-            [chk bind:NSValueBinding
-                toObject:[NSUserDefaultsController sharedUserDefaultsController]
-             withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
-                 options:nil];
-            toggle = chk;
-        }
+        NSButton *toggle = MRCreateSwitch();
+        [toggle bind:NSValueBinding
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+             options:nil];
         [row addSubview:toggle];
         
         [NSLayoutConstraint activateConstraints:@[

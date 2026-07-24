@@ -11,6 +11,8 @@
 #import "MRUtil+SystemPanel.h"
 #import "MRHoverColorButton.h"
 #import <FSPlayer/FSPlayer.h>
+#import <FSPlayer/FSPlayerKit.h>
+#import "MRRenderViewAuxProxy.h"
 #import "NSFileManager+Sandbox.h"
 #import "SHBaseView.h"
 #import <Quartz/Quartz.h>
@@ -19,7 +21,6 @@
 #import "AppDelegate.h"
 #import "MRProgressIndicator.h"
 #import "MRBaseView.h"
-#import "MultiRenderSample.h"
 #import "NSString+Ex.h"
 #import "MRPlayerSettingsViewController.h"
 #import "MRPlaylistViewController.h"
@@ -81,6 +82,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, copy) NSString *playingUrl;
 @property (nonatomic, weak) NSTimer *tickTimer;
 @property (nonatomic, assign, getter=isUsingHardwareAccelerate) BOOL usingHardwareAccelerate;
+@property (nonatomic, strong, nullable) NSWindow *extraRenderWindow;
 
 
 @property (nonatomic, assign) BOOL shouldShowHudView;
@@ -500,17 +502,6 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     settingsBtn.target = self;
     settingsBtn.action = @selector(onToggleSiderBar:);
     
-    MRHoverColorButton *pipBtn = [[MRHoverColorButton alloc] init];
-    if (@available(macOS 11.0, *)) {
-        pipBtn.image = [NSImage imageWithSystemSymbolName:@"pip.fill" accessibilityDescription:nil];
-    } else {
-        pipBtn.image = [NSImage imageNamed:NSImageNameShareTemplate];
-    }
-    [pipBtn.widthAnchor constraintEqualToConstant:20].active = YES;
-    [pipBtn.heightAnchor constraintEqualToConstant:20].active = YES;
-    pipBtn.target = self;
-    pipBtn.action = @selector(onToggleMultiRenderer:);
-    
     MRHoverColorButton *fullscreenBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
         fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.up.left.and.arrow.down.right" accessibilityDescription:nil];
@@ -524,7 +515,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     [self updatePlayPauseBtnState:YES];
     
-    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[settingsBtn, pipBtn, fullscreenBtn]];
+    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[settingsBtn, fullscreenBtn]];
     rightPillStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     rightPillStack.alignment = NSLayoutAttributeCenterY;
     rightPillStack.spacing = 15;
@@ -565,9 +556,11 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     // Setup custom left screenshot button (1.5x play button size = 54x54 pill)
     MRHoverColorButton *screenshotBtn = [[MRHoverColorButton alloc] init];
+    screenshotBtn.imageScaling = NSImageScaleProportionallyUpOrDown;
     NSImage *cameraImg = nil;
     if (@available(macOS 11.0, *)) {
-        cameraImg = [NSImage imageWithSystemSymbolName:@"camera.fill" accessibilityDescription:nil];
+        NSImageSymbolConfiguration *config = [NSImageSymbolConfiguration configurationWithPointSize:22 weight:NSFontWeightMedium];
+        cameraImg = [[NSImage imageWithSystemSymbolName:@"camera.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:config];
     } else {
         cameraImg = [NSImage imageNamed:NSImageNameShareTemplate];
     }
@@ -723,6 +716,15 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
             __strongSelf__
             [self onCaptureShot];
         }];
+        
+        settings.onMultiRendererToggled = ^(BOOL enabled) {
+            __strongSelf__
+            if (self.playingUrl) {
+                NSString *url = self.playingUrl;
+                [self doStopPlay];
+                [self playURL:url];
+            }
+        };
         
         created = YES;
         [self addChildViewController:settings];
@@ -1244,24 +1246,73 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     //[options setFormatOptionValue:@"ts,png" forKey:@"allowed_segment_extensions"];
     //[options setFormatOptionValue:@"ts,png" forKey:@"allowed_extensions"];
     
-    self.player = [[FSPlayer alloc] initWithContent:urlStr options:options];
-    
-    NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
-    playerView.frame = self.playerContainer.bounds;
-    playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    // Set allowHDRDisplay BEFORE addSubview so viewDidMoveToWindow sees the correct value.
-    playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
-    [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
-    
-    //playerView.preventDisplay = YES;
-    //test
-    [playerView setBackgroundColor:240 g:0 b:0];
-    
-    //test：高斯模糊背景，替代纯色背景填充黑边/无视频区域
-    playerView.backgroundBlurIterations = 3;
-    playerView.backgroundBlurSigma = 30.0;
-    playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
-    [playerView setDisplayDelegate:self];
+    BOOL multiRenderer = [[NSUserDefaults standardUserDefaults] boolForKey:@"multi_renderer_enabled"];
+    if (multiRenderer) {
+        // Create two rendering views: one for main player screen, one for extra floating window
+        UIView<FSVideoRenderingProtocol> *render1 = [FSVideoRenderView createMetalRenderView];
+        UIView<FSVideoRenderingProtocol> *render2 = [FSVideoRenderView createMetalRenderView];
+        
+        MRRenderViewAuxProxy *videoAux = [[MRRenderViewAuxProxy alloc] init];
+        [videoAux addRenderView:render1];
+        [videoAux addRenderView:render2];
+        
+        self.player = [[FSPlayer alloc] initWithContent:urlStr options:options videoRendering:videoAux audioRendering:[FSAudioRendering createAudioQueueRendering]];
+        
+        // Setup main render view in container
+        NSView<FSVideoRenderingProtocol> *playerView = render1;
+        playerView.frame = self.playerContainer.bounds;
+        playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
+        [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
+        
+        playerView.backgroundBlurIterations = 3;
+        playerView.backgroundBlurSigma = 30.0;
+        playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
+        [playerView setDisplayDelegate:self];
+        
+        // Setup second render view in independent window
+        if (!self.extraRenderWindow) {
+            NSRect screenRect = [[NSScreen mainScreen] visibleFrame];
+            NSRect windowRect = NSMakeRect(screenRect.origin.x + 50, screenRect.origin.y + screenRect.size.height - 250, 320, 180);
+            NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+            self.extraRenderWindow = [[NSWindow alloc] initWithContentRect:windowRect
+                                                                 styleMask:styleMask
+                                                                   backing:NSBackingStoreBuffered
+                                                                     defer:NO];
+            self.extraRenderWindow.title = @"Extra Renderer Window";
+            [[self.extraRenderWindow standardWindowButton:NSWindowCloseButton] setEnabled:NO];
+            self.extraRenderWindow.releasedWhenClosed = NO;
+            self.extraRenderWindow.movableByWindowBackground = YES;
+            [self.extraRenderWindow makeKeyAndOrderFront:nil];
+        }
+        
+        // Add render2 to extra window contentView
+        render2.frame = self.extraRenderWindow.contentView.bounds;
+        render2.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        [self.extraRenderWindow.contentView addSubview:render2];
+    } else {
+        // Normal single player mode
+        if (self.extraRenderWindow) {
+            for (NSView *subview in [self.extraRenderWindow.contentView subviews]) {
+                [subview removeFromSuperview];
+            }
+            [self.extraRenderWindow orderOut:nil];
+            [self.extraRenderWindow close];
+            self.extraRenderWindow = nil;
+        }
+        
+        self.player = [[FSPlayer alloc] initWithContent:urlStr options:options];
+        
+        NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
+        playerView.frame = self.playerContainer.bounds;
+        playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
+        [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
+        playerView.backgroundBlurIterations = 3;
+        playerView.backgroundBlurSigma = 30.0;
+        playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
+        [playerView setDisplayDelegate:self];
+    }
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
     
@@ -1932,35 +1983,15 @@ static BOOL useExact = NO;
 
 - (IBAction)onToggleMultiRenderer:(NSButton *)sender
 {
-    static MultiRenderSample *multiRenderVC = nil;
+    BOOL current = [[NSUserDefaults standardUserDefaults] boolForKey:@"multi_renderer_enabled"];
+    BOOL newValue = !current;
+    [[NSUserDefaults standardUserDefaults] setBool:newValue forKey:@"multi_renderer_enabled"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
     
-    if (sender.state == NSControlStateValueOn) {
-        
-        if (multiRenderVC) {
-            return;
-        }
-        NSString *playingUrl = self.playingUrl;
+    if (self.playingUrl) {
+        NSString *url = self.playingUrl;
         [self doStopPlay];
-        
-        multiRenderVC = [[MultiRenderSample alloc] initWithNibName:@"MultiRenderSample" bundle:nil];
-        
-        [self addChildViewController:multiRenderVC];
-        [self.playerContainer addSubview:multiRenderVC.view positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
-        multiRenderVC.view.frame = self.playerContainer.bounds;
-        multiRenderVC.view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-        [multiRenderVC.view viewDidMoveToSuperview];
-
-        [multiRenderVC setContentURL:playingUrl];
-    } else {
-        if (!multiRenderVC) {
-            return;
-        }
-        NSString *playingUrl = multiRenderVC.contentURL;
-        [multiRenderVC.view removeFromSuperview];
-        [multiRenderVC removeFromParentViewController];
-        multiRenderVC = nil;
-        
-        [self playURL:playingUrl];
+        [self playURL:url];
     }
 }
 
@@ -1988,6 +2019,14 @@ static BOOL useExact = NO;
 
 - (BOOL)destroyPlayer
 {
+    if (self.extraRenderWindow) {
+        for (NSView *subview in [self.extraRenderWindow.contentView subviews]) {
+            [subview removeFromSuperview];
+        }
+        [self.extraRenderWindow orderOut:nil];
+        [self.extraRenderWindow close];
+        self.extraRenderWindow = nil;
+    }
     if (self.player) {
         NSLog(@"destroy play");
         [[NSNotificationCenter defaultCenter] removeObserver:self name:nil object:self.player];
