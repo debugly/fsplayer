@@ -1481,8 +1481,12 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 }
 - (void)ijkPlayerNaturalSizeAvailable:(NSNotification *)notifi
 {
-    if (self.player == notifi.object && [MRCocoaBindingUserDefault lock_screen_ratio]) {
-        [self applyLockScreenRatio];
+    if (self.player == notifi.object) {
+        if ([MRCocoaBindingUserDefault lock_screen_ratio]) {
+            [self applyLockScreenRatio];
+        } else {
+            [self.view.window setResizeIncrements:NSMakeSize(1.0, 1.0)];
+        }
     }
 }
 
@@ -2475,6 +2479,8 @@ static BOOL useExact = NO;
         __strongSelf__
         if ([v boolValue]) {
             [self applyLockScreenRatio];
+        } else {
+            [self.view.window setResizeIncrements:NSMakeSize(1.0, 1.0)];
         }
     } forKey:@"lock_screen_ratio"];
     
