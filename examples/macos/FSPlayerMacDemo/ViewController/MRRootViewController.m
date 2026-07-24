@@ -97,6 +97,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, strong) MROverlayView *sidebarOverlayView;
 @property (nonatomic, strong) NSLayoutConstraint *sidebarTrailingConstraint;
 @property (nonatomic, strong) NSView *leftScreenshotPillView;
+@property (nonatomic, strong) MRHoverColorButton *fullscreenBtn;
 
 @end
 
@@ -351,6 +352,8 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 }
 
 - (void)onToggleFullscreenBtnPressed:(id)sender {
+    BOOL isCurrentlyFullScreen = (self.view.window.styleMask & NSWindowStyleMaskFullScreen) != 0;
+    [self updateFullscreenButtonImage:!isCurrentlyFullScreen];
     [self.view.window toggleFullScreen:nil];
 }
 
@@ -489,20 +492,20 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     settingsBtn.target = self;
     settingsBtn.action = @selector(onToggleSiderBar:);
     
-    MRHoverColorButton *fullscreenBtn = [[MRHoverColorButton alloc] init];
+    self.fullscreenBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
-        fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.up.left.and.arrow.down.right" accessibilityDescription:nil];
+        self.fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.up.left.and.arrow.down.right" accessibilityDescription:nil];
     } else {
-        fullscreenBtn.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
+        self.fullscreenBtn.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
     }
-    [fullscreenBtn.widthAnchor constraintEqualToConstant:20].active = YES;
-    [fullscreenBtn.heightAnchor constraintEqualToConstant:20].active = YES;
-    fullscreenBtn.target = self;
-    fullscreenBtn.action = @selector(onToggleFullscreenBtnPressed:);
+    [self.fullscreenBtn.widthAnchor constraintEqualToConstant:20].active = YES;
+    [self.fullscreenBtn.heightAnchor constraintEqualToConstant:20].active = YES;
+    self.fullscreenBtn.target = self;
+    self.fullscreenBtn.action = @selector(onToggleFullscreenBtnPressed:);
     
     [self updatePlayPauseBtnState:YES];
     
-    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[settingsBtn, fullscreenBtn]];
+    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[settingsBtn, self.fullscreenBtn]];
     rightPillStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     rightPillStack.alignment = NSLayoutAttributeCenterY;
     rightPillStack.spacing = 15;
@@ -2562,6 +2565,24 @@ static BOOL useExact = NO;
         NSString *filePath = [dir stringByAppendingPathComponent:fileName];
         NSLog(@"截屏:%@",filePath);
         [MRUtil saveImageToFile:img path:filePath];
+    }
+}
+
+
+- (void)updateFullscreenButtonImage:(BOOL)isFullScreen {
+    if (!self.fullscreenBtn) return;
+    if (@available(macOS 11.0, *)) {
+        if (isFullScreen) {
+            self.fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.down.right.and.arrow.up.left" accessibilityDescription:nil];
+        } else {
+            self.fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.up.left.and.arrow.down.right" accessibilityDescription:nil];
+        }
+    } else {
+        if (isFullScreen) {
+            self.fullscreenBtn.image = [NSImage imageNamed:NSImageNameExitFullScreenTemplate];
+        } else {
+            self.fullscreenBtn.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
+        }
     }
 }
 
