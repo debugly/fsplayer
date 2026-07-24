@@ -9,19 +9,29 @@
 #import "MRPlayerSettingsViewController.h"
 #import <FSPlayer/FSPlayer.h>
 #import "MRCocoaBindingUserDefault.h"
-#import "MRPlayerSettingsView.h"
+#import <objc/runtime.h>
 
 @interface MRPlayerSettingsViewController ()
 
-@property (weak) IBOutlet NSScrollView *scrollView;
-@property (weak) IBOutlet MRPlayerSettingsView *settingsView;
+@property (nonatomic, strong) NSScrollView *scrollView;
 
-@property (nonatomic, assign) BOOL use_openGL;
-@property (nonatomic, copy) NSString *fcc;
-@property (nonatomic, assign) int snapshot;
-@property (nonatomic, assign) BOOL accurateSeek;
-//for cocoa binding end
+// Private views and controllers
+@property (nonatomic, strong) NSView *bottomTabBar;
+@property (nonatomic, strong) NSButton *videoTabBtn;
+@property (nonatomic, strong) NSButton *audioTabBtn;
+@property (nonatomic, strong) NSButton *subtitleTabBtn;
+@property (nonatomic, strong) NSArray<NSButton *> *tabButtons;
 
+@property (nonatomic, strong) NSStackView *videoDocView;
+@property (nonatomic, strong) NSStackView *audioDocView;
+@property (nonatomic, strong) NSStackView *subtitleDocView;
+
+// PopUp buttons (re-used tags and names)
+@property (nonatomic, strong) NSPopUpButton *subtitlePopUpBtn;
+@property (nonatomic, strong) NSPopUpButton *audioPopUpBtn;
+@property (nonatomic, strong) NSPopUpButton *videoPopUpBtn;
+
+// Callbacks (reused from legacy)
 @property (nonatomic, copy) MRPlayerSettingsCloseStreamBlock closeCurrentStream;
 @property (nonatomic, copy) MRPlayerSettingsExchangeStreamBlock exchangeSelectedStream;
 @property (nonatomic, copy) dispatch_block_t captureShot;
@@ -32,41 +42,606 @@
 
 @implementation MRPlayerSettingsViewController
 
-- (void)viewDidAppear
+- (void)loadView
 {
-    [super viewDidAppear];
-    NSPoint newOrigin = NSMakePoint(0, NSMaxY(self.scrollView.documentView.frame) - self.scrollView.bounds.size.height);
-    [self.scrollView.contentView scrollToPoint:newOrigin];
+    self.view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 320, 600)];
 }
 
-- (void)exchangeToNextSubtitle
+- (void)viewDidLoad
 {
-    [self.settingsView exchangeToNextSubtitle];
+    [super viewDidLoad];
+    [self setupViewLayout];
 }
+
+- (void)setupViewLayout
+{
+    // 1. Background Blur (Glassmorphism)
+    NSVisualEffectView *vibrantView = [[NSVisualEffectView alloc] initWithFrame:self.view.bounds];
+    vibrantView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    vibrantView.material = NSVisualEffectMaterialHUDWindow;
+    vibrantView.blendingMode = NSVisualEffectBlendingModeWithinWindow;
+    vibrantView.state = NSVisualEffectStateActive;
+    [self.view addSubview:vibrantView];
+
+    // 2. Bottom Fixed Tab Bar Container
+    self.bottomTabBar = [[NSView alloc] init];
+    self.bottomTabBar.translatesAutoresizingMaskIntoConstraints = NO;
+    self.bottomTabBar.wantsLayer = YES;
+    self.bottomTabBar.layer.backgroundColor = [NSColor colorWithWhite:0.0 alpha:0.2].CGColor;
+    [self.view addSubview:self.bottomTabBar];
+
+    // Bottom tab bar top border separator
+    NSView *bottomBorder = [[NSView alloc] init];
+    bottomBorder.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomBorder.wantsLayer = YES;
+    bottomBorder.layer.backgroundColor = [NSColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [self.bottomTabBar addSubview:bottomBorder];
+
+    // 3. Tab Buttons
+    self.videoTabBtn = [[NSButton alloc] init];
+    self.videoTabBtn.title = @"视频";
+    self.videoTabBtn.bordered = NO;
+    self.videoTabBtn.target = self;
+    self.videoTabBtn.action = @selector(onTabClicked:);
+    self.videoTabBtn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.audioTabBtn = [[NSButton alloc] init];
+    self.audioTabBtn.title = @"音频";
+    self.audioTabBtn.bordered = NO;
+    self.audioTabBtn.target = self;
+    self.audioTabBtn.action = @selector(onTabClicked:);
+    self.audioTabBtn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.subtitleTabBtn = [[NSButton alloc] init];
+    self.subtitleTabBtn.title = @"字幕";
+    self.subtitleTabBtn.bordered = NO;
+    self.subtitleTabBtn.target = self;
+    self.subtitleTabBtn.action = @selector(onTabClicked:);
+    self.subtitleTabBtn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.tabButtons = @[self.videoTabBtn, self.audioTabBtn, self.subtitleTabBtn];
+
+    NSStackView *tabsStack = [[NSStackView alloc] init];
+    tabsStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    tabsStack.distribution = NSStackViewDistributionFillEqually;
+    tabsStack.spacing = 0;
+    tabsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    for (NSView *btn in self.tabButtons) {
+        [tabsStack addArrangedSubview:btn];
+    }
+    [self.bottomTabBar addSubview:tabsStack];
+
+    // 4. Scroll View for Content Area
+    self.scrollView = [[NSScrollView alloc] init];
+    self.scrollView.borderType = NSNoBorder;
+    self.scrollView.drawsBackground = NO;
+    self.scrollView.hasHorizontalScroller = NO;
+    self.scrollView.hasVerticalScroller = YES;
+    self.scrollView.autohidesScrollers = YES;
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.scrollView];
+
+    // Align content constraints
+    [NSLayoutConstraint activateConstraints:@[
+        // Scrollview at the top
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.bottomTabBar.topAnchor],
+
+        // Bottom fixed tab bar at bottom
+        [self.bottomTabBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.bottomTabBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.bottomTabBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [self.bottomTabBar.heightAnchor constraintEqualToConstant:54],
+
+        // Tab bar separator
+        [bottomBorder.topAnchor constraintEqualToAnchor:self.bottomTabBar.topAnchor],
+        [bottomBorder.leadingAnchor constraintEqualToAnchor:self.bottomTabBar.leadingAnchor],
+        [bottomBorder.trailingAnchor constraintEqualToAnchor:self.bottomTabBar.trailingAnchor],
+        [bottomBorder.heightAnchor constraintEqualToConstant:1],
+
+        // Tab stack centering
+        [tabsStack.topAnchor constraintEqualToAnchor:self.bottomTabBar.topAnchor constant:4],
+        [tabsStack.leadingAnchor constraintEqualToAnchor:self.bottomTabBar.leadingAnchor],
+        [tabsStack.trailingAnchor constraintEqualToAnchor:self.bottomTabBar.trailingAnchor],
+        [tabsStack.bottomAnchor constraintEqualToAnchor:self.bottomTabBar.bottomAnchor constant:-4]
+    ]];
+
+    // 5. Instantiate Track Popup Buttons
+    self.videoPopUpBtn = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+    self.videoPopUpBtn.tag = 2;
+    self.videoPopUpBtn.target = self;
+    self.videoPopUpBtn.action = @selector(onSelectTrack:);
+
+    self.audioPopUpBtn = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+    self.audioPopUpBtn.tag = 1;
+    self.audioPopUpBtn.target = self;
+    self.audioPopUpBtn.action = @selector(onSelectTrack:);
+
+    self.subtitlePopUpBtn = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+    self.subtitlePopUpBtn.tag = 3;
+    self.subtitlePopUpBtn.target = self;
+    self.subtitlePopUpBtn.action = @selector(onSelectTrack:);
+
+    // 6. Build the Three Pages (as NSStackViews)
+    [self buildVideoPage];
+    [self buildAudioPage];
+    [self buildSubtitlePage];
+
+    // Default to the first page (Video)
+    [self onTabClicked:self.videoTabBtn];
+}
+
+- (void)onTabClicked:(NSButton *)sender
+{
+    for (NSButton *btn in self.tabButtons) {
+        [self setButton:btn selected:(btn == sender)];
+    }
+
+    NSView *selectedDoc = nil;
+    if (sender == self.videoTabBtn) {
+        selectedDoc = self.videoDocView;
+    } else if (sender == self.audioTabBtn) {
+        selectedDoc = self.audioDocView;
+    } else if (sender == self.subtitleTabBtn) {
+        selectedDoc = self.subtitleDocView;
+    }
+
+    if (selectedDoc) {
+        self.scrollView.documentView = selectedDoc;
+        [selectedDoc.widthAnchor constraintEqualToAnchor:self.scrollView.contentView.widthAnchor].active = YES;
+        
+        // Force Auto Layout to compute the new frame sizes immediately
+        [self.scrollView layoutSubtreeIfNeeded];
+        
+        // Scroll to the top of the non-flipped page (top of bounds is height - clipViewHeight)
+        CGFloat documentHeight = selectedDoc.bounds.size.height > 0 ? selectedDoc.bounds.size.height : selectedDoc.frame.size.height;
+        CGFloat clipViewHeight = self.scrollView.contentView.bounds.size.height;
+        CGFloat targetY = MAX(0, documentHeight - clipViewHeight);
+        
+        [self.scrollView.contentView scrollToPoint:NSMakePoint(0, targetY)];
+        [self.scrollView reflectScrolledClipView:self.scrollView.contentView];
+    }
+}
+
+- (void)setButton:(NSButton *)button selected:(BOOL)selected
+{
+    NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
+    style.alignment = NSTextAlignmentCenter;
+
+    NSDictionary *attrs = @{
+        NSForegroundColorAttributeName: selected ? [NSColor whiteColor] : [NSColor secondaryLabelColor],
+        NSFontAttributeName: [NSFont systemFontOfSize:12 weight:selected ? NSFontWeightBold : NSFontWeightRegular],
+        NSParagraphStyleAttributeName: style
+    };
+
+    button.attributedTitle = [[NSAttributedString alloc] initWithString:button.title attributes:attrs];
+}
+
+#pragma mark - Page Construction Helper Methods
+
+- (NSTextField *)createLabelWithText:(NSString *)text
+{
+    NSTextField *label = [NSTextField labelWithString:text];
+    label.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+    label.textColor = [NSColor secondaryLabelColor];
+    label.alignment = NSTextAlignmentRight;
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    [label.widthAnchor constraintEqualToConstant:85].active = YES;
+    return label;
+}
+
+- (NSView *)createPopUpRowWithLabel:(NSString *)labelTitle popUpButton:(NSPopUpButton *)popUp
+{
+    NSView *row = [[NSView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [row.heightAnchor constraintEqualToConstant:24].active = YES;
+
+    NSTextField *lbl = [self createLabelWithText:labelTitle];
+    [row addSubview:lbl];
+
+    popUp.controlSize = NSControlSizeSmall;
+    popUp.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:popUp];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+        [lbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+
+        [popUp.leadingAnchor constraintEqualToAnchor:lbl.trailingAnchor constant:8],
+        [popUp.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [popUp.widthAnchor constraintEqualToConstant:190],
+    ]];
+
+    return row;
+}
+
+- (NSSegmentedControl *)createSegmentedWithItems:(NSArray<NSString *> *)items defaultKey:(NSString *)key tags:(NSArray<NSNumber *> *)tags
+{
+    NSSegmentedControl *seg = [NSSegmentedControl segmentedControlWithLabels:items trackingMode:NSSegmentSwitchTrackingSelectOne target:nil action:nil];
+    seg.controlSize = NSControlSizeSmall;
+    seg.translatesAutoresizingMaskIntoConstraints = NO;
+    [seg.widthAnchor constraintEqualToConstant:190].active = YES;
+
+    [seg bind:@"selectedTag"
+       toObject:[NSUserDefaultsController sharedUserDefaultsController]
+    withKeyPath:[NSString stringWithFormat:@"values.%@", key]
+        options:nil];
+
+    if (tags && tags.count == items.count) {
+        for (NSInteger i = 0; i < items.count; i++) {
+            [seg setTag:[tags[i] integerValue] forSegment:i];
+        }
+    }
+    return seg;
+}
+
+- (NSView *)createSegmentedRowWithLabel:(NSString *)labelTitle segmented:(NSSegmentedControl *)seg
+{
+    NSView *row = [[NSView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [row.heightAnchor constraintEqualToConstant:24].active = YES;
+
+    NSTextField *lbl = [self createLabelWithText:labelTitle];
+    [row addSubview:lbl];
+    [row addSubview:seg];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+        [lbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+
+        [seg.leadingAnchor constraintEqualToAnchor:lbl.trailingAnchor constant:8],
+        [seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+    ]];
+
+    return row;
+}
+
+- (NSView *)createCheckboxRowWithLabel:(NSString *)labelTitle checkbox:(NSButton *)check
+{
+    NSView *row = [[NSView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [row.heightAnchor constraintEqualToConstant:24].active = YES;
+
+    NSTextField *lbl = [self createLabelWithText:labelTitle];
+    [row addSubview:lbl];
+    [row addSubview:check];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+        [lbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+
+        [check.leadingAnchor constraintEqualToAnchor:lbl.trailingAnchor constant:8],
+        [check.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+    ]];
+
+    return row;
+}
+
+- (NSButton *)createCheckboxWithTitle:(NSString *)title defaultKey:(NSString *)key
+{
+    NSButton *btn = [NSButton checkboxWithTitle:title target:nil action:nil];
+    btn.font = [NSFont systemFontOfSize:11];
+    btn.controlSize = NSControlSizeSmall;
+    btn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [btn bind:NSValueBinding
+     toObject:[NSUserDefaultsController sharedUserDefaultsController]
+  withKeyPath:[NSString stringWithFormat:@"values.%@", key]
+      options:nil];
+
+    return btn;
+}
+
+- (NSView *)createSliderRowWithLabel:(NSString *)labelTitle defaultKey:(NSString *)key min:(double)minValue max:(double)maxValue defaultValue:(double)defValue format:(NSString *)format
+{
+    NSView *row = [[NSView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [row.heightAnchor constraintEqualToConstant:24].active = YES;
+
+    NSTextField *lbl = [self createLabelWithText:labelTitle];
+    [row addSubview:lbl];
+
+    NSSlider *slider = [[NSSlider alloc] init];
+    slider.controlSize = NSControlSizeMini;
+    slider.minValue = minValue;
+    slider.maxValue = maxValue;
+    slider.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:slider];
+
+    NSTextField *valLbl = [NSTextField labelWithString:@""];
+    valLbl.font = [NSFont monospacedDigitSystemFontOfSize:10 weight:NSFontWeightRegular];
+    valLbl.textColor = [NSColor secondaryLabelColor];
+    valLbl.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:valLbl];
+
+    // Reset button
+    NSButton *resetBtn = [[NSButton alloc] init];
+    resetBtn.bezelStyle = NSBezelStyleRecessed;
+    resetBtn.controlSize = NSControlSizeMini;
+    resetBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    resetBtn.bordered = NO;
+    if (@available(macOS 11.0, *)) {
+        resetBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.clockwise" accessibilityDescription:nil];
+    } else {
+        resetBtn.title = @"↺";
+    }
+    [row addSubview:resetBtn];
+
+    // Bind slider
+    [slider bind:NSValueBinding
+        toObject:[NSUserDefaultsController sharedUserDefaultsController]
+     withKeyPath:[NSString stringWithFormat:@"values.%@", key]
+         options:nil];
+
+    // Observe changes to update text
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull val, BOOL * _Nonnull r) {
+        double dVal = [val doubleValue];
+        valLbl.stringValue = [NSString stringWithFormat:format, dVal];
+    } forKey:key init:YES];
+
+    // Setup reset
+    resetBtn.target = self;
+    resetBtn.action = @selector(onResetSliderRow:);
+    objc_setAssociatedObject(resetBtn, "reset_key", key, OBJC_ASSOCIATION_COPY_NONATOMIC);
+    objc_setAssociatedObject(resetBtn, "reset_val", @(defValue), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+    [NSLayoutConstraint activateConstraints:@[
+        [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+        [lbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+
+        [slider.leadingAnchor constraintEqualToAnchor:lbl.trailingAnchor constant:8],
+        [slider.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [slider.widthAnchor constraintEqualToConstant:105],
+
+        [valLbl.leadingAnchor constraintEqualToAnchor:slider.trailingAnchor constant:6],
+        [valLbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [valLbl.widthAnchor constraintEqualToConstant:35],
+
+        [resetBtn.leadingAnchor constraintEqualToAnchor:valLbl.trailingAnchor constant:4],
+        [resetBtn.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [resetBtn.widthAnchor constraintEqualToConstant:20],
+        [resetBtn.heightAnchor constraintEqualToConstant:20],
+    ]];
+
+    return row;
+}
+
+- (void)onResetSliderRow:(NSButton *)sender
+{
+    NSString *key = objc_getAssociatedObject(sender, "reset_key");
+    NSNumber *val = objc_getAssociatedObject(sender, "reset_val");
+    if (key && val) {
+        [MRCocoaBindingUserDefault setValue:val forKey:key];
+    }
+}
+
+- (NSView *)createSectionHeaderWithTitle:(NSString *)title
+{
+    NSTextField *lbl = [NSTextField labelWithString:title];
+    lbl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
+    lbl.textColor = [NSColor whiteColor];
+    lbl.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSView *header = [[NSView alloc] init];
+    header.translatesAutoresizingMaskIntoConstraints = NO;
+    [header addSubview:lbl];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [header.heightAnchor constraintEqualToConstant:24],
+        [lbl.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:4],
+        [lbl.centerYAnchor constraintEqualToAnchor:header.centerYAnchor]
+    ]];
+    return header;
+}
+
+- (NSView *)createSeparatorLine
+{
+    NSView *line = [[NSView alloc] init];
+    line.translatesAutoresizingMaskIntoConstraints = NO;
+    [line.heightAnchor constraintEqualToConstant:1].active = YES;
+    line.wantsLayer = YES;
+    line.layer.backgroundColor = [NSColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    return line;
+}
+
+#pragma mark - Page Creators
+
+- (void)buildVideoPage
+{
+    self.videoDocView = [[NSStackView alloc] init];
+    self.videoDocView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.videoDocView.orientation = NSUserInterfaceLayoutOrientationVertical;
+    self.videoDocView.alignment = NSLayoutAttributeLeading;
+    self.videoDocView.spacing = 10;
+    self.videoDocView.edgeInsets = NSEdgeInsetsMake(15, 16, 15, 16);
+
+    // Section 1: Track
+    [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"轨道设置"]];
+    [self.videoDocView addArrangedSubview:[self createPopUpRowWithLabel:@"选择视轨:" popUpButton:self.videoPopUpBtn]];
+
+    [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 2: Picture Mode
+    [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"画面调节"]];
+
+    NSSegmentedControl *aspectSeg = [self createSegmentedWithItems:@[@"原始", @"4:3", @"16:9", @"1:1"] defaultKey:@"picture_wh_ratio" tags:@[@0, @1, @2, @3]];
+    [self.videoDocView addArrangedSubview:[self createSegmentedRowWithLabel:@"画面比例:" segmented:aspectSeg]];
+
+    NSSegmentedControl *scaleSeg = [self createSegmentedWithItems:@[@"适应", @"填充", @"拉伸"] defaultKey:@"picture_fill_mode" tags:@[@0, @1, @2]];
+    [self.videoDocView addArrangedSubview:[self createSegmentedRowWithLabel:@"适应模式:" segmented:scaleSeg]];
+
+    NSSegmentedControl *rotateSeg = [self createSegmentedWithItems:@[@"0°", @"90°", @"180°", @"270°"] defaultKey:@"picture_ratate_mode" tags:@[@0, @1, @2, @3]];
+    [self.videoDocView addArrangedSubview:[self createSegmentedRowWithLabel:@"画面旋转:" segmented:rotateSeg]];
+
+    [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 3: Hardware / Decoding
+    [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"解码设置"]];
+    NSButton *hwCheck = [self createCheckboxWithTitle:@"启用硬件加速" defaultKey:@"use_hw"];
+    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"硬件加速:" checkbox:hwCheck]];
+
+    NSButton *deCheck = [self createCheckboxWithTitle:@"启用反交错" defaultKey:@"de_interlace"];
+    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"反交错:" checkbox:deCheck]];
+
+    NSButton *hdrCheck = [self createCheckboxWithTitle:@"启用HDR支持" defaultKey:@"open_hdr"];
+    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"HDR色彩:" checkbox:hdrCheck]];
+
+    [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 4: Equalizer
+    [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"色彩调节"]];
+    [self.videoDocView addArrangedSubview:[self createSliderRowWithLabel:@"画面亮度:" defaultKey:@"color_adjust_brightness" min:0.5 max:1.5 defaultValue:1.0 format:@"%.2f"]];
+    [self.videoDocView addArrangedSubview:[self createSliderRowWithLabel:@"对比亮度:" defaultKey:@"color_adjust_contrast" min:0.5 max:1.5 defaultValue:1.0 format:@"%.2f"]];
+    [self.videoDocView addArrangedSubview:[self createSliderRowWithLabel:@"画面饱和:" defaultKey:@"color_adjust_saturation" min:0.5 max:1.5 defaultValue:1.0 format:@"%.2f"]];
+}
+
+- (void)buildAudioPage
+{
+    self.audioDocView = [[NSStackView alloc] init];
+    self.audioDocView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.audioDocView.orientation = NSUserInterfaceLayoutOrientationVertical;
+    self.audioDocView.alignment = NSLayoutAttributeLeading;
+    self.audioDocView.spacing = 10;
+    self.audioDocView.edgeInsets = NSEdgeInsetsMake(15, 16, 15, 16);
+
+    // Section 1: Track
+    [self.audioDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"轨道设置"]];
+    [self.audioDocView addArrangedSubview:[self createPopUpRowWithLabel:@"选择音轨:" popUpButton:self.audioPopUpBtn]];
+
+    [self.audioDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 2: Audio Adjustments
+    [self.audioDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"音频延迟"]];
+    [self.audioDocView addArrangedSubview:[self createSliderRowWithLabel:@"声音延迟:" defaultKey:@"audio_delay" min:-5.0 max:5.0 defaultValue:0.0 format:@"%.2f s"]];
+}
+
+- (void)buildSubtitlePage
+{
+    self.subtitleDocView = [[NSStackView alloc] init];
+    self.subtitleDocView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.subtitleDocView.orientation = NSUserInterfaceLayoutOrientationVertical;
+    self.subtitleDocView.alignment = NSLayoutAttributeLeading;
+    self.subtitleDocView.spacing = 10;
+    self.subtitleDocView.edgeInsets = NSEdgeInsetsMake(15, 16, 15, 16);
+
+    // Section 1: Track
+    [self.subtitleDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"轨道设置"]];
+    [self.subtitleDocView addArrangedSubview:[self createPopUpRowWithLabel:@"选择字幕:" popUpButton:self.subtitlePopUpBtn]];
+
+    [self.subtitleDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 2: Subtitle Adjustments
+    [self.subtitleDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"字幕偏好"]];
+    [self.subtitleDocView addArrangedSubview:[self createSliderRowWithLabel:@"字幕延迟:" defaultKey:@"subtitle_delay" min:-5.0 max:5.0 defaultValue:0.0 format:@"%.2f s"]];
+    [self.subtitleDocView addArrangedSubview:[self createSliderRowWithLabel:@"垂直位置:" defaultKey:@"subtitle_bottom_margin" min:5 max:80 defaultValue:15 format:@"%.0f pt"]];
+    [self.subtitleDocView addArrangedSubview:[self createSliderRowWithLabel:@"字幕大小:" defaultKey:@"subtitle_scale" min:0.5 max:2.5 defaultValue:1.0 format:@"%.2f x"]];
+
+    [self.subtitleDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 3: Styles Override
+    [self.subtitleDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"字幕样式覆盖"]];
+    NSButton *overrideCheck = [self createCheckboxWithTitle:@"启用样式覆盖" defaultKey:@"force_override"];
+    [self.subtitleDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"强制样式:" checkbox:overrideCheck]];
+
+    // Font selection button
+    NSView *fontRow = [[NSView alloc] init];
+    fontRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [fontRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    NSTextField *fontLbl = [self createLabelWithText:@"字体选项:"];
+    [fontRow addSubview:fontLbl];
+
+    NSButton *fontBtn = [NSButton buttonWithTitle:@"选择字体..." target:self action:@selector(onSelectFont:)];
+    fontBtn.controlSize = NSControlSizeSmall;
+    fontBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    [fontRow addSubview:fontBtn];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [fontLbl.leadingAnchor constraintEqualToAnchor:fontRow.leadingAnchor],
+        [fontLbl.centerYAnchor constraintEqualToAnchor:fontRow.centerYAnchor],
+        [fontBtn.leadingAnchor constraintEqualToAnchor:fontLbl.trailingAnchor constant:8],
+        [fontBtn.centerYAnchor constraintEqualToAnchor:fontRow.centerYAnchor]
+    ]];
+    [self.subtitleDocView addArrangedSubview:fontRow];
+
+    // Colors Row (Primary, Secondary, Background)
+    [self.subtitleDocView addArrangedSubview:[self createColorsRow]];
+}
+
+- (NSView *)createColorsRow
+{
+    NSView *row = [[NSView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [row.heightAnchor constraintEqualToConstant:24].active = YES;
+
+    NSTextField *lbl = [self createLabelWithText:@"字幕颜色:"];
+    [row addSubview:lbl];
+
+    NSDictionary *colorBindingOptions = @{ NSValueTransformerNameBindingOption : @"NSKeyedUnarchiveFromData" };
+
+    NSColorWell *c1 = [[NSColorWell alloc] init];
+    c1.translatesAutoresizingMaskIntoConstraints = NO;
+    [c1.widthAnchor constraintEqualToConstant:50].active = YES;
+    [c1.heightAnchor constraintEqualToConstant:22].active = YES;
+    [c1 bind:@"value" toObject:[NSUserDefaultsController sharedUserDefaultsController] withKeyPath:@"values.PrimaryColour" options:colorBindingOptions];
+
+    NSColorWell *c2 = [[NSColorWell alloc] init];
+    c2.translatesAutoresizingMaskIntoConstraints = NO;
+    [c2.widthAnchor constraintEqualToConstant:50].active = YES;
+    [c2.heightAnchor constraintEqualToConstant:22].active = YES;
+    [c2 bind:@"value" toObject:[NSUserDefaultsController sharedUserDefaultsController] withKeyPath:@"values.SecondaryColour" options:colorBindingOptions];
+
+    NSColorWell *c3 = [[NSColorWell alloc] init];
+    c3.translatesAutoresizingMaskIntoConstraints = NO;
+    [c3.widthAnchor constraintEqualToConstant:50].active = YES;
+    [c3.heightAnchor constraintEqualToConstant:22].active = YES;
+    [c3 bind:@"value" toObject:[NSUserDefaultsController sharedUserDefaultsController] withKeyPath:@"values.BackColour" options:colorBindingOptions];
+
+    NSStackView *wellsStack = [[NSStackView alloc] init];
+    wellsStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    wellsStack.spacing = 10;
+    wellsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [wellsStack addArrangedSubview:c1];
+    [wellsStack addArrangedSubview:c2];
+    [wellsStack addArrangedSubview:c3];
+    [row addSubview:wellsStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+        [lbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [wellsStack.leadingAnchor constraintEqualToAnchor:lbl.trailingAnchor constant:8],
+        [wellsStack.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+    ]];
+
+    return row;
+}
+
+#pragma mark - Legacy Forwarded Callbacks
 
 - (void)updateTracks:(NSDictionary *)mediaMeta
 {
     int audioIdx = [mediaMeta[FS_VAL_TYPE__AUDIO] intValue];
-    NSLog(@"当前音频：%d",audioIdx);
+    NSLog(@"当前音频：%d", audioIdx);
     int videoIdx = [mediaMeta[FS_VAL_TYPE__VIDEO] intValue];
-    NSLog(@"当前视频：%d",videoIdx);
+    NSLog(@"当前视频：%d", videoIdx);
     int subtitleIdx = [mediaMeta[FS_VAL_TYPE__SUBTITLE] intValue];
-    NSLog(@"当前字幕：%d",subtitleIdx);
-    
-    [self.settingsView removeAllItems];
-    
+    NSLog(@"当前字幕：%d", subtitleIdx);
+
+    [self removeAllItems];
+
     NSString *currentSubtitle = @"选择字幕";
-    [self.settingsView addSubtitleItemWithTitle:currentSubtitle];
+    [self addSubtitleItemWithTitle:currentSubtitle];
     NSString *currentAudio = @"选择音轨";
-    [self.settingsView addAudioItemWithTitle:currentAudio];
+    [self addAudioItemWithTitle:currentAudio];
     NSString *currentVideo = @"选择视轨";
-    [self.settingsView addVideoItemWithTitle:currentVideo];
-    
+    [self addVideoItemWithTitle:currentVideo];
+
     for (NSDictionary *stream in mediaMeta[FS_KEY_STREAMS]) {
         NSString *type = stream[FS_KEY_STREAM_TYPE];
         int streamIdx = [stream[FS_KEY_STREAM_IDX] intValue];
         if ([type isEqualToString:FS_VAL_TYPE__SUBTITLE]) {
-            NSLog(@"subtile meta:%@",stream);
+            NSLog(@"subtile meta:%@", stream);
             NSString *url = stream[FS_KEY_EX_SUBTITLE_URL];
             NSString *title = nil;
             if (url) {
@@ -80,13 +655,13 @@
                     title = @"未知";
                 }
             }
-            title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
+            title = [NSString stringWithFormat:@"%@-%d", title, streamIdx];
             if ([mediaMeta[FS_VAL_TYPE__SUBTITLE] intValue] == streamIdx) {
                 currentSubtitle = title;
             }
-            [self.settingsView addSubtitleItemWithTitle:title];
+            [self addSubtitleItemWithTitle:title];
         } else if ([type isEqualToString:FS_VAL_TYPE__AUDIO]) {
-            NSLog(@"audio meta:%@",stream);
+            NSLog(@"audio meta:%@", stream);
             NSString *title = stream[FS_KEY_TITLE];
             if (title.length == 0) {
                 title = stream[FS_KEY_LANGUAGE];
@@ -94,13 +669,13 @@
             if (title.length == 0) {
                 title = @"未知";
             }
-            title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
+            title = [NSString stringWithFormat:@"%@-%d", title, streamIdx];
             if ([mediaMeta[FS_VAL_TYPE__AUDIO] intValue] == streamIdx) {
                 currentAudio = title;
             }
-            [self.settingsView addAudioItemWithTitle:title];
+            [self addAudioItemWithTitle:title];
         } else if ([type isEqualToString:FS_VAL_TYPE__VIDEO]) {
-            NSLog(@"video meta:%@",stream);
+            NSLog(@"video meta:%@", stream);
             NSString *title = stream[FS_KEY_TITLE];
             if (title.length == 0) {
                 title = stream[FS_KEY_LANGUAGE];
@@ -108,16 +683,16 @@
             if (title.length == 0) {
                 title = @"未知";
             }
-            title = [NSString stringWithFormat:@"%@-%d",title,streamIdx];
+            title = [NSString stringWithFormat:@"%@-%d", title, streamIdx];
             if ([mediaMeta[FS_VAL_TYPE__VIDEO] intValue] == streamIdx) {
                 currentVideo = title;
             }
-            [self.settingsView addVideoItemWithTitle:title];
+            [self addVideoItemWithTitle:title];
         }
     }
-    [self.settingsView selectAudioItemWithTitle:currentAudio];
-    [self.settingsView selectVideoItemWithTitle:currentVideo];
-    [self.settingsView selectSubtitleItemWithTitle:currentSubtitle];
+    [self selectAudioItemWithTitle:currentAudio];
+    [self selectVideoItemWithTitle:currentVideo];
+    [self selectSubtitleItemWithTitle:currentSubtitle];
 }
 
 - (void)onCloseCurrentStream:(MRPlayerSettingsCloseStreamBlock)block
@@ -134,8 +709,6 @@
 {
     self.captureShot = block;
 }
-
-#pragma mark 轨道设置
 
 - (void)onSelectTrack:(NSPopUpButton*)sender
 {
@@ -154,13 +727,13 @@
         NSArray *items = [title componentsSeparatedByString:@"-"];
         int idx = [[items lastObject] intValue];
         if (sender.tag == 1) {
-            NSLog(@"SelectAudioTrack:%d",idx);
+            NSLog(@"SelectAudioTrack:%d", idx);
         } else if (sender.tag == 2) {
-            NSLog(@"SelectVideoTrack:%d",idx);
+            NSLog(@"SelectVideoTrack:%d", idx);
         } else if (sender.tag == 3) {
-            NSLog(@"SelectSubtitleTrack:%d",idx);
+            NSLog(@"SelectSubtitleTrack:%d", idx);
         }
-        
+
         if (self.exchangeSelectedStream) {
             self.exchangeSelectedStream(idx);
         }
@@ -216,4 +789,58 @@
 {
     [MRCocoaBindingUserDefault resetAll];
 }
+
+#pragma mark - Track popup modifications
+
+- (void)exchangeToNextSubtitle
+{
+    NSInteger idx = [self.subtitlePopUpBtn indexOfSelectedItem];
+    idx++;
+    if (idx >= [self.subtitlePopUpBtn numberOfItems]) {
+        idx = 0;
+    }
+    NSMenuItem *item = [self.subtitlePopUpBtn itemAtIndex:idx];
+    if (item) {
+        [self.subtitlePopUpBtn selectItem:item];
+        [self onSelectTrack:self.subtitlePopUpBtn];
+    }
+}
+
+- (void)removeAllItems
+{
+    [self.audioPopUpBtn removeAllItems];
+    [self.videoPopUpBtn removeAllItems];
+    [self.subtitlePopUpBtn removeAllItems];
+}
+
+- (void)addAudioItemWithTitle:(NSString *)title
+{
+    [self.audioPopUpBtn addItemWithTitle:title];
+}
+
+- (void)addVideoItemWithTitle:(NSString *)title
+{
+    [self.videoPopUpBtn addItemWithTitle:title];
+}
+
+- (void)addSubtitleItemWithTitle:(NSString *)title
+{
+    [self.subtitlePopUpBtn addItemWithTitle:title];
+}
+
+- (void)selectAudioItemWithTitle:(NSString *)title
+{
+    [self.audioPopUpBtn selectItemWithTitle:title];
+}
+
+- (void)selectVideoItemWithTitle:(NSString *)title
+{
+    [self.videoPopUpBtn selectItemWithTitle:title];
+}
+
+- (void)selectSubtitleItemWithTitle:(NSString *)title
+{
+    [self.subtitlePopUpBtn selectItemWithTitle:title];
+}
+
 @end

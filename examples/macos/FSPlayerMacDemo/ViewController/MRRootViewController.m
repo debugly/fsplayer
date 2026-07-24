@@ -29,6 +29,26 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 @class MRVolumeHoverPillView;
 
+@interface MROverlayView : NSView
+@property (nonatomic, copy) void (^onClickOutside)(void);
+@property (nonatomic, weak) NSView *innerPanelView;
+@end
+
+@implementation MROverlayView
+
+- (void)mouseDown:(NSEvent *)event {
+    NSPoint locationInView = [self convertPoint:[event locationInWindow] fromView:nil];
+    if (self.innerPanelView && !NSPointInRect(locationInView, self.innerPanelView.frame)) {
+        if (self.onClickOutside) {
+            self.onClickOutside();
+        }
+    } else {
+        [super mouseDown:event];
+    }
+}
+
+@end
+
 @interface MRRootViewController ()<MRDragViewDelegate,SHBaseViewDelegate,NSMenuDelegate,FSVideoRenderingDelegate>
 
 @property (nonatomic, weak) IBOutlet NSView *playerContainer;
@@ -72,6 +92,8 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, strong) NSButton *rightPlayPauseBtn;
 @property (nonatomic, strong) MRVolumeHoverPillView *volumePillView;
 
+@property (nonatomic, strong) MROverlayView *sidebarOverlayView;
+@property (nonatomic, strong) NSLayoutConstraint *sidebarTrailingConstraint;
 
 @end
 
@@ -320,6 +342,18 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [self setupUpgradedPlaybackControls];
 }
 
+- (void)viewDidAppear {
+    [super viewDidAppear];
+    if (self.view.window) {
+        if (@available(macOS 10.14, *)) {
+            self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+        } else {
+            self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark];
+        }
+    }
+}
+
+
 - (NSView *)wrapInPill:(NSView *)innerView withPaddingX:(CGFloat)paddingX paddingY:(CGFloat)paddingY cornerRadius:(CGFloat)radius {
     NSView *pill = [[NSView alloc] init];
     pill.translatesAutoresizingMaskIntoConstraints = NO;
@@ -469,23 +503,6 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [self.playerSlider setContentHuggingPriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
     [self.playerSlider setContentCompressionResistancePriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
     
-    NSButton *subBtn = [[NSButton alloc] init];
-    subBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    subBtn.bordered = NO;
-    subBtn.bezelStyle = NSBezelStyleRegularSquare;
-    if (@available(macOS 11.0, *)) {
-        subBtn.image = [NSImage imageWithSystemSymbolName:@"captions.bubble.fill" accessibilityDescription:nil];
-    } else {
-        subBtn.image = [NSImage imageNamed:NSImageNameInfo];
-    }
-    if (@available(macOS 10.14, *)) {
-        subBtn.contentTintColor = [NSColor whiteColor];
-    }
-    [subBtn.widthAnchor constraintEqualToConstant:20].active = YES;
-    [subBtn.heightAnchor constraintEqualToConstant:20].active = YES;
-    subBtn.target = self;
-    subBtn.action = @selector(onToggleSiderBar:);
-    
     NSButton *settingsBtn = [[NSButton alloc] init];
     settingsBtn.translatesAutoresizingMaskIntoConstraints = NO;
     settingsBtn.bordered = NO;
@@ -539,7 +556,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     [self updatePlayPauseBtnState:YES];
     
-    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[subBtn, settingsBtn, pipBtn, fullscreenBtn]];
+    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[settingsBtn, pipBtn, fullscreenBtn]];
     rightPillStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     rightPillStack.alignment = NSLayoutAttributeCenterY;
     rightPillStack.spacing = 15;
@@ -685,61 +702,112 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 - (void)showPlayerSettingsSideBar
 {
-    if (self.siderBarWidthConstraint.constant > 0) {
-        __weakSelf__
-        [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
-            context.duration = 0.35;
-            context.allowsImplicitAnimation = YES;
-            context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-            __strongSelf__
-            [self.siderBarContainer.animator layoutSubtreeIfNeeded];
-            self.siderBarWidthConstraint.animator.constant = 0;
-            [self.siderBarContainer.animator setNeedsLayout:YES];
-        }];
+    if (self.sidebarOverlayView) {
+        [self dismissSettingsSidebar];
     } else {
-        MRPlayerSettingsViewController *settings = [self findSettingViewController];
-        BOOL created = NO;
-        if (!settings) {
-            settings = [[MRPlayerSettingsViewController alloc] initWithNibName:@"MRPlayerSettingsViewController" bundle:nil];
-            __weakSelf__
-            [settings onCloseCurrentStream:^(NSString * _Nonnull st) {
-                __strongSelf__
-                [self.player closeCurrentStream:st];
-            }];
-            
-            [settings onExchangeSelectedStream:^(int idx) {
-                __strongSelf__
-                [self.player exchangeSelectedStream:idx];
-            }];
-            
-            [settings onCaptureShot:^{
-                __strongSelf__
-                [self onCaptureShot];
-            }];
-            
-            created = YES;
-            [self addChildViewController:settings];
-        }
-        [self.siderBarContainer addSubview:settings.view];
-        CGRect frame = settings.view.bounds;
-        frame.size = CGSizeMake(frame.size.width, self.siderBarContainer.bounds.size.height);
-        settings.view.frame = frame;
-
-        if (created) {
-            [self updateStreams];
-        }
-        
-        __weakSelf__
-        [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
-            context.duration = 0.35;
-            context.allowsImplicitAnimation = YES;
-            context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-            __strongSelf__
-            [self.siderBarContainer.animator layoutSubtreeIfNeeded];
-            self.siderBarWidthConstraint.animator.constant = frame.size.width;
-            [self.siderBarContainer.animator setNeedsLayout:YES];
-        }];
+        [self presentSettingsSidebar];
     }
+}
+
+- (void)presentSettingsSidebar
+{
+    if (self.sidebarOverlayView) return;
+    
+    MRPlayerSettingsViewController *settings = [self findSettingViewController];
+    BOOL created = NO;
+    if (!settings) {
+        settings = [[MRPlayerSettingsViewController alloc] initWithNibName:@"MRPlayerSettingsViewController" bundle:nil];
+        __weakSelf__
+        [settings onCloseCurrentStream:^(NSString * _Nonnull st) {
+            __strongSelf__
+            [self.player closeCurrentStream:st];
+        }];
+        
+        [settings onExchangeSelectedStream:^(int idx) {
+            __strongSelf__
+            [self.player exchangeSelectedStream:idx];
+        }];
+        
+        [settings onCaptureShot:^{
+            __strongSelf__
+            [self onCaptureShot];
+        }];
+        
+        created = YES;
+        [self addChildViewController:settings];
+    }
+    
+    // Create full screen overlay view
+    MROverlayView *overlay = [[MROverlayView alloc] initWithFrame:self.view.bounds];
+    overlay.translatesAutoresizingMaskIntoConstraints = NO;
+    overlay.wantsLayer = YES;
+    overlay.layer.backgroundColor = [NSColor colorWithWhite:0.0 alpha:0.0].CGColor;
+    [self.view addSubview:overlay];
+    self.sidebarOverlayView = overlay;
+    
+    // Fill superview constraints for overlay
+    [NSLayoutConstraint activateConstraints:@[
+        [overlay.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [overlay.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [overlay.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [overlay.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+    ]];
+    
+    // Set up click outside callback
+    __weakSelf__
+    overlay.onClickOutside = ^{
+        __strongSelf__
+        [self dismissSettingsSidebar];
+    };
+    
+    // Prepare the settings panel view
+    NSView *panel = settings.view;
+    panel.translatesAutoresizingMaskIntoConstraints = NO;
+    [overlay addSubview:panel];
+    overlay.innerPanelView = panel;
+    
+    // Set width to 320 and anchor top, bottom, and right (initially offscreen)
+    NSLayoutConstraint *widthConstraint = [panel.widthAnchor constraintEqualToConstant:320];
+    NSLayoutConstraint *topConstraint = [panel.topAnchor constraintEqualToAnchor:overlay.topAnchor];
+    NSLayoutConstraint *bottomConstraint = [panel.bottomAnchor constraintEqualToAnchor:overlay.bottomAnchor];
+    self.sidebarTrailingConstraint = [panel.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor constant:320];
+    
+    [NSLayoutConstraint activateConstraints:@[widthConstraint, topConstraint, bottomConstraint, self.sidebarTrailingConstraint]];
+    
+    [overlay layoutSubtreeIfNeeded];
+    
+    if (created) {
+        [self updateStreams];
+    }
+    
+    // Animate slide-in and background dimming
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+        context.duration = 0.3;
+        context.allowsImplicitAnimation = YES;
+        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        
+        self.sidebarTrailingConstraint.animator.constant = 0;
+        overlay.animator.layer.backgroundColor = [NSColor colorWithWhite:0.0 alpha:0.25].CGColor;
+    }];
+}
+
+- (void)dismissSettingsSidebar
+{
+    if (!self.sidebarOverlayView) return;
+    
+    MROverlayView *overlay = self.sidebarOverlayView;
+    self.sidebarOverlayView = nil; // Clear reference to avoid races
+    
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+        context.duration = 0.25;
+        context.allowsImplicitAnimation = YES;
+        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        
+        self.sidebarTrailingConstraint.animator.constant = 320;
+        overlay.animator.layer.backgroundColor = [NSColor colorWithWhite:0.0 alpha:0.0].CGColor;
+    } completionHandler:^{
+        [overlay removeFromSuperview];
+    }];
 }
 
 - (void)toggleTitleBar:(BOOL)show
