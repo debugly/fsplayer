@@ -483,17 +483,10 @@
 
     [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
 
-    // Section 4: Hardware / Decoding
+    // Section 4: Hardware / Decoding Grouped Card
     [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"解码设置"]];
-    NSButton *hwCheck = [self createCheckboxWithTitle:@"启用硬件加速" defaultKey:@"use_hw"];
-    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"硬件加速:" checkbox:hwCheck]];
-
-    NSButton *deCheck = [self createCheckboxWithTitle:@"启用反交错" defaultKey:@"de_interlace"];
-    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"反交错:" checkbox:deCheck]];
-
-    NSButton *hdrCheck = [self createCheckboxWithTitle:@"启用HDR支持" defaultKey:@"open_hdr"];
-    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"HDR色彩:" checkbox:hdrCheck]];
-
+    [self.videoDocView addArrangedSubview:[self createDecodingGroupedCard]];
+    
     [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
 
     // Section 4: Equalizer
@@ -1022,6 +1015,115 @@
     if (updateUI) {
         updateUI(speed);
     }
+}
+
+- (NSView *)createDecodingGroupedCard
+{
+    NSView *card = [[NSView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.wantsLayer = YES;
+    card.layer.cornerRadius = 10;
+    card.layer.backgroundColor = [NSColor colorWithWhite:0.18 alpha:0.35].CGColor;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [NSColor colorWithWhite:0.3 alpha:0.18].CGColor;
+    
+    NSStackView *cardStack = [[NSStackView alloc] init];
+    cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    cardStack.alignment = NSLayoutAttributeLeading;
+    cardStack.spacing = 0;
+    cardStack.edgeInsets = NSEdgeInsetsMake(0, 16, 0, 16);
+    [card addSubview:cardStack];
+    
+    id (^createCardRow)(NSString *, NSString *) = ^id(NSString *title, NSString *keyPath) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:38].active = YES;
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = title;
+        label.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightMedium];
+        label.textColor = [NSColor whiteColor];
+        [row addSubview:label];
+        
+        NSView *toggle = nil;
+        if (@available(macOS 10.15, *)) {
+            NSSwitch *sw = [[NSSwitch alloc] init];
+            sw.translatesAutoresizingMaskIntoConstraints = NO;
+            sw.controlSize = NSControlSizeMini;
+            [sw bind:NSValueBinding
+                toObject:[NSUserDefaultsController sharedUserDefaultsController]
+             withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+                 options:nil];
+            toggle = sw;
+        } else {
+            NSButton *chk = [[NSButton alloc] init];
+            chk.translatesAutoresizingMaskIntoConstraints = NO;
+            chk.buttonType = NSButtonTypeOnOff;
+            chk.title = @"";
+            [chk bind:NSValueBinding
+                toObject:[NSUserDefaultsController sharedUserDefaultsController]
+             withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+                 options:nil];
+            toggle = chk;
+        }
+        [row addSubview:toggle];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [toggle.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
+            [toggle.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+        ]];
+        
+        return row;
+    };
+    
+    NSView *row1 = createCardRow(@"Hardware Decoding", @"use_hw");
+    NSView *row2 = createCardRow(@"Deinterlace", @"de_interlace");
+    NSView *row3 = createCardRow(@"HDR", @"open_hdr");
+    
+    NSView *sep1 = [[NSView alloc] init];
+    sep1.translatesAutoresizingMaskIntoConstraints = NO;
+    sep1.wantsLayer = YES;
+    sep1.layer.backgroundColor = [NSColor colorWithWhite:0.3 alpha:0.15].CGColor;
+    [sep1.heightAnchor constraintEqualToConstant:1].active = YES;
+    
+    NSView *sep2 = [[NSView alloc] init];
+    sep2.translatesAutoresizingMaskIntoConstraints = NO;
+    sep2.wantsLayer = YES;
+    sep2.layer.backgroundColor = [NSColor colorWithWhite:0.3 alpha:0.15].CGColor;
+    [sep2.heightAnchor constraintEqualToConstant:1].active = YES;
+    
+    [cardStack addArrangedSubview:row1];
+    [cardStack addArrangedSubview:sep1];
+    [cardStack addArrangedSubview:row2];
+    [cardStack addArrangedSubview:sep2];
+    [cardStack addArrangedSubview:row3];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor],
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
+        
+        [sep1.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep1.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        
+        [sep2.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep2.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        
+        [row1.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [row2.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [row3.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32]
+    ]];
+    
+    return card;
 }
 
 @end
