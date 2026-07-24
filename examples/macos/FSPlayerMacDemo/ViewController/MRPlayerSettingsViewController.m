@@ -627,17 +627,9 @@
     if (savedURL) {
         pathCtrl.URL = savedURL;
     }
+    pathCtrl.target = self;
+    pathCtrl.action = @selector(onPathCtrlChanged:);
     [dirRow addSubview:pathCtrl];
-    objc_setAssociatedObject(self, "snapshot_path_ctrl_key", pathCtrl, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    
-    NSButton *chooseBtn = [[NSButton alloc] init];
-    chooseBtn.title = @"选择...";
-    chooseBtn.bezelStyle = NSBezelStyleRounded;
-    chooseBtn.controlSize = NSControlSizeSmall;
-    chooseBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    chooseBtn.target = self;
-    chooseBtn.action = @selector(onChooseSnapshotDir:);
-    [dirRow addSubview:chooseBtn];
     
     [NSLayoutConstraint activateConstraints:@[
         [dirLbl.leadingAnchor constraintEqualToAnchor:dirRow.leadingAnchor],
@@ -645,11 +637,7 @@
         
         [pathCtrl.leadingAnchor constraintEqualToAnchor:dirLbl.trailingAnchor constant:8],
         [pathCtrl.centerYAnchor constraintEqualToAnchor:dirRow.centerYAnchor],
-        [pathCtrl.widthAnchor constraintEqualToConstant:130],
-        
-        [chooseBtn.leadingAnchor constraintEqualToAnchor:pathCtrl.trailingAnchor constant:6],
-        [chooseBtn.centerYAnchor constraintEqualToAnchor:dirRow.centerYAnchor],
-        [chooseBtn.widthAnchor constraintEqualToConstant:54]
+        [pathCtrl.widthAnchor constraintEqualToConstant:190]
     ]];
     [self.moreDocView addArrangedSubview:dirRow];
     
@@ -818,26 +806,12 @@
     [self.moreDocView addArrangedSubview:ratioRow];
 }
 
-- (void)onChooseSnapshotDir:(NSButton *)sender
+- (void)onPathCtrlChanged:(NSPathControl *)sender
 {
-    NSOpenPanel *panel = [NSOpenPanel openPanel];
-    panel.canChooseFiles = NO;
-    panel.canChooseDirectories = YES;
-    panel.allowsMultipleSelection = NO;
-    panel.canCreateDirectories = YES;
-    
-    [panel beginSheetModalForWindow:self.view.window completionHandler:^(NSModalResponse result) {
-        if (result == NSModalResponseOK) {
-            NSURL *selectedURL = panel.URLs.firstObject;
-            if (selectedURL) {
-                [MRCocoaBindingUserDefault setSnapshotDirectoryURL:selectedURL];
-                NSPathControl *pathCtrl = objc_getAssociatedObject(self, "snapshot_path_ctrl_key");
-                if (pathCtrl) {
-                    pathCtrl.URL = selectedURL;
-                }
-            }
-        }
-    }];
+    NSURL *selectedURL = sender.URL;
+    if (selectedURL) {
+        [MRCocoaBindingUserDefault setSnapshotDirectoryURL:selectedURL];
+    }
 }
 
 - (void)onResetHistory:(NSButton *)sender

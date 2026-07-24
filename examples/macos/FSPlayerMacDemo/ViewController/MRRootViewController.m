@@ -9,6 +9,7 @@
 #import "MRRootViewController.h"
 #import "MRDragView.h"
 #import "MRUtil+SystemPanel.h"
+#import "MRHoverColorButton.h"
 #import <FSPlayer/FSPlayer.h>
 #import "NSFileManager+Sandbox.h"
 #import "SHBaseView.h"
@@ -59,7 +60,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 @property (nonatomic, strong) IBOutlet NSTextField *playedTimeLb;
 @property (nonatomic, weak) IBOutlet NSTextField *durationTimeLb;
-@property (nonatomic, weak) IBOutlet NSButton *playCtrlBtn;
+@property (nonatomic, weak) IBOutlet MRHoverColorButton *playCtrlBtn;
 @property (nonatomic, weak) IBOutlet MRProgressIndicator *playerSlider;
 
 @property (nonatomic, weak) IBOutlet NSTextField *seekCostLb;
@@ -87,7 +88,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, assign) BOOL loop;
 
 @property (nonatomic, strong) NSView *upgradedCtrlPanel;
-@property (nonatomic, strong) NSButton *volumeBtn;
+@property (nonatomic, strong) MRHoverColorButton *volumeBtn;
 @property (nonatomic, strong) NSSlider *volumeSlider;
 @property (nonatomic, strong) NSButton *rightPlayPauseBtn;
 @property (nonatomic, strong) MRVolumeHoverPillView *volumePillView;
@@ -101,7 +102,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @interface MRVolumeHoverPillView : NSView {
     NSTrackingArea *_trackingArea;
 }
-@property (nonatomic, strong) NSButton *volumeBtn;
+@property (nonatomic, strong) MRHoverColorButton *volumeBtn;
 @property (nonatomic, strong) NSView *sliderContainer;
 @property (nonatomic, strong) NSSlider *volumeSlider;
 @property (nonatomic, weak) id target;
@@ -140,15 +141,9 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     ]];
     
     // 2. Create the volume button centered inside the circular background
-    self.volumeBtn = [[NSButton alloc] init];
-    self.volumeBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    self.volumeBtn.bordered = NO;
-    self.volumeBtn.bezelStyle = NSBezelStyleRegularSquare;
+    self.volumeBtn = [[MRHoverColorButton alloc] init];
     self.volumeBtn.wantsLayer = YES;
     self.volumeBtn.layer.backgroundColor = [NSColor clearColor].CGColor;
-    if (@available(macOS 10.14, *)) {
-        self.volumeBtn.contentTintColor = [NSColor whiteColor];
-    }
     [self addSubview:self.volumeBtn];
     
     [NSLayoutConstraint activateConstraints:@[
@@ -183,11 +178,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     self.volumeSlider.minValue = 0.0;
     self.volumeSlider.maxValue = 1.0;
     self.volumeSlider.doubleValue = [MRCocoaBindingUserDefault volume];
-    if (@available(macOS 10.12, *)) {
-        self.volumeSlider.vertical = YES;
-    } else {
-        self.volumeSlider.sliderType = NSSliderTypeLinear;
-    }
+    self.volumeSlider.vertical = YES;
     [self.sliderContainer addSubview:self.volumeSlider];
     
     [NSLayoutConstraint activateConstraints:@[
@@ -346,11 +337,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 - (void)viewDidAppear {
     [super viewDidAppear];
     if (self.view.window) {
-        if (@available(macOS 10.14, *)) {
-            self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
-        } else {
-            self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark];
-        }
+        self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
     }
 }
 
@@ -462,9 +449,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     self.playCtrlBtn.translatesAutoresizingMaskIntoConstraints = NO;
     self.playCtrlBtn.bordered = NO;
     self.playCtrlBtn.bezelStyle = NSBezelStyleRegularSquare;
-    if (@available(macOS 10.14, *)) {
-        self.playCtrlBtn.contentTintColor = [NSColor whiteColor];
-    }
+    self.playCtrlBtn.contentTintColor = [NSColor whiteColor];
     
     NSView *playPill = [self wrapInPill:self.playCtrlBtn withPaddingX:8 paddingY:8 cornerRadius:18];
     [playPill.widthAnchor constraintEqualToConstant:36].active = YES;
@@ -504,51 +489,33 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [self.playerSlider setContentHuggingPriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
     [self.playerSlider setContentCompressionResistancePriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
     
-    NSButton *settingsBtn = [[NSButton alloc] init];
-    settingsBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    settingsBtn.bordered = NO;
-    settingsBtn.bezelStyle = NSBezelStyleRegularSquare;
+    MRHoverColorButton *settingsBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
         settingsBtn.image = [NSImage imageWithSystemSymbolName:@"gearshape.fill" accessibilityDescription:nil];
     } else {
         settingsBtn.image = [NSImage imageNamed:NSImageNameAdvanced];
-    }
-    if (@available(macOS 10.14, *)) {
-        settingsBtn.contentTintColor = [NSColor whiteColor];
     }
     [settingsBtn.widthAnchor constraintEqualToConstant:20].active = YES;
     [settingsBtn.heightAnchor constraintEqualToConstant:20].active = YES;
     settingsBtn.target = self;
     settingsBtn.action = @selector(onToggleSiderBar:);
     
-    NSButton *pipBtn = [[NSButton alloc] init];
-    pipBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    pipBtn.bordered = NO;
-    pipBtn.bezelStyle = NSBezelStyleRegularSquare;
+    MRHoverColorButton *pipBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
         pipBtn.image = [NSImage imageWithSystemSymbolName:@"pip.fill" accessibilityDescription:nil];
     } else {
         pipBtn.image = [NSImage imageNamed:NSImageNameShareTemplate];
-    }
-    if (@available(macOS 10.14, *)) {
-        pipBtn.contentTintColor = [NSColor whiteColor];
     }
     [pipBtn.widthAnchor constraintEqualToConstant:20].active = YES;
     [pipBtn.heightAnchor constraintEqualToConstant:20].active = YES;
     pipBtn.target = self;
     pipBtn.action = @selector(onToggleMultiRenderer:);
     
-    NSButton *fullscreenBtn = [[NSButton alloc] init];
-    fullscreenBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    fullscreenBtn.bordered = NO;
-    fullscreenBtn.bezelStyle = NSBezelStyleRegularSquare;
+    MRHoverColorButton *fullscreenBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
         fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.up.left.and.arrow.down.right" accessibilityDescription:nil];
     } else {
         fullscreenBtn.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
-    }
-    if (@available(macOS 10.14, *)) {
-        fullscreenBtn.contentTintColor = [NSColor whiteColor];
     }
     [fullscreenBtn.widthAnchor constraintEqualToConstant:20].active = YES;
     [fullscreenBtn.heightAnchor constraintEqualToConstant:20].active = YES;
@@ -597,13 +564,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     ]];
     
     // Setup custom left screenshot button (1.5x play button size = 54x54 pill)
-    NSButton *screenshotBtn = [[NSButton alloc] init];
-    screenshotBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    screenshotBtn.bordered = NO;
-    screenshotBtn.bezelStyle = NSBezelStyleRegularSquare;
-    if (@available(macOS 10.14, *)) {
-        screenshotBtn.contentTintColor = [NSColor whiteColor];
-    }
+    MRHoverColorButton *screenshotBtn = [[MRHoverColorButton alloc] init];
     NSImage *cameraImg = nil;
     if (@available(macOS 11.0, *)) {
         cameraImg = [NSImage imageWithSystemSymbolName:@"camera.fill" accessibilityDescription:nil];
@@ -885,6 +846,11 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 - (void)baseView:(SHBaseView *)baseView mouseExited:(NSEvent *)event
 {
+    NSPoint location = [event locationInWindow];
+    NSPoint localPoint = [self.view convertPoint:location fromView:nil];
+    if (NSPointInRect(localPoint, self.view.bounds)) {
+        return;
+    }
     [self toggleTitleBar:NO];
 }
 

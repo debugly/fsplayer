@@ -86,7 +86,7 @@
                                                         <action selector="playPrevious:" target="-2" id="eRD-AR-my0"/>
                                                     </connections>
                                                 </button>
-                                                <button autoresizesSubviews="NO" wantsLayer="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0Ir-lY-KBW">
+                                                <button autoresizesSubviews="NO" wantsLayer="YES" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0Ir-lY-KBW" customClass="MRHoverColorButton">
                                                     <rect key="frame" x="727" y="4" width="52" height="52"/>
                                                     <buttonCell key="cell" type="bevel" bezelStyle="regularSquare" imagePosition="only" alignment="center" state="on" imageScaling="proportionallyDown" inset="2" id="C8e-NX-d9x">
                                                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES" changeBackground="YES" changeGray="YES"/>
