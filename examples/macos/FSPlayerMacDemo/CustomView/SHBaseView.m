@@ -225,6 +225,16 @@
     [self updateTrackingAreas];
 }
 
+- (BOOL)performKeyEquivalent:(NSEvent *)event
+{
+    if ([self.nextResponder respondsToSelector:@selector(performKeyEquivalent:)]) {
+        if ([self.nextResponder performKeyEquivalent:event]) {
+            return YES;
+        }
+    }
+    return [super performKeyEquivalent:event];
+}
+
 //点击之后立马接收鼠标事件
 - (BOOL)acceptsFirstResponder
 {

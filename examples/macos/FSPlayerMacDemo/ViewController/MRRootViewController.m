@@ -68,7 +68,6 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, weak) NSTrackingArea *trackingArea;
 
 @property (nonatomic, assign) BOOL seeking;
-@property (nonatomic, weak) id eventMonitor;
 
 //
 @property (nonatomic, assign) int tickCount;
@@ -267,8 +266,6 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         self.tickTimer = nil;
         self.tickCount = 0;
     }
-    
-    [NSEvent removeMonitor:self.eventMonitor];
 }
 
 - (void)viewDidLoad {
@@ -288,21 +285,11 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         baseView.delegate = self;
         baseView.needTracking = YES;
     }
-
-    __weakSelf__
-    self.eventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:^NSEvent * _Nullable(NSEvent * _Nonnull theEvent) {
-        __strongSelf__
-        if (theEvent.window == self.view.window && [theEvent keyCode] == kVK_ANSI_Period && theEvent.modifierFlags & NSEventModifierFlagCommand){
-            [self onStop];
-            return nil;
-        }
-        return theEvent;
-    }];
     
     OBSERVER_NOTIFICATION(self, _playExplorerMovies:,kPlayExplorerMovieNotificationName_G, nil);
     OBSERVER_NOTIFICATION(self, _playNetMovies:,kPlayNetMovieNotificationName_G, nil);
     [self prepareRightMenu];
-    
+    __weakSelf__
     [self.playerSlider onDraggedIndicator:^(double progress, MRProgressIndicator * _Nonnull indicator, BOOL isEndDrag) {
         __strongSelf__
         if (isEndDrag) {
@@ -856,29 +843,20 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [self toggleTitleBar:NO];
 }
 
-- (void)keyDown:(NSEvent *)event
+- (BOOL)performKeyEquivalent:(NSEvent *)event
 {
-    if (event.window != self.view.window) {
-        return;
-    }
-    
     if (event.modifierFlags & NSEventModifierFlagCommand) {
         switch ([event keyCode]) {
             case kVK_LeftArrow:
             {
                 [self playPrevious:nil];
+                return YES;
             }
-                break;
             case kVK_RightArrow:
             {
                 [self playNext:nil];
+                return YES;
             }
-                break;
-            case kVK_ANSI_B:
-            {
-                
-            }
-                break;
             case kVK_ANSI_R:
             {
                 FSRotatePreference preference = self.player.view.rotatePreference;
@@ -888,9 +866,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
                 }
                 
                 if (event.modifierFlags & NSEventModifierFlagOption) {
-                    
                     preference.type --;
-                    
                     if (preference.type <= FSRotateNone) {
                         preference.type = FSRotateZ;
                     }
@@ -910,37 +886,43 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
                     [self.player.view setNeedsRefreshCurrentPic];
                 }
                 NSLog(@"rotate:%@ %d",@[@"X",@"Y",@"Z"][preference.type-1],(int)preference.degrees);
+                return YES;
             }
-                break;
             case kVK_ANSI_S:
             {
                 [self onCaptureShot];
+                return YES;
             }
-                break;
             case kVK_ANSI_Period:
             {
                 [self onStop];
+                return YES;
             }
-                break;
             case kVK_ANSI_H:
             {
                 if (event.modifierFlags & NSEventModifierFlagShift) {
                     [self onToggleHUD:nil];
+                    return YES;
                 }
-            }
                 break;
+            }
             case kVK_ANSI_D:
             {
                 [self retry];
+                return YES;
             }
-                break;
-            default:
-            {
-                NSLog(@"0x%X",[event keyCode]);
-            }
-                break;
         }
-    } else if (event.modifierFlags & NSEventModifierFlagControl) {
+    }
+    return [super performKeyEquivalent:event];
+}
+
+- (void)keyDown:(NSEvent *)event
+{
+    if (event.window != self.view.window) {
+        return;
+    }
+    
+    if (event.modifierFlags & NSEventModifierFlagControl) {
         switch ([event keyCode]) {
             case kVK_ANSI_H:
             {
@@ -1258,12 +1240,17 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         
         self.player = [[FSPlayer alloc] initWithContent:urlStr options:options videoRendering:videoAux audioRendering:[FSAudioRendering createAudioQueueRendering]];
         
-        // Setup main render view in container
+        // Setup videoAux in container
+        videoAux.frame = self.playerContainer.bounds;
+        videoAux.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        [self.playerContainer addSubview:videoAux positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
+        
+        // Setup main render view inside videoAux
         NSView<FSVideoRenderingProtocol> *playerView = render1;
-        playerView.frame = self.playerContainer.bounds;
+        playerView.frame = videoAux.bounds;
         playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
-        [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
+        [videoAux addSubview:playerView];
         
         playerView.backgroundBlurIterations = 3;
         playerView.backgroundBlurSigma = 30.0;
