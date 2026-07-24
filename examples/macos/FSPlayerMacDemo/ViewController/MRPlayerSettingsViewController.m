@@ -477,7 +477,13 @@
 
     [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
 
-    // Section 3: Hardware / Decoding
+    // Section 3: Speed Settings
+    [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"倍速调节"]];
+    [self.videoDocView addArrangedSubview:[self createSpeedRow]];
+
+    [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 4: Hardware / Decoding
     [self.videoDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"解码设置"]];
     NSButton *hwCheck = [self createCheckboxWithTitle:@"启用硬件加速" defaultKey:@"use_hw"];
     [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"硬件加速:" checkbox:hwCheck]];
@@ -841,6 +847,181 @@
 - (void)selectSubtitleItemWithTitle:(NSString *)title
 {
     [self.subtitlePopUpBtn selectItemWithTitle:title];
+}
+
+#pragma mark - Speed Control Row
+
+- (NSView *)createSpeedRow
+{
+    NSView *row = [[NSView alloc] init];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [row.heightAnchor constraintEqualToConstant:46].active = YES;
+    
+    // 1. Slider (exponent from -2.0 to 4.0)
+    NSSlider *slider = [[NSSlider alloc] init];
+    slider.translatesAutoresizingMaskIntoConstraints = NO;
+    slider.controlSize = NSControlSizeMini;
+    slider.minValue = -2.0;
+    slider.maxValue = 4.0;
+    slider.numberOfTickMarks = 7;
+    slider.tickMarkPosition = NSTickMarkPositionBelow;
+    slider.allowsTickMarkValuesOnly = NO;
+    [row addSubview:slider];
+    
+    // 2. Labels below slider: 0.25x, 1x, 4x, 16x
+    NSTextField *lbl025 = [NSTextField labelWithString:@"0.25x"];
+    lbl025.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl025.font = [NSFont systemFontOfSize:8 weight:NSFontWeightRegular];
+    lbl025.textColor = [NSColor secondaryLabelColor];
+    [row addSubview:lbl025];
+    
+    NSTextField *lbl1 = [NSTextField labelWithString:@"1x"];
+    lbl1.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl1.font = [NSFont systemFontOfSize:8 weight:NSFontWeightRegular];
+    lbl1.textColor = [NSColor secondaryLabelColor];
+    [row addSubview:lbl1];
+    
+    NSTextField *lbl4 = [NSTextField labelWithString:@"4x"];
+    lbl4.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl4.font = [NSFont systemFontOfSize:8 weight:NSFontWeightRegular];
+    lbl4.textColor = [NSColor secondaryLabelColor];
+    [row addSubview:lbl4];
+    
+    NSTextField *lbl16 = [NSTextField labelWithString:@"16x"];
+    lbl16.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl16.font = [NSFont systemFontOfSize:8 weight:NSFontWeightRegular];
+    lbl16.textColor = [NSColor secondaryLabelColor];
+    [row addSubview:lbl16];
+    
+    // 3. Capsule input field on the right
+    NSView *capsuleBg = [[NSView alloc] init];
+    capsuleBg.translatesAutoresizingMaskIntoConstraints = NO;
+    capsuleBg.wantsLayer = YES;
+    capsuleBg.layer.cornerRadius = 6;
+    capsuleBg.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:0.55].CGColor;
+    [row addSubview:capsuleBg];
+    
+    NSTextField *inputField = [[NSTextField alloc] init];
+    inputField.translatesAutoresizingMaskIntoConstraints = NO;
+    inputField.bezeled = NO;
+    inputField.drawsBackground = NO;
+    inputField.font = [NSFont monospacedDigitSystemFontOfSize:11 weight:NSFontWeightMedium];
+    inputField.textColor = [NSColor whiteColor];
+    inputField.alignment = NSTextAlignmentCenter;
+    [capsuleBg addSubview:inputField];
+    
+    NSTextField *xSuffix = [NSTextField labelWithString:@"x"];
+    xSuffix.translatesAutoresizingMaskIntoConstraints = NO;
+    xSuffix.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+    xSuffix.textColor = [NSColor whiteColor];
+    [row addSubview:xSuffix];
+    
+    // Block-safe UI updater
+    __weak typeof(slider) weakSlider = slider;
+    __weak typeof(inputField) weakInputField = inputField;
+    
+    __block BOOL isUpdating = NO;
+    
+    void (^updateUI)(double speed) = ^(double speed) {
+        if (isUpdating) return;
+        isUpdating = YES;
+        
+        // Format to 2 decimal places, but strip trailing zeros
+        NSString *speedStr = [NSString stringWithFormat:@"%.2f", speed];
+        if ([speedStr hasSuffix:@".00"]) {
+            speedStr = [speedStr substringToIndex:speedStr.length - 3];
+        } else if ([speedStr hasSuffix:@"0"] && [speedStr containsString:@"."]) {
+            speedStr = [speedStr substringToIndex:speedStr.length - 1];
+        }
+        weakInputField.stringValue = speedStr;
+        
+        // Update slider exponent: v = log2(speed)
+        double v = log2(speed);
+        if (v < -2.0) v = -2.0;
+        if (v > 4.0) v = 4.0;
+        weakSlider.doubleValue = v;
+        
+        isUpdating = NO;
+    };
+    
+    slider.target = self;
+    slider.action = @selector(onSpeedSliderChanged:);
+    objc_setAssociatedObject(slider, "update_block", updateUI, OBJC_ASSOCIATION_COPY_NONATOMIC);
+    
+    inputField.target = self;
+    inputField.action = @selector(onSpeedTextChanged:);
+    objc_setAssociatedObject(inputField, "update_block", updateUI, OBJC_ASSOCIATION_COPY_NONATOMIC);
+    
+    // Register observation
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull val, BOOL * _Nonnull r) {
+        double speed = [val doubleValue];
+        if (speed <= 0.0) speed = 1.0;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            updateUI(speed);
+        });
+    } forKey:@"playback_speed" init:YES];
+    
+    // Constraints matching precisely 288pt content area width
+    [NSLayoutConstraint activateConstraints:@[
+        [slider.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:2],
+        [slider.topAnchor constraintEqualToAnchor:row.topAnchor constant:4],
+        [slider.widthAnchor constraintEqualToConstant:200],
+        
+        [lbl025.leadingAnchor constraintEqualToAnchor:slider.leadingAnchor constant:2],
+        [lbl025.topAnchor constraintEqualToAnchor:slider.bottomAnchor constant:1],
+        
+        [lbl1.centerXAnchor constraintEqualToAnchor:slider.leadingAnchor constant:67],
+        [lbl1.topAnchor constraintEqualToAnchor:slider.bottomAnchor constant:1],
+        
+        [lbl4.centerXAnchor constraintEqualToAnchor:slider.leadingAnchor constant:133],
+        [lbl4.topAnchor constraintEqualToAnchor:slider.bottomAnchor constant:1],
+        
+        [lbl16.trailingAnchor constraintEqualToAnchor:slider.trailingAnchor constant:-2],
+        [lbl16.topAnchor constraintEqualToAnchor:slider.bottomAnchor constant:1],
+        
+        [capsuleBg.centerYAnchor constraintEqualToAnchor:slider.centerYAnchor],
+        [capsuleBg.trailingAnchor constraintEqualToAnchor:xSuffix.leadingAnchor constant:-6],
+        [capsuleBg.widthAnchor constraintEqualToConstant:50],
+        [capsuleBg.heightAnchor constraintEqualToConstant:22],
+        
+        [inputField.leadingAnchor constraintEqualToAnchor:capsuleBg.leadingAnchor constant:2],
+        [inputField.trailingAnchor constraintEqualToAnchor:capsuleBg.trailingAnchor constant:-2],
+        [inputField.centerYAnchor constraintEqualToAnchor:capsuleBg.centerYAnchor],
+        
+        [xSuffix.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-2],
+        [xSuffix.centerYAnchor constraintEqualToAnchor:slider.centerYAnchor],
+    ]];
+    
+    return row;
+}
+
+- (void)onSpeedSliderChanged:(NSSlider *)sender
+{
+    double exponent = sender.doubleValue;
+    double speed = pow(2, exponent);
+    speed = round(speed * 100.0) / 100.0;
+    
+    [MRCocoaBindingUserDefault setPlayback_speed:speed];
+    
+    void (^updateUI)(double) = objc_getAssociatedObject(sender, "update_block");
+    if (updateUI) {
+        updateUI(speed);
+    }
+}
+
+- (void)onSpeedTextChanged:(NSTextField *)sender
+{
+    double speed = [sender doubleValue];
+    if (speed < 0.25) speed = 0.25;
+    if (speed > 16.0) speed = 16.0;
+    speed = round(speed * 100.0) / 100.0;
+    
+    [MRCocoaBindingUserDefault setPlayback_speed:speed];
+    
+    void (^updateUI)(double) = objc_getAssociatedObject(sender, "update_block");
+    if (updateUI) {
+        updateUI(speed);
+    }
 }
 
 @end

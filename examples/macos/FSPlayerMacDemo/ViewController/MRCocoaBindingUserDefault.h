@@ -31,6 +31,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (float)volume;
 + (void)setVolume:(float)aVolume;
 
++ (float)playback_speed;
++ (void)setPlayback_speed:(float)speed;
+
 + (NSString *)log_level;
 
 + (float)color_adjust_brightness;

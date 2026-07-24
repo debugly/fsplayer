@@ -59,6 +59,7 @@
     
     NSDictionary *initValues = @{
         @"volume" : @(0.4),
+        @"playback_speed" : @(1.0),
         
         @"log_level":@"info",
         @"color_adjust_brightness" : @(1.0),
@@ -380,6 +381,16 @@
 + (void)setVolume:(float)aVolume
 {
     [self setValue:@(aVolume) forKey:@"volume"];
+}
+
++ (float)playback_speed
+{
+    return [self floatForKey:@"playback_speed"];
+}
+
++ (void)setPlayback_speed:(float)speed
+{
+    [self setValue:@(speed) forKey:@"playback_speed"];
 }
 
 + (NSString *)overlay_format

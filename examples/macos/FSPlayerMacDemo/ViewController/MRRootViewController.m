@@ -812,6 +812,10 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 - (void)toggleTitleBar:(BOOL)show
 {
+    if (self.sidebarOverlayView) {
+        show = YES;
+    }
+    
     if (!show && !self.playingUrl) {
         return;
     }
@@ -2140,7 +2144,7 @@ static BOOL useExact = NO;
 {
     NSInteger tag = sender.tag;
     float speed = tag / 100.0;
-    self.player.playbackRate = speed;
+    [MRCocoaBindingUserDefault setPlayback_speed:speed];
 }
 
 #pragma mark 字幕设置
@@ -2295,6 +2299,13 @@ static BOOL useExact = NO;
         __strongSelf__
         [self reSetLoglevel];
     } forKey:@"log_level"];
+    
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
+        __strongSelf__
+        float speed = [v floatValue];
+        if (speed <= 0.0) speed = 1.0;
+        self.player.playbackRate = speed;
+    } forKey:@"playback_speed"];
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
