@@ -23,8 +23,11 @@
 #import "MRPlayerSettingsViewController.h"
 #import "MRPlaylistViewController.h"
 #import "MRCocoaBindingUserDefault.h"
+#import <objc/runtime.h>
 
 static NSString* lastPlayedKey = @"__lastPlayedKey";
+
+@class MRVolumeHoverPillView;
 
 @interface MRRootViewController ()<MRDragViewDelegate,SHBaseViewDelegate,NSMenuDelegate,FSVideoRenderingDelegate>
 
@@ -34,7 +37,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 @property (nonatomic, weak) IBOutlet NSView *playerCtrlPanel;
 
-@property (nonatomic, weak) IBOutlet NSTextField *playedTimeLb;
+@property (nonatomic, strong) IBOutlet NSTextField *playedTimeLb;
 @property (nonatomic, weak) IBOutlet NSTextField *durationTimeLb;
 @property (nonatomic, weak) IBOutlet NSButton *playCtrlBtn;
 @property (nonatomic, weak) IBOutlet MRProgressIndicator *playerSlider;
@@ -63,6 +66,179 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 @property (nonatomic, assign) BOOL loop;
 
+@property (nonatomic, strong) NSView *upgradedCtrlPanel;
+@property (nonatomic, strong) NSButton *volumeBtn;
+@property (nonatomic, strong) NSSlider *volumeSlider;
+@property (nonatomic, strong) NSButton *rightPlayPauseBtn;
+@property (nonatomic, strong) MRVolumeHoverPillView *volumePillView;
+
+
+@end
+
+@interface MRVolumeHoverPillView : NSView {
+    NSTrackingArea *_trackingArea;
+}
+@property (nonatomic, strong) NSButton *volumeBtn;
+@property (nonatomic, strong) NSView *sliderContainer;
+@property (nonatomic, strong) NSSlider *volumeSlider;
+@property (nonatomic, weak) id target;
+@property (nonatomic, assign) SEL action;
+@end
+
+@implementation MRVolumeHoverPillView
+
+- (instancetype)initWithFrame:(NSRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self setupView];
+    }
+    return self;
+}
+
+- (void)setupView {
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.wantsLayer = YES;
+    self.layer.backgroundColor = [NSColor clearColor].CGColor;
+    
+    // 1. Create a dedicated circular background view to guarantee a perfect circle under any condition
+    NSView *btnBg = [[NSView alloc] init];
+    btnBg.translatesAutoresizingMaskIntoConstraints = NO;
+    btnBg.wantsLayer = YES;
+    btnBg.layer.backgroundColor = [NSColor colorWithWhite:0.15 alpha:0.6].CGColor;
+    btnBg.layer.cornerRadius = 18;
+    btnBg.layer.masksToBounds = YES;
+    [self addSubview:btnBg];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [btnBg.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+        [btnBg.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [btnBg.widthAnchor constraintEqualToConstant:36],
+        [btnBg.heightAnchor constraintEqualToConstant:36]
+    ]];
+    
+    // 2. Create the volume button centered inside the circular background
+    self.volumeBtn = [[NSButton alloc] init];
+    self.volumeBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    self.volumeBtn.bordered = NO;
+    self.volumeBtn.bezelStyle = NSBezelStyleRegularSquare;
+    self.volumeBtn.wantsLayer = YES;
+    self.volumeBtn.layer.backgroundColor = [NSColor clearColor].CGColor;
+    if (@available(macOS 10.14, *)) {
+        self.volumeBtn.contentTintColor = [NSColor whiteColor];
+    }
+    [self addSubview:self.volumeBtn];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [self.volumeBtn.centerXAnchor constraintEqualToAnchor:btnBg.centerXAnchor],
+        [self.volumeBtn.centerYAnchor constraintEqualToAnchor:btnBg.centerYAnchor],
+        [self.volumeBtn.widthAnchor constraintEqualToConstant:36],
+        [self.volumeBtn.heightAnchor constraintEqualToConstant:36]
+    ]];
+    
+    // 3. Create the vertical slider container positioned above the button background
+    self.sliderContainer = [[NSView alloc] init];
+    self.sliderContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sliderContainer.wantsLayer = YES;
+    self.sliderContainer.layer.backgroundColor = [NSColor colorWithWhite:0.15 alpha:0.8].CGColor;
+    self.sliderContainer.layer.cornerRadius = 18;
+    self.sliderContainer.layer.masksToBounds = YES;
+    self.sliderContainer.hidden = YES;
+    self.sliderContainer.alphaValue = 0.0;
+    [self addSubview:self.sliderContainer];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [self.sliderContainer.bottomAnchor constraintEqualToAnchor:btnBg.topAnchor constant:-8],
+        [self.sliderContainer.centerXAnchor constraintEqualToAnchor:btnBg.centerXAnchor],
+        [self.sliderContainer.widthAnchor constraintEqualToConstant:36],
+        [self.sliderContainer.heightAnchor constraintEqualToConstant:120]
+    ]];
+    
+    // 4. Create the vertical volume slider
+    self.volumeSlider = [[NSSlider alloc] init];
+    self.volumeSlider.translatesAutoresizingMaskIntoConstraints = NO;
+    self.volumeSlider.controlSize = NSControlSizeSmall;
+    self.volumeSlider.minValue = 0.0;
+    self.volumeSlider.maxValue = 1.0;
+    self.volumeSlider.doubleValue = [MRCocoaBindingUserDefault volume];
+    if (@available(macOS 10.12, *)) {
+        self.volumeSlider.vertical = YES;
+    } else {
+        self.volumeSlider.sliderType = NSSliderTypeLinear;
+    }
+    [self.sliderContainer addSubview:self.volumeSlider];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [self.volumeSlider.topAnchor constraintEqualToAnchor:self.sliderContainer.topAnchor constant:12],
+        [self.volumeSlider.bottomAnchor constraintEqualToAnchor:self.sliderContainer.bottomAnchor constant:-12],
+        [self.volumeSlider.centerXAnchor constraintEqualToAnchor:self.sliderContainer.centerXAnchor],
+        [self.volumeSlider.widthAnchor constraintEqualToConstant:20]
+    ]];
+    
+    self.volumeSlider.target = self;
+    self.volumeSlider.action = @selector(onSliderChanged:);
+}
+
+- (void)onSliderChanged:(NSSlider *)sender {
+    [MRCocoaBindingUserDefault setVolume:sender.doubleValue];
+    if (self.target && self.action) {
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [self.target performSelector:self.action withObject:sender];
+        #pragma clang diagnostic pop
+    }
+}
+
+- (NSView *)hitTest:(NSPoint)point {
+    if (self.isHidden || self.alphaValue < 0.01) return nil;
+    
+    if (!self.volumeSlider.isHidden) {
+        NSPoint pointInSlider = [self convertPoint:point toView:self.sliderContainer];
+        if ([self.sliderContainer mouse:pointInSlider inRect:self.sliderContainer.bounds]) {
+            return [self.sliderContainer hitTest:pointInSlider];
+        }
+    }
+    return [super hitTest:point];
+}
+
+- (void)updateTrackingAreas {
+    [super updateTrackingAreas];
+    if (_trackingArea != nil) {
+        [self removeTrackingArea:_trackingArea];
+    }
+    
+    // Tracking rect covers both button (0, 0, 36, 36) and slider container (0, 44, 36, 120)
+    NSRect trackingRect = NSMakeRect(0, 0, 36, 164);
+    
+    int opts = (NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways);
+    _trackingArea = [[NSTrackingArea alloc] initWithRect:trackingRect
+                                                 options:opts
+                                                   owner:self
+                                                userInfo:nil];
+    [self addTrackingArea:_trackingArea];
+}
+
+- (void)mouseEntered:(NSEvent *)event {
+    NSPoint localPoint = [self convertPoint:event.locationInWindow fromView:nil];
+    if (self.volumeSlider.isHidden && localPoint.y > 36) {
+        return;
+    }
+    
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+        context.duration = 0.2;
+        context.allowsImplicitAnimation = YES;
+        self.sliderContainer.hidden = NO;
+        self.sliderContainer.alphaValue = 1.0;
+    } completionHandler:nil];
+}
+
+- (void)mouseExited:(NSEvent *)event {
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+        context.duration = 0.2;
+        context.allowsImplicitAnimation = YES;
+        self.sliderContainer.hidden = YES;
+        self.sliderContainer.alphaValue = 0.0;
+    } completionHandler:nil];
+}
 
 @end
 
@@ -125,17 +301,282 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
                 self.tickCount = 0;
             }
             int interval = progress * indicator.maxValue;
-            self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%02d:%02d",(int)(interval/60),(int)(interval%60)];
+            double duration = indicator.maxValue;
+            if (duration > 0) {
+                self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d / %d:%02d", (int)(interval/60), (int)(interval%60), (int)(duration/60), (int)((int)duration%60)];
+            } else {
+                self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d", (int)(interval/60), (int)(interval%60)];
+            }
         }
     }];
     
-    self.playedTimeLb.stringValue = @"--:--";
+    self.playedTimeLb.stringValue = @"--:-- / --:--";
     self.durationTimeLb.stringValue = @"--:--";
     
 //    [self.siderBarContainer setWantsLayer:YES];
 //    self.siderBarContainer.layer.backgroundColor = NSColor.redColor.CGColor;
     
     [self observerCocoaBingsChange];
+    [self setupUpgradedPlaybackControls];
+}
+
+- (NSView *)wrapInPill:(NSView *)innerView withPaddingX:(CGFloat)paddingX paddingY:(CGFloat)paddingY cornerRadius:(CGFloat)radius {
+    NSView *pill = [[NSView alloc] init];
+    pill.translatesAutoresizingMaskIntoConstraints = NO;
+    pill.wantsLayer = YES;
+    pill.layer.backgroundColor = [NSColor colorWithWhite:0.15 alpha:0.6].CGColor;
+    pill.layer.cornerRadius = radius;
+    pill.layer.masksToBounds = YES;
+    
+    [pill addSubview:innerView];
+    innerView.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [innerView.leadingAnchor constraintEqualToAnchor:pill.leadingAnchor constant:paddingX],
+        [innerView.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-paddingX],
+        [innerView.topAnchor constraintEqualToAnchor:pill.topAnchor constant:paddingY],
+        [innerView.bottomAnchor constraintEqualToAnchor:pill.bottomAnchor constant:-paddingY]
+    ]];
+    return pill;
+}
+
+- (void)onToggleFullscreenBtnPressed:(id)sender {
+    [self.view.window toggleFullScreen:nil];
+}
+
+- (void)onVolumeBtnPressed:(id)sender {
+    float currentVolume = [MRCocoaBindingUserDefault volume];
+    if (currentVolume > 0) {
+        objc_setAssociatedObject(self, "preMuteVolume", @(currentVolume), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [MRCocoaBindingUserDefault setVolume:0.0];
+    } else {
+        NSNumber *preMuteVol = objc_getAssociatedObject(self, "preMuteVolume");
+        float targetVol = preMuteVol ? [preMuteVol floatValue] : 0.5f;
+        if (targetVol <= 0) targetVol = 0.5f;
+        [MRCocoaBindingUserDefault setVolume:targetVol];
+    }
+    [self onVolumeChange:nil];
+}
+
+- (void)updateVolumeButtonImage:(NSButton *)btn {
+    float currentVolume = [MRCocoaBindingUserDefault volume];
+    if (@available(macOS 11.0, *)) {
+        if (currentVolume <= 0) {
+            btn.image = [NSImage imageWithSystemSymbolName:@"speaker.slash.fill" accessibilityDescription:nil];
+        } else if (currentVolume < 0.33) {
+            btn.image = [NSImage imageWithSystemSymbolName:@"speaker.wave.1.fill" accessibilityDescription:nil];
+        } else if (currentVolume < 0.67) {
+            btn.image = [NSImage imageWithSystemSymbolName:@"speaker.wave.2.fill" accessibilityDescription:nil];
+        } else {
+            btn.image = [NSImage imageWithSystemSymbolName:@"speaker.wave.3.fill" accessibilityDescription:nil];
+        }
+    } else {
+        btn.image = [NSImage imageNamed:NSImageNameTouchBarAudioOutputVolumeHighTemplate];
+    }
+}
+
+- (void)updatePlayPauseBtnState:(BOOL)isPaused {
+    if (isPaused) {
+        if (@available(macOS 11.0, *)) {
+            NSImage *img = [NSImage imageWithSystemSymbolName:@"play.fill" accessibilityDescription:nil];
+            self.playCtrlBtn.image = img;
+            if (self.rightPlayPauseBtn) {
+                self.rightPlayPauseBtn.image = img;
+            }
+        } else {
+            self.playCtrlBtn.image = [NSImage imageNamed:@"play"];
+        }
+    } else {
+        if (@available(macOS 11.0, *)) {
+            NSImage *img = [NSImage imageWithSystemSymbolName:@"pause.fill" accessibilityDescription:nil];
+            self.playCtrlBtn.image = img;
+            if (self.rightPlayPauseBtn) {
+                self.rightPlayPauseBtn.image = img;
+            }
+        } else {
+            self.playCtrlBtn.image = [NSImage imageNamed:@"pause"];
+        }
+    }
+}
+
+- (void)setupUpgradedPlaybackControls {
+    NSView *oldCtrlPanel = self.playerCtrlPanel;
+    if (!oldCtrlPanel) return;
+    
+    self.upgradedCtrlPanel = [[NSView alloc] init];
+    self.upgradedCtrlPanel.translatesAutoresizingMaskIntoConstraints = NO;
+    [oldCtrlPanel.superview addSubview:self.upgradedCtrlPanel positioned:NSWindowAbove relativeTo:oldCtrlPanel];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [self.upgradedCtrlPanel.leadingAnchor constraintEqualToAnchor:oldCtrlPanel.superview.leadingAnchor],
+        [self.upgradedCtrlPanel.trailingAnchor constraintEqualToAnchor:oldCtrlPanel.superview.trailingAnchor],
+        [self.upgradedCtrlPanel.bottomAnchor constraintEqualToAnchor:oldCtrlPanel.superview.bottomAnchor],
+        [self.upgradedCtrlPanel.heightAnchor constraintEqualToConstant:70]
+    ]];
+    
+    self.upgradedCtrlPanel.alphaValue = oldCtrlPanel.alphaValue;
+    
+    // Clear all old subviews inside oldCtrlPanel to completely deactivate legacy constraints and avoid conflicts
+    for (NSView *subview in [oldCtrlPanel.subviews copy]) {
+        [subview removeFromSuperview];
+    }
+    
+    oldCtrlPanel.hidden = YES;
+    self.durationTimeLb.hidden = YES;
+    self.seekCostLb.hidden = YES;
+    
+    self.playCtrlBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    self.playCtrlBtn.bordered = NO;
+    self.playCtrlBtn.bezelStyle = NSBezelStyleRegularSquare;
+    if (@available(macOS 10.14, *)) {
+        self.playCtrlBtn.contentTintColor = [NSColor whiteColor];
+    }
+    
+    NSView *playPill = [self wrapInPill:self.playCtrlBtn withPaddingX:8 paddingY:8 cornerRadius:18];
+    [playPill.widthAnchor constraintEqualToConstant:36].active = YES;
+    [playPill.heightAnchor constraintEqualToConstant:36].active = YES;
+    
+    NSView *volumePlaceholder = [[NSView alloc] init];
+    volumePlaceholder.translatesAutoresizingMaskIntoConstraints = NO;
+    [volumePlaceholder.widthAnchor constraintEqualToConstant:36].active = YES;
+    [volumePlaceholder.heightAnchor constraintEqualToConstant:36].active = YES;
+    
+    self.volumePillView = [[MRVolumeHoverPillView alloc] init];
+    self.volumeBtn = self.volumePillView.volumeBtn;
+    self.volumeSlider = self.volumePillView.volumeSlider;
+    
+    self.volumeBtn.target = self;
+    self.volumeBtn.action = @selector(onVolumeBtnPressed:);
+    self.volumePillView.target = self;
+    self.volumePillView.action = @selector(onVolumeChange:);
+    [self updateVolumeButtonImage:self.volumeBtn];
+    
+    self.playedTimeLb = [NSTextField labelWithString:@"--:-- / --:--"];
+    self.playedTimeLb.textColor = [NSColor whiteColor];
+    self.playedTimeLb.font = [NSFont monospacedDigitSystemFontOfSize:13 weight:NSFontWeightMedium];
+    self.playedTimeLb.alignment = NSTextAlignmentCenter;
+    
+    NSView *timePill = [self wrapInPill:self.playedTimeLb withPaddingX:14 paddingY:8 cornerRadius:18];
+    [timePill.heightAnchor constraintEqualToConstant:36].active = YES;
+    [timePill.widthAnchor constraintEqualToConstant:110].active = YES;
+    
+    self.playerSlider.translatesAutoresizingMaskIntoConstraints = NO;
+    self.playerSlider.playedStartColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
+    self.playerSlider.playedEndColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
+    self.playerSlider.preloadColor = [NSColor colorWithWhite:1.0 alpha:0.35];
+    self.playerSlider.unLoadColor = [NSColor colorWithWhite:0.15 alpha:0.6];
+    self.playerSlider.rounded = YES;
+    [self.playerSlider.heightAnchor constraintEqualToConstant:20].active = YES;
+    [self.playerSlider setContentHuggingPriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [self.playerSlider setContentCompressionResistancePriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
+    
+    NSButton *subBtn = [[NSButton alloc] init];
+    subBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    subBtn.bordered = NO;
+    subBtn.bezelStyle = NSBezelStyleRegularSquare;
+    if (@available(macOS 11.0, *)) {
+        subBtn.image = [NSImage imageWithSystemSymbolName:@"captions.bubble.fill" accessibilityDescription:nil];
+    } else {
+        subBtn.image = [NSImage imageNamed:NSImageNameInfo];
+    }
+    if (@available(macOS 10.14, *)) {
+        subBtn.contentTintColor = [NSColor whiteColor];
+    }
+    [subBtn.widthAnchor constraintEqualToConstant:20].active = YES;
+    [subBtn.heightAnchor constraintEqualToConstant:20].active = YES;
+    subBtn.target = self;
+    subBtn.action = @selector(onToggleSiderBar:);
+    
+    NSButton *settingsBtn = [[NSButton alloc] init];
+    settingsBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    settingsBtn.bordered = NO;
+    settingsBtn.bezelStyle = NSBezelStyleRegularSquare;
+    if (@available(macOS 11.0, *)) {
+        settingsBtn.image = [NSImage imageWithSystemSymbolName:@"gearshape.fill" accessibilityDescription:nil];
+    } else {
+        settingsBtn.image = [NSImage imageNamed:NSImageNameAdvanced];
+    }
+    if (@available(macOS 10.14, *)) {
+        settingsBtn.contentTintColor = [NSColor whiteColor];
+    }
+    [settingsBtn.widthAnchor constraintEqualToConstant:20].active = YES;
+    [settingsBtn.heightAnchor constraintEqualToConstant:20].active = YES;
+    settingsBtn.target = self;
+    settingsBtn.action = @selector(onToggleSiderBar:);
+    
+    NSButton *pipBtn = [[NSButton alloc] init];
+    pipBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    pipBtn.bordered = NO;
+    pipBtn.bezelStyle = NSBezelStyleRegularSquare;
+    if (@available(macOS 11.0, *)) {
+        pipBtn.image = [NSImage imageWithSystemSymbolName:@"pip.fill" accessibilityDescription:nil];
+    } else {
+        pipBtn.image = [NSImage imageNamed:NSImageNameShareTemplate];
+    }
+    if (@available(macOS 10.14, *)) {
+        pipBtn.contentTintColor = [NSColor whiteColor];
+    }
+    [pipBtn.widthAnchor constraintEqualToConstant:20].active = YES;
+    [pipBtn.heightAnchor constraintEqualToConstant:20].active = YES;
+    pipBtn.target = self;
+    pipBtn.action = @selector(onToggleMultiRenderer:);
+    
+    NSButton *fullscreenBtn = [[NSButton alloc] init];
+    fullscreenBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    fullscreenBtn.bordered = NO;
+    fullscreenBtn.bezelStyle = NSBezelStyleRegularSquare;
+    if (@available(macOS 11.0, *)) {
+        fullscreenBtn.image = [NSImage imageWithSystemSymbolName:@"arrow.up.left.and.arrow.down.right" accessibilityDescription:nil];
+    } else {
+        fullscreenBtn.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
+    }
+    if (@available(macOS 10.14, *)) {
+        fullscreenBtn.contentTintColor = [NSColor whiteColor];
+    }
+    [fullscreenBtn.widthAnchor constraintEqualToConstant:20].active = YES;
+    [fullscreenBtn.heightAnchor constraintEqualToConstant:20].active = YES;
+    fullscreenBtn.target = self;
+    fullscreenBtn.action = @selector(onToggleFullscreenBtnPressed:);
+    
+    [self updatePlayPauseBtnState:YES];
+    
+    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[subBtn, settingsBtn, pipBtn, fullscreenBtn]];
+    rightPillStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    rightPillStack.alignment = NSLayoutAttributeCenterY;
+    rightPillStack.spacing = 15;
+    
+    NSView *rightPill = [self wrapInPill:rightPillStack withPaddingX:12 paddingY:4 cornerRadius:18];
+    [rightPill.heightAnchor constraintEqualToConstant:36].active = YES;
+    [rightPill setContentHuggingPriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [rightPill setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    
+    [playPill setContentHuggingPriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [playPill setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    
+    [volumePlaceholder setContentHuggingPriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [volumePlaceholder setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    
+    NSStackView *mainStack = [NSStackView stackViewWithViews:@[playPill, volumePlaceholder, timePill, self.playerSlider, rightPill]];
+    mainStack.translatesAutoresizingMaskIntoConstraints = NO;
+    mainStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    mainStack.alignment = NSLayoutAttributeCenterY;
+    mainStack.spacing = 15;
+    
+    [self.upgradedCtrlPanel addSubview:mainStack];
+    
+    [oldCtrlPanel.superview addSubview:self.volumePillView positioned:NSWindowAbove relativeTo:self.upgradedCtrlPanel];
+    self.volumePillView.alphaValue = self.upgradedCtrlPanel.alphaValue;
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [mainStack.leadingAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.leadingAnchor constant:20],
+        [mainStack.trailingAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.trailingAnchor constant:-20],
+        [mainStack.topAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.topAnchor],
+        [mainStack.bottomAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.bottomAnchor],
+        
+        [self.volumePillView.centerXAnchor constraintEqualToAnchor:volumePlaceholder.centerXAnchor],
+        [self.volumePillView.bottomAnchor constraintEqualToAnchor:volumePlaceholder.bottomAnchor],
+        [self.volumePillView.widthAnchor constraintEqualToConstant:36],
+        [self.volumePillView.heightAnchor constraintEqualToConstant:164]
+    ]];
 }
 
 - (void)prepareRightMenu
@@ -317,6 +758,8 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
             context.duration = 0.45;
             self.playerCtrlPanel.animator.alphaValue = show ? 1.0 : 0.0;
+            self.upgradedCtrlPanel.animator.alphaValue = show ? 1.0 : 0.0;
+            self.volumePillView.animator.alphaValue = show ? 1.0 : 0.0;
         }];
     }
 }
@@ -958,7 +1401,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
                         self.playCtrlBtn.state = NSControlStateValueOn;
                         [self enableComputerSleep:YES];
                         [self toggleTitleBar:YES];
-                        self.playCtrlBtn.image = [NSImage imageNamed:@"play"];
+                        [self updatePlayPauseBtnState:YES];
                     }
                 }
             }];
@@ -1107,8 +1550,11 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 {
     double currentPosition = self.player.currentPlaybackTime;
     double duration = self.player.monitor.duration / 1000.0;
-    self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%02d:%02d",(int)(currentPosition/60),(int)currentPosition%60];
-    self.durationTimeLb.stringValue = [NSString stringWithFormat:@"%02d:%02d",(int)duration/60,(int)duration%60];
+    if (duration > 0) {
+        self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d / %d:%02d", (int)(currentPosition/60), (int)currentPosition%60, (int)duration/60, (int)duration%60];
+    } else {
+        self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d", (int)(currentPosition/60), (int)currentPosition%60];
+    }
     self.playerSlider.playedValue = currentPosition;
     self.playerSlider.minValue = 0;
     self.playerSlider.maxValue = duration;
@@ -1142,7 +1588,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     NSString *title = [NSString stringWithFormat:@"(%ld/%ld)%@",(long)idx,[[self playList] count],videoName];
     [self.view.window setTitle:title];
     
-    self.playCtrlBtn.image = [NSImage imageNamed:@"pause"];
+    [self updatePlayPauseBtnState:NO];
     self.playCtrlBtn.state = NSControlStateValueOff;
     
     if (!isLive && [MRCocoaBindingUserDefault play_from_history]) {
@@ -1336,10 +1782,10 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
             [self enableComputerSleep:YES];
             [self.player pause];
             [self toggleTitleBar:YES];
-            self.playCtrlBtn.image = [NSImage imageNamed:@"play"];
+            [self updatePlayPauseBtnState:YES];
         } else {
             [self.player play];
-            self.playCtrlBtn.image = [NSImage imageNamed:@"pause"];
+            [self updatePlayPauseBtnState:NO];
         }
     } else {
         [self playNext:nil];
@@ -1500,11 +1946,11 @@ static BOOL useExact = NO;
     }
     
     [self.view.window setTitle:@""];
-    self.playedTimeLb.stringValue = @"--:--";
+    self.playedTimeLb.stringValue = @"--:-- / --:--";
     self.durationTimeLb.stringValue = @"--:--";
     [self enableComputerSleep:YES];
     self.playCtrlBtn.state = NSControlStateValueOn;
-    self.playCtrlBtn.image = [NSImage imageNamed:@"play"];
+    [self updatePlayPauseBtnState:YES];
 }
 
 - (void)resetPreferenceEachPlay
@@ -1580,7 +2026,12 @@ static BOOL useExact = NO;
         self.player.currentPlaybackTime = cp;
         
         long interval = (long)cp;
-        self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%02d:%02d",(int)(interval/60),(int)(interval%60)];
+        double duration = self.player.monitor.duration / 1000.0;
+        if (duration > 0) {
+            self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d / %d:%02d", (int)(interval/60), (int)(interval%60), (int)(duration/60), (int)((int)duration%60)];
+        } else {
+            self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d", (int)(interval/60), (int)(interval%60)];
+        }
         self.playerSlider.playedValue = interval;
     }
 }
@@ -1605,7 +2056,14 @@ static BOOL useExact = NO;
 
 - (IBAction)onVolumeChange:(NSSlider *)sender
 {
-    self.player.playbackVolume = [MRCocoaBindingUserDefault volume];
+    double vol = [MRCocoaBindingUserDefault volume];
+    self.player.playbackVolume = vol;
+    if (self.volumeBtn) {
+        [self updateVolumeButtonImage:self.volumeBtn];
+    }
+    if (self.volumeSlider) {
+        self.volumeSlider.doubleValue = vol;
+    }
 }
 
 #pragma mark 倍速设置
