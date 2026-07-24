@@ -644,7 +644,12 @@
     // Save Format Row
     NSPopUpButton *fmtPopUp = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
     [fmtPopUp addItemWithTitle:@"jpg"];
+    [fmtPopUp addItemWithTitle:@"jpeg"];
     [fmtPopUp addItemWithTitle:@"png"];
+    [fmtPopUp addItemWithTitle:@"tiff"];
+    [fmtPopUp addItemWithTitle:@"bmp"];
+    [fmtPopUp addItemWithTitle:@"gif"];
+    [fmtPopUp addItemWithTitle:@"pdf"];
     fmtPopUp.controlSize = NSControlSizeSmall;
     fmtPopUp.translatesAutoresizingMaskIntoConstraints = NO;
     [fmtPopUp bind:@"selectedValue"
@@ -660,6 +665,8 @@
     [typePopUp addItemWithTitle:@"screen"];
     [typePopUp.lastItem setTag:1];
     [typePopUp addItemWithTitle:@"origin+subtitle"];
+    [typePopUp.lastItem setTag:2];
+    [typePopUp addItemWithTitle:@"origin+subtitle+effect"];
     [typePopUp.lastItem setTag:3];
     typePopUp.controlSize = NSControlSizeSmall;
     typePopUp.translatesAutoresizingMaskIntoConstraints = NO;
