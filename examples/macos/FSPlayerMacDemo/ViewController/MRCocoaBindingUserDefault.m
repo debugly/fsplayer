@@ -91,6 +91,7 @@
         
         @"audio_delay" : @(0),
         @"snapshot_type" : @(3),
+        @"snapshot_format" : @"jpg",
         @"accurate_seek" : @(1),
         @"seek_step" : @(15),
         @"lock_screen_ratio" : @(1),
@@ -436,6 +437,73 @@
 + (int)dns_cache_period
 {
     return [self intForKey:@"dns_cache_period"];
+}
+
++ (void)setSnapshotDirectoryURL:(NSURL *)url
+{
+    NSError *error = nil;
+    NSData *bookmarkData = [url bookmarkDataWithOptions:NSURLBookmarkCreationWithSecurityScope
+                          includingResourceValuesForKeys:nil
+                                         relativeToURL:nil
+                                                 error:&error];
+    if (bookmarkData) {
+        [[NSUserDefaults standardUserDefaults] setObject:bookmarkData forKey:@"snapshot_directory_bookmark"];
+        [[NSUserDefaults standardUserDefaults] setObject:url.path forKey:@"snapshot_directory_path"];
+    } else {
+        NSLog(@"Failed to create bookmark: %@", error);
+    }
+}
+
++ (NSURL *)snapshotDirectoryURL
+{
+    NSData *bookmarkData = [[NSUserDefaults standardUserDefaults] objectForKey:@"snapshot_directory_bookmark"];
+    if (!bookmarkData) {
+        NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_directory_path"];
+        if (path) {
+            return [NSURL fileURLWithPath:path];
+        }
+        return nil;
+    }
+    
+    BOOL isStale = NO;
+    NSError *error = nil;
+    NSURL *url = [NSURL URLByResolvingBookmarkData:bookmarkData
+                                           options:NSURLBookmarkResolutionWithSecurityScope
+                                     relativeToURL:nil
+                               bookmarkDataIsStale:&isStale
+                                             error:&error];
+    if (url) {
+        [url startAccessingSecurityScopedResource];
+        return url;
+    }
+    
+    NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_directory_path"];
+    if (path) {
+        return [NSURL fileURLWithPath:path];
+    }
+    return nil;
+}
+
++ (void)clearAllPlaybackHistory
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSDictionary *dict = [defaults dictionaryRepresentation];
+    for (NSString *key in dict.allKeys) {
+        if (key.length == 32) {
+            NSCharacterSet *hexSet = [NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdefABCDEF"];
+            BOOL isHex = YES;
+            for (NSUInteger i = 0; i < key.length; i++) {
+                if (![hexSet characterIsMember:[key characterAtIndex:i]]) {
+                    isHex = NO;
+                    break;
+                }
+            }
+            if (isHex) {
+                [defaults removeObjectForKey:key];
+            }
+        }
+    }
+    [defaults synchronize];
 }
 
 @end

@@ -20,11 +20,13 @@
 @property (nonatomic, strong) NSButton *videoTabBtn;
 @property (nonatomic, strong) NSButton *audioTabBtn;
 @property (nonatomic, strong) NSButton *subtitleTabBtn;
+@property (nonatomic, strong) NSButton *moreTabBtn;
 @property (nonatomic, strong) NSArray<NSButton *> *tabButtons;
 
 @property (nonatomic, strong) NSStackView *videoDocView;
 @property (nonatomic, strong) NSStackView *audioDocView;
 @property (nonatomic, strong) NSStackView *subtitleDocView;
+@property (nonatomic, strong) NSStackView *moreDocView;
 
 // PopUp buttons (re-used tags and names)
 @property (nonatomic, strong) NSPopUpButton *subtitlePopUpBtn;
@@ -99,7 +101,14 @@
     self.subtitleTabBtn.action = @selector(onTabClicked:);
     self.subtitleTabBtn.translatesAutoresizingMaskIntoConstraints = NO;
 
-    self.tabButtons = @[self.videoTabBtn, self.audioTabBtn, self.subtitleTabBtn];
+    self.moreTabBtn = [[NSButton alloc] init];
+    self.moreTabBtn.title = @"更多";
+    self.moreTabBtn.bordered = NO;
+    self.moreTabBtn.target = self;
+    self.moreTabBtn.action = @selector(onTabClicked:);
+    self.moreTabBtn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.tabButtons = @[self.videoTabBtn, self.audioTabBtn, self.subtitleTabBtn, self.moreTabBtn];
 
     NSStackView *tabsStack = [[NSStackView alloc] init];
     tabsStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
@@ -164,10 +173,11 @@
     self.subtitlePopUpBtn.target = self;
     self.subtitlePopUpBtn.action = @selector(onSelectTrack:);
 
-    // 6. Build the Three Pages (as NSStackViews)
+    // 6. Build the Four Pages (as NSStackViews)
     [self buildVideoPage];
     [self buildAudioPage];
     [self buildSubtitlePage];
+    [self buildMorePage];
 
     // Default to the first page (Video)
     [self onTabClicked:self.videoTabBtn];
@@ -186,6 +196,8 @@
         selectedDoc = self.audioDocView;
     } else if (sender == self.subtitleTabBtn) {
         selectedDoc = self.subtitleDocView;
+    } else if (sender == self.moreTabBtn) {
+        selectedDoc = self.moreDocView;
     }
 
     if (selectedDoc) {
@@ -566,6 +578,276 @@
 
     // Colors Row (Primary, Secondary, Background)
     [self.subtitleDocView addArrangedSubview:[self createColorsRow]];
+}
+
+- (void)buildMorePage
+{
+    self.moreDocView = [[NSStackView alloc] init];
+    self.moreDocView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.moreDocView.orientation = NSUserInterfaceLayoutOrientationVertical;
+    self.moreDocView.alignment = NSLayoutAttributeLeading;
+    self.moreDocView.spacing = 10;
+    self.moreDocView.edgeInsets = NSEdgeInsetsMake(15, 16, 15, 16);
+
+    // Section 1: Log Level
+    [self.moreDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"日志配置"]];
+    
+    NSPopUpButton *logPopUp = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+    NSArray *logItems = @[@"default", @"verbose", @"debug", @"info", @"warn", @"error", @"fatal", @"silent"];
+    for (NSString *item in logItems) {
+        [logPopUp addItemWithTitle:item];
+    }
+    logPopUp.controlSize = NSControlSizeSmall;
+    logPopUp.translatesAutoresizingMaskIntoConstraints = NO;
+    [logPopUp bind:@"selectedValue"
+          toObject:[NSUserDefaultsController sharedUserDefaultsController]
+       withKeyPath:@"values.log_level"
+           options:nil];
+           
+    [self.moreDocView addArrangedSubview:[self createPopUpRowWithLabel:@"日志级别:" popUpButton:logPopUp]];
+
+    [self.moreDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 2: Screenshot Settings
+    [self.moreDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"截图设置"]];
+    
+    // Save Directory Row
+    NSView *dirRow = [[NSView alloc] init];
+    dirRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [dirRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    
+    NSTextField *dirLbl = [self createLabelWithText:@"保存目录:"];
+    [dirRow addSubview:dirLbl];
+    
+    NSPathControl *pathCtrl = [[NSPathControl alloc] init];
+    pathCtrl.pathStyle = NSPathStylePopUp;
+    pathCtrl.controlSize = NSControlSizeSmall;
+    pathCtrl.translatesAutoresizingMaskIntoConstraints = NO;
+    NSURL *savedURL = [MRCocoaBindingUserDefault snapshotDirectoryURL];
+    if (savedURL) {
+        pathCtrl.URL = savedURL;
+    }
+    [dirRow addSubview:pathCtrl];
+    objc_setAssociatedObject(self, "snapshot_path_ctrl_key", pathCtrl, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    
+    NSButton *chooseBtn = [[NSButton alloc] init];
+    chooseBtn.title = @"选择...";
+    chooseBtn.bezelStyle = NSBezelStyleRounded;
+    chooseBtn.controlSize = NSControlSizeSmall;
+    chooseBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    chooseBtn.target = self;
+    chooseBtn.action = @selector(onChooseSnapshotDir:);
+    [dirRow addSubview:chooseBtn];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [dirLbl.leadingAnchor constraintEqualToAnchor:dirRow.leadingAnchor],
+        [dirLbl.centerYAnchor constraintEqualToAnchor:dirRow.centerYAnchor],
+        
+        [pathCtrl.leadingAnchor constraintEqualToAnchor:dirLbl.trailingAnchor constant:8],
+        [pathCtrl.centerYAnchor constraintEqualToAnchor:dirRow.centerYAnchor],
+        [pathCtrl.widthAnchor constraintEqualToConstant:130],
+        
+        [chooseBtn.leadingAnchor constraintEqualToAnchor:pathCtrl.trailingAnchor constant:6],
+        [chooseBtn.centerYAnchor constraintEqualToAnchor:dirRow.centerYAnchor],
+        [chooseBtn.widthAnchor constraintEqualToConstant:54]
+    ]];
+    [self.moreDocView addArrangedSubview:dirRow];
+    
+    // Save Format Row
+    NSPopUpButton *fmtPopUp = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+    [fmtPopUp addItemWithTitle:@"jpg"];
+    [fmtPopUp addItemWithTitle:@"png"];
+    fmtPopUp.controlSize = NSControlSizeSmall;
+    fmtPopUp.translatesAutoresizingMaskIntoConstraints = NO;
+    [fmtPopUp bind:@"selectedValue"
+          toObject:[NSUserDefaultsController sharedUserDefaultsController]
+       withKeyPath:@"values.snapshot_format"
+           options:nil];
+    [self.moreDocView addArrangedSubview:[self createPopUpRowWithLabel:@"保存格式:" popUpButton:fmtPopUp]];
+    
+    // Screenshot Method Row
+    NSPopUpButton *typePopUp = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+    [typePopUp addItemWithTitle:@"origin"];
+    [typePopUp.lastItem setTag:0];
+    [typePopUp addItemWithTitle:@"screen"];
+    [typePopUp.lastItem setTag:1];
+    [typePopUp addItemWithTitle:@"origin+subtitle"];
+    [typePopUp.lastItem setTag:3];
+    typePopUp.controlSize = NSControlSizeSmall;
+    typePopUp.translatesAutoresizingMaskIntoConstraints = NO;
+    [typePopUp bind:@"selectedTag"
+          toObject:[NSUserDefaultsController sharedUserDefaultsController]
+       withKeyPath:@"values.snapshot_type"
+           options:nil];
+    [self.moreDocView addArrangedSubview:[self createPopUpRowWithLabel:@"截图方式:" popUpButton:typePopUp]];
+
+    [self.moreDocView addArrangedSubview:[self createSeparatorLine]];
+
+    // Section 3: Player Settings
+    [self.moreDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"播放器设置"]];
+    
+    // Playback History Row with NSSwitch and Reset Button
+    NSView *historyRow = [[NSView alloc] init];
+    historyRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [historyRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    
+    NSTextField *historyLbl = [self createLabelWithText:@"播放记录:"];
+    [historyRow addSubview:historyLbl];
+    
+    NSView *toggle = nil;
+    if (@available(macOS 10.15, *)) {
+        NSSwitch *sw = [[NSSwitch alloc] init];
+        sw.translatesAutoresizingMaskIntoConstraints = NO;
+        sw.controlSize = NSControlSizeMini;
+        [sw bind:@"value"
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:@"values.play_from_history"
+             options:nil];
+        toggle = sw;
+    } else {
+        NSButton *chk = [[NSButton alloc] init];
+        chk.translatesAutoresizingMaskIntoConstraints = NO;
+        chk.buttonType = NSButtonTypeOnOff;
+        chk.title = @"";
+        [chk bind:@"value"
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:@"values.play_from_history"
+             options:nil];
+        toggle = chk;
+    }
+    [historyRow addSubview:toggle];
+    
+    NSButton *resetBtn = [[NSButton alloc] init];
+    resetBtn.title = @"重置";
+    resetBtn.bezelStyle = NSBezelStyleRounded;
+    resetBtn.controlSize = NSControlSizeSmall;
+    resetBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    resetBtn.target = self;
+    resetBtn.action = @selector(onResetHistory:);
+    [historyRow addSubview:resetBtn];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [historyLbl.leadingAnchor constraintEqualToAnchor:historyRow.leadingAnchor],
+        [historyLbl.centerYAnchor constraintEqualToAnchor:historyRow.centerYAnchor],
+        
+        [toggle.leadingAnchor constraintEqualToAnchor:historyLbl.trailingAnchor constant:8],
+        [toggle.centerYAnchor constraintEqualToAnchor:historyRow.centerYAnchor],
+        
+        [resetBtn.trailingAnchor constraintEqualToAnchor:historyRow.leadingAnchor constant:275],
+        [resetBtn.centerYAnchor constraintEqualToAnchor:historyRow.centerYAnchor],
+        [resetBtn.widthAnchor constraintEqualToConstant:54]
+    ]];
+    [self.moreDocView addArrangedSubview:historyRow];
+    
+    // Accurate Seek Row with NSSwitch
+    NSView *seekRow = [[NSView alloc] init];
+    seekRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [seekRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    
+    NSTextField *seekLbl = [self createLabelWithText:@"精准Seek:"];
+    [seekRow addSubview:seekLbl];
+    
+    NSView *seekToggle = nil;
+    if (@available(macOS 10.15, *)) {
+        NSSwitch *sw = [[NSSwitch alloc] init];
+        sw.translatesAutoresizingMaskIntoConstraints = NO;
+        sw.controlSize = NSControlSizeMini;
+        [sw bind:@"value"
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:@"values.accurate_seek"
+             options:nil];
+        seekToggle = sw;
+    } else {
+        NSButton *chk = [[NSButton alloc] init];
+        chk.translatesAutoresizingMaskIntoConstraints = NO;
+        chk.buttonType = NSButtonTypeOnOff;
+        chk.title = @"";
+        [chk bind:@"value"
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:@"values.accurate_seek"
+             options:nil];
+        seekToggle = chk;
+    }
+    [seekRow addSubview:seekToggle];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [seekLbl.leadingAnchor constraintEqualToAnchor:seekRow.leadingAnchor],
+        [seekLbl.centerYAnchor constraintEqualToAnchor:seekRow.centerYAnchor],
+        [seekToggle.leadingAnchor constraintEqualToAnchor:seekLbl.trailingAnchor constant:8],
+        [seekToggle.centerYAnchor constraintEqualToAnchor:seekRow.centerYAnchor]
+    ]];
+    [self.moreDocView addArrangedSubview:seekRow];
+    
+    // Lock Ratio Row with NSSwitch
+    NSView *ratioRow = [[NSView alloc] init];
+    ratioRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [ratioRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    
+    NSTextField *ratioLbl = [self createLabelWithText:@"锁定比例:"];
+    [ratioRow addSubview:ratioLbl];
+    
+    NSView *ratioToggle = nil;
+    if (@available(macOS 10.15, *)) {
+        NSSwitch *sw = [[NSSwitch alloc] init];
+        sw.translatesAutoresizingMaskIntoConstraints = NO;
+        sw.controlSize = NSControlSizeMini;
+        [sw bind:@"value"
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:@"values.lock_screen_ratio"
+             options:nil];
+        ratioToggle = sw;
+    } else {
+        NSButton *chk = [[NSButton alloc] init];
+        chk.translatesAutoresizingMaskIntoConstraints = NO;
+        chk.buttonType = NSButtonTypeOnOff;
+        chk.title = @"";
+        [chk bind:@"value"
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:@"values.lock_screen_ratio"
+             options:nil];
+        ratioToggle = chk;
+    }
+    [ratioRow addSubview:ratioToggle];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [ratioLbl.leadingAnchor constraintEqualToAnchor:ratioRow.leadingAnchor],
+        [ratioLbl.centerYAnchor constraintEqualToAnchor:ratioRow.centerYAnchor],
+        [ratioToggle.leadingAnchor constraintEqualToAnchor:ratioLbl.trailingAnchor constant:8],
+        [ratioToggle.centerYAnchor constraintEqualToAnchor:ratioRow.centerYAnchor]
+    ]];
+    [self.moreDocView addArrangedSubview:ratioRow];
+}
+
+- (void)onChooseSnapshotDir:(NSButton *)sender
+{
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    panel.canChooseFiles = NO;
+    panel.canChooseDirectories = YES;
+    panel.allowsMultipleSelection = NO;
+    panel.canCreateDirectories = YES;
+    
+    [panel beginSheetModalForWindow:self.view.window completionHandler:^(NSModalResponse result) {
+        if (result == NSModalResponseOK) {
+            NSURL *selectedURL = panel.URLs.firstObject;
+            if (selectedURL) {
+                [MRCocoaBindingUserDefault setSnapshotDirectoryURL:selectedURL];
+                NSPathControl *pathCtrl = objc_getAssociatedObject(self, "snapshot_path_ctrl_key");
+                if (pathCtrl) {
+                    pathCtrl.URL = selectedURL;
+                }
+            }
+        }
+    }];
+}
+
+- (void)onResetHistory:(NSButton *)sender
+{
+    [MRCocoaBindingUserDefault clearAllPlaybackHistory];
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = @"提示";
+    alert.informativeText = @"播放历史记录已成功清除！";
+    [alert addButtonWithTitle:@"确定"];
+    [alert beginSheetModalForWindow:self.view.window completionHandler:nil];
 }
 
 - (NSView *)createColorsRow

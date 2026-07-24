@@ -34,6 +34,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (float)playback_speed;
 + (void)setPlayback_speed:(float)speed;
 
++ (NSURL *)snapshotDirectoryURL;
++ (void)setSnapshotDirectoryURL:(NSURL *)url;
++ (void)clearAllPlaybackHistory;
+
 + (NSString *)log_level;
 
 + (float)color_adjust_brightness;

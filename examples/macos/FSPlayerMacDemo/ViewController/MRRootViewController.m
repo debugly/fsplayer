@@ -94,6 +94,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 @property (nonatomic, strong) MROverlayView *sidebarOverlayView;
 @property (nonatomic, strong) NSLayoutConstraint *sidebarTrailingConstraint;
+@property (nonatomic, strong) NSView *leftScreenshotPillView;
 
 @end
 
@@ -594,6 +595,35 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         [self.volumePillView.widthAnchor constraintEqualToConstant:36],
         [self.volumePillView.heightAnchor constraintEqualToConstant:164]
     ]];
+    
+    // Setup custom left screenshot button (1.5x play button size = 54x54 pill)
+    NSButton *screenshotBtn = [[NSButton alloc] init];
+    screenshotBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    screenshotBtn.bordered = NO;
+    screenshotBtn.bezelStyle = NSBezelStyleRegularSquare;
+    if (@available(macOS 10.14, *)) {
+        screenshotBtn.contentTintColor = [NSColor whiteColor];
+    }
+    NSImage *cameraImg = nil;
+    if (@available(macOS 11.0, *)) {
+        cameraImg = [NSImage imageWithSystemSymbolName:@"camera.fill" accessibilityDescription:nil];
+    } else {
+        cameraImg = [NSImage imageNamed:NSImageNameShareTemplate];
+    }
+    screenshotBtn.image = cameraImg;
+    screenshotBtn.target = self;
+    screenshotBtn.action = @selector(onCaptureShot);
+    
+    self.leftScreenshotPillView = [self wrapInPill:screenshotBtn withPaddingX:12 paddingY:12 cornerRadius:27];
+    [self.view addSubview:self.leftScreenshotPillView positioned:NSWindowAbove relativeTo:self.upgradedCtrlPanel];
+    self.leftScreenshotPillView.alphaValue = self.upgradedCtrlPanel.alphaValue;
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [self.leftScreenshotPillView.widthAnchor constraintEqualToConstant:54],
+        [self.leftScreenshotPillView.heightAnchor constraintEqualToConstant:54],
+        [self.leftScreenshotPillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24],
+        [self.leftScreenshotPillView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
+    ]];
 }
 
 - (void)prepareRightMenu
@@ -832,6 +862,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
             self.playerCtrlPanel.animator.alphaValue = show ? 1.0 : 0.0;
             self.upgradedCtrlPanel.animator.alphaValue = show ? 1.0 : 0.0;
             self.volumePillView.animator.alphaValue = show ? 1.0 : 0.0;
+            self.leftScreenshotPillView.animator.alphaValue = show ? 1.0 : 0.0;
         }];
     }
 }
@@ -2509,6 +2540,14 @@ static BOOL useExact = NO;
 
 - (NSString *)dirForCurrentPlayingUrl
 {
+    NSURL *customURL = [MRCocoaBindingUserDefault snapshotDirectoryURL];
+    if (customURL) {
+        NSString *movieSubDir = [self.playingUrl lastPathComponent];
+        if (!movieSubDir) movieSubDir = @"Captured";
+        NSString *dirPath = [customURL.path stringByAppendingPathComponent:movieSubDir];
+        [[NSFileManager defaultManager] createDirectoryAtPath:dirPath withIntermediateDirectories:YES attributes:nil error:nil];
+        return dirPath;
+    }
     return [self saveDir:[self.playingUrl lastPathComponent]];
 }
 
@@ -2518,7 +2557,10 @@ static BOOL useExact = NO;
     if (img) {
         NSString *dir = [self dirForCurrentPlayingUrl];
         NSString *movieName = [self.playingUrl lastPathComponent];
-        NSString *fileName = [NSString stringWithFormat:@"%@-%ld.jpg",movieName,(long)(CFAbsoluteTimeGetCurrent() * 1000)];
+        if (!movieName) movieName = @"capture";
+        NSString *fmt = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_format"];
+        if (!fmt) fmt = @"jpg";
+        NSString *fileName = [NSString stringWithFormat:@"%@-%ld.%@", movieName, (long)(CFAbsoluteTimeGetCurrent() * 1000), fmt];
         NSString *filePath = [dir stringByAppendingPathComponent:fileName];
         NSLog(@"截屏:%@",filePath);
         [MRUtil saveImageToFile:img path:filePath];
