@@ -94,6 +94,15 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, strong) NSButton *rightPlayPauseBtn;
 @property (nonatomic, strong) MRVolumeHoverPillView *volumePillView;
 
+typedef NS_ENUM(NSInteger, MRSidebarType) {
+    MRSidebarTypeNone = 0,
+    MRSidebarTypeSettings,
+    MRSidebarTypePlaylist
+};
+
+@property (nonatomic, assign) MRSidebarType activeSidebarType;
+@property (nonatomic, strong) MRPlaylistViewController *playlistVC;
+
 @property (nonatomic, strong) MROverlayView *sidebarOverlayView;
 @property (nonatomic, strong) NSLayoutConstraint *sidebarTrailingConstraint;
 @property (nonatomic, strong) NSView *leftScreenshotPillView;
@@ -484,6 +493,17 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [self.playerSlider setContentHuggingPriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
     [self.playerSlider setContentCompressionResistancePriority:50 forOrientation:NSLayoutConstraintOrientationHorizontal];
     
+    MRHoverColorButton *playlistBtn = [[MRHoverColorButton alloc] init];
+    if (@available(macOS 11.0, *)) {
+        playlistBtn.image = [NSImage imageWithSystemSymbolName:@"list.bullet" accessibilityDescription:nil];
+    } else {
+        playlistBtn.image = [NSImage imageNamed:NSImageNameListViewTemplate];
+    }
+    [playlistBtn.widthAnchor constraintEqualToConstant:20].active = YES;
+    [playlistBtn.heightAnchor constraintEqualToConstant:20].active = YES;
+    playlistBtn.target = self;
+    playlistBtn.action = @selector(onTogglePlaylistSideBar:);
+    
     MRHoverColorButton *settingsBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
         settingsBtn.image = [NSImage imageWithSystemSymbolName:@"gearshape.fill" accessibilityDescription:nil];
@@ -493,7 +513,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     [settingsBtn.widthAnchor constraintEqualToConstant:20].active = YES;
     [settingsBtn.heightAnchor constraintEqualToConstant:20].active = YES;
     settingsBtn.target = self;
-    settingsBtn.action = @selector(onToggleSiderBar:);
+    settingsBtn.action = @selector(onToggleSettingsSideBar:);
     
     self.fullscreenBtn = [[MRHoverColorButton alloc] init];
     if (@available(macOS 11.0, *)) {
@@ -508,7 +528,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     [self updatePlayPauseBtnState:YES];
     
-    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[settingsBtn, self.fullscreenBtn]];
+    NSStackView *rightPillStack = [NSStackView stackViewWithViews:@[playlistBtn, settingsBtn, self.fullscreenBtn]];
     rightPillStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     rightPillStack.alignment = NSLayoutAttributeCenterY;
     rightPillStack.spacing = 15;
@@ -696,8 +716,8 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     NSArray *movies = info[@"obj"];
     
     if ([movies count] > 0) {
-        // 追加到列表，开始播放
-        [self appendToPlayList:movies append:NO];
+        // 追加到列表，开始播放（不主动清空已有播放列表）
+        [self appendToPlayList:movies append:YES];
     }
 }
 
@@ -731,50 +751,143 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     return settings;
 }
 
-- (void)showPlayerSettingsSideBar
+- (NSViewController *)viewControllerForSidebarType:(MRSidebarType)type
 {
-    if (self.sidebarOverlayView) {
-        [self dismissSettingsSidebar];
+    if (type == MRSidebarTypePlaylist) {
+        if (!self.playlistVC) {
+            self.playlistVC = [[MRPlaylistViewController alloc] init];
+            __weakSelf__
+            self.playlistVC.onSelectPlayItem = ^(NSString *url, NSInteger index) {
+                __strongSelf__
+                [self playURL:url];
+            };
+            self.playlistVC.onRemovePlayItem = ^(NSInteger index) {
+                __strongSelf__
+                if (index < [self.playList count]) {
+                    NSString *removedUrl = self.playList[index];
+                    [self.playList removeObjectAtIndex:index];
+                    if ([removedUrl isEqualToString:self.playingUrl]) {
+                        if ([self.playList count] > 0) {
+                            NSInteger nextIdx = (index < [self.playList count]) ? index : ([self.playList count] - 1);
+                            NSString *nextUrl = self.playList[nextIdx];
+                            [self playURL:nextUrl];
+                        } else {
+                            [self doStopPlay];
+                        }
+                    }
+                    [self updatePlaylistView];
+                }
+            };
+            self.playlistVC.onClearPlaylist = ^{
+                __strongSelf__
+                [self.playList removeAllObjects];
+                [self doStopPlay];
+                [self updatePlaylistView];
+            };
+            self.playlistVC.onAddFilesRequested = ^{
+                __strongSelf__
+                [self openFile:nil];
+            };
+            self.playlistVC.onFilesDropped = ^(NSArray<NSURL *> *fileUrls) {
+                __strongSelf__
+                [self handleDragFileList:fileUrls append:YES];
+            };
+            [self addChildViewController:self.playlistVC];
+        }
+        [self updatePlaylistView];
+        return self.playlistVC;
     } else {
-        [self presentSettingsSidebar];
+        MRPlayerSettingsViewController *settings = [self findSettingViewController];
+        BOOL created = NO;
+        if (!settings) {
+            settings = [[MRPlayerSettingsViewController alloc] initWithNibName:@"MRPlayerSettingsViewController" bundle:nil];
+            __weakSelf__
+            [settings onCloseCurrentStream:^(NSString * _Nonnull st) {
+                __strongSelf__
+                [self.player closeCurrentStream:st];
+            }];
+            
+            [settings onExchangeSelectedStream:^(int idx) {
+                __strongSelf__
+                [self.player exchangeSelectedStream:idx];
+            }];
+            
+            [settings onCaptureShot:^{
+                __strongSelf__
+                [self onCaptureShot];
+            }];
+            
+            settings.onMultiRendererToggled = ^(BOOL enabled) {
+                __strongSelf__
+                if (self.playingUrl) {
+                    NSString *url = self.playingUrl;
+                    [self doStopPlay];
+                    [self playURL:url];
+                }
+            };
+            
+            created = YES;
+            [self addChildViewController:settings];
+        }
+        if (created) {
+            [self updateStreams];
+        }
+        return settings;
     }
 }
 
-- (void)presentSettingsSidebar
+- (void)updatePlaylistView
 {
-    if (self.sidebarOverlayView) return;
+    if (self.playlistVC) {
+        [self.playlistVC updatePlaylist:self.playList currentlyPlaying:self.playingUrl];
+    }
+}
+
+- (void)onToggleSettingsSideBar:(id)sender
+{
+    if (self.activeSidebarType == MRSidebarTypeSettings) {
+        [self dismissSettingsSidebar];
+    } else {
+        [self presentSidebarWithType:MRSidebarTypeSettings];
+    }
+}
+
+- (void)onTogglePlaylistSideBar:(id)sender
+{
+    if (self.activeSidebarType == MRSidebarTypePlaylist) {
+        [self dismissSettingsSidebar];
+    } else {
+        [self presentSidebarWithType:MRSidebarTypePlaylist];
+    }
+}
+
+- (void)showPlayerSettingsSideBar
+{
+    [self onToggleSettingsSideBar:nil];
+}
+
+- (void)presentSidebarWithType:(MRSidebarType)type
+{
+    NSViewController *vc = [self viewControllerForSidebarType:type];
+    NSView *panel = vc.view;
+    panel.translatesAutoresizingMaskIntoConstraints = NO;
     
-    MRPlayerSettingsViewController *settings = [self findSettingViewController];
-    BOOL created = NO;
-    if (!settings) {
-        settings = [[MRPlayerSettingsViewController alloc] initWithNibName:@"MRPlayerSettingsViewController" bundle:nil];
-        __weakSelf__
-        [settings onCloseCurrentStream:^(NSString * _Nonnull st) {
-            __strongSelf__
-            [self.player closeCurrentStream:st];
-        }];
+    // If overlay already exists (swapping between Settings & Playlist)
+    if (self.sidebarOverlayView) {
+        if (self.sidebarOverlayView.innerPanelView) {
+            [self.sidebarOverlayView.innerPanelView removeFromSuperview];
+        }
+        self.sidebarOverlayView.innerPanelView = panel;
+        [self.sidebarOverlayView addSubview:panel];
         
-        [settings onExchangeSelectedStream:^(int idx) {
-            __strongSelf__
-            [self.player exchangeSelectedStream:idx];
-        }];
-        
-        [settings onCaptureShot:^{
-            __strongSelf__
-            [self onCaptureShot];
-        }];
-        
-        settings.onMultiRendererToggled = ^(BOOL enabled) {
-            __strongSelf__
-            if (self.playingUrl) {
-                NSString *url = self.playingUrl;
-                [self doStopPlay];
-                [self playURL:url];
-            }
-        };
-        
-        created = YES;
-        [self addChildViewController:settings];
+        NSLayoutConstraint *widthConstraint = [panel.widthAnchor constraintEqualToConstant:320];
+        NSLayoutConstraint *topConstraint = [panel.topAnchor constraintEqualToAnchor:self.sidebarOverlayView.topAnchor];
+        NSLayoutConstraint *bottomConstraint = [panel.bottomAnchor constraintEqualToAnchor:self.sidebarOverlayView.bottomAnchor];
+        NSLayoutConstraint *trailingConstraint = [panel.trailingAnchor constraintEqualToAnchor:self.sidebarOverlayView.trailingAnchor constant:0];
+        [NSLayoutConstraint activateConstraints:@[widthConstraint, topConstraint, bottomConstraint, trailingConstraint]];
+        self.sidebarTrailingConstraint = trailingConstraint;
+        self.activeSidebarType = type;
+        return;
     }
     
     // Create full screen overlay view
@@ -784,6 +897,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     overlay.layer.backgroundColor = [NSColor colorWithWhite:0.0 alpha:0.0].CGColor;
     [self.view addSubview:overlay];
     self.sidebarOverlayView = overlay;
+    self.activeSidebarType = type;
     
     // Fill superview constraints for overlay
     [NSLayoutConstraint activateConstraints:@[
@@ -800,9 +914,6 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
         [self dismissSettingsSidebar];
     };
     
-    // Prepare the settings panel view
-    NSView *panel = settings.view;
-    panel.translatesAutoresizingMaskIntoConstraints = NO;
     [overlay addSubview:panel];
     overlay.innerPanelView = panel;
     
@@ -816,10 +927,6 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     [overlay layoutSubtreeIfNeeded];
     
-    if (created) {
-        [self updateStreams];
-    }
-    
     // Animate slide-in and background dimming
     [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
         context.duration = 0.3;
@@ -831,12 +938,18 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     }];
 }
 
+- (void)presentSettingsSidebar
+{
+    [self presentSidebarWithType:MRSidebarTypeSettings];
+}
+
 - (void)dismissSettingsSidebar
 {
     if (!self.sidebarOverlayView) return;
     
     MROverlayView *overlay = self.sidebarOverlayView;
     self.sidebarOverlayView = nil; // Clear reference to avoid races
+    self.activeSidebarType = MRSidebarTypeNone;
     
     [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
         context.duration = 0.25;
@@ -1126,6 +1239,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     }
     
     self.playingUrl = urlStr;
+    [self updatePlaylistView];
     self.seeking = NO;
     
     FSOptions *options = [FSOptions optionsByDefault];
@@ -1835,32 +1949,45 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     NSMutableArray *videos = [NSMutableArray array];
     NSMutableArray *subtitles = [NSMutableArray array];
+    NSString *firstOpenedExistingVideo = nil;
     
     for (NSDictionary *dic in bookmarkArr) {
         NSURL *url = dic[@"url"];
         if ([[[url pathExtension] lowercaseString] isEqualToString:@"xlist"]) {
             for (NSString *u in [MRUtil parseXPlayList:url]) {
-                if ([self existingInPlayList:u]) {
+                NSString *existing = [self existingInPlayList:u];
+                if (existing || [videos containsObject:u]) {
+                    if (existing && !firstOpenedExistingVideo) {
+                        firstOpenedExistingVideo = existing;
+                    }
                     continue;
                 }
                 [videos addObject:u];
             }
         } else if ([[[url pathExtension] lowercaseString] isEqualToString:@"zlist"]) {
             for (NSString *u in [MRUtil parseZPlayList:url]) {
-                if ([self existingInPlayList:u]) {
+                NSString *existing = [self existingInPlayList:u];
+                if (existing || [videos containsObject:u]) {
+                    if (existing && !firstOpenedExistingVideo) {
+                        firstOpenedExistingVideo = existing;
+                    }
                     continue;
                 }
                 [videos addObject:u];
             }
         } else if ([dic[@"type"] intValue] == 0) {
             NSString *str = [self decodeURL:url];
-            if ([self existingInPlayList:str]) {
+            NSString *existing = [self existingInPlayList:str];
+            if (existing || [videos containsObject:str]) {
+                if (existing && !firstOpenedExistingVideo) {
+                    firstOpenedExistingVideo = existing;
+                }
                 continue;
             }
             [videos addObject:str];
         } else if ([dic[@"type"] intValue] == 1) {
             NSURL *url = dic[@"url"];
-            if ([self existingInSubList:url]) {
+            if ([self existingInSubList:url] || [subtitles containsObject:url]) {
                 continue;
             }
             [subtitles addObject:url];
@@ -1871,17 +1998,27 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     
     if ([videos count] == 0) {
         [self.subtitles addObjectsFromArray:subtitles];
-        if (![self playFirstIfNeed]) {
+        if (firstOpenedExistingVideo) {
+            [self playURL:firstOpenedExistingVideo];
+        } else if (![self playFirstIfNeed]) {
             NSURL *url = [subtitles firstObject];
-            [self.player loadThenActiveSubtitle:url];
+            if (url) {
+                [self.player loadThenActiveSubtitle:url];
+            }
         }
+        [self updatePlaylistView];
         return;
     }
     
-    
     [self.subtitles addObjectsFromArray:subtitles];
     [self.playList addObjectsFromArray:videos];
-    [self playFirstIfNeed];
+    
+    if (!self.playingUrl && videos.count > 0) {
+        [self playURL:videos.firstObject];
+    } else {
+        [self playFirstIfNeed];
+    }
+    [self updatePlaylistView];
 }
 
 #pragma mark - 拖拽
@@ -1971,7 +2108,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 
 - (IBAction)onToggleSiderBar:(id)sender
 {
-    [self showPlayerSettingsSideBar];
+    [self onToggleSettingsSideBar:sender];
 }
 
 static BOOL useExact = NO;
@@ -2107,6 +2244,11 @@ static BOOL useExact = NO;
     [self.view.window setTitle:@""];
     self.playedTimeLb.stringValue = @"--:-- / --:--";
     self.durationTimeLb.stringValue = @"--:--";
+    self.playerSlider.playedValue = 0;
+    self.playerSlider.preloadValue = 0;
+    self.playerSlider.maxValue = 0;
+    self.playerSlider.tags = nil;
+    self.hoverTimePill.hidden = YES;
     [self enableComputerSleep:YES];
     self.playCtrlBtn.state = NSControlStateValueOn;
     [self updatePlayPauseBtnState:YES];

@@ -24,6 +24,7 @@
 		C99B0F1A29DE76B100E88ECB /* MRRenderViewAuxProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = C99B0F1929DE76B100E88ECB /* MRRenderViewAuxProxy.m */; };
 		C9C291D02B623A7400C42B5C /* MRCocoaBindingUserDefault.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */; };
 		C9C291D32B623A7400C42B5C /* MRHoverColorButton.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C291D22B6234FB00C42B5C /* MRHoverColorButton.m */; };
+		C9C291D62B623A7400C42B5C /* MRHoverTextButton.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C291D52B6234FB00C42B5C /* MRHoverTextButton.m */; };
 		C9C7E27A2B60E37200D5F2E0 /* MRPlaylistViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */; };
 		C9C7E27B2B60E37200D5F2E0 /* MRPlaylistViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */; };
 		C9C7E27E2B60E54A00D5F2E0 /* MRPlaylistRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C7E27D2B60E54A00D5F2E0 /* MRPlaylistRowView.m */; };
@@ -137,6 +138,8 @@
 		C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRCocoaBindingUserDefault.m; sourceTree = "<group>"; };
 		C9C291D12B6234FB00C42B5C /* MRHoverColorButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRHoverColorButton.h; sourceTree = "<group>"; };
 		C9C291D22B6234FB00C42B5C /* MRHoverColorButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRHoverColorButton.m; sourceTree = "<group>"; };
+		C9C291D42B6234FB00C42B5C /* MRHoverTextButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRHoverTextButton.h; sourceTree = "<group>"; };
+		C9C291D52B6234FB00C42B5C /* MRHoverTextButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRHoverTextButton.m; sourceTree = "<group>"; };
 		C9C7E2772B60E37200D5F2E0 /* MRPlaylistViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRPlaylistViewController.h; sourceTree = "<group>"; };
 		C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRPlaylistViewController.m; sourceTree = "<group>"; };
 		C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MRPlaylistViewController.xib; sourceTree = "<group>"; };
@@ -277,6 +280,8 @@
 				C9C291CD2B6234FB00C42B5C /* MRCocoaBindingUserDefault.m */,
 				C9C291D12B6234FB00C42B5C /* MRHoverColorButton.h */,
 				C9C291D22B6234FB00C42B5C /* MRHoverColorButton.m */,
+				C9C291D42B6234FB00C42B5C /* MRHoverTextButton.h */,
+				C9C291D52B6234FB00C42B5C /* MRHoverTextButton.m */,
 				C9C7E27C2B60E54A00D5F2E0 /* MRPlaylistRowView.h */,
 				C9C7E27D2B60E54A00D5F2E0 /* MRPlaylistRowView.m */,
 			);
@@ -524,6 +529,7 @@
 				C97674EE2A1F333D00B7627E /* MRTextInfoViewController.m in Sources */,
 				DD050F9D25A43A1300F01E2F /* MRUtil.m in Sources */,
 				C9C7E27A2B60E37200D5F2E0 /* MRPlaylistViewController.m in Sources */,
+				C9C291D62B623A7400C42B5C /* MRHoverTextButton.m in Sources */,
 				DD0443E827E7749800CB946B /* MRActionManager.m in Sources */,
 				DD0443E627E7749800CB946B /* MRActionProcessor+Private.m in Sources */,
 				DD050F9E25A43A1300F01E2F /* MRDragView.m in Sources */,
