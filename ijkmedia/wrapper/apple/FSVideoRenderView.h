@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-// you can use below mthods, create ijk internal render view.
+// you can use below mthods, create fs buitn-in internal render view.
 
 #import <FSPlayer/FSVideoRenderingProtocol.h>
 

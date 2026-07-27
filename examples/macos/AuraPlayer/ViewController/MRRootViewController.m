@@ -1477,31 +1477,31 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [playerView setDisplayDelegate:self];
     }
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFindStreamInfo:) name:FSPlayerFindStreamInfoNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerFindStreamInfo:) name:FSPlayerFindStreamInfoNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerPreparedToPlay:) name:FSPlayerIsPreparedToPlayNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerPreparedToPlay:) name:FSPlayerIsPreparedToPlayNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerFirstVideoFrameRendered:) name:FSPlayerFirstVideoFrameRenderedNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerFirstVideoFrameRendered:) name:FSPlayerFirstVideoFrameRenderedNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectedStreamDidChange:) name:FSPlayerSelectedStreamDidChangeNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerSelectedStreamDidChange:) name:FSPlayerSelectedStreamDidChangeNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerDidFinish:) name:FSPlayerDidFinishNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerDidFinish:) name:FSPlayerDidFinishNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerCouldNotFindCodec:) name:FSPlayerNoCodecFoundNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerCouldNotFindCodec:) name:FSPlayerNoCodecFoundNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerNaturalSizeAvailable:) name:FSPlayerNaturalSizeAvailableNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerNaturalSizeAvailable:) name:FSPlayerNaturalSizeAvailableNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerAfterSeekFirstVideoFrameDisplay:) name:FSPlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerAfterSeekFirstVideoFrameDisplay:) name:FSPlayerAfterSeekFirstVideoFrameDisplayNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerVideoDecoderFatal:) name:FSPlayerVideoDecoderFatalNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerVideoDecoderFatal:) name:FSPlayerVideoDecoderFatalNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerRecvWarning:) name:FSPlayerRecvWarningNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerRecvWarning:) name:FSPlayerRecvWarningNotification object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerSelectingStreamDidFailed:) name:FSPlayerSelectingStreamDidFailed object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerSelectingStreamDidFailed:) name:FSPlayerSelectingStreamDidFailed object:self.player];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ijkPlayerICYMetaChanged:) name:FSPlayerICYMetaChangedNotification object:self.player];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerICYMetaChanged:) name:FSPlayerICYMetaChangedNotification object:self.player];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playbackStateDidChange:) name:FSPlayerPlaybackStateDidChangeNotification object:self.player];
 
@@ -1514,9 +1514,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self applySubtitlePreference];
 }
 
-#pragma mark - ijkplayer notifi
+#pragma mark - FSPlayer notifi
 
-- (void)ijkPlayerOpenInput:(NSNotification *)notifi
+- (void)fsPlayerOpenInput:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         NSLog(@"[stat] stream opened:%@",notifi.userInfo[@"name"]);
@@ -1524,14 +1524,14 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerFindStreamInfo:(NSNotification *)notifi
+- (void)fsPlayerFindStreamInfo:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         NSLog(@"[stat] find stream info cost:%lldms",self.player.monitor.findStreamInfoLatency);
     }
 }
 
-- (void)ijkPlayerPreparedToPlay:(NSNotification *)notifi
+- (void)fsPlayerPreparedToPlay:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         NSLog(@"[stat] prepared to play cost:%lldms",self.player.monitor.prepareLatency);
@@ -1550,7 +1550,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerFirstVideoFrameRendered:(NSNotification *)notifi
+- (void)fsPlayerFirstVideoFrameRendered:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         NSLog(@"[stat] first frame cost:%lldms",self.player.monitor.firstVideoFrameLatency);
@@ -1558,7 +1558,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerRecvWarning:(NSNotification *)notifi
+- (void)fsPlayerRecvWarning:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         int reason = [notifi.userInfo[FSPlayerWarningReasonUserInfoKey] intValue];
@@ -1571,7 +1571,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerSelectingStreamDidFailed:(NSNotification *)notifi
+- (void)fsPlayerSelectingStreamDidFailed:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         int stream = [notifi.userInfo[FSPlayerSelectingStreamIDUserInfoKey] intValue];
@@ -1582,7 +1582,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerVideoDecoderFatal:(NSNotification *)notifi
+- (void)fsPlayerVideoDecoderFatal:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         if (self.isUsingHardwareAccelerate) {
@@ -1596,7 +1596,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     NSLog(@"decoder fatal:%@",notifi.userInfo);
 }
 
-- (void)ijkPlayerAfterSeekFirstVideoFrameDisplay:(NSNotification *)notifi
+- (void)fsPlayerAfterSeekFirstVideoFrameDisplay:(NSNotification *)notifi
 {
     NSLog(@"seek cost time:%@ms",notifi.userInfo[@"du"]);
 //    self.seeking = NO;
@@ -1607,7 +1607,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 //    }
 }
 
-- (void)ijkPlayerCouldNotFindCodec:(NSNotification *)notifi
+- (void)fsPlayerCouldNotFindCodec:(NSNotification *)notifi
 {
     NSLog(@"找不到解码器，联系开发小帅锅：%@",notifi.userInfo);
 }
@@ -1642,7 +1642,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [self.view.window.animator setFrame:targetRect display:YES];
     }];
 }
-- (void)ijkPlayerNaturalSizeAvailable:(NSNotification *)notifi
+- (void)fsPlayerNaturalSizeAvailable:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         if ([MRCocoaBindingUserDefault lock_screen_ratio]) {
@@ -1653,7 +1653,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerDidFinish:(NSNotification *)notifi
+- (void)fsPlayerDidFinish:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
         int reason = [notifi.userInfo[FSPlayerDidFinishReasonUserInfoKey] intValue];
@@ -1706,12 +1706,12 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)ijkPlayerSelectedStreamDidChange:(NSNotification *)notifi
+- (void)fsPlayerSelectedStreamDidChange:(NSNotification *)notifi
 {
     [self updateStreams];
 }
 
-- (void)ijkPlayerICYMetaChanged:(NSNotification *)notifi
+- (void)fsPlayerICYMetaChanged:(NSNotification *)notifi
 {
     [self printICYMeta];
 }
@@ -2735,7 +2735,7 @@ static BOOL useExact = NO;
 
 - (NSString *)saveDir:(NSString *)subDir
 {
-    NSArray *subDirs = subDir ? @[@"ijkPro",subDir] : @[@"ijkPro"];
+    NSArray *subDirs = subDir ? @[@"AuraPlayer",subDir] : @[@"AuraPlayer"];
     NSString * path = [NSFileManager mr_DirWithType:NSPicturesDirectory WithPathComponents:subDirs];
     return path;
 }
