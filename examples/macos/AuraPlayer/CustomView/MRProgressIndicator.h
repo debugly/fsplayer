@@ -42,7 +42,7 @@ static const CGFloat kProgressIndicatorColorHeight = 6.0;
 // 停止拖拽时回调
 - (void)onDraggedIndicator:(void(^)(double progress,MRProgressIndicator *indicator,BOOL isEndDrag))handler;
 // Hover期间回调
-- (void)onHoveredBar:(void (^)(double,MRProgressIndicator*))hoveredHandler
+- (void)onHoveredBar:(void (^)(double progress, CGFloat hoverX, MRProgressIndicator* indicator))hoveredHandler
               onExit:(void (^)(MRProgressIndicator*))exitHandler;
 
 @end

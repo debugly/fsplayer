@@ -24,7 +24,7 @@ IB_DESIGNABLE
     CGFloat _indicatorWidth;
     CGFloat _progressHeight;
     void (^draggedIndicatorHandler)(double progress,MRProgressIndicator* indicator,BOOL isEndDrag);
-    void (^hoveredBarHandler)(double progress,MRProgressIndicator* indicator);
+    void (^hoveredBarHandler)(double progress, CGFloat hoverX, MRProgressIndicator* indicator);
     void (^exitHoveredBarHandler)(MRProgressIndicator* indicator);
 }
 
@@ -467,6 +467,7 @@ IB_DESIGNABLE
     {
         CGPoint pointInWindow = [theEvent locationInWindow];
         NSPoint thePoint = [self convertPoint:pointInWindow fromView:nil];
+        CGFloat rawX = thePoint.x;
         thePoint.x -= _indicatorWidth / 2.0;
         thePoint.x -= _horizontalPadding;
         CGFloat x = thePoint.x;
@@ -481,7 +482,7 @@ IB_DESIGNABLE
         double progress = x / maxX;
         
         if (hoveredBarHandler) {
-            hoveredBarHandler(progress,self);
+            hoveredBarHandler(progress, rawX, self);
         }
     }
 }
@@ -496,7 +497,7 @@ IB_DESIGNABLE
     draggedIndicatorHandler = handler;
 }
 
-- (void)onHoveredBar:(void (^)(double,MRProgressIndicator*))hoveredHandler
+- (void)onHoveredBar:(void (^)(double progress, CGFloat hoverX, MRProgressIndicator* indicator))hoveredHandler
               onExit:(void (^)(MRProgressIndicator*))exitHandler
 {
     hoveredBarHandler = hoveredHandler;

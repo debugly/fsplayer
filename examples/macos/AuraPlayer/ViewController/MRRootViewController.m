@@ -99,6 +99,10 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
 @property (nonatomic, strong) NSView *leftScreenshotPillView;
 @property (nonatomic, strong) MRHoverColorButton *fullscreenBtn;
 
+@property (nonatomic, strong) NSView *hoverTimePill;
+@property (nonatomic, strong) NSTextField *hoverTimeLb;
+@property (nonatomic, strong) NSLayoutConstraint *hoverTimeCenterXConstraint;
+
 @end
 
 @interface MRVolumeHoverPillView : NSView {
@@ -276,7 +280,7 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     //for debug
     //[self.view setWantsLayer:YES];
     //self.view.layer.backgroundColor = [[NSColor redColor] CGColor];
-    self.title = @"Root";
+    self.title = @"AuraPlayer";
     self.seekCostLb.stringValue = @"";
     self.loop = 0;
     self.lastSubIdx = -1;
@@ -527,6 +531,60 @@ static NSString* lastPlayedKey = @"__lastPlayedKey";
     mainStack.spacing = 15;
     
     [self.upgradedCtrlPanel addSubview:mainStack];
+    
+    // Setup hover time pill
+    self.hoverTimeLb = [NSTextField labelWithString:@"00:00"];
+    self.hoverTimeLb.textColor = [NSColor whiteColor];
+    self.hoverTimeLb.font = [NSFont monospacedDigitSystemFontOfSize:11 weight:NSFontWeightMedium];
+    self.hoverTimeLb.alignment = NSTextAlignmentCenter;
+    
+    self.hoverTimePill = [self wrapInPill:self.hoverTimeLb withPaddingX:8 paddingY:4 cornerRadius:8];
+    self.hoverTimePill.hidden = YES;
+    self.hoverTimePill.translatesAutoresizingMaskIntoConstraints = NO; // Use proper Auto Layout
+    [self.upgradedCtrlPanel addSubview:self.hoverTimePill positioned:NSWindowAbove relativeTo:mainStack];
+    
+    self.hoverTimeCenterXConstraint = [self.hoverTimePill.centerXAnchor constraintEqualToAnchor:self.playerSlider.leadingAnchor constant:0];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.hoverTimePill.bottomAnchor constraintEqualToAnchor:self.playerSlider.topAnchor constant:-4],
+        self.hoverTimeCenterXConstraint
+    ]];
+    
+    __weakSelf__
+    [self.playerSlider onHoveredBar:^(double progress, CGFloat hoverX, MRProgressIndicator * _Nonnull indicator) {
+        __strongSelf__
+        if (indicator.maxValue <= 0) {
+            self.hoverTimePill.hidden = YES;
+            return;
+        }
+        
+        int interval = progress * indicator.maxValue;
+        NSString *timeStr;
+        if (indicator.maxValue >= 3600) {
+            timeStr = [NSString stringWithFormat:@"%d:%02d:%02d", (int)(interval/3600), (int)((interval%3600)/60), (int)(interval%60)];
+        } else {
+            timeStr = [NSString stringWithFormat:@"%d:%02d", (int)(interval/60), (int)(interval%60)];
+        }
+        self.hoverTimeLb.stringValue = timeStr;
+        
+        // Dynamically compute size based on text constraints
+        CGFloat pillWidth = self.hoverTimePill.fittingSize.width;
+        if (pillWidth <= 0) {
+            pillWidth = 55.0;
+        }
+        CGFloat halfPillWidth = pillWidth / 2.0;
+        
+        CGFloat constant = hoverX;
+        CGFloat minConstant = halfPillWidth;
+        CGFloat maxConstant = indicator.bounds.size.width - halfPillWidth;
+        if (constant < minConstant) constant = minConstant;
+        if (constant > maxConstant) constant = maxConstant;
+        
+        self.hoverTimeCenterXConstraint.constant = constant;
+        self.hoverTimePill.hidden = NO;
+    } onExit:^(MRProgressIndicator * _Nonnull indicator) {
+        __strongSelf__
+        self.hoverTimePill.hidden = YES;
+    }];
     
     [oldCtrlPanel.superview addSubview:self.volumePillView positioned:NSWindowAbove relativeTo:self.upgradedCtrlPanel];
     self.volumePillView.alphaValue = self.upgradedCtrlPanel.alphaValue;
