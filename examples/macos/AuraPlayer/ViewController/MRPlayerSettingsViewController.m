@@ -1332,23 +1332,85 @@ static NSButton *MRCreateSwitch(void) {
         return row;
     };
     
+    id (^createDropdownRow)(NSString *, NSString *, NSArray<NSString *> *, NSArray<NSNumber *> *) = ^id(NSString *title, NSString *keyPath, NSArray<NSString *> *items, NSArray<NSNumber *> *tags) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:38].active = YES;
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = title;
+        label.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightMedium];
+        label.textColor = [NSColor whiteColor];
+        [row addSubview:label];
+        
+        NSPopUpButton *popUp = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+        popUp.translatesAutoresizingMaskIntoConstraints = NO;
+        popUp.bezelStyle = NSBezelStyleRounded;
+        popUp.controlSize = NSControlSizeSmall;
+        
+        for (NSUInteger i = 0; i < items.count; i++) {
+            [popUp addItemWithTitle:items[i]];
+            if (i < tags.count) {
+                [popUp itemAtIndex:i].tag = [tags[i] integerValue];
+            }
+        }
+        
+        [popUp bind:NSSelectedValueBinding
+           toObject:[NSUserDefaultsController sharedUserDefaultsController]
+        withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+            options:nil];
+        [row addSubview:popUp];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [popUp.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
+            [popUp.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [popUp.widthAnchor constraintEqualToConstant:100]
+        ]];
+        
+        return row;
+    };
+    
+    id (^createSeparator)(void) = ^id(void) {
+        NSView *sep = [[NSView alloc] init];
+        sep.translatesAutoresizingMaskIntoConstraints = NO;
+        sep.wantsLayer = YES;
+        sep.layer.backgroundColor = [NSColor colorWithWhite:0.3 alpha:0.15].CGColor;
+        [sep.heightAnchor constraintEqualToConstant:1].active = YES;
+        return sep;
+    };
+    
     NSView *row1 = createCardRow(@"Hardware Decoding", @"use_hw");
+    NSView *sep_hw = createSeparator();
+    NSView *copyHwRow = createCardRow(@"Copy Hardware Dec Data", @"copy_hw_frame");
+    NSView *pixelFormatRow = createDropdownRow(@"Software Pixel Format", @"overlay_format",
+                                               @[@"fcc-_es2", @"fcc-0rgb", @"fcc-argb", @"fcc-bgr0", @"fcc-bgra", @"fcc-i420", @"fcc-nv12", @"fcc-uyvy", @"fcc-rv16", @"fcc-yuv2"],
+                                               @[@0, @8, @7, @6, @5, @2, @1, @3, @9, @4]);
+    NSView *sep1 = createSeparator();
     NSView *row2 = createCardRow(@"Deinterlace", @"de_interlace");
+    NSView *sep2 = createSeparator();
     NSView *row3 = createCardRow(@"HDR", @"open_hdr");
     
-    NSView *sep1 = [[NSView alloc] init];
-    sep1.translatesAutoresizingMaskIntoConstraints = NO;
-    sep1.wantsLayer = YES;
-    sep1.layer.backgroundColor = [NSColor colorWithWhite:0.3 alpha:0.15].CGColor;
-    [sep1.heightAnchor constraintEqualToConstant:1].active = YES;
-    
-    NSView *sep2 = [[NSView alloc] init];
-    sep2.translatesAutoresizingMaskIntoConstraints = NO;
-    sep2.wantsLayer = YES;
-    sep2.layer.backgroundColor = [NSColor colorWithWhite:0.3 alpha:0.15].CGColor;
-    [sep2.heightAnchor constraintEqualToConstant:1].active = YES;
+    __weak NSView *weakCopyHwRow = copyHwRow;
+    __weak NSView *weakPixelFormatRow = pixelFormatRow;
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id  _Nonnull val, BOOL * _Nonnull r) {
+        BOOL isHwOn = [val boolValue];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakCopyHwRow.hidden = !isHwOn;
+            weakPixelFormatRow.hidden = isHwOn;
+        });
+    } forKey:@"use_hw" init:YES];
     
     [cardStack addArrangedSubview:row1];
+    [cardStack addArrangedSubview:sep_hw];
+    [cardStack addArrangedSubview:copyHwRow];
+    [cardStack addArrangedSubview:pixelFormatRow];
     [cardStack addArrangedSubview:sep1];
     [cardStack addArrangedSubview:row2];
     [cardStack addArrangedSubview:sep2];
@@ -1360,6 +1422,9 @@ static NSButton *MRCreateSwitch(void) {
         [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor],
         [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
         
+        [sep_hw.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep_hw.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        
         [sep1.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
         [sep1.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
         
@@ -1367,6 +1432,8 @@ static NSButton *MRCreateSwitch(void) {
         [sep2.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
         
         [row1.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [copyHwRow.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [pixelFormatRow.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
         [row2.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
         [row3.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32]
     ]];
