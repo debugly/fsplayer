@@ -335,6 +335,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     
     [self observerCocoaBingsChange];
     [self setupUpgradedPlaybackControls];
+    
+    self.usingHardwareAccelerate = [self preferHW];
 }
 
 - (void)viewDidAppear {
