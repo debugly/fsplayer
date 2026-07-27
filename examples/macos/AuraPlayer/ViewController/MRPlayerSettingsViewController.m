@@ -54,6 +54,7 @@ static NSButton *MRCreateSwitch(void) {
 @property (nonatomic, copy) dispatch_block_t captureShot;
 
 @property (nonatomic, strong) NSFont *font;
+@property (nonatomic, copy, nullable) NSDictionary *mediaMeta;
 
 @end
 
@@ -68,6 +69,9 @@ static NSButton *MRCreateSwitch(void) {
 {
     [super viewDidLoad];
     [self setupViewLayout];
+    if (self.mediaMeta) {
+        [self updateTracks:self.mediaMeta];
+    }
 }
 
 - (void)setupViewLayout
@@ -1082,6 +1086,10 @@ static NSButton *MRCreateSwitch(void) {
 
 - (void)updateTracks:(NSDictionary *)mediaMeta
 {
+    self.mediaMeta = mediaMeta;
+    if (!self.isViewLoaded) {
+        return;
+    }
     int audioIdx = [mediaMeta[FS_VAL_TYPE__AUDIO] intValue];
     NSLog(@"当前音频：%d", audioIdx);
     int videoIdx = [mediaMeta[FS_VAL_TYPE__VIDEO] intValue];
