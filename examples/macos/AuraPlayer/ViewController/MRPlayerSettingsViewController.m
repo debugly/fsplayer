@@ -568,31 +568,276 @@ static NSButton *MRCreateSwitch(void) {
 
     // Section 3: Styles Override
     [self.subtitleDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"字幕样式覆盖"]];
-    NSButton *overrideCheck = [self createCheckboxWithTitle:@"启用样式覆盖" defaultKey:@"force_override"];
-    [self.subtitleDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"强制样式:" checkbox:overrideCheck]];
+    [self.subtitleDocView addArrangedSubview:[self createSubtitleStyleGroupedCard]];
+}
 
-    // Font selection button
-    NSView *fontRow = [[NSView alloc] init];
-    fontRow.translatesAutoresizingMaskIntoConstraints = NO;
-    [fontRow.heightAnchor constraintEqualToConstant:24].active = YES;
-    NSTextField *fontLbl = [self createLabelWithText:@"字体选项:"];
-    [fontRow addSubview:fontLbl];
-
-    NSButton *fontBtn = [NSButton buttonWithTitle:@"选择字体..." target:self action:@selector(onSelectFont:)];
-    fontBtn.controlSize = NSControlSizeSmall;
-    fontBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    [fontRow addSubview:fontBtn];
-
+- (NSView *)createSubtitleStyleGroupedCard
+{
+    NSView *card = [[NSView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.wantsLayer = YES;
+    card.layer.cornerRadius = 10;
+    card.layer.backgroundColor = [NSColor colorWithWhite:0.18 alpha:0.35].CGColor;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [NSColor colorWithWhite:0.3 alpha:0.18].CGColor;
+    
+    NSStackView *cardStack = [[NSStackView alloc] init];
+    cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    cardStack.alignment = NSLayoutAttributeLeading;
+    cardStack.spacing = 0;
+    cardStack.edgeInsets = NSEdgeInsetsMake(0, 16, 0, 16);
+    [card addSubview:cardStack];
+    
+    id (^createSwitchRow)(NSString *, NSString *) = ^id(NSString *title, NSString *keyPath) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:38].active = YES;
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = title;
+        label.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightMedium];
+        label.textColor = [NSColor whiteColor];
+        [row addSubview:label];
+        
+        NSButton *toggle = MRCreateSwitch();
+        [toggle bind:NSValueBinding
+            toObject:[NSUserDefaultsController sharedUserDefaultsController]
+         withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+             options:nil];
+        [row addSubview:toggle];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [toggle.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
+            [toggle.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+        ]];
+        
+        return row;
+    };
+    
+    id (^createFontRow)(void) = ^id(void) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:38].active = YES;
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = @"字体：";
+        label.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightMedium];
+        label.textColor = [NSColor whiteColor];
+        [row addSubview:label];
+        
+        NSTextField *fontValLb = [[NSTextField alloc] init];
+        fontValLb.translatesAutoresizingMaskIntoConstraints = NO;
+        fontValLb.bezeled = NO;
+        fontValLb.drawsBackground = NO;
+        fontValLb.editable = NO;
+        fontValLb.selectable = NO;
+        fontValLb.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightRegular];
+        fontValLb.textColor = [NSColor secondaryLabelColor];
+        [fontValLb bind:NSValueBinding
+               toObject:[NSUserDefaultsController sharedUserDefaultsController]
+            withKeyPath:@"values.FontName"
+                options:nil];
+        [row addSubview:fontValLb];
+        
+        NSButton *selectBtn = [NSButton buttonWithTitle:@"选择" target:self action:@selector(onSelectFont:)];
+        selectBtn.controlSize = NSControlSizeSmall;
+        selectBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        [row addSubview:selectBtn];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            
+            [fontValLb.leadingAnchor constraintEqualToAnchor:label.trailingAnchor constant:4],
+            [fontValLb.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [fontValLb.trailingAnchor constraintLessThanOrEqualToAnchor:selectBtn.leadingAnchor constant:-8],
+            
+            [selectBtn.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
+            [selectBtn.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [selectBtn.widthAnchor constraintEqualToConstant:55]
+        ]];
+        
+        return row;
+    };
+    
+    id (^createColorColumn)(NSString *, NSString *) = ^id(NSString *title, NSString *keyPath) {
+        NSStackView *col = [[NSStackView alloc] init];
+        col.translatesAutoresizingMaskIntoConstraints = NO;
+        col.orientation = NSUserInterfaceLayoutOrientationVertical;
+        col.alignment = NSLayoutAttributeCenterX;
+        col.spacing = 4;
+        
+        NSColorWell *colorWell = [[NSColorWell alloc] init];
+        colorWell.translatesAutoresizingMaskIntoConstraints = NO;
+        if (@available(macOS 13.0, *)) {
+            colorWell.colorWellStyle = NSColorWellStyleMinimal;
+        }
+        [colorWell.widthAnchor constraintEqualToConstant:54].active = YES;
+        [colorWell.heightAnchor constraintEqualToConstant:23].active = YES;
+        
+        NSDictionary *colorBindingOptions = @{ NSValueTransformerNameBindingOption : @"NSKeyedUnarchiveFromData" };
+        [colorWell bind:NSValueBinding
+               toObject:[NSUserDefaultsController sharedUserDefaultsController]
+            withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+                options:colorBindingOptions];
+        [col addArrangedSubview:colorWell];
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = title;
+        label.font = [NSFont systemFontOfSize:11.0 weight:NSFontWeightMedium];
+        label.textColor = [NSColor secondaryLabelColor];
+        label.alignment = NSTextAlignmentCenter;
+        [col addArrangedSubview:label];
+        
+        return col;
+    };
+    
+    id (^createColorsRow)(void) = ^id(void) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:52].active = YES;
+        
+        NSStackView *rowStack = [[NSStackView alloc] init];
+        rowStack.translatesAutoresizingMaskIntoConstraints = NO;
+        rowStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+        rowStack.spacing = 20;
+        [row addSubview:rowStack];
+        
+        NSView *col1 = createColorColumn(@"主颜色", @"PrimaryColour");
+        NSView *col2 = createColorColumn(@"副颜色", @"SecondaryColour");
+        NSView *col3 = createColorColumn(@"阴影色", @"BackColour");
+        NSView *col4 = createColorColumn(@"边框色", @"OutlineColour");
+        
+        [rowStack addArrangedSubview:col1];
+        [rowStack addArrangedSubview:col2];
+        [rowStack addArrangedSubview:col3];
+        [rowStack addArrangedSubview:col4];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [rowStack.centerXAnchor constraintEqualToAnchor:row.centerXAnchor],
+            [rowStack.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+        ]];
+        
+        return row;
+    };
+    
+    id (^createInputRow)(NSString *, NSString *, CGFloat) = ^id(NSString *title, NSString *keyPath, CGFloat width) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:38].active = YES;
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = title;
+        label.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightMedium];
+        label.textColor = [NSColor whiteColor];
+        [row addSubview:label];
+        
+        NSTextField *inputField = [[NSTextField alloc] init];
+        inputField.translatesAutoresizingMaskIntoConstraints = NO;
+        inputField.bezelStyle = NSTextFieldSquareBezel;
+        inputField.bezeled = YES;
+        inputField.drawsBackground = YES;
+        inputField.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
+        
+        inputField.wantsLayer = YES;
+        inputField.layer.cornerRadius = 6;
+        inputField.layer.borderWidth = 1.0;
+        inputField.layer.borderColor = [NSColor colorWithWhite:0.3 alpha:0.18].CGColor;
+        
+        [inputField bind:NSValueBinding
+                toObject:[NSUserDefaultsController sharedUserDefaultsController]
+             withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
+                 options:nil];
+        [row addSubview:inputField];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            
+            [inputField.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
+            [inputField.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [inputField.widthAnchor constraintEqualToConstant:width],
+            [inputField.heightAnchor constraintEqualToConstant:22]
+        ]];
+        
+        return row;
+    };
+    
+    id (^createSeparator)(void) = ^id(void) {
+        NSView *sep = [[NSView alloc] init];
+        sep.translatesAutoresizingMaskIntoConstraints = NO;
+        sep.wantsLayer = YES;
+        sep.layer.backgroundColor = [NSColor colorWithWhite:0.3 alpha:0.15].CGColor;
+        [sep.heightAnchor constraintEqualToConstant:1].active = YES;
+        return sep;
+    };
+    
+    NSView *row1 = createSwitchRow(@"强制覆盖字幕样式", @"force_override");
+    NSView *sep1 = createSeparator();
+    NSView *row2 = createFontRow();
+    NSView *sep2 = createSeparator();
+    NSView *colorsRow = createColorsRow();
+    NSView *sep3 = createSeparator();
+    NSView *row7 = createInputRow(@"边框大小：", @"Outline", 45);
+    NSView *sep4 = createSeparator();
+    NSView *row8 = createInputRow(@"自定义：", @"custom_style", 160);
+    
+    [cardStack addArrangedSubview:row1];
+    [cardStack addArrangedSubview:sep1];
+    [cardStack addArrangedSubview:row2];
+    [cardStack addArrangedSubview:sep2];
+    [cardStack addArrangedSubview:colorsRow];
+    [cardStack addArrangedSubview:sep3];
+    [cardStack addArrangedSubview:row7];
+    [cardStack addArrangedSubview:sep4];
+    [cardStack addArrangedSubview:row8];
+    
     [NSLayoutConstraint activateConstraints:@[
-        [fontLbl.leadingAnchor constraintEqualToAnchor:fontRow.leadingAnchor],
-        [fontLbl.centerYAnchor constraintEqualToAnchor:fontRow.centerYAnchor],
-        [fontBtn.leadingAnchor constraintEqualToAnchor:fontLbl.trailingAnchor constant:8],
-        [fontBtn.centerYAnchor constraintEqualToAnchor:fontRow.centerYAnchor]
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor],
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
+        
+        [sep1.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep1.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        [sep2.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep2.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        [sep3.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep3.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        [sep4.leadingAnchor constraintEqualToAnchor:cardStack.leadingAnchor constant:16],
+        [sep4.trailingAnchor constraintEqualToAnchor:cardStack.trailingAnchor constant:-16],
+        
+        [row1.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [row2.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [colorsRow.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [row7.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32],
+        [row8.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor constant:-32]
     ]];
-    [self.subtitleDocView addArrangedSubview:fontRow];
-
-    // Colors Row (Primary, Secondary, Background)
-    [self.subtitleDocView addArrangedSubview:[self createColorsRow]];
+    
+    return card;
 }
 
 - (void)buildMorePage
@@ -832,53 +1077,6 @@ static NSButton *MRCreateSwitch(void) {
     [alert beginSheetModalForWindow:self.view.window completionHandler:nil];
 }
 
-- (NSView *)createColorsRow
-{
-    NSView *row = [[NSView alloc] init];
-    row.translatesAutoresizingMaskIntoConstraints = NO;
-    [row.heightAnchor constraintEqualToConstant:24].active = YES;
-
-    NSTextField *lbl = [self createLabelWithText:@"字幕颜色:"];
-    [row addSubview:lbl];
-
-    NSDictionary *colorBindingOptions = @{ NSValueTransformerNameBindingOption : @"NSKeyedUnarchiveFromData" };
-
-    NSColorWell *c1 = [[NSColorWell alloc] init];
-    c1.translatesAutoresizingMaskIntoConstraints = NO;
-    [c1.widthAnchor constraintEqualToConstant:50].active = YES;
-    [c1.heightAnchor constraintEqualToConstant:22].active = YES;
-    [c1 bind:@"value" toObject:[NSUserDefaultsController sharedUserDefaultsController] withKeyPath:@"values.PrimaryColour" options:colorBindingOptions];
-
-    NSColorWell *c2 = [[NSColorWell alloc] init];
-    c2.translatesAutoresizingMaskIntoConstraints = NO;
-    [c2.widthAnchor constraintEqualToConstant:50].active = YES;
-    [c2.heightAnchor constraintEqualToConstant:22].active = YES;
-    [c2 bind:@"value" toObject:[NSUserDefaultsController sharedUserDefaultsController] withKeyPath:@"values.SecondaryColour" options:colorBindingOptions];
-
-    NSColorWell *c3 = [[NSColorWell alloc] init];
-    c3.translatesAutoresizingMaskIntoConstraints = NO;
-    [c3.widthAnchor constraintEqualToConstant:50].active = YES;
-    [c3.heightAnchor constraintEqualToConstant:22].active = YES;
-    [c3 bind:@"value" toObject:[NSUserDefaultsController sharedUserDefaultsController] withKeyPath:@"values.BackColour" options:colorBindingOptions];
-
-    NSStackView *wellsStack = [[NSStackView alloc] init];
-    wellsStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
-    wellsStack.spacing = 10;
-    wellsStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [wellsStack addArrangedSubview:c1];
-    [wellsStack addArrangedSubview:c2];
-    [wellsStack addArrangedSubview:c3];
-    [row addSubview:wellsStack];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [lbl.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
-        [lbl.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [wellsStack.leadingAnchor constraintEqualToAnchor:lbl.trailingAnchor constant:8],
-        [wellsStack.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
-    ]];
-
-    return row;
-}
 
 #pragma mark - Legacy Forwarded Callbacks
 
