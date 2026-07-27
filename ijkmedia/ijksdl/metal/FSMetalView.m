@@ -506,7 +506,7 @@ typedef CGRect NSRect;
     FSMetalRenderer *picturePipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:self.colorPixelFormat];
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        picturePipeline.hdrDisplay = self.directDisplayHDRSupportted;
+        picturePipeline.hdrDisplay = self.hdrDirectDisplayActive;
     }
 #endif
     BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
@@ -527,7 +527,7 @@ typedef CGRect NSRect;
 {
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
-        self.picturePipeline.hdrDisplay = self.directDisplayHDRSupportted;
+        self.picturePipeline.hdrDisplay = self.hdrDirectDisplayActive;
     } else {
         // Fallback on earlier versions
     }
