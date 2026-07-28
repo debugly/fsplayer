@@ -51,6 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (BOOL)copy_hw_frame;
 + (BOOL)use_hw;
++ (void)setUse_hw:(BOOL)use_hw;
 + (BOOL)open_hdr;
 
 + (BOOL)accurate_seek;
@@ -77,6 +78,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (float)audio_delay;
 + (int)deinterlace;
++ (void)setDeinterlace:(int)deinterlace;
 + (NSString *)overlay_format;
 + (int)snapshot_type;
 

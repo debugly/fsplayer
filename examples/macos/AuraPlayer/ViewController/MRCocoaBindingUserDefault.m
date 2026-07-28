@@ -289,6 +289,11 @@
     return [self boolForKey:@"use_hw"];
 }
 
++ (void)setUse_hw:(BOOL)use_hw
+{
+    [self setValue:@(use_hw) forKey:@"use_hw"];
+}
+
 + (BOOL)open_hdr
 {
     return [self boolForKey:@"open_hdr"];
@@ -510,6 +515,11 @@
 + (int)deinterlace
 {
     return [[self anyForKey:@"deinterlace"] intValue];
+}
+
++ (void)setDeinterlace:(int)deinterlace
+{
+    [self setValue:@(deinterlace) forKey:@"deinterlace"];
 }
 
 @end

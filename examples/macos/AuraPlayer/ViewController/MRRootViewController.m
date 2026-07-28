@@ -2724,6 +2724,10 @@ static BOOL useExact = NO;
         if (self.player) {
             self.player.deinterlace = mode;
         }
+        if (mode > 0 && [MRCocoaBindingUserDefault use_hw]) {
+            [MRCocoaBindingUserDefault setUse_hw:NO];
+            self.usingHardwareAccelerate = NO;
+        }
     } forKey:@"deinterlace"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
