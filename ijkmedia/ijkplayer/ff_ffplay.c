@@ -1975,40 +1975,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     last_filter = filt_ctx;                                                  \
 } while (0)
 
-    if (ffp->autorotate) {
-        double theta = 0.0;
-        int32_t *displaymatrix = NULL;
-        AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_DISPLAYMATRIX);
-        if (sd)
-            displaymatrix = (int32_t *)sd->data;
-        if (!displaymatrix) {
-            const AVPacketSideData *sideData = av_packet_side_data_get(is->video_st->codecpar->coded_side_data, is->video_st->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
-            int32_t *displaymatrix = NULL;
-            if (sideData && sideData->size >= 36) {
-                displaymatrix = (int32_t *)sideData->data;
-            }
-            //displaymatrix = (int32_t *)av_stream_get_side_data(is->video_st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
-        }
-        theta = get_rotation(displaymatrix);
-
-        if (fabs(theta - 90) < 1.0) {
-            INSERT_FILT("transpose", displaymatrix[3] > 0 ? "cclock_flip" : "clock");
-        } else if (fabs(theta - 180) < 1.0) {
-            if (displaymatrix[0] < 0)
-                INSERT_FILT("hflip", NULL);
-            if (displaymatrix[4] < 0)
-                INSERT_FILT("vflip", NULL);
-        } else if (fabs(theta - 270) < 1.0) {
-            INSERT_FILT("transpose", displaymatrix[3] < 0 ? "clock_flip" : "cclock");
-        } else if (fabs(theta) > 1.0) {
-            char rotate_buf[64];
-            snprintf(rotate_buf, sizeof(rotate_buf), "%f*PI/180", theta);
-            INSERT_FILT("rotate", rotate_buf);
-        } else {
-            if (displaymatrix && displaymatrix[4] < 0)
-                INSERT_FILT("vflip", NULL);
-        }
-    }
 
 #ifdef FFP_AVFILTER_PLAYBACK_RATE
     if (fabsf(ffp->pf_playback_rate) > 0.00001 &&
