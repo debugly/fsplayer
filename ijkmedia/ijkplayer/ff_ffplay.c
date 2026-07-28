@@ -1940,16 +1940,19 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     if (ret < 0)
         goto fail;
     
-    ret = avfilter_graph_create_filter(&filt_out,
-                                       avfilter_get_by_name("buffersink"),
-                                       "ffplay_buffersink", NULL, NULL, graph);
-    if (ret < 0)
+    filt_out = avfilter_graph_alloc_filter(graph, avfilter_get_by_name("buffersink"), "ffplay_buffersink");
+    if (!filt_out) {
+        ret = AVERROR(ENOMEM);
         goto fail;
+    }
 
     if ((ret = av_opt_set_int_list(filt_out, "pix_fmts", pix_fmts,  AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN)) < 0)
         goto fail;
 
     if ((ret = av_opt_set_int_list(filt_out, "color_spaces", sdl_supported_color_spaces,  AVCOL_SPC_UNSPECIFIED, AV_OPT_SEARCH_CHILDREN)) < 0)
+        goto fail;
+
+    if ((ret = avfilter_init_str(filt_out, NULL)) < 0)
         goto fail;
 
     last_filter = filt_out;
@@ -2073,11 +2076,11 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
         goto end;
 
 
-    ret = avfilter_graph_create_filter(&filt_asink,
-                                       avfilter_get_by_name("abuffersink"), "ffplay_abuffersink",
-                                       NULL, NULL, is->agraph);
-    if (ret < 0)
+    filt_asink = avfilter_graph_alloc_filter(is->agraph, avfilter_get_by_name("abuffersink"), "ffplay_abuffersink");
+    if (!filt_asink) {
+        ret = AVERROR(ENOMEM);
         goto end;
+    }
 
     if ((ret = av_opt_set_int_list(filt_asink, "sample_fmts", sample_fmts,  AV_SAMPLE_FMT_NONE, AV_OPT_SEARCH_CHILDREN)) < 0)
         goto end;
@@ -2095,6 +2098,9 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
         if ((ret = av_opt_set_int_list(filt_asink, "sample_rates"   , sample_rates   ,  -1, AV_OPT_SEARCH_CHILDREN)) < 0)
             goto end;
     }
+
+    if ((ret = avfilter_init_str(filt_asink, NULL)) < 0)
+        goto end;
 
     afilters_args[0] = 0;
     if (afilters)
@@ -2368,7 +2374,6 @@ static int ffplay_video_thread(void *arg)
     int last_h = 0;
     enum AVPixelFormat last_format = -2;
     int last_serial = -1;
-    int last_vfilter_idx = 0;
 #endif
 
     if (!frame) {
@@ -2387,8 +2392,7 @@ static int ffplay_video_thread(void *arg)
             || last_h != frame->height
             || last_format != frame->format
             || last_serial != is->viddec.pkt_serial
-            || ffp->vf_changed
-            || last_vfilter_idx != is->vfilter_idx) {
+            || ffp->vf_changed) {
             SDL_LockMutex(ffp->vf_mutex);
             ffp->vf_changed = 0;
             av_log(NULL, AV_LOG_INFO,
@@ -2403,7 +2407,7 @@ static int ffplay_video_thread(void *arg)
                 ret = AVERROR(ENOMEM);
                 goto the_end;
             }
-            if ((ret = configure_video_filters(ffp, graph, is, ffp->vfilters_list ? ffp->vfilters_list[is->vfilter_idx] : NULL, frame)) < 0) {
+            if ((ret = configure_video_filters(ffp, graph, is, ffp->vfilters, frame)) < 0) {
                 // FIXME: post error
                 SDL_UnlockMutex(ffp->vf_mutex);
                 goto the_end;
@@ -2414,7 +2418,6 @@ static int ffplay_video_thread(void *arg)
             last_h = frame->height;
             last_format = frame->format;
             last_serial = is->viddec.pkt_serial;
-            last_vfilter_idx = is->vfilter_idx;
             frame_rate = av_buffersink_get_frame_rate(filt_out);
             SDL_UnlockMutex(ffp->vf_mutex);
         }
@@ -4785,13 +4788,13 @@ FFPlayer *ffp_create(void)
         return NULL;
 
     msg_queue_init(&ffp->msg_queue);
+    ffp_reset_internal(ffp);
 #if CONFIG_AUDIO_AVFILTER
     ffp->af_mutex = SDL_CreateMutex();
 #endif
 #if CONFIG_VIDEO_AVFILTER
     ffp->vf_mutex = SDL_CreateMutex();
 #endif
-    ffp_reset_internal(ffp);
     ffp->av_class = &ffp_context_class;
     ffp->meta = ijkmeta_create();
 
@@ -4990,37 +4993,10 @@ static void ffp_show_dict(FFPlayer *ffp, const char *tag, AVDictionary *dict)
 }
 
 #if CONFIG_VIDEO_AVFILTER
-static int grow_array(void **array, int elem_size, int *size, int new_size)
-{
-    if (new_size >= INT_MAX / elem_size) {
-        av_log(NULL, AV_LOG_ERROR, "Array too big.\n");
-        return AVERROR(ERANGE);
-    }
-    if (*size < new_size) {
-        uint8_t *tmp = av_realloc_array(*array, new_size, elem_size);
-        if (!tmp)
-            return AVERROR(ENOMEM);
-        memset(tmp + *size*elem_size, 0, (new_size-*size) * elem_size);
-        *size = new_size;
-        *array = tmp;
-        return 0;
-    }
-    return 0;
-}
-
-#define GROW_ARRAY(array, nb_elems)\
-    grow_array((void**)&array, sizeof(*array), &nb_elems, nb_elems + 1)
-
 static void resetVideoFilter(FFPlayer *ffp, const char *filter) {
+    av_freep(&ffp->vfilters);
     if (filter) {
-        av_freep(&ffp->vfilters_list);
-        VideoState *is = ffp->is;
-        is->vfilter_idx = 0;
-        GROW_ARRAY(ffp->vfilters_list, ffp->nb_vfilters);
-        if (ffp->vfilters_list == NULL) {
-            return;
-        }
-        ffp->vfilters_list[ffp->nb_vfilters - 1] = filter;
+        ffp->vfilters = av_strdup(filter);
         ffp->vf_changed = 1;
     }
 }
