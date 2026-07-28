@@ -1957,37 +1957,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 
     last_filter = filt_out;
 
-/* Note: this macro adds a filter before the lastly added filter, so the
- * processing order of the filters is in reverse */
-#define INSERT_FILT(name, arg) do {                                          \
-    AVFilterContext *filt_ctx;                                               \
-                                                                             \
-    ret = avfilter_graph_create_filter(&filt_ctx,                            \
-                                       avfilter_get_by_name(name),           \
-                                       "ffplay_" name, arg, NULL, graph);    \
-    if (ret < 0)                                                             \
-        goto fail;                                                           \
-                                                                             \
-    ret = avfilter_link(filt_ctx, 0, last_filter, 0);                        \
-    if (ret < 0)                                                             \
-        goto fail;                                                           \
-                                                                             \
-    last_filter = filt_ctx;                                                  \
-} while (0)
-
-
-#ifdef FFP_AVFILTER_PLAYBACK_RATE
-    if (fabsf(ffp->pf_playback_rate) > 0.00001 &&
-        fabsf(ffp->pf_playback_rate - 1.0f) > 0.00001) {
-        char setpts_buf[256];
-        float rate = 1.0f / ffp->pf_playback_rate;
-        rate = av_clipf_c(rate, 0.5f, 2.0f);
-        av_log(ffp, AV_LOG_INFO, "vf_rate=%f(1/%f)\n", ffp->pf_playback_rate, rate);
-        snprintf(setpts_buf, sizeof(setpts_buf), "%f*PTS", rate);
-        INSERT_FILT("setpts", setpts_buf);
-    }
-#endif
-
     if ((ret = configure_filtergraph(graph, vfilters, filt_src, last_filter)) < 0)
         goto fail;
 
