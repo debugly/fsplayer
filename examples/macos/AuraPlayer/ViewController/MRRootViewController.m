@@ -1238,7 +1238,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     return _subtitles;
 }
 
-- (void)perpareIJKPlayer:(NSString *)urlStr hwaccel:(BOOL)hwaccel isLive:(BOOL)isLive
+- (void)perpareFSPlayer:(NSString *)urlStr hwaccel:(BOOL)hwaccel isLive:(BOOL)isLive
 {
     if (self.playingUrl) {
         [self doStopPlay];
@@ -1879,7 +1879,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 #warning 根据地址，动态修改
     BOOL isLive = [urlStr hasPrefix:@"rtmp"] || [urlStr hasPrefix:@"rtsp"];
 //    isLive = NO;
-    [self perpareIJKPlayer:urlStr hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
+    [self perpareFSPlayer:urlStr hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
     NSString *videoName = [urlStr lastPathComponent];
     
     NSInteger idx = [self.playList indexOfObject:self.playingUrl] + 1;
