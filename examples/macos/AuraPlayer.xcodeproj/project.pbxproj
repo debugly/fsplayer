@@ -30,8 +30,6 @@
 		C9C7E27E2B60E54A00D5F2E0 /* MRPlaylistRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C7E27D2B60E54A00D5F2E0 /* MRPlaylistRowView.m */; };
 		C9C7E2822B60F09100D5F2E0 /* MRPlayerSettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9C7E2802B60F09100D5F2E0 /* MRPlayerSettingsViewController.m */; };
 		C9C7E2832B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9C7E2812B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib */; };
-		C9CCCB032BF5B51400A13FE2 /* MRPlayerSettingsView.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CCCB022BF5B51400A13FE2 /* MRPlayerSettingsView.xib */; };
-		C9CCCB062BF5B58E00A13FE2 /* MRPlayerSettingsView.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CCCB052BF5B58E00A13FE2 /* MRPlayerSettingsView.m */; };
 		C9FFF21527C864C100284B46 /* MRProgressSlider.m in Sources */ = {isa = PBXBuildFile; fileRef = C9FFF21327C864C100284B46 /* MRProgressSlider.m */; };
 		DD0443E627E7749800CB946B /* MRActionProcessor+Private.m in Sources */ = {isa = PBXBuildFile; fileRef = DD0443DE27E7749800CB946B /* MRActionProcessor+Private.m */; };
 		DD0443E727E7749800CB946B /* MRActionProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = DD0443E027E7749800CB946B /* MRActionProcessor.m */; };
@@ -148,9 +146,6 @@
 		C9C7E27F2B60F09100D5F2E0 /* MRPlayerSettingsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRPlayerSettingsViewController.h; sourceTree = "<group>"; };
 		C9C7E2802B60F09100D5F2E0 /* MRPlayerSettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRPlayerSettingsViewController.m; sourceTree = "<group>"; };
 		C9C7E2812B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MRPlayerSettingsViewController.xib; sourceTree = "<group>"; };
-		C9CCCB022BF5B51400A13FE2 /* MRPlayerSettingsView.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MRPlayerSettingsView.xib; sourceTree = "<group>"; };
-		C9CCCB042BF5B58E00A13FE2 /* MRPlayerSettingsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRPlayerSettingsView.h; sourceTree = "<group>"; };
-		C9CCCB052BF5B58E00A13FE2 /* MRPlayerSettingsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRPlayerSettingsView.m; sourceTree = "<group>"; };
 		C9FFF21327C864C100284B46 /* MRProgressSlider.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRProgressSlider.m; sourceTree = "<group>"; };
 		C9FFF21427C864C100284B46 /* MRProgressSlider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRProgressSlider.h; sourceTree = "<group>"; };
 		DD0443DC27E7749800CB946B /* MRActionManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRActionManager.h; sourceTree = "<group>"; };
@@ -267,9 +262,6 @@
 				C9C7E27F2B60F09100D5F2E0 /* MRPlayerSettingsViewController.h */,
 				C9C7E2802B60F09100D5F2E0 /* MRPlayerSettingsViewController.m */,
 				C9C7E2812B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib */,
-				C9CCCB042BF5B58E00A13FE2 /* MRPlayerSettingsView.h */,
-				C9CCCB052BF5B58E00A13FE2 /* MRPlayerSettingsView.m */,
-				C9CCCB022BF5B51400A13FE2 /* MRPlayerSettingsView.xib */,
 				C9C7E2772B60E37200D5F2E0 /* MRPlaylistViewController.h */,
 				C9C7E2782B60E37200D5F2E0 /* MRPlaylistViewController.m */,
 				C9C7E2792B60E37200D5F2E0 /* MRPlaylistViewController.xib */,
@@ -493,7 +485,6 @@
 				C97674EF2A1F333D00B7627E /* MRTextInfoViewController.xib in Resources */,
 				C9C7E2832B60F09100D5F2E0 /* MRPlayerSettingsViewController.xib in Resources */,
 				C905CF222B55163C00D59730 /* MRRootViewController.xib in Resources */,
-				C9CCCB032BF5B51400A13FE2 /* MRPlayerSettingsView.xib in Resources */,
 				C9C7E27B2B60E37200D5F2E0 /* MRPlaylistViewController.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -506,7 +497,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				C9C7E2822B60F09100D5F2E0 /* MRPlayerSettingsViewController.m in Sources */,
-				C9CCCB062BF5B58E00A13FE2 /* MRPlayerSettingsView.m in Sources */,
 				C99B0F1A29DE76B100E88ECB /* MRRenderViewAuxProxy.m in Sources */,
 				DD0443E927E7749800CB946B /* MRActionItem.m in Sources */,
 				C969BE4B27BDCD27008BC2AD /* MRGlobalNotification.m in Sources */,
