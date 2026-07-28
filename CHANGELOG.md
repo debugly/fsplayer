@@ -1,8 +1,11 @@
-tag 1.0.8
---------------------------------
+## tag 1.0.8
 
-tag 1.0.7
---------------------------------
+- fix intel flash new picture bug when use 2x speed play
+- enable video filter chain and support software deinterlacing
+- fix hdr directly output bug
+
+## tag 1.0.7
+
 - upgrade FFmpeg to 8.1.2
 - support Gaussian Blur
 - tile grid HEIC support rotate
@@ -10,11 +13,11 @@ tag 1.0.7
 - support display hdr directly, fix #30
 - improve drop audio pcm data logic, fix #35
 - when audio stream is over, use video clock position as current position
-- toggle videotoolbox_hwaccel decoder no need stop player
+- toggle videotoolbox\_hwaccel decoder no need stop player
 - rm methods: checkIfFFmpegVersionMatch and checkIfPlayerVersionMatch
 
-tag 1.0.6
---------------------------------
+## tag 1.0.6
+
 - dropped support for older OS versions, required minimum of macOS 10.14 and iOS 12
 - cleanup legacy OpenGL logic
 - fix subtitle missing issue #33
@@ -23,8 +26,8 @@ tag 1.0.6
 - support tile grid HEIC
 - improve the iso judgment
 
-tag 1.0.5
---------------------------------
+## tag 1.0.5
+
 - upgrade FFmpeg to 7.1.3
 - enable crypto protocol, support aes128 encrypted hls
 - fix Metal display garbage color on Intel Iris Graphics
@@ -35,9 +38,9 @@ tag 1.0.5
 - fix subtitle crash
 - add videoRenderingWillDisplay method,you can handle the video frame before display
 
-tag 1.0.4
---------------------------------
-- rename ijk_ass_* to fs_ass_*
+## tag 1.0.4
+
+- rename ijk\_ass\_\* to fs\_ass\_\*
 - user agent use **fsplayer** instead of ijkplayer by default
 - update dar、scaling、rotate、color preference refresh picture automatically
 - fix some mp4 can't smoothly play bug #64
@@ -45,14 +48,14 @@ tag 1.0.4
 - improve rotate animation experience #76
 - deprecate initWithContentURL and initWithMoreContent API #78
 
-tag 1.0.3
---------------------------------
+## tag 1.0.3
+
 - support give up setup AudioSession on iOS platform #60
 - support async destroy player when set player to nil even though not call shutdown
 - improve playveiw animation
 - add g726le and g726be decoders
 - fix videotoolbox can't decode some h264 video bug
-- rename subtitle option to subtitle_mix
+- rename subtitle option to subtitle\_mix
 - support custom audio rendering
 - support get video-master diff
 - add libwebp decoder
@@ -60,18 +63,16 @@ tag 1.0.3
 - fix removeFromSuperview triggered reshape crash when use OpenGL backend
 - fix the display of PNG images with transparency channels
 
-tag 1.0.2
---------------------------------
+## tag 1.0.2
 
 - upgrade FFmpeg to 7.1.1
 - upgrade openssl to 3.5.0
 - add dvdnav dependency
 - fix some hls/ts can’t use videotoolbox accel bug
 - fix shutdown crash when use OpenGL backend
-- fix snapshot not keep video rational bug when use metal backend 
+- fix snapshot not keep video rational bug when use metal backend
 
-tag 1.0.1
---------------------------------
+## tag 1.0.1
 
 - fix dash file error "unterminated entity reference" #7
 - example abandon CocoaPods
@@ -79,12 +80,12 @@ tag 1.0.1
 - support fast record video
 - fix metal maybe display pink frame bug
 
-tag 1.0.0
---------------------------------
+## tag 1.0.0
 
 - use FFmpeg n6.1.1
-- the bdmv detection time is saved and detection in read_thread
-- fix opengl display first PIX_FMT_PAL8 subtitle bug
+- the bdmv detection time is saved and detection in read\_thread
+- fix opengl display first PIX\_FMT\_PAL8 subtitle bug
 - fix ijkio eof bug
 - max-buffer-size increate to 500MB
 - fix ass subtitle bottom margin bug
+
