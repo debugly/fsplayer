@@ -1887,16 +1887,8 @@ fail:
 
 #if CONFIG_VIDEO_AVFILTER
 
-static enum AVColorSpace sdl_supported_color_spaces[] = {
-    AVCOL_SPC_BT709,
-    AVCOL_SPC_BT470BG,
-    AVCOL_SPC_SMPTE170M,
-    AVCOL_SPC_UNSPECIFIED,
-};
-
 static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoState *is, const char *vfilters, AVFrame *frame)
 {
-    static const enum AVPixelFormat pix_fmts[] = { AV_PIX_FMT_YUV420P, AV_PIX_FMT_BGRA, AV_PIX_FMT_NONE };
     char sws_flags_str[512] = "";
     char buffersrc_args[256];
     int ret;
@@ -1940,19 +1932,10 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     if (ret < 0)
         goto fail;
     
-    filt_out = avfilter_graph_alloc_filter(graph, avfilter_get_by_name("buffersink"), "ffplay_buffersink");
-    if (!filt_out) {
-        ret = AVERROR(ENOMEM);
-        goto fail;
-    }
-
-    if ((ret = av_opt_set_int_list(filt_out, "pix_fmts", pix_fmts,  AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN)) < 0)
-        goto fail;
-
-    if ((ret = av_opt_set_int_list(filt_out, "color_spaces", sdl_supported_color_spaces,  AVCOL_SPC_UNSPECIFIED, AV_OPT_SEARCH_CHILDREN)) < 0)
-        goto fail;
-
-    if ((ret = avfilter_init_str(filt_out, NULL)) < 0)
+    if ((ret = avfilter_graph_create_filter(&filt_out,
+                                            avfilter_get_by_name("buffersink"),
+                                            "ffplay_buffersink", NULL, NULL,
+                                            graph)) < 0)
         goto fail;
 
     last_filter = filt_out;
