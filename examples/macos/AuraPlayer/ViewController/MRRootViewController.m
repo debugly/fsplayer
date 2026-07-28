@@ -804,6 +804,10 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         if (!settings) {
             settings = [[MRPlayerSettingsViewController alloc] initWithNibName:@"MRPlayerSettingsViewController" bundle:nil];
             __weakSelf__
+            settings.onDeinterlaceChanged = ^(int mode) {
+                __strongSelf__
+                self.player.deinterlace = mode;
+            };
             [settings onCloseCurrentStream:^(NSString * _Nonnull st) {
                 __strongSelf__
                 [self.player closeCurrentStream:st];
@@ -1269,7 +1273,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     //    [options setPlayerOptionIntValue:50000      forKey:@"min-frames"];
     [options setPlayerOptionIntValue:119     forKey:@"max-fps"];
     [options setPlayerOptionIntValue:self.loop?0:1      forKey:@"loop"];
-#warning todo de_interlace
+    int deinterlace = [MRCocoaBindingUserDefault deinterlace];
+    [options setPlayerOptionIntValue:deinterlace forKey:@"deinterlace"];
     // [options setCodecOptionIntValue:FS_AVDISCARD_DEFAULT forKey:@"skip_loop_filter"];
     //for mgeg-ts seek
     [options setFormatOptionIntValue:1 forKey:@"seek_flag_keyframe"];
@@ -1477,6 +1482,11 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [playerView setDisplayDelegate:self];
     }
     
+    float speed = [MRCocoaBindingUserDefault playback_speed];
+    if (speed <= 0.0) speed = 1.0;
+    self.player.playbackRate = speed;
+    self.player.deinterlace = [MRCocoaBindingUserDefault deinterlace];
+    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerOpenInput:) name:FSPlayerOpenInputNotification object:self.player];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerFindStreamInfo:) name:FSPlayerFindStreamInfoNotification object:self.player];
@@ -1535,6 +1545,10 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 {
     if (self.player == notifi.object) {
         NSLog(@"[stat] prepared to play cost:%lldms",self.player.monitor.prepareLatency);
+        float speed = [MRCocoaBindingUserDefault playback_speed];
+        if (speed <= 0.0) speed = 1.0;
+        self.player.playbackRate = speed;
+        self.player.deinterlace = [MRCocoaBindingUserDefault deinterlace];
         [self printICYMeta];
         [self updateStreams];
         NSDictionary *dic = self.player.monitor.mediaMeta;
@@ -2700,14 +2714,17 @@ static BOOL useExact = NO;
     
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-        [self retry];
-    } forKey:@"de_interlace"];
-    
-    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
-        __strongSelf__
         BOOL allow = [MRCocoaBindingUserDefault open_hdr];
         self.player.view.allowHDRDirectDisplay = allow;
     } forKey:@"open_hdr"];
+
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
+        __strongSelf__
+        int mode = [v intValue];
+        if (self.player) {
+            self.player.deinterlace = mode;
+        }
+    } forKey:@"deinterlace"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__

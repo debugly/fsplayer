@@ -118,6 +118,8 @@ void      ffp_set_enable_accurate_seek(FFPlayer *ffp,int open);
 /* step to next frame */
 void      ffp_step_to_next_frame(FFPlayer *ffp);
 /* set subtitle preference*/
+void      ffp_set_deinterlace(FFPlayer *ffp, int deinterlace);
+int       ffp_get_deinterlace(FFPlayer *ffp);
 void      ffp_set_subtitle_preference(FFPlayer *ffp, FSSubtitlePreference* sp);
 /* get current input format extensions*/
 const char * ffp_get_iformat_extensions(FFPlayer *ffp);

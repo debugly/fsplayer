@@ -142,6 +142,7 @@ typedef enum FSAudioChannel {
 
 //subtitle preference
 @property(nonatomic) FSSubtitlePreference subtitlePreference;
+@property(nonatomic) int deinterlace;
 //load spped (byte)
 - (int64_t)currentDownloadSpeed;
 //toggle videotoolbox_hwaccel decoder no need stop player

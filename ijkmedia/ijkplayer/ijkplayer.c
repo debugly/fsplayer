@@ -910,6 +910,23 @@ void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSubtitlePreference* sp)
     ffp_set_subtitle_preference(mp->ffplayer, sp);
 }
 
+void ijkmp_set_deinterlace(IjkMediaPlayer *mp, int deinterlace)
+{
+    assert(mp);
+    pthread_mutex_lock(&mp->mutex);
+    ffp_set_deinterlace(mp->ffplayer, deinterlace);
+    pthread_mutex_unlock(&mp->mutex);
+}
+
+int ijkmp_get_deinterlace(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    pthread_mutex_lock(&mp->mutex);
+    int r = ffp_get_deinterlace(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+    return r;
+}
+
 const char * ijkmp_get_iformat_extensions(IjkMediaPlayer *mp)
 {
     assert(mp);

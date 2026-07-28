@@ -150,6 +150,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) CGFloat fpsInMeta;
 @property(nonatomic, readonly) CGFloat fpsAtOutput;
 @property(nonatomic) BOOL shouldShowHudView;
+@property(nonatomic) int deinterlace;
 //when sampleSize is -1,the samples is NULL,means needs reset and refresh ui.
 @property(nonatomic, copy) void (^audioSamplesCallback)(int16_t * _Nullable samples, int sampleSize, int sampleRate, int channels);
 

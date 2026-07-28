@@ -73,7 +73,6 @@
         
         @"use_hw" : @(1),
         @"copy_hw_frame" : @(0),
-        @"de_interlace" : @(0),
         @"open_hdr" : @(1),
         @"overlay_format" : @"fcc-_es2",
         
@@ -97,6 +96,7 @@
         @"lock_screen_ratio" : @(1),
         @"play_from_history" : @(1),
         @"multi_renderer_enabled" : @(0),
+        @"deinterlace" : @(0),
         
         @"open_gzip" : @(1),
         @"use_dns_cache" : @(1),
@@ -505,6 +505,11 @@
         }
     }
     [defaults synchronize];
+}
+
++ (int)deinterlace
+{
+    return [[self anyForKey:@"deinterlace"] intValue];
 }
 
 @end

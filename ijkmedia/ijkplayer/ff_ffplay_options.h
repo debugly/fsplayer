@@ -99,6 +99,8 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(find_stream_info),    OPTION_INT(1, 0, 1) },
 
     // extended options in ff_ffplay.c
+    { "deinterlace",                    "enable deinterlace,only software decoding effective (0: disabled, 1: bwdif, 2: yadif, 3: field)",
+        OPTION_OFFSET(deinterlace),     OPTION_INT(0, 0, 3) },
     { "max-fps",                        "drop frames in video whose fps is greater than max-fps",
         OPTION_OFFSET(max_fps),         OPTION_INT(31, -1, 121) },
 #ifdef __APPLE__

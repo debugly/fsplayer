@@ -1505,7 +1505,7 @@ static NSButton *MRCreateSwitch(void) {
     cardStack.edgeInsets = NSEdgeInsetsMake(0, 16, 0, 16);
     [card addSubview:cardStack];
     
-    id (^createCardRow)(NSString *, NSString *) = ^id(NSString *title, NSString *keyPath) {
+    id (^createCardRowForObject)(NSString *, id, NSString *) = ^id(NSString *title, id targetObj, NSString *kp) {
         NSView *row = [[NSView alloc] init];
         row.translatesAutoresizingMaskIntoConstraints = NO;
         [row.heightAnchor constraintEqualToConstant:38].active = YES;
@@ -1522,10 +1522,12 @@ static NSButton *MRCreateSwitch(void) {
         [row addSubview:label];
         
         NSButton *toggle = MRCreateSwitch();
-        [toggle bind:NSValueBinding
-            toObject:[NSUserDefaultsController sharedUserDefaultsController]
-         withKeyPath:[NSString stringWithFormat:@"values.%@", keyPath]
-             options:nil];
+        if (targetObj && kp) {
+            [toggle bind:NSValueBinding
+                toObject:targetObj
+             withKeyPath:kp
+                 options:nil];
+        }
         [row addSubview:toggle];
         
         [NSLayoutConstraint activateConstraints:@[
@@ -1537,7 +1539,11 @@ static NSButton *MRCreateSwitch(void) {
         
         return row;
     };
-    
+
+    id (^createCardRow)(NSString *, NSString *) = ^id(NSString *title, NSString *keyPath) {
+        return createCardRowForObject(title, [NSUserDefaultsController sharedUserDefaultsController], [NSString stringWithFormat:@"values.%@", keyPath]);
+    };
+
     id (^createDropdownRow)(NSString *, NSString *, NSArray<NSString *> *, NSArray<NSNumber *> *) = ^id(NSString *title, NSString *keyPath, NSArray<NSString *> *items, NSArray<NSNumber *> *tags) {
         NSView *row = [[NSView alloc] init];
         row.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1592,6 +1598,35 @@ static NSButton *MRCreateSwitch(void) {
         return sep;
     };
     
+    id (^createCardSegmentedRow)(NSString *, NSString *, NSArray<NSString *> *, NSArray<NSNumber *> *) = ^id(NSString *title, NSString *keyPath, NSArray<NSString *> *items, NSArray<NSNumber *> *tags) {
+        NSView *row = [[NSView alloc] init];
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [row.heightAnchor constraintEqualToConstant:38].active = YES;
+        
+        NSTextField *label = [[NSTextField alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.bezeled = NO;
+        label.drawsBackground = NO;
+        label.editable = NO;
+        label.selectable = NO;
+        label.stringValue = title;
+        label.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightMedium];
+        label.textColor = [NSColor whiteColor];
+        [row addSubview:label];
+        
+        NSSegmentedControl *seg = [self createSegmentedWithItems:items defaultKey:keyPath tags:tags];
+        [row addSubview:seg];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:row.leadingAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+            [seg.trailingAnchor constraintEqualToAnchor:row.trailingAnchor],
+            [seg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor]
+        ]];
+        
+        return row;
+    };
+    
     NSView *row1 = createCardRow(@"Hardware Decoding", @"use_hw");
     NSView *sep_hw = createSeparator();
     NSView *copyHwRow = createCardRow(@"Copy Hardware Dec Data", @"copy_hw_frame");
@@ -1599,7 +1634,7 @@ static NSButton *MRCreateSwitch(void) {
                                                @[@"fcc-_es2", @"fcc-0rgb", @"fcc-argb", @"fcc-bgr0", @"fcc-bgra", @"fcc-i420", @"fcc-nv12", @"fcc-uyvy", @"fcc-rv16", @"fcc-yuv2"],
                                                @[@0, @8, @7, @6, @5, @2, @1, @3, @9, @4]);
     NSView *sep1 = createSeparator();
-    NSView *row2 = createCardRow(@"Deinterlace", @"de_interlace");
+    NSView *row2 = createCardSegmentedRow(@"Deinterlace", @"deinterlace", @[@"Off", @"bwdif", @"yadif", @"field"], @[@0, @1, @2, @3]);
     NSView *sep2 = createSeparator();
     NSView *row3 = createCardRow(@"HDR", @"open_hdr");
     
@@ -1645,6 +1680,14 @@ static NSButton *MRCreateSwitch(void) {
     ]];
     
     return card;
+}
+
+- (void)setDeinterlace:(int)deinterlace
+{
+    _deinterlace = deinterlace;
+    if (self.onDeinterlaceChanged) {
+        self.onDeinterlaceChanged(deinterlace);
+    }
 }
 
 @end

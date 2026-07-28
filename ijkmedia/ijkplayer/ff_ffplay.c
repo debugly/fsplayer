@@ -1890,7 +1890,8 @@ fail:
 static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoState *is, const char *vfilters, AVFrame *frame)
 {
     char sws_flags_str[512] = "";
-    char buffersrc_args[256];
+    char buffersrc_args[256] = "";
+    char vfilters_buf[1024] = "";
     int ret;
     AVFilterContext *filt_src = NULL, *filt_out = NULL, *last_filter = NULL;
     AVCodecParameters *codecpar = is->video_st->codecpar;
@@ -1899,6 +1900,39 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
     if (!par)
         return AVERROR(ENOMEM);
+
+    if (vfilters)
+        av_strlcpy(vfilters_buf, vfilters, sizeof(vfilters_buf));
+
+    if (ffp->deinterlace > 0) {
+        if (vfilters_buf[0])
+            av_strlcatf(vfilters_buf, sizeof(vfilters_buf), ",");
+
+        switch (ffp->deinterlace) {
+            case 1:
+                // bwdif: SIMD-accelerated (NEON/AVX2), optimal performance and quality
+                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "bwdif=mode=0:parity=-1:deint=0");
+                break;
+            case 2:
+                // yadif: classic software spatial/temporal deinterlacing
+                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "yadif=mode=0:parity=-1:deint=0");
+                break;
+            case 3:
+                // field: simple field extraction with ultra-low CPU usage
+                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "field=type=top");
+                break;
+            default:
+                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "bwdif=mode=0:parity=-1:deint=0");
+                break;
+        }
+    }
+
+//    // [TEST FILTER] 增加黑白测试滤镜 (hue=s=0)，用于直观验证 AVFilter 是否生效
+//    if (vfilters_buf[0])
+//        av_strlcatf(vfilters_buf, sizeof(vfilters_buf), ",");
+//    av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "hue=s=0");
+//
+//    av_log(ffp, AV_LOG_INFO, "configure_video_filters: vfilters_buf='%s', deinterlace=%d\n", vfilters_buf, ffp->deinterlace);
 
     while ((e = av_dict_iterate(ffp->sws_dict, e))) {
         if (!strcmp(e->key, "sws_flags")) {
@@ -1940,7 +1974,7 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 
     last_filter = filt_out;
 
-    if ((ret = configure_filtergraph(graph, vfilters, filt_src, last_filter)) < 0)
+    if ((ret = configure_filtergraph(graph, vfilters_buf[0] ? vfilters_buf : NULL, filt_src, last_filter)) < 0)
         goto fail;
 
     is->in_video_filter  = filt_src;
@@ -2067,6 +2101,14 @@ static int ffp_video_filter_process(FFPlayer *ffp, FFVideoFilterContext **pctx, 
                 break;
         }
     } else {
+        if (is_hw && ffp->deinterlace > 0) {
+            static int hw_log_once = 0;
+            if (!hw_log_once) {
+                av_log(ffp, AV_LOG_WARNING, "deinterlace filter requested (%d), but video frame is HW accelerated (%d), bypassing software AVFilter!\n",
+                       ffp->deinterlace, frame->format);
+                hw_log_once = 1;
+            }
+        }
         AVRational tb = is->video_st->time_base;
         AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
         if (output_cb) {
@@ -5962,6 +6004,31 @@ int ffp_get_frame_cache_remaining(FFPlayer *ffp, int type)
         return ff_sub_frame_cache_remaining(ffp->is->ffSub);
     }
     return 0;
+}
+
+void ffp_set_deinterlace(FFPlayer *ffp, int deinterlace)
+{
+    if (!ffp)
+        return;
+
+    av_log(ffp, AV_LOG_DEBUG, "ffp_set_deinterlace: %d\n", deinterlace);
+    ffp->deinterlace = deinterlace;
+    ffp_set_option_int(ffp, FFP_OPT_CATEGORY_PLAYER, "deinterlace", deinterlace);
+
+#if CONFIG_VIDEO_AVFILTER
+    if (ffp->vf_mutex) {
+        SDL_LockMutex(ffp->vf_mutex);
+        ffp->vf_changed = 1;
+        SDL_UnlockMutex(ffp->vf_mutex);
+    }
+#endif
+}
+
+int ffp_get_deinterlace(FFPlayer *ffp)
+{
+    if (!ffp)
+        return 0;
+    return ffp->deinterlace;
 }
 
 void *ffp_set_inject_opaque(FFPlayer *ffp, void *opaque);

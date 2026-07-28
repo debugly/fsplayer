@@ -497,7 +497,7 @@
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
                                 <connections>
-                                    <binding destination="A8Q-JO-gdn" name="value" keyPath="values.de_interlace" id="94r-3H-AgM"/>
+                                    <binding destination="A8Q-JO-gdn" name="value" keyPath="values.deinterlace" id="94r-3H-AgM"/>
                                 </connections>
                             </button>
                             <button fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="q47-mC-P0v">

@@ -2194,9 +2194,29 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategorySws];
 }
 
+@synthesize deinterlace = _deinterlace;
+
 - (void)setPlayerOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategoryPlayer];
+}
+
+- (void)setDeinterlace:(int)deinterlace
+{
+    _deinterlace = deinterlace;
+    if (_mediaPlayer) {
+        ijkmp_set_deinterlace(_mediaPlayer, deinterlace);
+    } else {
+        [self setPlayerOptionIntValue:deinterlace forKey:@"deinterlace"];
+    }
+}
+
+- (int)deinterlace
+{
+    if (_mediaPlayer) {
+        return ijkmp_get_deinterlace(_mediaPlayer);
+    }
+    return _deinterlace;
 }
 
 - (void)setMaxBufferSize:(int)maxBufferSize

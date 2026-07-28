@@ -76,6 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)custom_style;
 
 + (float)audio_delay;
++ (int)deinterlace;
 + (NSString *)overlay_format;
 + (int)snapshot_type;
 

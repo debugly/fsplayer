@@ -15,6 +15,8 @@ typedef void(^MRPlayerSettingsCloseStreamBlock)(NSString *);
 
 @interface MRPlayerSettingsViewController : NSViewController
 
+@property (nonatomic, assign) int deinterlace;
+@property (nonatomic, copy, nullable) void (^onDeinterlaceChanged)(int mode);
 @property (nonatomic, copy, nullable) void (^onMultiRendererToggled)(BOOL enabled);
 
 - (void)exchangeToNextSubtitle;

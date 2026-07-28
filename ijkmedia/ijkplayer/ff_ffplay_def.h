@@ -541,6 +541,7 @@ typedef struct FFPlayer {
     int videotoolbox_hwaccel;
     int cvpixelbufferpool;
     int copy_hw_frame;
+    int deinterlace;
     
     int mediacodec_all_videos;
     int mediacodec_avc;
@@ -712,6 +713,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
 
     ffp->videotoolbox_hwaccel           = 1; // option
     ffp->cvpixelbufferpool              = 1; // option
+    ffp->deinterlace                    = 0; // option
 
     ffp->mediacodec_all_videos          = 0; // option
     ffp->mediacodec_avc                 = 0; // option

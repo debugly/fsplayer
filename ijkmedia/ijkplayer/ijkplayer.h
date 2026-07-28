@@ -238,6 +238,8 @@ void ijkmp_step_to_next_frame(IjkMediaPlayer *mp);
 
 typedef struct FSSubtitlePreference FSSubtitlePreference;
 void ijkmp_set_subtitle_preference(IjkMediaPlayer *mp, FSSubtitlePreference* sp);
+void ijkmp_set_deinterlace(IjkMediaPlayer *mp, int deinterlace);
+int  ijkmp_get_deinterlace(IjkMediaPlayer *mp);
 const char * ijkmp_get_iformat_extensions(IjkMediaPlayer *mp);
 int  ijkmp_start_fast_record(IjkMediaPlayer *mp, const char *file_name);
 int  ijkmp_stop_fast_record(IjkMediaPlayer *mp);
