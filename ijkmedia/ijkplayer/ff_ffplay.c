@@ -1966,6 +1966,134 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 fail:
     return ret;
 }
+
+typedef struct FFVideoFilterContext {
+    AVFilterGraph   *graph;
+    AVFilterContext *filt_in;
+    AVFilterContext *filt_out;
+    int              last_w;
+    int              last_h;
+    enum AVPixelFormat last_format;
+    int              last_serial;
+} FFVideoFilterContext;
+
+static FFVideoFilterContext *ffp_video_filter_create(void)
+{
+    FFVideoFilterContext *ctx = av_mallocz(sizeof(FFVideoFilterContext));
+    if (!ctx)
+        return NULL;
+    ctx->last_w = 0;
+    ctx->last_h = 0;
+    ctx->last_format = -2;
+    ctx->last_serial = -1;
+    return ctx;
+}
+
+static void ffp_video_filter_free(FFVideoFilterContext **pctx)
+{
+    if (!pctx || !*pctx)
+        return;
+    FFVideoFilterContext *ctx = *pctx;
+    avfilter_graph_free(&ctx->graph);
+    av_freep(pctx);
+}
+
+typedef int (*ffp_video_filter_output_cb)(FFPlayer *ffp, AVFrame *frame, AVRational tb, AVRational frame_rate, void *opaque);
+
+static int ffp_video_filter_process(FFPlayer *ffp, FFVideoFilterContext **pctx, AVFrame *frame,
+                                    ffp_video_filter_output_cb output_cb, void *opaque)
+{
+    VideoState *is = ffp->is;
+    int ret = 0;
+
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+    int is_hw = (desc && (desc->flags & AV_PIX_FMT_FLAG_HWACCEL))
+             || frame->format == AV_PIX_FMT_VIDEOTOOLBOX
+             || frame->hw_frames_ctx != NULL;
+
+    if (!is_hw && pctx) {
+        if (!*pctx) {
+            *pctx = ffp_video_filter_create();
+            if (!*pctx)
+                return AVERROR(ENOMEM);
+        }
+        FFVideoFilterContext *ctx = *pctx;
+        AVRational tb;
+        AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
+
+        if (   ctx->last_w != frame->width
+            || ctx->last_h != frame->height
+            || ctx->last_format != frame->format
+            || ctx->last_serial != is->viddec.pkt_serial
+            || ffp->vf_changed) {
+            SDL_LockMutex(ffp->vf_mutex);
+            ffp->vf_changed = 0;
+            av_log(NULL, AV_LOG_INFO,
+                   "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
+                   ctx->last_w, ctx->last_h,
+                   (const char *)av_x_if_null(av_get_pix_fmt_name(ctx->last_format), "none"), ctx->last_serial,
+                   frame->width, frame->height,
+                   (const char *)av_x_if_null(av_get_pix_fmt_name(frame->format), "none"), is->viddec.pkt_serial);
+            avfilter_graph_free(&ctx->graph);
+            ctx->graph = avfilter_graph_alloc();
+            if (!ctx->graph) {
+                SDL_UnlockMutex(ffp->vf_mutex);
+                return AVERROR(ENOMEM);
+            }
+            if ((ret = configure_video_filters(ffp, ctx->graph, is, ffp->vfilters, frame)) < 0) {
+                SDL_UnlockMutex(ffp->vf_mutex);
+                return ret;
+            }
+            ctx->filt_in  = is->in_video_filter;
+            ctx->filt_out = is->out_video_filter;
+            ctx->last_w = frame->width;
+            ctx->last_h = frame->height;
+            ctx->last_format = frame->format;
+            ctx->last_serial = is->viddec.pkt_serial;
+            SDL_UnlockMutex(ffp->vf_mutex);
+        }
+
+        frame_rate = av_buffersink_get_frame_rate(ctx->filt_out);
+
+        ret = av_buffersrc_add_frame(ctx->filt_in, frame);
+        if (ret < 0)
+            return ret;
+
+        while (ret >= 0) {
+            is->frame_last_returned_time = av_gettime_relative() / 1000000.0;
+
+            ret = av_buffersink_get_frame_flags(ctx->filt_out, frame, 0);
+            if (ret < 0) {
+                if (ret == AVERROR_EOF)
+                    is->viddec.finished = is->viddec.pkt_serial;
+                ret = 0;
+                break;
+            }
+
+            is->frame_last_filter_delay = av_gettime_relative() / 1000000.0 - is->frame_last_returned_time;
+            if (fabs(is->frame_last_filter_delay) > AV_NOSYNC_THRESHOLD / 10.0)
+                is->frame_last_filter_delay = 0;
+            tb = av_buffersink_get_time_base(ctx->filt_out);
+
+            if (output_cb) {
+                ret = output_cb(ffp, frame, tb, frame_rate, opaque);
+            }
+            av_frame_unref(frame);
+
+            if (is->videoq.serial != is->viddec.pkt_serial)
+                break;
+        }
+    } else {
+        AVRational tb = is->video_st->time_base;
+        AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
+        if (output_cb) {
+            ret = output_cb(ffp, frame, tb, frame_rate, opaque);
+        }
+        av_frame_unref(frame);
+    }
+
+    return ret;
+}
 #endif
 
 #if CONFIG_AUDIO_AVFILTER
@@ -2290,25 +2418,34 @@ static int audio_thread(void *arg)
     return ret;
 }
 
+static int on_video_picture_output(FFPlayer *ffp, AVFrame *frame, AVRational tb, AVRational frame_rate, void *opaque)
+{
+    VideoState *is = (VideoState *)opaque;
+    FrameData *fd;
+    double pts, duration;
+
+#if IS_FFMPEG_6
+    fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
+    int64_t pos = fd ? fd->pkt_pos : -1;
+#else
+    int64_t pos = frame->pkt_pos;
+#endif
+    duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
+    pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
+
+    return queue_picture(ffp, frame, pts, duration, pos, is->viddec.pkt_serial);
+}
+
 static int ffplay_video_thread(void *arg)
 {
-    FFPlayer *ffp = arg;
+    FFPlayer *ffp = (FFPlayer *)arg;
     VideoState *is = ffp->is;
     AVFrame *frame = av_frame_alloc();
-    double pts;
-    double duration;
-    int ret;
-    AVRational tb = is->video_st->time_base;
-    AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
+    int ret = 0;
     int convert_frame_count = 0;
-    FrameData *fd;
+
 #if CONFIG_VIDEO_AVFILTER
-    AVFilterGraph *graph = NULL;
-    AVFilterContext *filt_out = NULL, *filt_in = NULL;
-    int last_w = 0;
-    int last_h = 0;
-    enum AVPixelFormat last_format = -2;
-    int last_serial = -1;
+    FFVideoFilterContext *vf_ctx = NULL;
 #endif
 
     if (!frame) {
@@ -2321,107 +2458,23 @@ static int ffplay_video_thread(void *arg)
             goto the_end;
         if (!ret)
             continue;
+
 #if CONFIG_VIDEO_AVFILTER
-        const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
-        int is_hw = (desc && (desc->flags & AV_PIX_FMT_FLAG_HWACCEL))
-                 || frame->format == AV_PIX_FMT_VIDEOTOOLBOX
-                 || frame->hw_frames_ctx != NULL;
-
-        if (!is_hw) {
-            if (   last_w != frame->width
-                || last_h != frame->height
-                || last_format != frame->format
-                || last_serial != is->viddec.pkt_serial
-                || ffp->vf_changed) {
-                SDL_LockMutex(ffp->vf_mutex);
-                ffp->vf_changed = 0;
-                av_log(NULL, AV_LOG_INFO,
-                       "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
-                       last_w, last_h,
-                       (const char *)av_x_if_null(av_get_pix_fmt_name(last_format), "none"), last_serial,
-                       frame->width, frame->height,
-                       (const char *)av_x_if_null(av_get_pix_fmt_name(frame->format), "none"), is->viddec.pkt_serial);
-                avfilter_graph_free(&graph);
-                graph = avfilter_graph_alloc();
-                if (!graph) {
-                    ret = AVERROR(ENOMEM);
-                    goto the_end;
-                }
-                if ((ret = configure_video_filters(ffp, graph, is, ffp->vfilters, frame)) < 0) {
-                    // FIXME: post error
-                    SDL_UnlockMutex(ffp->vf_mutex);
-                    goto the_end;
-                }
-                filt_in  = is->in_video_filter;
-                filt_out = is->out_video_filter;
-                last_w = frame->width;
-                last_h = frame->height;
-                last_format = frame->format;
-                last_serial = is->viddec.pkt_serial;
-                frame_rate = av_buffersink_get_frame_rate(filt_out);
-                SDL_UnlockMutex(ffp->vf_mutex);
-            }
-
-            ret = av_buffersrc_add_frame(filt_in, frame);
-            if (ret < 0)
-                goto the_end;
-
-            while (ret >= 0) {
-                is->frame_last_returned_time = av_gettime_relative() / 1000000.0;
-
-                ret = av_buffersink_get_frame_flags(filt_out, frame, 0);
-                if (ret < 0) {
-                    if (ret == AVERROR_EOF)
-                        is->viddec.finished = is->viddec.pkt_serial;
-                    ret = 0;
-                    break;
-                }
-
-                is->frame_last_filter_delay = av_gettime_relative() / 1000000.0 - is->frame_last_returned_time;
-                if (fabs(is->frame_last_filter_delay) > AV_NOSYNC_THRESHOLD / 10.0)
-                    is->frame_last_filter_delay = 0;
-                tb = av_buffersink_get_time_base(filt_out);
-
-#if IS_FFMPEG_6
-                fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
-                int64_t pos = fd ? fd->pkt_pos : -1;
+        ret = ffp_video_filter_process(ffp, &vf_ctx, frame, on_video_picture_output, is);
 #else
-                int64_t pos = frame->pkt_pos;
+        ret = on_video_picture_output(ffp, frame, is->video_st->time_base, av_guess_frame_rate(is->ic, is->video_st, NULL), is);
+        av_frame_unref(frame);
 #endif
-                duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
-                pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
-
-                ret = queue_picture(ffp, frame, pts, duration, pos, is->viddec.pkt_serial);
-                av_frame_unref(frame);
-
-                if (is->videoq.serial != is->viddec.pkt_serial)
-                    break;
-            }
-        } else
-#endif
-        {
-            tb = is->video_st->time_base;
-#if IS_FFMPEG_6
-            fd = frame->opaque_ref ? (FrameData*)frame->opaque_ref->data : NULL;
-            int64_t pos = fd ? fd->pkt_pos : -1;
-#else
-            int64_t pos = frame->pkt_pos;
-#endif
-            duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
-            pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
-
-            ret = queue_picture(ffp, frame, pts, duration, pos, is->viddec.pkt_serial);
-            av_frame_unref(frame);
-        }
 
         if (ret < 0)
             goto the_end;
     }
+
  the_end:
 #if CONFIG_VIDEO_AVFILTER
-    avfilter_graph_free(&graph);
+    ffp_video_filter_free(&vf_ctx);
 #endif
-    av_log(NULL, AV_LOG_INFO, "convert image convert_frame_count = %d,err = %d\n", convert_frame_count,ret);
+    av_log(NULL, AV_LOG_INFO, "convert image convert_frame_count = %d,err = %d\n", convert_frame_count, ret);
     av_frame_free(&frame);
     return ret;
 }
