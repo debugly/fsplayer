@@ -65,6 +65,7 @@ targets:
         - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/xml2/lib"
     dependencies:
       - sdk: AppKit.framework
+      - sdk: CoreAudio.framework
       - sdk: AudioUnit.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
@@ -187,6 +188,7 @@ targets:
         - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/xml2/lib"
     dependencies: 
       - sdk: UIKit.framework
+      - sdk: CoreAudio.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: CoreFoundation.framework
@@ -286,6 +288,7 @@ targets:
         - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/xml2/lib"
     dependencies:
       - sdk: UIKit.framework
+      - sdk: CoreAudio.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: CoreFoundation.framework

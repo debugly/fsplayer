@@ -67,6 +67,7 @@ targets:
         - "${MY_PROJECT_DIR}/FFToolChain/build/product/macos/universal/webp/lib"
     dependencies:
       - sdk: AppKit.framework
+      - sdk: CoreAudio.framework
       - sdk: AudioUnit.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
@@ -199,6 +200,7 @@ targets:
         - "${MY_PROJECT_DIR}/FFToolChain/build/product/ios/universal-simulator/webp/lib"
     dependencies: 
       - sdk: UIKit.framework
+      - sdk: CoreAudio.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: MetalPerformanceShaders.framework
@@ -303,6 +305,7 @@ targets:
         - "${MY_PROJECT_DIR}/FFToolChain/build/product/tvos/universal-simulator/webp/lib"
     dependencies:
       - sdk: UIKit.framework
+      - sdk: CoreAudio.framework
       - sdk: AudioToolbox.framework
       - sdk: Metal.framework
       - sdk: MetalPerformanceShaders.framework
