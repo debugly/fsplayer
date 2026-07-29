@@ -215,6 +215,45 @@ int ijkmeta_update_icy_from_avformat_context_l(IjkMediaMeta *meta, AVFormatConte
     return r;
 }
 
+static const char *ff_get_profile_name_fallback(enum AVCodecID codec_id, int profile) {
+    if (codec_id == AV_CODEC_ID_H264) {
+        switch (profile) {
+            case 66:  return "Baseline";
+            case 77:  return "Main";
+            case 88:  return "Extended";
+            case 100: return "High";
+            case 110: return "High 10";
+            case 122: return "High 4:2:2";
+            case 244: return "High 4:4:4 Predictive";
+            case 44:  return "CAVLC 4:4:4 Intra";
+            case 118: return "Multiview High";
+            case 128: return "Stereo High";
+            default: break;
+        }
+    } else if (codec_id == AV_CODEC_ID_HEVC) {
+        switch (profile) {
+            case 1: return "Main";
+            case 2: return "Main 10";
+            case 3: return "Main Still Picture";
+            case 4: return "Rext";
+            default: break;
+        }
+    } else if (codec_id == AV_CODEC_ID_AAC) {
+        switch (profile) {
+            case 0: return "Main";
+            case 1: return "LC";
+            case 2: return "SSR";
+            case 3: return "LTP";
+            case 4: return "HE-AAC";
+            case 28: return "HE-AACv2";
+            case 38: return "LD";
+            case 39: return "ELD";
+            default: break;
+        }
+    }
+    return NULL;
+}
+
 void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
 {
     if (!meta || !ic)
@@ -303,19 +342,34 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
         const char *codec_name = avcodec_get_name(codecpar->codec_id);
         if (codec_name)
             ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_NAME, codec_name);
-        if (codecpar->profile != AV_PROFILE_UNKNOWN) {
-            const AVCodec *codec = avcodec_find_decoder(codecpar->codec_id);
-            if (codec) {
-                ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_PROFILE_ID, codecpar->profile);
-                const char *profile = av_get_profile_name(codec, codecpar->profile);
-                if (profile)
-                    ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PROFILE, profile);
-                if (codec->long_name)
-                    ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_LONG_NAME, codec->long_name);
-                ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_LEVEL, codecpar->level);
-                if (codecpar->format != AV_PIX_FMT_NONE)
-                    ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PIXEL_FORMAT, av_get_pix_fmt_name(codecpar->format));
+        
+        const AVCodec *codec = avcodec_find_decoder(codecpar->codec_id);
+        if (codec) {
+            if (codec->long_name)
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_LONG_NAME, codec->long_name);
+            if (codecpar->codec_type == AVMEDIA_TYPE_VIDEO && codecpar->format != AV_PIX_FMT_NONE) {
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PIXEL_FORMAT, av_get_pix_fmt_name(codecpar->format));
+            } else if (codecpar->codec_type == AVMEDIA_TYPE_AUDIO && codecpar->format != AV_SAMPLE_FMT_NONE) {
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PIXEL_FORMAT, av_get_sample_fmt_name(codecpar->format));
             }
+        }
+
+        if (codecpar->profile != AV_PROFILE_UNKNOWN) {
+            ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_PROFILE_ID, codecpar->profile);
+            const char *profile = NULL;
+            if (codec) {
+                profile = av_get_profile_name(codec, codecpar->profile);
+            }
+            if (!profile) {
+                profile = avcodec_profile_name(codecpar->codec_id, codecpar->profile);
+            }
+            if (!profile) {
+                profile = ff_get_profile_name_fallback(codecpar->codec_id, codecpar->profile);
+            }
+            if (profile) {
+                ijkmeta_set_string_l(stream_meta, FSM_KEY_CODEC_PROFILE, profile);
+            }
+            ijkmeta_set_int64_l(stream_meta, FSM_KEY_CODEC_LEVEL, codecpar->level);
         }
 
         int64_t bitrate = get_bit_rate(codecpar);
@@ -342,6 +396,50 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
                 if (st->r_frame_rate.num > 0 && st->r_frame_rate.den > 0) {
                     ijkmeta_set_int64_l(stream_meta, FSM_KEY_TBR_NUM, st->avg_frame_rate.num);
                     ijkmeta_set_int64_l(stream_meta, FSM_KEY_TBR_DEN, st->avg_frame_rate.den);
+                }
+                if (codecpar->color_range != AVCOL_RANGE_UNSPECIFIED) {
+                    const char *range = NULL;
+                    if (codecpar->color_range == AVCOL_RANGE_MPEG) range = "limited";
+                    else if (codecpar->color_range == AVCOL_RANGE_JPEG) range = "full";
+                    else range = av_color_range_name(codecpar->color_range);
+                    if (range)
+                        ijkmeta_set_string_l(stream_meta, FSM_KEY_COLOR_RANGE, range);
+                }
+                if (codecpar->color_space != AVCOL_SPC_UNSPECIFIED) {
+                    const char *space = NULL;
+                    if (codecpar->color_space == AVCOL_SPC_BT709) space = "bt.709";
+                    else if (codecpar->color_space == AVCOL_SPC_BT2020_NCL || codecpar->color_space == AVCOL_SPC_BT2020_CL) space = "bt.2020";
+                    else if (codecpar->color_space == AVCOL_SPC_SMPTE170M) space = "bt.601";
+                    else space = av_color_space_name(codecpar->color_space);
+                    if (space)
+                        ijkmeta_set_string_l(stream_meta, FSM_KEY_COLOR_SPACE, space);
+                }
+                if (codecpar->color_primaries != AVCOL_PRI_UNSPECIFIED) {
+                    const char *prim = NULL;
+                    if (codecpar->color_primaries == AVCOL_PRI_BT709) prim = "bt.709";
+                    else if (codecpar->color_primaries == AVCOL_PRI_BT2020) prim = "bt.2020";
+                    else if (codecpar->color_primaries == AVCOL_PRI_SMPTE170M) prim = "bt.601";
+                    else prim = av_color_primaries_name(codecpar->color_primaries);
+                    if (prim)
+                        ijkmeta_set_string_l(stream_meta, FSM_KEY_COLOR_PRIMARIES, prim);
+                }
+                if (codecpar->color_trc != AVCOL_TRC_UNSPECIFIED) {
+                    const char *trc = NULL;
+                    if (codecpar->color_trc == AVCOL_TRC_BT709) trc = "bt.709";
+                    else if (codecpar->color_trc == AVCOL_TRC_IEC61966_2_1) trc = "srgb";
+                    else if (codecpar->color_trc == AVCOL_TRC_SMPTE2084) trc = "pq";
+                    else if (codecpar->color_trc == AVCOL_TRC_ARIB_STD_B67) trc = "hlg";
+                    else trc = av_color_transfer_name(codecpar->color_trc);
+                    if (trc)
+                        ijkmeta_set_string_l(stream_meta, FSM_KEY_COLOR_TRANSFER, trc);
+                }
+                if (codecpar->chroma_location != AVCHROMA_LOC_UNSPECIFIED) {
+                    const char *chroma = NULL;
+                    if (codecpar->chroma_location == AVCHROMA_LOC_LEFT) chroma = "mpeg2/4/h264";
+                    else if (codecpar->chroma_location == AVCHROMA_LOC_CENTER) chroma = "mpeg1/jpeg";
+                    else chroma = av_chroma_location_name(codecpar->chroma_location);
+                    if (chroma)
+                        ijkmeta_set_string_l(stream_meta, FSM_KEY_CHROMA_LOCATION, chroma);
                 }
                 break;
             }

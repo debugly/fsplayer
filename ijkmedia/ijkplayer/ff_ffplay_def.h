@@ -404,6 +404,8 @@ typedef struct FFStatistic
     float avdelay;
     float vmdiff;
     int64_t bit_rate;
+    int sar_num;
+    int sar_den;
 
     FFTrackCacheStatistic video_cache;
     FFTrackCacheStatistic audio_cache;

@@ -86,6 +86,11 @@
 #define FSM_KEY_TBR_DEN        "tbr_den"
 #define FSM_KEY_SAR_NUM        "sar_num"
 #define FSM_KEY_SAR_DEN        "sar_den"
+#define FSM_KEY_COLOR_SPACE     "color_space"
+#define FSM_KEY_COLOR_RANGE     "color_range"
+#define FSM_KEY_COLOR_PRIMARIES "color_primaries"
+#define FSM_KEY_COLOR_TRANSFER  "color_transfer"
+#define FSM_KEY_CHROMA_LOCATION "chroma_location"
 
 // stream: audio
 #define FSM_KEY_SAMPLE_RATE    "sample_rate"

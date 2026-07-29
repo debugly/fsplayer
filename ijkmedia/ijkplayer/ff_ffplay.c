@@ -1668,9 +1668,11 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->duration = duration;
         vp->pos = pos;
         vp->frame_serial = serial;
-        vp->sar = src_frame->sample_aspect_ratio;
+        vp->sar = av_guess_sample_aspect_ratio(is->ic, is->video_st, src_frame);
         vp->bmp->sar_num = vp->sar.num;
         vp->bmp->sar_den = vp->sar.den;
+        ffp->stat.sar_num = vp->sar.num;
+        ffp->stat.sar_den = vp->sar.den;
         vp->bmp->fps = ffp->stat.vfps_probe;
         
         // 获取像素格式描述符
@@ -5772,6 +5774,14 @@ int64_t ffp_get_property_int64(FFPlayer *ffp, int id, int64_t default_value)
             if (!ffp)
                 return default_value;
             return ffp->stat.audio_cache.packets;
+        case FFP_PROP_INT64_VIDEO_SAR_NUM:
+            if (!ffp)
+                return default_value;
+            return ffp->stat.sar_num;
+        case FFP_PROP_INT64_VIDEO_SAR_DEN:
+            if (!ffp)
+                return default_value;
+            return ffp->stat.sar_den;
         case FFP_PROP_INT64_BIT_RATE:
             return ffp ? ffp->stat.bit_rate : default_value;
         case FFP_PROP_INT64_TCP_SPEED:

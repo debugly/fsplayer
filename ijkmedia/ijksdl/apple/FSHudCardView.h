@@ -1,9 +1,7 @@
 /*
- * FSSDLHudControl.h
+ * FSHudCardView.h
  *
- * Copyright (c) 2013-2014 Bilibili
- * Copyright (c) 2013-2014 Zhang Rui <bbcallen@gmail.com>
- * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
+ * Copyright (c) 2026 debugly <qianlongxu@gmail.com>
  *
  * This file is part of FSPlayer.
  *
@@ -24,19 +22,23 @@
 
 #import <Foundation/Foundation.h>
 #import <TargetConditionals.h>
+
 #if TARGET_OS_OSX
 #import <AppKit/AppKit.h>
-typedef NSView  UIView;
+typedef NSView UIView;
 #else
 #import <UIKit/UIKit.h>
 #endif
 
-@interface FSSDLHudControl : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
-- (UIView *)contentView;
-- (void)destroyContentView;
-- (void)setHudValue:(NSString *)value forKey:(NSString *)key;
+@interface FSHudCardView : UIView
+
+- (void)setDeviceName:(NSString * _Nullable)deviceName;
+
+- (void)setHudValue:(NSString * _Nullable)value forKey:(NSString *)key;
 - (NSDictionary *)allHudItem;
 
 @end
 
+NS_ASSUME_NONNULL_END
