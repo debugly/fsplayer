@@ -1190,7 +1190,11 @@ static int id3_has_changed_values(struct playlist *pls, AVDictionary *metadata,
     const AVDictionaryEntry *entry = NULL;
     const AVDictionaryEntry *oldentry;
     /* check that no keys have changed values */
+#if IS_FFMPEG_6
     while ((entry = av_dict_iterate(metadata, entry))) {
+#else
+    while ((entry = av_dict_get(metadata, "", entry, AV_DICT_IGNORE_SUFFIX))) {
+#endif
         oldentry = av_dict_get(pls->id3_initial, entry->key, NULL, AV_DICT_MATCH_CASE);
         if (!oldentry || strcmp(oldentry->value, entry->value) != 0)
             return 1;

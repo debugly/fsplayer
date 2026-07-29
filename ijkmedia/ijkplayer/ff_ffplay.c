@@ -1936,7 +1936,11 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 //
 //    av_log(ffp, AV_LOG_INFO, "configure_video_filters: vfilters_buf='%s', deinterlace=%d\n", vfilters_buf, ffp->deinterlace);
 
+#if IS_FFMPEG_6
     while ((e = av_dict_iterate(ffp->sws_dict, e))) {
+#else
+    while ((e = av_dict_get(ffp->sws_dict, "", e, AV_DICT_IGNORE_SUFFIX))) {
+#endif
         if (!strcmp(e->key, "sws_flags")) {
             av_strlcatf(sws_flags_str, sizeof(sws_flags_str), "%s=%s:", "flags", e->value);
         } else
@@ -1947,6 +1951,7 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 
     graph->scale_sws_opts = av_strdup(sws_flags_str);
 
+#if IS_FFMPEG_7
     snprintf(buffersrc_args, sizeof(buffersrc_args),
              "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d:"
              "colorspace=%d:range=%d",
@@ -1954,6 +1959,13 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
              is->video_st->time_base.num, is->video_st->time_base.den,
              codecpar->sample_aspect_ratio.num, FFMAX(codecpar->sample_aspect_ratio.den, 1),
              frame->colorspace, frame->color_range);
+#else
+    snprintf(buffersrc_args, sizeof(buffersrc_args),
+             "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+             frame->width, frame->height, frame->format,
+             is->video_st->time_base.num, is->video_st->time_base.den,
+             codecpar->sample_aspect_ratio.num, FFMAX(codecpar->sample_aspect_ratio.den, 1));
+#endif
     if (fr.num && fr.den)
         av_strlcatf(buffersrc_args, sizeof(buffersrc_args), ":frame_rate=%d/%d", fr.num, fr.den);
 
@@ -2145,7 +2157,11 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
     is->agraph->nb_threads = filter_nbthreads;
 
     av_bprint_init(&bp, 0, AV_BPRINT_SIZE_AUTOMATIC);
+#if IS_FFMPEG_6
     while ((e = av_dict_iterate(ffp->swr_opts, e)))
+#else
+    while ((e = av_dict_get(ffp->swr_opts, "", e, AV_DICT_IGNORE_SUFFIX)))
+#endif
         av_strlcatf(aresample_swr_opts, sizeof(aresample_swr_opts), "%s=%s:", e->key, e->value);
     
     if (strlen(aresample_swr_opts))
