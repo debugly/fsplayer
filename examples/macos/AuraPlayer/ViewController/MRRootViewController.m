@@ -29,6 +29,39 @@
 
 static NSString* lastPlayedKey = @"__lastPlayedKey";
 
+static NSString *MRFormatPlayedTime(double currentPosition, double duration) {
+    if (duration <= 0) {
+        int posM = (int)(currentPosition / 60);
+        int posS = (int)((int)currentPosition % 60);
+        return [NSString stringWithFormat:@"%02d:%02d", posM, posS];
+    }
+    
+    int durInt = (int)(duration + 0.5);
+    int posInt = (int)(currentPosition + 0.5);
+    
+    if (durInt >= 3600) {
+        int durH = durInt / 3600;
+        int durM = (durInt % 3600) / 60;
+        int durS = durInt % 60;
+        
+        int posH = posInt / 3600;
+        int posM = (posInt % 3600) / 60;
+        int posS = posInt % 60;
+        
+        if (posH > 0) {
+            return [NSString stringWithFormat:@"%d:%02d:%02d / %d:%02d:%02d", posH, posM, posS, durH, durM, durS];
+        } else {
+            return [NSString stringWithFormat:@"%d:%02d / %d:%02d:%02d", posM, posS, durH, durM, durS];
+        }
+    }
+    
+    int durM = durInt / 60;
+    int durS = durInt % 60;
+    int posM = posInt / 60;
+    int posS = posInt % 60;
+    return [NSString stringWithFormat:@"%d:%02d / %d:%02d", posM, posS, durM, durS];
+}
+
 @class MRVolumeHoverPillView;
 
 @interface MROverlayView : NSView
@@ -319,11 +352,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
             }
             int interval = progress * indicator.maxValue;
             double duration = indicator.maxValue;
-            if (duration > 0) {
-                self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d / %d:%02d", (int)(interval/60), (int)(interval%60), (int)(duration/60), (int)((int)duration%60)];
-            } else {
-                self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d", (int)(interval/60), (int)(interval%60)];
-            }
+            self.playedTimeLb.stringValue = MRFormatPlayedTime(interval, duration);
         }
     }];
     
@@ -480,10 +509,14 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     self.playedTimeLb.textColor = [NSColor whiteColor];
     self.playedTimeLb.font = [NSFont monospacedDigitSystemFontOfSize:13 weight:NSFontWeightMedium];
     self.playedTimeLb.alignment = NSTextAlignmentCenter;
+    [self.playedTimeLb setContentHuggingPriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [self.playedTimeLb setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
     
-    NSView *timePill = [self wrapInPill:self.playedTimeLb withPaddingX:14 paddingY:8 cornerRadius:18];
+    NSView *timePill = [self wrapInPill:self.playedTimeLb withPaddingX:12 paddingY:8 cornerRadius:18];
     [timePill.heightAnchor constraintEqualToConstant:36].active = YES;
-    [timePill.widthAnchor constraintEqualToConstant:110].active = YES;
+    [timePill.widthAnchor constraintGreaterThanOrEqualToConstant:100].active = YES;
+    [timePill setContentHuggingPriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [timePill setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
     
     self.playerSlider.translatesAutoresizingMaskIntoConstraints = NO;
     self.playerSlider.playedStartColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
@@ -1853,11 +1886,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 {
     double currentPosition = self.player.currentPlaybackTime;
     double duration = self.player.monitor.duration / 1000.0;
-    if (duration > 0) {
-        self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d / %d:%02d", (int)(currentPosition/60), (int)currentPosition%60, (int)duration/60, (int)duration%60];
-    } else {
-        self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d", (int)(currentPosition/60), (int)currentPosition%60];
-    }
+    self.playedTimeLb.stringValue = MRFormatPlayedTime(currentPosition, duration);
     self.playerSlider.playedValue = currentPosition;
     self.playerSlider.minValue = 0;
     self.playerSlider.maxValue = duration;
@@ -2346,11 +2375,7 @@ static BOOL useExact = NO;
         
         long interval = (long)cp;
         double duration = self.player.monitor.duration / 1000.0;
-        if (duration > 0) {
-            self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d / %d:%02d", (int)(interval/60), (int)(interval%60), (int)(duration/60), (int)((int)duration%60)];
-        } else {
-            self.playedTimeLb.stringValue = [NSString stringWithFormat:@"%d:%02d", (int)(interval/60), (int)(interval%60)];
-        }
+        self.playedTimeLb.stringValue = MRFormatPlayedTime(interval, duration);
         self.playerSlider.playedValue = interval;
     }
 }
