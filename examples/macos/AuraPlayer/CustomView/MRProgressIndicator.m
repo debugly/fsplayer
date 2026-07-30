@@ -81,6 +81,18 @@ IB_DESIGNABLE
     return self;
 }
 
+- (void)setFrame:(NSRect)frame
+{
+    [super setFrame:frame];
+    [self updateDrawHeight];
+}
+
+- (void)setBounds:(NSRect)bounds
+{
+    [super setBounds:bounds];
+    [self updateDrawHeight];
+}
+
 - (void)updateTrackingAreas
 {
     [super updateTrackingAreas];
@@ -223,6 +235,7 @@ IB_DESIGNABLE
 
 - (void)drawRect:(NSRect)dirtyRect
 {
+    [self updateDrawHeight];
     const NSRect viewBounds = self.bounds;
     
     NSRect slideRect = viewBounds;

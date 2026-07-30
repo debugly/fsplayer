@@ -89,22 +89,15 @@ static NSString *MRFormatPlayedTime(double currentPosition, double duration) {
 @property (nonatomic, weak) IBOutlet NSView *playerContainer;
 @property (nonatomic, weak) IBOutlet NSView *siderBarContainer;
 @property (weak) IBOutlet NSLayoutConstraint *siderBarWidthConstraint;
-
-@property (nonatomic, weak) IBOutlet NSView *playerCtrlPanel;
-
-@property (nonatomic, strong) IBOutlet NSTextField *playedTimeLb;
-@property (nonatomic, weak) IBOutlet NSTextField *durationTimeLb;
-@property (nonatomic, weak) IBOutlet MRHoverColorButton *playCtrlBtn;
-@property (nonatomic, weak) IBOutlet MRProgressIndicator *playerSlider;
-
-@property (nonatomic, weak) IBOutlet NSTextField *seekCostLb;
+@property (nonatomic, strong) NSTextField *playedTimeLb;
+@property (nonatomic, strong) MRHoverColorButton *playCtrlBtn;
+@property (nonatomic, strong) MRProgressIndicator *playerSlider;
+@property (nonatomic, strong) NSTextField *seekCostLb;
 @property (nonatomic, weak) NSTrackingArea *trackingArea;
 
 @property (nonatomic, assign) BOOL seeking;
-
 //
 @property (nonatomic, assign) int tickCount;
-
 //player
 @property (nonatomic, strong) FSPlayer * player;
 @property (nonatomic, strong) NSMutableArray *playList;
@@ -116,12 +109,10 @@ static NSString *MRFormatPlayedTime(double currentPosition, double duration) {
 @property (nonatomic, assign, getter=isUsingHardwareAccelerate) BOOL usingHardwareAccelerate;
 @property (nonatomic, strong, nullable) NSWindow *extraRenderWindow;
 
-
 @property (nonatomic, assign) BOOL shouldShowHudView;
-
 @property (nonatomic, assign) BOOL loop;
 
-@property (nonatomic, strong) NSView *upgradedCtrlPanel;
+@property (nonatomic, strong) NSView *playerCtrlPanel;
 @property (nonatomic, strong) MRHoverColorButton *volumeBtn;
 @property (nonatomic, strong) NSSlider *volumeSlider;
 @property (nonatomic, strong) NSButton *rightPlayPauseBtn;
@@ -332,6 +323,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         trackingView.delegate = self;
         trackingView.needTracking = YES;
     }
+    [self observerCocoaBingsChange];
+    [self setupUpgradedPlaybackControls];
     
     OBSERVER_NOTIFICATION(self, _playExplorerMovies:,kPlayExplorerMovieNotificationName_G, nil);
     OBSERVER_NOTIFICATION(self, _playNetMovies:,kPlayNetMovieNotificationName_G, nil);
@@ -357,13 +350,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }];
     
     self.playedTimeLb.stringValue = @"--:-- / --:--";
-    self.durationTimeLb.stringValue = @"--:--";
-    
-//    [self.siderBarContainer setWantsLayer:YES];
-//    self.siderBarContainer.layer.backgroundColor = NSColor.redColor.CGColor;
-    
-    [self observerCocoaBingsChange];
-    [self setupUpgradedPlaybackControls];
     
     self.usingHardwareAccelerate = [self preferHW];
 }
@@ -456,35 +442,31 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 }
 
 - (void)setupUpgradedPlaybackControls {
-    NSView *oldCtrlPanel = self.playerCtrlPanel;
-    if (!oldCtrlPanel) return;
+    if (!self.playerContainer) return;
     
-    self.upgradedCtrlPanel = [[NSView alloc] init];
-    self.upgradedCtrlPanel.translatesAutoresizingMaskIntoConstraints = NO;
-    [oldCtrlPanel.superview addSubview:self.upgradedCtrlPanel positioned:NSWindowAbove relativeTo:oldCtrlPanel];
+    self.playerCtrlPanel = [[NSView alloc] init];
+    self.playerCtrlPanel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.playerContainer addSubview:self.playerCtrlPanel];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.upgradedCtrlPanel.leadingAnchor constraintEqualToAnchor:oldCtrlPanel.superview.leadingAnchor],
-        [self.upgradedCtrlPanel.trailingAnchor constraintEqualToAnchor:oldCtrlPanel.superview.trailingAnchor],
-        [self.upgradedCtrlPanel.bottomAnchor constraintEqualToAnchor:oldCtrlPanel.superview.bottomAnchor],
-        [self.upgradedCtrlPanel.heightAnchor constraintEqualToConstant:70]
+        [self.playerCtrlPanel.leadingAnchor constraintEqualToAnchor:self.playerContainer.leadingAnchor],
+        [self.playerCtrlPanel.trailingAnchor constraintEqualToAnchor:self.playerContainer.trailingAnchor],
+        [self.playerCtrlPanel.bottomAnchor constraintEqualToAnchor:self.playerContainer.bottomAnchor],
+        [self.playerCtrlPanel.heightAnchor constraintEqualToConstant:70]
     ]];
     
-    self.upgradedCtrlPanel.alphaValue = oldCtrlPanel.alphaValue;
-    
-    // Clear all old subviews inside oldCtrlPanel to completely deactivate legacy constraints and avoid conflicts
-    for (NSView *subview in [oldCtrlPanel.subviews copy]) {
-        [subview removeFromSuperview];
-    }
-    
-    oldCtrlPanel.hidden = YES;
-    self.durationTimeLb.hidden = YES;
+    self.seekCostLb = [NSTextField labelWithString:@""];
+    self.seekCostLb.textColor = [NSColor whiteColor];
+    self.seekCostLb.font = [NSFont systemFontOfSize:11];
     self.seekCostLb.hidden = YES;
     
+    self.playCtrlBtn = [[MRHoverColorButton alloc] init];
     self.playCtrlBtn.translatesAutoresizingMaskIntoConstraints = NO;
     self.playCtrlBtn.bordered = NO;
     self.playCtrlBtn.bezelStyle = NSBezelStyleRegularSquare;
     self.playCtrlBtn.contentTintColor = [NSColor whiteColor];
+    self.playCtrlBtn.target = self;
+    self.playCtrlBtn.action = @selector(pauseOrPlay:);
     
     NSView *playPill = [self wrapInPill:self.playCtrlBtn withPaddingX:8 paddingY:8 cornerRadius:18];
     [playPill.widthAnchor constraintEqualToConstant:36].active = YES;
@@ -518,6 +500,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [timePill setContentHuggingPriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
     [timePill setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
     
+    self.playerSlider = [[MRProgressIndicator alloc] init];
     self.playerSlider.translatesAutoresizingMaskIntoConstraints = NO;
     self.playerSlider.playedStartColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
     self.playerSlider.playedEndColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
@@ -585,7 +568,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     mainStack.alignment = NSLayoutAttributeCenterY;
     mainStack.spacing = 15;
     
-    [self.upgradedCtrlPanel addSubview:mainStack];
+    [self.playerCtrlPanel addSubview:mainStack];
     
     // Setup hover time pill
     self.hoverTimeLb = [NSTextField labelWithString:@"00:00"];
@@ -596,7 +579,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     self.hoverTimePill = [self wrapInPill:self.hoverTimeLb withPaddingX:8 paddingY:4 cornerRadius:8];
     self.hoverTimePill.hidden = YES;
     self.hoverTimePill.translatesAutoresizingMaskIntoConstraints = NO; // Use proper Auto Layout
-    [self.upgradedCtrlPanel addSubview:self.hoverTimePill positioned:NSWindowAbove relativeTo:mainStack];
+    [self.playerCtrlPanel addSubview:self.hoverTimePill positioned:NSWindowAbove relativeTo:mainStack];
     
     self.hoverTimeCenterXConstraint = [self.hoverTimePill.centerXAnchor constraintEqualToAnchor:self.playerSlider.leadingAnchor constant:0];
     [NSLayoutConstraint activateConstraints:@[
@@ -641,14 +624,14 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         self.hoverTimePill.hidden = YES;
     }];
     
-    [oldCtrlPanel.superview addSubview:self.volumePillView positioned:NSWindowAbove relativeTo:self.upgradedCtrlPanel];
-    self.volumePillView.alphaValue = self.upgradedCtrlPanel.alphaValue;
+    [self.playerContainer addSubview:self.volumePillView positioned:NSWindowAbove relativeTo:self.playerCtrlPanel];
+    self.volumePillView.alphaValue = self.playerCtrlPanel.alphaValue;
     
     [NSLayoutConstraint activateConstraints:@[
-        [mainStack.leadingAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.leadingAnchor constant:20],
-        [mainStack.trailingAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.trailingAnchor constant:-20],
-        [mainStack.topAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.topAnchor],
-        [mainStack.bottomAnchor constraintEqualToAnchor:self.upgradedCtrlPanel.bottomAnchor],
+        [mainStack.leadingAnchor constraintEqualToAnchor:self.playerCtrlPanel.leadingAnchor constant:20],
+        [mainStack.trailingAnchor constraintEqualToAnchor:self.playerCtrlPanel.trailingAnchor constant:-20],
+        [mainStack.topAnchor constraintEqualToAnchor:self.playerCtrlPanel.topAnchor],
+        [mainStack.bottomAnchor constraintEqualToAnchor:self.playerCtrlPanel.bottomAnchor],
         
         [self.volumePillView.centerXAnchor constraintEqualToAnchor:volumePlaceholder.centerXAnchor],
         [self.volumePillView.bottomAnchor constraintEqualToAnchor:volumePlaceholder.bottomAnchor],
@@ -671,8 +654,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     screenshotBtn.action = @selector(onCaptureShot);
     
     self.leftScreenshotPillView = [self wrapInPill:screenshotBtn withPaddingX:12 paddingY:12 cornerRadius:27];
-    [self.view addSubview:self.leftScreenshotPillView positioned:NSWindowAbove relativeTo:self.upgradedCtrlPanel];
-    self.leftScreenshotPillView.alphaValue = self.upgradedCtrlPanel.alphaValue;
+    [self.view addSubview:self.leftScreenshotPillView positioned:NSWindowAbove relativeTo:self.playerCtrlPanel];
+    self.leftScreenshotPillView.alphaValue = self.playerCtrlPanel.alphaValue;
     
     [NSLayoutConstraint activateConstraints:@[
         [self.leftScreenshotPillView.widthAnchor constraintEqualToConstant:54],
@@ -1032,7 +1015,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
             context.duration = 0.45;
             self.playerCtrlPanel.animator.alphaValue = show ? 1.0 : 0.0;
-            self.upgradedCtrlPanel.animator.alphaValue = show ? 1.0 : 0.0;
             self.volumePillView.animator.alphaValue = show ? 1.0 : 0.0;
             self.leftScreenshotPillView.animator.alphaValue = show ? 1.0 : 0.0;
         }];
@@ -2290,7 +2272,6 @@ static BOOL useExact = NO;
     
     [self.view.window setTitle:@""];
     self.playedTimeLb.stringValue = @"--:-- / --:--";
-    self.durationTimeLb.stringValue = @"--:--";
     self.playerSlider.playedValue = 0;
     self.playerSlider.preloadValue = 0;
     self.playerSlider.maxValue = 0;
