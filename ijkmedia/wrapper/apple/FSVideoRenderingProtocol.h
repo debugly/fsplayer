@@ -88,9 +88,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 static inline uint32_t fs_ass_color_to_int(UIColor *color) {
 #if TARGET_OS_OSX
-    if (![color.colorSpaceName isEqualToString:NSDeviceRGBColorSpace] && ![color.colorSpaceName isEqualToString:NSCalibratedRGBColorSpace]) {
-        color = [color colorUsingColorSpaceName:NSDeviceRGBColorSpace];
-    }
+    color = [color colorUsingColorSpace:[NSColorSpace deviceRGBColorSpace]] ?: color;
 #endif
     CGFloat r,g,b,a;
     [color getRed:&r green:&g blue:&b alpha:&a];

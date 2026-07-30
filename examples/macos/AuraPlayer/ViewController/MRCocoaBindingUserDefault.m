@@ -20,6 +20,33 @@
 
 @end
 
+static NSData *MRArchiveColor(NSColor *color) {
+    if (!color) return nil;
+    NSError *error = nil;
+    NSData *data = [NSKeyedArchiver archivedDataWithRootObject:color requiringSecureCoding:NO error:&error];
+    if (error) {
+        NSLog(@"[MRCocoaBindingUserDefault] Archive color error: %@", error);
+    }
+    return data;
+}
+
+static NSColor *MRUnarchiveColor(NSData *data) {
+    if (!data || ![data isKindOfClass:[NSData class]]) return nil;
+    NSError *error = nil;
+    NSColor *color = [NSKeyedUnarchiver unarchivedObjectOfClass:[NSColor class] fromData:data error:&error];
+    if (!color) {
+        @try {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            color = [NSKeyedUnarchiver unarchiveObjectWithData:data];
+#pragma clang diagnostic pop
+        } @catch (NSException *exception) {
+            NSLog(@"[MRCocoaBindingUserDefault] Unarchive color exception: %@", exception);
+        }
+    }
+    return color;
+}
+
 @implementation MRCocoaBindingUserDefault
 
 + (MRCocoaBindingUserDefault *)sharedDefault
@@ -46,16 +73,16 @@
     FSSubtitlePreference sp = fs_subtitle_default_preference();
     
     NSColor *text_color = fs_ass_int_to_color(sp.PrimaryColour);
-    NSData *text_color_data = [NSKeyedArchiver archivedDataWithRootObject:text_color];
+    NSData *text_color_data = MRArchiveColor(text_color);
     
     NSColor *SecondaryColour = fs_ass_int_to_color(sp.SecondaryColour);
-    NSData *subtitle_bg_color_data = [NSKeyedArchiver archivedDataWithRootObject:SecondaryColour];
+    NSData *subtitle_bg_color_data = MRArchiveColor(SecondaryColour);
     
     NSColor *OutlineColour = fs_ass_int_to_color(sp.OutlineColour);
-    NSData *subtitle_stroke_color_data = [NSKeyedArchiver archivedDataWithRootObject:OutlineColour];
+    NSData *subtitle_stroke_color_data = MRArchiveColor(OutlineColour);
     
     NSColor *BackColour = fs_ass_int_to_color(sp.BackColour);
-    NSData *subtitle_shadow_color_data = [NSKeyedArchiver archivedDataWithRootObject:BackColour];
+    NSData *subtitle_shadow_color_data = MRArchiveColor(BackColour);
     
     NSDictionary *initValues = @{
         @"volume" : @(0.4),
@@ -210,11 +237,11 @@
     NSArray *array = [self.observers objectForKey:keyPath];
     id value = change[NSKeyValueChangeNewKey];
     NSMutableArray *removeArr = nil;
-    for (int i = 0; i< array.count; i++) {
+    for (NSUInteger i = 0; i < array.count; i++) {
         void(^block)(id,BOOL*) = array[i];
         BOOL remove = NO;
         if ([value isKindOfClass:[NSData class]]) {
-            value = [NSKeyedUnarchiver unarchiveObjectWithData:value];
+            value = MRUnarchiveColor(value) ?: value;
         }
         block(value, &remove);
         if (remove) {
@@ -228,7 +255,7 @@
         NSMutableArray *result = [NSMutableArray arrayWithArray:array];
         NSEnumerator *enumerator = [removeArr reverseObjectEnumerator];
         id obj = nil;
-        while (obj = [enumerator nextObject]) {
+        while ((obj = [enumerator nextObject])) {
             [result removeObjectAtIndex:[obj intValue]];
         }
         [self.observers setObject:result forKey:keyPath];
@@ -306,7 +333,7 @@
 
 + (void)setFontName:(NSString *)font_name
 {
-    return [self setValue:font_name forKey:@"FontName"];
+    [self setValue:font_name forKey:@"FontName"];
 }
 
 + (float)subtitle_scale
@@ -327,37 +354,25 @@
 + (NSColor *)PrimaryColour
 {
     NSData *data = [self anyForKey:@"PrimaryColour"];
-    if (data) {
-        return [NSKeyedUnarchiver unarchiveObjectWithData:data];
-    }
-    return nil;
+    return MRUnarchiveColor(data);
 }
 
 + (NSColor *)SecondaryColour
 {
     NSData *data = [self anyForKey:@"SecondaryColour"];
-    if (data) {
-        return [NSKeyedUnarchiver unarchiveObjectWithData:data];
-    }
-    return nil;
+    return MRUnarchiveColor(data);
 }
 
 + (NSColor *)BackColour
 {
     NSData *data = [self anyForKey:@"BackColour"];
-    if (data) {
-        return [NSKeyedUnarchiver unarchiveObjectWithData:data];
-    }
-    return nil;
+    return MRUnarchiveColor(data);
 }
 
 + (NSColor *)OutlineColour
 {
     NSData *data = [self anyForKey:@"OutlineColour"];
-    if (data) {
-        return [NSKeyedUnarchiver unarchiveObjectWithData:data];
-    }
-    return nil;
+    return MRUnarchiveColor(data);
 }
 
 + (int)force_override

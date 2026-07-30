@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)stringForKey:(NSString *)key;
 + (MRCocoaBindingUserDefault *)sharedDefault;
 //block BOOL means after invoke wheather stop ovserve and remove the observer
-- (void)onChange:(void(^)(id,BOOL*))observer forKey:(NSString *)keyPath;
+- (void)onChange:(void(^)(id,BOOL*))observer forKey:(NSString *)key;
 - (void)onChange:(void(^)(id,BOOL*))observer forKey:(NSString *)key init:(BOOL)init;
 @end
 

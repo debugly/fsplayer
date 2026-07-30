@@ -55,7 +55,7 @@
     }
     CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
     CGContextRef ctx = CGBitmapContextCreate(data, w, h, 8, bytesPerRow, cs,
-                                             kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+                                             (uint32_t)kCGImageAlphaPremultipliedFirst | (uint32_t)kCGBitmapByteOrder32Little);
     CGColorSpaceRelease(cs);
     if (!ctx) {
         free(data);

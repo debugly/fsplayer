@@ -408,9 +408,9 @@ void SaveIMGToFile(uint8_t *data,int width,int height,IMG_FORMAT format, char *t
     
     uint32_t bmi;
     if (format == IMG_FORMAT_RGBA) {
-        bmi = kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast;
+        bmi = (uint32_t)kCGBitmapByteOrderDefault | (uint32_t)kCGImageAlphaNoneSkipLast;
     } else {
-        bmi = kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst;
+        bmi = (uint32_t)kCGBitmapByteOrder32Little | (uint32_t)kCGImageAlphaPremultipliedFirst;
     }
     CGContextRef ctx = _CreateCGBitmapContext(width, height, 8, 32, bytesPerRow, bmi);
     if (ctx) {

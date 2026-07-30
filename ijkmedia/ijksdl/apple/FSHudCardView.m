@@ -23,6 +23,19 @@
 #import "FSHudCardView.h"
 #include <sys/sysctl.h>
 
+#if TARGET_OS_OSX
+#define FSFont NSFont
+#else
+#define FSFont UIFont
+#endif
+
+static inline FSFont *MenloFont(CGFloat fontSize, BOOL bold) {
+    if (bold) {
+        return [FSFont fontWithName:@"Menlo-Bold" size:fontSize] ?: [FSFont boldSystemFontOfSize:fontSize];
+    }
+    return [FSFont fontWithName:@"Menlo" size:fontSize] ?: [FSFont systemFontOfSize:fontSize];
+}
+
 typedef NS_ENUM(NSUInteger, FSHudCategory) {
     FSHudCategoryFile = 0,
     FSHudCategoryAudio,
@@ -133,7 +146,7 @@ static NSString *FSGetDeviceChipName(void) {
         titleLb.focusRingType = NSFocusRingTypeNone;
         titleLb.bordered = NO;
         titleLb.drawsBackground = NO;
-        titleLb.font = [NSFont fontWithName:@"Menlo-Bold" size:11] ?: [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightBold];
+        titleLb.font = MenloFont(11, YES);
         titleLb.usesSingleLineMode = YES;
         titleLb.lineBreakMode = NSLineBreakByTruncatingMiddle;
         [self addSubview:titleLb];
@@ -172,7 +185,7 @@ static NSString *FSGetDeviceChipName(void) {
         valueLb.focusRingType = NSFocusRingTypeNone;
         valueLb.bordered = NO;
         valueLb.drawsBackground = NO;
-        valueLb.font = [NSFont fontWithName:@"Menlo" size:11] ?: [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
+        valueLb.font = MenloFont(11, NO);
         valueLb.textColor = [NSColor whiteColor];
         valueLb.alignment = NSTextAlignmentLeft;
         valueLb.usesSingleLineMode = YES;
@@ -258,11 +271,7 @@ static NSString *FSGetDeviceChipName(void) {
     label.focusRingType = NSFocusRingTypeNone;
     label.bordered = NO;
     label.drawsBackground = NO;
-    if (bold) {
-        label.font = [NSFont fontWithName:@"Menlo-Bold" size:size] ?: [NSFont monospacedSystemFontOfSize:size weight:NSFontWeightBold];
-    } else {
-        label.font = [NSFont fontWithName:@"Menlo" size:size] ?: [NSFont monospacedSystemFontOfSize:size weight:NSFontWeightRegular];
-    }
+    label.font = MenloFont(size, bold);
     label.usesSingleLineMode = YES;
     label.lineBreakMode = NSLineBreakByTruncatingMiddle;
     label.textColor = color;
@@ -420,7 +429,7 @@ static NSString *FSGetDeviceChipName(void) {
     if (self) {
         self.userInteractionEnabled = NO;
         UILabel *titleLb = [[UILabel alloc] init];
-        titleLb.font = [UIFont fontWithName:@"Menlo-Bold" size:11] ?: [UIFont monospacedSystemFontOfSize:11 weight:UIFontWeightBold];
+        titleLb.font = MenloFont(11, YES);
         [self addSubview:titleLb];
         _titleLb = titleLb;
     }
@@ -453,7 +462,7 @@ static NSString *FSGetDeviceChipName(void) {
         self.userInteractionEnabled = NO;
         
         UILabel *valueLb = [[UILabel alloc] init];
-        valueLb.font = [UIFont fontWithName:@"Menlo" size:11] ?: [UIFont monospacedSystemFontOfSize:11 weight:UIFontWeightRegular];
+        valueLb.font = MenloFont(11, NO);
         valueLb.textColor = [UIColor whiteColor];
         valueLb.textAlignment = NSTextAlignmentLeft;
         valueLb.lineBreakMode = NSLineBreakByTruncatingMiddle;
@@ -532,11 +541,7 @@ static NSString *FSGetDeviceChipName(void) {
 - (UILabel *)createLabelWithFontSize:(CGFloat)size bold:(BOOL)bold textColor:(UIColor *)color
 {
     UILabel *label = [[UILabel alloc] init];
-    if (bold) {
-        label.font = [UIFont fontWithName:@"Menlo-Bold" size:size] ?: [UIFont monospacedSystemFontOfSize:size weight:UIFontWeightBold];
-    } else {
-        label.font = [UIFont fontWithName:@"Menlo" size:size] ?: [UIFont monospacedSystemFontOfSize:size weight:UIFontWeightRegular];
-    }
+    label.font = MenloFont(size, bold);
     label.textColor = color;
     return label;
 }

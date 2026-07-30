@@ -842,7 +842,7 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
     }
 
     if (av_opt_get(in, "location", AV_OPT_SEARCH_CHILDREN, &new_url) >= 0)
-        url = new_url;
+        url = (const char *)new_url;
 
     ff_get_chomp_line(in, line, sizeof(line));
     if (strcmp(line, "#EXTM3U")) {
@@ -912,7 +912,7 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
             }
             /* Some buggy HLS servers write #EXT-X-MEDIA-SEQUENCE more than once */
             if (start_seq_no < 0) {
-                start_seq_no = seq_no;
+                start_seq_no = (int)seq_no;
                 pls->start_seq_no = seq_no;
             }
         } else if (av_strstart(line, "#EXT-X-PLAYLIST-TYPE:", &ptr)) {
@@ -969,7 +969,7 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
             }
             if (av_strstart(ptr, "TIME-OFFSET=", &time_offset_value)) {
                 float offset = strtof(time_offset_value, NULL);
-                pls->start_time_offset = offset * AV_TIME_BASE;
+                pls->start_time_offset = (int64_t)(offset * AV_TIME_BASE);
                 pls->time_offset_flag = 1;
             } else {
                 av_log(c->ctx, AV_LOG_WARNING, "#EXT-X-START value is"
@@ -983,7 +983,7 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
             previous_duration = previous_duration1;
         } else if (av_strstart(line, "#EXTINF:", &ptr)) {
             is_segment = 1;
-            duration   = atof(ptr) * AV_TIME_BASE;
+            duration   = (int64_t)(atof(ptr) * AV_TIME_BASE);
         } else if (av_strstart(line, "#EXT-X-BYTERANGE:", &ptr)) {
             seg_size = strtoll(ptr, NULL, 10);
             ptr = strchr(ptr, '@');
@@ -1059,10 +1059,10 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
                     goto fail;
                 }
 
-                if (duration < 0.001 * AV_TIME_BASE) {
+                if (duration < AV_TIME_BASE / 1000) {
                     av_log(c->ctx, AV_LOG_WARNING, "Cannot get correct #EXTINF value of segment %s,"
                                     " set to default value to 1ms.\n", seg->url);
-                    duration = 0.001 * AV_TIME_BASE;
+                    duration = AV_TIME_BASE / 1000;
                 }
                 previous_duration1 += duration;
                 seg->previous_duration = previous_duration;
@@ -1145,7 +1145,7 @@ static int read_from_url(struct playlist *pls, struct segment *seg,
 
      /* limit read if the segment was only a part of a file */
     if (seg->size >= 0)
-        buf_size = FFMIN(buf_size, seg->size - pls->cur_seg_offset);
+        buf_size = (int)FFMIN((int64_t)buf_size, seg->size - pls->cur_seg_offset);
 
     ret = avio_read(pls->input, buf, buf_size);
     if (ret > 0)
@@ -1167,7 +1167,7 @@ static void parse_id3(AVFormatContext *s, AVIOContext *pb,
     for (meta = *extra_meta; meta; meta = meta->next) {
         if (!strcmp(meta->tag, "PRIV")) {
             ID3v2ExtraMetaPRIV *priv = &meta->data.priv;
-            if (priv->datasize == 8 && !av_strncasecmp(priv->owner, id3_priv_owner_ts, 44)) {
+            if (priv->datasize == 8 && !av_strncasecmp((const char *)priv->owner, id3_priv_owner_ts, 44)) {
                 /* 33-bit MPEG timestamp */
                 int64_t ts = AV_RB64(priv->data);
                 av_log(s, AV_LOG_DEBUG, "HLS ID3 audio timestamp %"PRId64"\n", ts);
@@ -1175,7 +1175,7 @@ static void parse_id3(AVFormatContext *s, AVIOContext *pb,
                     *dts = ts;
                 else
                     av_log(s, AV_LOG_ERROR, "Invalid HLS ID3 audio timestamp %"PRId64"\n", ts);
-            } else if (priv->datasize >= 8 && !av_strncasecmp(priv->owner, id3_priv_owner_audio_setup, 36)) {
+            } else if (priv->datasize >= 8 && !av_strncasecmp((const char *)priv->owner, id3_priv_owner_audio_setup, 36)) {
                 ff_hls_senc_read_audio_setup_info(audio_setup_info, priv->data, priv->datasize);
             }
         } else if (!strcmp(meta->tag, "APIC") && apic)
@@ -1431,7 +1431,7 @@ static int open_input(FS_HLSContext *c, struct playlist *pls, struct segment *se
         int64_t seekret = avio_seek(*in, seg->url_offset, SEEK_SET);
         if (seekret < 0) {
             av_log(pls->parent, AV_LOG_ERROR, "Unable to seek to offset %"PRId64" of HLS segment '%s'\n", seg->url_offset, seg->url);
-            ret = seekret;
+            ret = (int)seekret;
             ff_format_io_close(pls->parent, in);
         }
     }
@@ -1771,7 +1771,7 @@ static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pl
 
             st->disposition |= rend->disposition;
         }
-        if (rend_idx >=pls->n_renditions)
+        if (rend_idx >= pls->n_renditions)
             break;
     }
 }
@@ -2014,7 +2014,7 @@ static int copy_hls_headers_for_http(AVDictionary **dst, const AVDictionary *src
     if (!opts)
         return 0;
 
-    char *my_opts = opts;
+    char *my_opts = (char *)opts;
     char *saved = NULL;
     char *opt = NULL;
     int ret = 0;
@@ -2411,7 +2411,7 @@ static int compare_ts_with_wrapdetect(int64_t ts_a, struct playlist *pls_a,
     int64_t scaled_ts_a = av_rescale_q(ts_a, get_timebase(pls_a), MPEG_TIME_BASE_Q);
     int64_t scaled_ts_b = av_rescale_q(ts_b, get_timebase(pls_b), MPEG_TIME_BASE_Q);
 
-    return av_compare_mod(scaled_ts_a, scaled_ts_b, 1LL << 33);
+    return (int)av_compare_mod(scaled_ts_a, scaled_ts_b, 1LL << 33);
 }
 
 static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
@@ -2445,7 +2445,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
                     } else {
                         //discontinuity:ts pts need add up.
                         if (pls->finished) {
-                            int seq_no = pls->cur_seq_no - pls->start_seq_no;
+                            int seq_no = (int)(pls->cur_seq_no - pls->start_seq_no);
                             if (seq_no < pls->n_segments && s->streams[pkt->stream_index]) {
                                 struct segment *seg = pls->segments[seq_no];
                                 if (seg->previous_duration > 0) {
@@ -2594,7 +2594,7 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
     FS_HLSContext *c = s->priv_data;
     struct playlist *seek_pls = NULL;
     int i, j;
-    int stream_subdemuxer_index;
+    int stream_subdemuxer_index = 0;
     int64_t first_timestamp, seek_timestamp, duration;
     int64_t seq_no, seg_start_ts;
 
@@ -2684,12 +2684,12 @@ static int hls_probe(const AVProbeData *p)
 {
     /* Require #EXTM3U at the start, and either one of the ones below
      * somewhere for a proper match. */
-    if (strncmp(p->buf, "#EXTM3U", 7))
+    if (strncmp((const char *)p->buf, "#EXTM3U", 7))
         return 0;
 
-    if (strstr(p->buf, "#EXT-X-STREAM-INF:")     ||
-        strstr(p->buf, "#EXT-X-TARGETDURATION:") ||
-        strstr(p->buf, "#EXT-X-MEDIA-SEQUENCE:")) {
+    if (strstr((const char *)p->buf, "#EXT-X-STREAM-INF:")     ||
+        strstr((const char *)p->buf, "#EXT-X-TARGETDURATION:") ||
+        strstr((const char *)p->buf, "#EXT-X-MEDIA-SEQUENCE:")) {
 
         int mime_ok = p->mime_type && !(
             av_strcasecmp(p->mime_type, "application/vnd.apple.mpegurl") &&
