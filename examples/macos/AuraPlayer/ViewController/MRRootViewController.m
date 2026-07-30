@@ -1038,34 +1038,26 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
             }
             case kVK_ANSI_R:
             {
-                FSRotatePreference preference = self.player.view.rotatePreference;
-                
-                if (preference.type == FSRotateNone) {
-                    preference.type = FSRotateZ;
-                }
-                
                 if (event.modifierFlags & NSEventModifierFlagOption) {
-                    preference.type --;
-                    if (preference.type <= FSRotateNone) {
-                        preference.type = FSRotateZ;
+                    float rotateDegrees = self.player.view.xRotateDegrees;
+                    if (++rotateDegrees >= 360) {
+                        rotateDegrees = 0;
                     }
-                }
-                
-                if (event.modifierFlags & NSEventModifierFlagShift) {
-                    preference.degrees --;
+                    self.player.view.xRotateDegrees = rotateDegrees;
+                } else if (event.modifierFlags & NSEventModifierFlagShift) {
+                    float rotateDegrees = self.player.view.yRotateDegrees;
+                    if (++rotateDegrees >= 360) {
+                        rotateDegrees = 0;
+                    }
+                    self.player.view.yRotateDegrees = rotateDegrees;
                 } else {
-                    preference.degrees ++;
+                    float rotateDegrees = self.player.view.zRotateDegrees;
+                    if (++rotateDegrees >= 360) {
+                        rotateDegrees = 0;
+                    }
+                    self.player.view.zRotateDegrees = rotateDegrees;
                 }
-                
-                if (preference.degrees >= 360) {
-                    preference.degrees = 0;
-                }
-                self.player.view.rotatePreference = preference;
-                if (!self.player.isPlaying) {
-                    [self.player.view setNeedsRefreshCurrentPic];
-                }
-                NSLog(@"rotate:%@ %d",@[@"X",@"Y",@"Z"][preference.type-1],(int)preference.degrees);
-                return YES;
+                NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.player.view.xRotateDegrees,(int)self.player.view.yRotateDegrees,(int)self.player.view.zRotateDegrees);
             }
             case kVK_ANSI_S:
             {

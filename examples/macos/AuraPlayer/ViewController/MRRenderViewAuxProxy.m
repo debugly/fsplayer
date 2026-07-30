@@ -26,6 +26,12 @@
 
 @synthesize rotatePreference = _rotatePreference;
 
+@synthesize xRotateDegrees = _xRotateDegrees;
+
+@synthesize yRotateDegrees = _yRotateDegrees;
+
+@synthesize zRotateDegrees = _zRotateDegrees;
+
 @synthesize scalingMode = _scalingMode;
 
 @synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
@@ -150,6 +156,45 @@
     
     for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
         [view setRotatePreference:rotatePreference];
+    }
+}
+
+- (void)setXRotateDegrees:(float)xRotateDegrees
+{
+    _xRotateDegrees = xRotateDegrees;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        [view setXRotateDegrees:xRotateDegrees];
+    }
+}
+
+- (void)setYRotateDegrees:(float)yRotateDegrees
+{
+    _yRotateDegrees = yRotateDegrees;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        [view setYRotateDegrees:yRotateDegrees];
+    }
+}
+
+- (void)setZRotateDegrees:(float)zRotateDegrees
+{
+    _zRotateDegrees = zRotateDegrees;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        [view setZRotateDegrees:zRotateDegrees];
     }
 }
 
