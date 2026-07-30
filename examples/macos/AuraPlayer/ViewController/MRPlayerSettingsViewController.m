@@ -506,6 +506,18 @@ static NSButton *MRCreateSwitch(void) {
     NSSegmentedControl *rotateSeg = [self createSegmentedWithItems:@[@"0°", @"90°", @"180°", @"270°"] defaultKey:@"picture_ratate_mode" tags:@[@0, @1, @2, @3]];
     [self.videoDocView addArrangedSubview:[self createSegmentedRowWithLabel:@"画面旋转:" segmented:rotateSeg]];
 
+    NSButton *hFlipSwitch = MRCreateSwitch();
+    hFlipSwitch.state = NSControlStateValueOff;
+    hFlipSwitch.target = self;
+    hFlipSwitch.action = @selector(onHorizontalFlipAction:);
+    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"水平翻转:" checkbox:hFlipSwitch]];
+
+    NSButton *vFlipSwitch = MRCreateSwitch();
+    vFlipSwitch.state = NSControlStateValueOff;
+    vFlipSwitch.target = self;
+    vFlipSwitch.action = @selector(onVerticalFlipAction:);
+    [self.videoDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"垂直翻转:" checkbox:vFlipSwitch]];
+
     [self.videoDocView addArrangedSubview:[self createSeparatorLine]];
 
     // Section 3: Speed Settings
@@ -525,6 +537,22 @@ static NSButton *MRCreateSwitch(void) {
     [self.videoDocView addArrangedSubview:[self createSliderRowWithLabel:@"画面亮度:" defaultKey:@"color_adjust_brightness" min:0.5 max:1.5 defaultValue:1.0 format:@"%.2f"]];
     [self.videoDocView addArrangedSubview:[self createSliderRowWithLabel:@"对比亮度:" defaultKey:@"color_adjust_contrast" min:0.5 max:1.5 defaultValue:1.0 format:@"%.2f"]];
     [self.videoDocView addArrangedSubview:[self createSliderRowWithLabel:@"画面饱和:" defaultKey:@"color_adjust_saturation" min:0.5 max:1.5 defaultValue:1.0 format:@"%.2f"]];
+}
+
+- (void)onHorizontalFlipAction:(NSButton *)sender
+{
+    float degrees = (sender.state == NSControlStateValueOn) ? 180.0f : 0.0f;
+    if (self.onHorizontalFlipChanged) {
+        self.onHorizontalFlipChanged(degrees);
+    }
+}
+
+- (void)onVerticalFlipAction:(NSButton *)sender
+{
+    float degrees = (sender.state == NSControlStateValueOn) ? 180.0f : 0.0f;
+    if (self.onVerticalFlipChanged) {
+        self.onVerticalFlipChanged(degrees);
+    }
 }
 
 - (void)buildAudioPage

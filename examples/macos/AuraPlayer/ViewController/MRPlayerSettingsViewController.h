@@ -18,6 +18,8 @@ typedef void(^MRPlayerSettingsCloseStreamBlock)(NSString *);
 @property (nonatomic, assign) int deinterlace;
 @property (nonatomic, copy, nullable) void (^onDeinterlaceChanged)(int mode);
 @property (nonatomic, copy, nullable) void (^onMultiRendererToggled)(BOOL enabled);
+@property (nonatomic, copy, nullable) void (^onHorizontalFlipChanged)(float degrees);
+@property (nonatomic, copy, nullable) void (^onVerticalFlipChanged)(float degrees);
 
 - (void)exchangeToNextSubtitle;
 - (void)updateTracks:(NSDictionary *)dic;

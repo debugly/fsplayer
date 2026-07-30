@@ -831,6 +831,16 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                     [self playURL:url];
                 }
             };
+
+            settings.onHorizontalFlipChanged = ^(float degrees) {
+                __strongSelf__
+                self.player.view.yRotateDegrees = degrees;
+            };
+
+            settings.onVerticalFlipChanged = ^(float degrees) {
+                __strongSelf__
+                self.player.view.xRotateDegrees = degrees;
+            };
             
             created = YES;
             [self addChildViewController:settings];
@@ -2448,29 +2458,19 @@ static BOOL useExact = NO;
 
 - (void)applyRotate
 {
-    FSRotatePreference preference = self.player.view.rotatePreference;
     int rotate = [MRCocoaBindingUserDefault picture_ratate_mode];
+    float zRotateDegrees = 0;
     if (rotate == 0) {
-        preference.type = FSRotateNone;
-        preference.degrees = 0;
+        zRotateDegrees = 0;
     } else if (rotate == 1) {
-        preference.type = FSRotateZ;
-        preference.degrees = -90;
+        zRotateDegrees = -90;
     } else if (rotate == 2) {
-        preference.type = FSRotateZ;
-        preference.degrees = -180;
+        zRotateDegrees = -180;
     } else if (rotate == 3) {
-        preference.type = FSRotateZ;
-        preference.degrees = -270;
-    } else if (rotate == 4) {
-        preference.type = FSRotateY;
-        preference.degrees = 180;
-    } else if (rotate == 5) {
-        preference.type = FSRotateX;
-        preference.degrees = 180;
+        zRotateDegrees = -270;
     }
-    self.player.view.rotatePreference = preference;
-    NSLog(@"rotate:%@ %d",@[@"None",@"X",@"Y",@"Z"][preference.type],(int)preference.degrees);
+    self.player.view.zRotateDegrees = zRotateDegrees;
+    NSLog(@"rotate z:%d", (int)zRotateDegrees);
 }
 
 #pragma mark 日志级别
