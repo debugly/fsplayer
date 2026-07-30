@@ -13,8 +13,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FSMetalRenderer : NSObject
 
-@property (nonatomic, assign) float rotateDegrees;
-@property (nonatomic, assign) int rotateType;//x:1,y:2,z:3
+@property (nonatomic, assign) float xRotateDegrees;
+@property (nonatomic, assign) float yRotateDegrees;
+@property (nonatomic, assign) float zRotateDegrees;
 @property (nonatomic, assign) float autoZRotateDegrees;
 @property (nonatomic, assign) CGSize vertexRatio;
 @property (nonatomic, assign) CGSize textureCrop;

@@ -146,8 +146,9 @@
 
     // 合成阶段：不旋转、不调色、铺满整图、顶点不缩放（旋转/调色留给显示阶段作用于整张图）。
     self.renderer.autoZRotateDegrees = 0;
-    self.renderer.rotateType = FSRotateNone;
-    self.renderer.rotateDegrees = 0;
+    self.renderer.xRotateDegrees = 0;
+    self.renderer.yRotateDegrees = 0;
+    self.renderer.zRotateDegrees = 0;
     [self.renderer updateColorAdjustment:(vector_float4){1.0, 1.0, 1.0, 0.0}];
     self.renderer.vertexRatio = CGSizeMake(1.0, 1.0);
 

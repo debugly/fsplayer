@@ -155,12 +155,11 @@ typedef enum : NSUInteger {
 #if TARGET_OS_IOS
 @property(nonatomic) CGFloat scaleFactor;
 #endif
-/*
- if you update these preference blow, when player paused,
- you can call -[setNeedsRefreshCurrentPic] method let current picture refresh right now.
- */
-// rotate preference
-@property(nonatomic) FSRotatePreference rotatePreference;
+
+@property(nonatomic) FSRotatePreference rotatePreference __deprecated_msg("will be removed in future version");
+@property(nonatomic) float xRotateDegrees;
+@property(nonatomic) float yRotateDegrees;
+@property(nonatomic) float zRotateDegrees;
 // color conversion preference
 @property(nonatomic) FSColorConvertPreference colorPreference;
 // user defined display aspect ratio

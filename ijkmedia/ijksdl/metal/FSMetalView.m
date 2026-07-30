@@ -69,6 +69,9 @@ typedef CGRect NSRect;
 @synthesize scalingMode = _scalingMode;
 // rotate preference
 @synthesize rotatePreference = _rotatePreference;
+@synthesize xRotateDegrees = _xRotateDegrees;
+@synthesize yRotateDegrees = _yRotateDegrees;
+@synthesize zRotateDegrees = _zRotateDegrees;
 // color conversion preference
 @synthesize colorPreference = _colorPreference;
 // user defined display aspect ratio
@@ -101,6 +104,9 @@ typedef CGRect NSRect;
 - (BOOL)prepareMetal
 {
     _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
+    _xRotateDegrees     = 0.0;
+    _yRotateDegrees     = 0.0;
+    _zRotateDegrees     = 0.0;
     _colorPreference    = (FSColorConvertPreference){1.0, 1.0, 1.0};
     _darPreference      = (FSDARPreference){0.0};
     _backgroundBlurIterations = 3;
@@ -360,9 +366,7 @@ typedef CGRect NSRect;
     }
     
     int zDegrees = 0;
-    if (_rotatePreference.type == FSRotateZ) {
-        zDegrees += _rotatePreference.degrees;
-    }
+    zDegrees += (int)self.zRotateDegrees;
     zDegrees += attach.autoZRotate;
     
     float darRatio = self.darPreference.ratio;
@@ -533,8 +537,9 @@ typedef CGRect NSRect;
     }
 #endif
     self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
-    self.picturePipeline.rotateType = self.rotatePreference.type;
-    self.picturePipeline.rotateDegrees = self.rotatePreference.degrees;
+    self.picturePipeline.xRotateDegrees = self.xRotateDegrees;
+    self.picturePipeline.yRotateDegrees = self.yRotateDegrees;
+    self.picturePipeline.zRotateDegrees = self.zRotateDegrees;
     
     bool applyAdjust = _colorPreference.brightness != 1.0 || _colorPreference.saturation != 1.0 || _colorPreference.contrast != 1.0;
     [self.picturePipeline updateColorAdjustment:(vector_float4){_colorPreference.brightness,_colorPreference.saturation,_colorPreference.contrast,applyAdjust ? 1.0 : 0.0}];
@@ -814,9 +819,7 @@ typedef CGRect NSRect;
     float darRatio = self.darPreference.ratio;
     
     int zDegrees = 0;
-    if (_rotatePreference.type == FSRotateZ) {
-        zDegrees += _rotatePreference.degrees;
-    }
+    zDegrees += (int)self.zRotateDegrees;
     zDegrees += attach.autoZRotate;
     //when video's z rotate degrees is 90 odd multiple
     if (abs(zDegrees) / 90 % 2 == 1) {
@@ -1105,6 +1108,49 @@ typedef CGRect NSRect;
 {
     if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
         _rotatePreference = rotatePreference;
+        
+        if (rotatePreference.type == FSRotateX) {
+            _xRotateDegrees = rotatePreference.degrees;
+            _yRotateDegrees = 0.0;
+            _zRotateDegrees = 0.0;
+        } else if (rotatePreference.type == FSRotateY) {
+            _xRotateDegrees = 0.0;
+            _yRotateDegrees = rotatePreference.degrees;
+            _zRotateDegrees = 0.0;
+        } else if (rotatePreference.type == FSRotateZ) {
+            _xRotateDegrees = 0.0;
+            _yRotateDegrees = 0.0;
+            _zRotateDegrees = rotatePreference.degrees;
+        } else if (rotatePreference.type == FSRotateNone) {
+            _xRotateDegrees = 0.0;
+            _yRotateDegrees = 0.0;
+            _zRotateDegrees = 0.0;
+        }
+        
+        [self setNeedsRefreshCurrentPic];
+    }
+}
+
+- (void)setXRotateDegrees:(float)xRotateDegrees
+{
+    if (_xRotateDegrees != xRotateDegrees) {
+        _xRotateDegrees = xRotateDegrees;
+        [self setNeedsRefreshCurrentPic];
+    }
+}
+
+- (void)setYRotateDegrees:(float)yRotateDegrees
+{
+    if (_yRotateDegrees != yRotateDegrees) {
+        _yRotateDegrees = yRotateDegrees;
+        [self setNeedsRefreshCurrentPic];
+    }
+}
+
+- (void)setZRotateDegrees:(float)zRotateDegrees
+{
+    if (_zRotateDegrees != zRotateDegrees) {
+        _zRotateDegrees = zRotateDegrees;
         [self setNeedsRefreshCurrentPic];
     }
 }

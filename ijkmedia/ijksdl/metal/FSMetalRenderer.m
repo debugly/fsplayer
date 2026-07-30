@@ -134,18 +134,26 @@
     }
 }
 
-- (void)setRotateType:(int)rotateType
+- (void)setXRotateDegrees:(float)xRotateDegrees
 {
-    if (_rotateType != rotateType) {
-        _rotateType = rotateType;
+    if (_xRotateDegrees != xRotateDegrees) {
+        _xRotateDegrees = xRotateDegrees;
         self.vertexChanged = YES;
     }
 }
 
-- (void)setRotateDegrees:(float)rotateDegrees
+- (void)setYRotateDegrees:(float)yRotateDegrees
 {
-    if (_rotateDegrees != rotateDegrees) {
-        _rotateDegrees = rotateDegrees;
+    if (_yRotateDegrees != yRotateDegrees) {
+        _yRotateDegrees = yRotateDegrees;
+        self.vertexChanged = YES;
+    }
+}
+
+- (void)setZRotateDegrees:(float)zRotateDegrees
+{
+    if (_zRotateDegrees != zRotateDegrees) {
+        _zRotateDegrees = zRotateDegrees;
         self.vertexChanged = YES;
     }
 }
@@ -214,32 +222,15 @@
         { {  1.0 * x,  1.0 * y }, { max_t_x, 0.f } },
     };
     
-    /// These are the view and projection transforms.
-    matrix_float4x4 viewMatrix;
-    float radian = radians_from_degrees(self.rotateDegrees);
-    switch (self.rotateType) {
-        case 1:
-        {
-            viewMatrix = matrix4x4_rotation(radian, 1.0, 0.0, 0.0);
-            viewMatrix = matrix_multiply(viewMatrix, matrix4x4_translation(0.0, 0.0, -0.5));
-        }
-            break;
-        case 2:
-        {
-            viewMatrix = matrix4x4_rotation(radian, 0.0, 1.0, 0.0);
-            viewMatrix = matrix_multiply(viewMatrix, matrix4x4_translation(0.0, 0.0, -0.5));
-        }
-            break;
-        case 3:
-        {
-            viewMatrix = matrix4x4_rotation(radian, 0.0, 0.0, 1.0);
-        }
-            break;
-        default:
-        {
-            viewMatrix = matrix4x4_identity();
-        }
-            break;
+    float rx = radians_from_degrees(self.xRotateDegrees);
+    float ry = radians_from_degrees(self.yRotateDegrees);
+    float rz = radians_from_degrees(self.zRotateDegrees);
+    
+    quaternion_float q = quaternion_from_euler((vector_float3){rx, ry, rz});
+    matrix_float4x4 viewMatrix = matrix4x4_from_quaternion(q);
+    
+    if (self.xRotateDegrees != 0 || self.yRotateDegrees != 0) {
+        viewMatrix = matrix_multiply(matrix4x4_translation(0.0, 0.0, 0.5), viewMatrix);
     }
     
     if (self.autoZRotateDegrees != 0) {
