@@ -2,7 +2,8 @@
 
 - fix intel flash new picture bug when use 2x speed play
 - enable video filter chain and support software deinterlacing
-- fix hdr directly output bug
+- fix hdr directly output bug, #93
+- fix High probability of lagging and black screen during rotation on iOS #87
 
 ## tag 1.0.7
 
