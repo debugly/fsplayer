@@ -1,3 +1,5 @@
+## tag 1.0.9
+
 ## tag 1.0.8
 
 - fix intel flash new picture bug when use 2x speed play

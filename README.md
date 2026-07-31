@@ -81,8 +81,8 @@
 
 ## 构建环境
 
-- macOS Sequoia(15.5)
-- Xcode Version 16.4 (16F6)
+- macOS Tahoe(26.5)
+- Xcode Version 26.6 (17F113)
 
 | 最低支持平台  | 架构                                     |
 | ----------- | --------------------------------------- |
@@ -103,7 +103,7 @@ FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，�
 - 通过 Cocoapods 集成:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.8/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.0.9/FSPlayer.spec.json'
 ```
 
 ### 调用
