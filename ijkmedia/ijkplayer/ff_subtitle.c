@@ -565,6 +565,7 @@ int ff_sub_update_stream_if_need(FFSubtitle *sub, int *update_stream, int *pre_s
             }
             //reset to 0
             sub->backup_charenc_idx = 0;
+            SDL_TextureOverlay_Release(&sub->preTexture);
             int err = open_any_stream(sub, sub->need_update_stream, NULL);
             if (err) {
                 r = err;

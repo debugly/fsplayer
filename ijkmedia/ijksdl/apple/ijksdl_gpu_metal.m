@@ -160,6 +160,26 @@ static SDL_TextureOverlay *createMetalTexture(id<MTLDevice>device, int w, int h,
     
     // Create the texture from the device by using the descriptor
     id<MTLTexture> subTexture = [device newTextureWithDescriptor:textureDescriptor];
+    
+    {
+        int comp = 4;
+        if (fmt == SDL_TEXTURE_FMT_A8) {
+            comp = 1;
+        }
+        int bpr = w * comp;
+        void *pixels = av_mallocz(bpr * h);
+        MTLRegion region = {
+            {0, 0, 0}, // MTLOrigin
+            {w, h, 1} // MTLSize
+        };
+
+        [subTexture replaceRegion:region
+                      mipmapLevel:0
+                        withBytes:pixels
+                      bytesPerRow:bpr];
+        av_free(pixels);
+    }
+    
     if (pixels) {
         int bpr = w;
         MTLRegion region = {
