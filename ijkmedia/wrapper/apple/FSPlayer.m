@@ -1124,6 +1124,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     
     [self setHudValue:[NSString stringWithFormat:@"prepared: %@", formatedDurationMilli(_monitor.prepareLatency)] forKey:@"prepared"];
     [self setHudValue:[NSString stringWithFormat:@"first-frame: %@", formatedDurationMilli(_monitor.firstVideoFrameLatency)] forKey:@"first-frame"];
+    if (_monitor.lastSeekFrameLatency > 0) {
+        [self setHudValue:[NSString stringWithFormat:@"seek-frame: %@", formatedDurationMilli(_monitor.lastSeekFrameLatency)] forKey:@"seek-frame"];
+    }
 
     [self setHudValue:[NSString stringWithFormat:@"drop count/rate: %d / %.2f", [self dropFrameCount], [self dropFrameRate]] forKey:@"drop-frame(c/r)"];
     
@@ -1847,6 +1850,8 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
                 ijkmp_set_enable_accurate_seek(_mediaPlayer, _enableAccurateSeek == 1);
                 _enableAccurateSeek = 0;
             }
+            _monitor.lastSeekFrameLatency = du;
+            [self setHudValue:[NSString stringWithFormat:@"seek-frame: %@", formatedDurationMilli(du)] forKey:@"seek-frame"];
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerAfterSeekFirstVideoFrameDisplayNotification
              object:self userInfo:@{@"du" : @(du)}];

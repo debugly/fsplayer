@@ -70,7 +70,8 @@ static FSHudCategory FSHudCategoryForKey(NSString *key) {
         [key isEqualToString:@"delay-avdiff"] || [key hasPrefix:@"fps"] ||
         [key hasPrefix:@"drop-frame"] || [key hasPrefix:@"frames"] ||
         [key isEqualToString:@"v-cache"] || [key isEqualToString:@"a-cache"] ||
-        [key isEqualToString:@"prepared"] || [key isEqualToString:@"first-frame"]) {
+        [key isEqualToString:@"prepared"] || [key isEqualToString:@"first-frame"] ||
+        [key isEqualToString:@"seek-frame"]) {
         return FSHudCategoryDisplay;
     }
     

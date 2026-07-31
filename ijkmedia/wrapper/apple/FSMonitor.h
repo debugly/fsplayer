@@ -64,6 +64,7 @@
 @property(nonatomic) int64_t   openInputLatency;
 @property(nonatomic) int64_t   prepareLatency;
 @property(nonatomic) int64_t   firstVideoFrameLatency;
+@property(nonatomic) int64_t   lastSeekFrameLatency;
 @property(nonatomic) int64_t   lastPrerollStartTick;
 @property(nonatomic) int64_t   lastPrerollDuration;
 
