@@ -101,6 +101,7 @@ static NSString *MRFormatPlayedTime(double currentPosition, double duration) {
 //player
 @property (nonatomic, strong) FSPlayer * player;
 @property (nonatomic, strong) NSMutableArray *playList;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSData *> *playlistBookmarks;
 @property (nonatomic, strong) NSMutableArray *subtitles;
 @property (nonatomic, assign) int lastSubIdx;
 
@@ -332,6 +333,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     
     OBSERVER_NOTIFICATION(self, _playExplorerMovies:,kPlayExplorerMovieNotificationName_G, nil);
     OBSERVER_NOTIFICATION(self, _playNetMovies:,kPlayNetMovieNotificationName_G, nil);
+    OBSERVER_NOTIFICATION(self, _appWillTerminate:, NSApplicationWillTerminateNotification, nil);
     [self prepareRightMenu];
     __weakSelf__
     [self.playerSlider onDraggedIndicator:^(double progress, MRProgressIndicator * _Nonnull indicator, BOOL isEndDrag) {
@@ -356,6 +358,12 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     self.playedTimeLb.stringValue = @"--:-- / --:--";
     
     self.usingHardwareAccelerate = [self preferHW];
+    [self loadSavedPlaylist];
+}
+
+- (void)_appWillTerminate:(NSNotification *)notifi
+{
+    [self savePlaylist];
 }
 
 - (void)viewDidAppear {
@@ -779,7 +787,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     if ([videos count] > 0) {
         // 开始播放
         [self.playList removeAllObjects];
+        [self.playlistBookmarks removeAllObjects];
         [self.playList addObjectsFromArray:videos];
+        [self savePlaylist];
         [self onStop];
         [self playFirstIfNeed];
     }
@@ -811,6 +821,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                 if (index < [self.playList count]) {
                     NSString *removedUrl = self.playList[index];
                     [self.playList removeObjectAtIndex:index];
+                    if (removedUrl) {
+                        [self.playlistBookmarks removeObjectForKey:removedUrl];
+                    }
                     if ([removedUrl isEqualToString:self.playingUrl]) {
                         if ([self.playList count] > 0) {
                             NSInteger nextIdx = (index < [self.playList count]) ? index : ([self.playList count] - 1);
@@ -820,13 +833,16 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                             [self doStopPlay];
                         }
                     }
+                    [self savePlaylist];
                     [self updatePlaylistView];
                 }
             };
             self.playlistVC.onClearPlaylist = ^{
                 __strongSelf__
                 [self.playList removeAllObjects];
+                [self.playlistBookmarks removeAllObjects];
                 [self doStopPlay];
+                [self savePlaylist];
                 [self updatePlaylistView];
             };
             self.playlistVC.onAddFilesRequested = ^{
@@ -1274,6 +1290,86 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     return _playList;
 }
 
+- (NSMutableDictionary<NSString *, NSData *> *)playlistBookmarks
+{
+    if (!_playlistBookmarks) {
+        _playlistBookmarks = [NSMutableDictionary dictionary];
+    }
+    return _playlistBookmarks;
+}
+
+- (void)savePlaylist
+{
+    NSMutableArray *savedArray = [NSMutableArray array];
+    for (NSString *urlStr in self.playList) {
+        NSMutableDictionary *item = [NSMutableDictionary dictionary];
+        item[@"url"] = urlStr;
+        NSData *bookmark = self.playlistBookmarks[urlStr];
+        if (!bookmark && ([urlStr hasPrefix:@"file://"] || [urlStr hasPrefix:@"/"])) {
+            NSURL *url = [urlStr hasPrefix:@"file://"] ? [NSURL URLWithString:urlStr] : [NSURL fileURLWithPath:urlStr];
+            if (url) {
+                NSDictionary *bmDic = [MRUtil makeBookmarkWithURL:url];
+                if (bmDic[@"bookmark"]) {
+                    bookmark = bmDic[@"bookmark"];
+                    self.playlistBookmarks[urlStr] = bookmark;
+                }
+            }
+        }
+        if (bookmark) {
+            item[@"bookmark"] = bookmark;
+        }
+        [savedArray addObject:item];
+    }
+    [MRCocoaBindingUserDefault setSavedPlaylist:savedArray];
+    [MRCocoaBindingUserDefault setSavedPlayingURL:self.playingUrl];
+}
+
+- (void)loadSavedPlaylist
+{
+    NSArray *savedArray = [MRCocoaBindingUserDefault savedPlaylist];
+    if (savedArray.count == 0) {
+        return;
+    }
+    
+    [self.playList removeAllObjects];
+    [self.playlistBookmarks removeAllObjects];
+    
+    for (id item in savedArray) {
+        NSString *urlStr = nil;
+        NSData *bookmark = nil;
+        if ([item isKindOfClass:[NSDictionary class]]) {
+            urlStr = item[@"url"];
+            bookmark = item[@"bookmark"];
+        } else if ([item isKindOfClass:[NSString class]]) {
+            urlStr = item;
+        }
+        
+        if (urlStr.length > 0) {
+            [self.playList addObject:urlStr];
+            if (bookmark) {
+                self.playlistBookmarks[urlStr] = bookmark;
+                BOOL isStale = NO;
+                NSError *error = nil;
+                NSURL *resolvedURL = [NSURL URLByResolvingBookmarkData:bookmark
+                                                               options:NSURLBookmarkResolutionWithSecurityScope
+                                                         relativeToURL:nil
+                                                   bookmarkDataIsStale:&isStale
+                                                                 error:&error];
+                if (resolvedURL) {
+                    [resolvedURL startAccessingSecurityScopedResource];
+                }
+            }
+        }
+    }
+    
+    NSString *savedPlaying = [MRCocoaBindingUserDefault savedPlayingURL];
+    if (savedPlaying.length > 0 && [self.playList containsObject:savedPlaying]) {
+        self.playingUrl = savedPlaying;
+    }
+    
+    [self updatePlaylistView];
+}
+
 - (NSMutableArray *)subtitles
 {
     if (!_subtitles) {
@@ -1346,15 +1442,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [options setFormatOptionIntValue:1 forKey:@"max_reload"];
     //set icy update period
     [options setPlayerOptionValue:@"3500" forKey:@"icy-update-period"];
-    
-    
-    //    [options setPlayerOptionValue:@"fcc-bgra"        forKey:@"overlay-format"];
-    //    [options setPlayerOptionValue:@"fcc-bgr0"        forKey:@"overlay-format"];
-    //    [options setPlayerOptionValue:@"fcc-argb"        forKey:@"overlay-format"];
-    //    [options setPlayerOptionValue:@"fcc-0rgb"        forKey:@"overlay-format"];
-    //    [options setPlayerOptionValue:@"fcc-uyvy"        forKey:@"overlay-format"];
-    //    [options setPlayerOptionValue:@"fcc-i420"        forKey:@"overlay-format"];
-    //    [options setPlayerOptionValue:@"fcc-nv12"        forKey:@"overlay-format"];
     
     //[options setPlayerOptionIntValue:1 forKey:@"subtitle-texture-reuse"];
     [options setPlayerOptionValue:[MRCocoaBindingUserDefault overlay_format] forKey:@"overlay-format"];
@@ -1945,6 +2032,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [self.player loadSubtitlesOnly:[self.subtitles subarrayWithRange:NSMakeRange(1, self.subtitles.count - 1)]];
     }
     
+    [self savePlaylist];
     [self onTick:nil];
 }
 
@@ -2001,6 +2089,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [self onStop];
         [self.subtitles removeAllObjects];
         [self.playList removeAllObjects];
+        [self.playlistBookmarks removeAllObjects];
     }
     
     NSMutableArray *videos = [NSMutableArray array];
@@ -2009,6 +2098,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     
     for (NSDictionary *dic in bookmarkArr) {
         NSURL *url = dic[@"url"];
+        NSData *bookmark = dic[@"bookmark"];
         if ([[[url pathExtension] lowercaseString] isEqualToString:@"xlist"]) {
             for (NSString *u in [MRUtil parseXPlayList:url]) {
                 NSString *existing = [self existingInPlayList:u];
@@ -2041,6 +2131,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                 continue;
             }
             [videos addObject:str];
+            if (bookmark) {
+                self.playlistBookmarks[str] = bookmark;
+            }
         } else if ([dic[@"type"] intValue] == 1) {
             NSURL *url = dic[@"url"];
             if ([self existingInSubList:url] || [subtitles containsObject:url]) {
@@ -2062,6 +2155,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                 [self.player loadThenActiveSubtitle:url];
             }
         }
+        [self savePlaylist];
         [self updatePlaylistView];
         return;
     }
@@ -2074,6 +2168,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     } else {
         [self playFirstIfNeed];
     }
+    [self savePlaylist];
     [self updatePlaylistView];
 }
 
@@ -2087,6 +2182,11 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         NSArray *dicArr = [MRUtil scanFolder:url filter:[MRUtil acceptMediaType]];
         if ([dicArr count] > 0) {
             [bookmarkArr addObjectsFromArray:dicArr];
+        } else {
+            NSDictionary *dic = [MRUtil makeBookmarkWithURL:url];
+            if (dic) {
+                [bookmarkArr addObject:dic];
+            }
         }
     }
     

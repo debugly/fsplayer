@@ -639,4 +639,35 @@ static NSColor *MRUnarchiveColor(NSData *data) {
     [self setValue:@(deinterlace) forKey:@"deinterlace"];
 }
 
++ (NSArray *)savedPlaylist
+{
+    NSArray *list = [[NSUserDefaults standardUserDefaults] arrayForKey:@"saved_playlist"];
+    return list ?: @[];
+}
+
++ (void)setSavedPlaylist:(NSArray *)playlist
+{
+    if (playlist) {
+        [[NSUserDefaults standardUserDefaults] setObject:playlist forKey:@"saved_playlist"];
+    } else {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"saved_playlist"];
+    }
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
++ (NSString *)savedPlayingURL
+{
+    return [[NSUserDefaults standardUserDefaults] stringForKey:@"saved_playing_url"];
+}
+
++ (void)setSavedPlayingURL:(NSString *)url
+{
+    if (url) {
+        [[NSUserDefaults standardUserDefaults] setObject:url forKey:@"saved_playing_url"];
+    } else {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"saved_playing_url"];
+    }
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 @end

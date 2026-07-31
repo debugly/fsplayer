@@ -47,6 +47,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)clearAllPlaybackHistory;
 
++ (NSArray *)savedPlaylist;
++ (void)setSavedPlaylist:(nullable NSArray *)playlist;
++ (nullable NSString *)savedPlayingURL;
++ (void)setSavedPlayingURL:(nullable NSString *)url;
+
 + (NSString *)log_level;
 
 + (float)color_adjust_brightness;
