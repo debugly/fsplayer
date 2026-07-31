@@ -52,6 +52,8 @@ typedef struct FSRecorder {
     AVStream *audio_st;
     AVCodecContext *video_codec_ctx;
     AVCodecContext *audio_codec_ctx;
+    AVPacket *video_pkt;       // 视频专用 AVPacket
+    AVPacket *audio_pkt;       // 音频专用 AVPacket
     struct SwsContext *sws_ctx;// 视频缩放上下文（可选）
     SwrContext *swr_ctx;       // 音频重采样上下文（可选）
     int64_t video_pts;         // 视频 PTS 计数器
@@ -82,6 +84,14 @@ static int ff_init_recorder(FSRecorder *fsr, const char *output_file, const AVFo
     if (!fsr->fmt_ctx) {
         r = -4;
         av_log(NULL, AV_LOG_ERROR, "recrod check your file extention %s\n", output_file);
+        goto end;
+    }
+
+    fsr->video_pkt = av_packet_alloc();
+    fsr->audio_pkt = av_packet_alloc();
+    if (!fsr->video_pkt || !fsr->audio_pkt) {
+        r = -5;
+        av_log(NULL, AV_LOG_ERROR, "Failed to allocate AVPacket\n");
         goto end;
     }
     
@@ -193,6 +203,10 @@ static int ff_init_recorder(FSRecorder *fsr, const char *output_file, const AVFo
 
     return 0;
 end:
+    if (r < 0) {
+        if (fsr->video_pkt) av_packet_free(&fsr->video_pkt);
+        if (fsr->audio_pkt) av_packet_free(&fsr->audio_pkt);
+    }
     return r;
 }
 
@@ -232,30 +246,32 @@ int ff_create_recorder(void **out_ffr, const char *output_file, const struct AVF
 
 // 发送视频帧到录制器（原 encode_video_frame）
 int record_video_frame(FSRecorder *rec_ctx, AVFrame *frame) {
-    AVPacket pkt = {0};
-    av_init_packet(&pkt);
+    AVPacket *pkt = rec_ctx->video_pkt;
+    if (!pkt)
+        return -1;
 
     // 设置 PTS
-    frame->pts = rec_ctx->video_pts++;
+    if (frame) {
+        frame->pts = rec_ctx->video_pts++;
+    }
 
     // 发送帧到编码器
     if (avcodec_send_frame(rec_ctx->video_codec_ctx, frame) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Failed to send video frame to encoder\n");
-        av_packet_unref(&pkt);
         return -1;
     }
 
     // 接收编码后的数据包
-    while (avcodec_receive_packet(rec_ctx->video_codec_ctx, &pkt) == 0) {
-        pkt.stream_index = rec_ctx->video_st->index;
-        av_packet_rescale_ts(&pkt, rec_ctx->video_codec_ctx->time_base,
+    while (avcodec_receive_packet(rec_ctx->video_codec_ctx, pkt) == 0) {
+        pkt->stream_index = rec_ctx->video_st->index;
+        av_packet_rescale_ts(pkt, rec_ctx->video_codec_ctx->time_base,
                             rec_ctx->fmt_ctx->streams[0]->time_base);
-        if (av_interleaved_write_frame(rec_ctx->fmt_ctx, &pkt) < 0) {
+        if (av_interleaved_write_frame(rec_ctx->fmt_ctx, pkt) < 0) {
             av_log(NULL, AV_LOG_ERROR, "Failed to write video packet\n");
-            av_packet_unref(&pkt);
+            av_packet_unref(pkt);
             return -1;
         }
-        av_packet_unref(&pkt);
+        av_packet_unref(pkt);
     }
 
     return 0;
@@ -264,31 +280,33 @@ int record_video_frame(FSRecorder *rec_ctx, AVFrame *frame) {
 // 发送音频帧到录制器（原 encode_audio_frame）
 int record_audio_frame(FSRecorder *rec_ctx, AVFrame *frame)
 {
-    AVPacket pkt = {0};
-    av_init_packet(&pkt);
+    AVPacket *pkt = rec_ctx->audio_pkt;
+    if (!pkt)
+        return -1;
 
     // 设置 PTS
-    frame->pts = rec_ctx->audio_pts;
-    rec_ctx->audio_pts += frame->nb_samples; // 按采样数递增
+    if (frame) {
+        frame->pts = rec_ctx->audio_pts;
+        rec_ctx->audio_pts += frame->nb_samples; // 按采样数递增
+    }
 
     // 发送帧到编码器
     if (avcodec_send_frame(rec_ctx->audio_codec_ctx, frame) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Failed to send audio frame to encoder\n");
-        av_packet_unref(&pkt);
         return -1;
     }
 
     // 接收编码后的数据包
-    while (avcodec_receive_packet(rec_ctx->audio_codec_ctx, &pkt) == 0) {
-        pkt.stream_index = rec_ctx->audio_st->index;
-        av_packet_rescale_ts(&pkt, rec_ctx->audio_codec_ctx->time_base,
+    while (avcodec_receive_packet(rec_ctx->audio_codec_ctx, pkt) == 0) {
+        pkt->stream_index = rec_ctx->audio_st->index;
+        av_packet_rescale_ts(pkt, rec_ctx->audio_codec_ctx->time_base,
                             rec_ctx->fmt_ctx->streams[1]->time_base);
-        if (av_interleaved_write_frame(rec_ctx->fmt_ctx, &pkt) < 0) {
+        if (av_interleaved_write_frame(rec_ctx->fmt_ctx, pkt) < 0) {
             av_log(NULL, AV_LOG_ERROR, "Failed to write audio packet\n");
-            av_packet_unref(&pkt);
+            av_packet_unref(pkt);
             return -1;
         }
-        av_packet_unref(&pkt);
+        av_packet_unref(pkt);
     }
 
     return 0;
@@ -305,6 +323,8 @@ static int close_fs_recorder(FSRecorder *rec_ctx) {
     r = av_write_trailer(rec_ctx->fmt_ctx);
 
     // 释放资源
+    if (rec_ctx->video_pkt) av_packet_free(&rec_ctx->video_pkt);
+    if (rec_ctx->audio_pkt) av_packet_free(&rec_ctx->audio_pkt);
     if (rec_ctx->sws_ctx) sws_freeContext(rec_ctx->sws_ctx);
     if (rec_ctx->swr_ctx) swr_free(&rec_ctx->swr_ctx);
     if (rec_ctx->video_codec_ctx) avcodec_free_context(&rec_ctx->video_codec_ctx);
