@@ -19,6 +19,7 @@ IB_DESIGNABLE
 {
     BOOL _isMouseDown,_isMouseEnter;
     float _draggedValue;//拖动时使用的value
+    float _hoverValue;//hover时使用的value
     
     CGFloat _indicatorHeight;
     CGFloat _indicatorWidth;
@@ -342,15 +343,18 @@ IB_DESIGNABLE
         }
     }
 
-    // draw indicator
+    // draw indicator (only when hovered or dragging)
+    if (_isMouseEnter || _isMouseDown)
     {
         CGFloat width = 0.0;
         
         if (denominator > 0) {
             if (_isMouseDown && _draggedValue >= 0) {
-                width = _draggedValue * maxWidth / denominator;
+                width = (_draggedValue - _minValue) * maxWidth / denominator;
+            } else if (_isMouseEnter && _hoverValue >= 0) {
+                width = (_hoverValue - _minValue) * maxWidth / denominator;
             } else {
-                width = _playedValue * maxWidth / denominator;
+                width = (_playedValue - _minValue) * maxWidth / denominator;
             }
             
             if (width < 0) {
@@ -396,6 +400,7 @@ IB_DESIGNABLE
             }
             _isMouseEnter = NO;
         }
+        [self setNeedsDisplay:YES];
         [self mouseDragged:theEvent];
     }
 }
@@ -404,14 +409,21 @@ IB_DESIGNABLE
 {
     if (_isMouseDown) {
         _isMouseDown = NO;
-        _isMouseEnter = YES;
+        NSPoint thePoint = [self convertPoint:[theEvent locationInWindow] fromView:nil];
+        if (NSPointInRect(thePoint, [self bounds])) {
+            _isMouseEnter = YES;
+            [self mouseMoved:theEvent];
+        } else {
+            _isMouseEnter = NO;
+            [self setNeedsDisplay:YES];
+        }
         
         const CGFloat denominator = (_maxValue - _minValue);
         
         if (denominator > 0) {
             [self setPlayedValue:_draggedValue];
             
-            double progress = _draggedValue / denominator;
+            double progress = (_draggedValue - _minValue) / denominator;
             
             if (draggedIndicatorHandler) {
                 draggedIndicatorHandler(progress,self,YES);
@@ -461,6 +473,7 @@ IB_DESIGNABLE
         return;
     }
     _isMouseEnter = YES;
+    [self setNeedsDisplay:YES];
     [self mouseMoved:theEvent];
 }
 
@@ -471,6 +484,7 @@ IB_DESIGNABLE
             exitHoveredBarHandler(self);
         }
         _isMouseEnter = NO;
+        [self setNeedsDisplay:YES];
     }
 }
 
@@ -481,21 +495,27 @@ IB_DESIGNABLE
         CGPoint pointInWindow = [theEvent locationInWindow];
         NSPoint thePoint = [self convertPoint:pointInWindow fromView:nil];
         CGFloat rawX = thePoint.x;
-        thePoint.x -= _indicatorWidth / 2.0;
-        thePoint.x -= _horizontalPadding;
-        CGFloat x = thePoint.x;
-        CGFloat maxX = [self bounds].size.width - _indicatorWidth - 2 * _horizontalPadding;
-
-        if (x < 0) {
-            x = 0;
-        }else if (x > maxX) {
-            x = maxX;
-        }
-    
-        double progress = x / maxX;
         
-        if (hoveredBarHandler) {
-            hoveredBarHandler(progress, rawX, self);
+        double maxX = [self bounds].size.width - _indicatorWidth - 2 * _horizontalPadding;
+        CGFloat adjustedX = rawX - _indicatorWidth / 2.0 - _horizontalPadding;
+        
+        double theValue;
+        if (adjustedX < 0)
+            theValue = [self minValue];
+        else if (adjustedX >= maxX)
+            theValue = [self maxValue];
+        else
+            theValue = [self minValue] + (([self maxValue] - [self minValue]) * (round(adjustedX + 0.5) - 0) / (maxX - 0));
+        
+        _hoverValue = theValue;
+        [self setNeedsDisplay:YES];
+        
+        const CGFloat denominator = (_maxValue - _minValue);
+        if (denominator > 0) {
+            double progress = (_hoverValue - _minValue) / denominator;
+            if (hoveredBarHandler) {
+                hoveredBarHandler(progress, rawX, self);
+            }
         }
     }
 }
