@@ -629,7 +629,6 @@ typedef CGRect NSRect;
     if (!currentAttach || currentAttach.tag == self.previousTag) {
         return;
     }
-    currentAttach.presentationTime = timestamp;
     
     self.drawingAttach = currentAttach;
 
@@ -768,8 +767,7 @@ typedef CGRect NSRect;
     }
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
-    //[commandBuffer presentDrawable:drawable];
-    [commandBuffer presentDrawable:drawable atTime:currentAttach.presentationTime];
+    [commandBuffer presentDrawable:drawable];
     // Extend the lifetime of currentAttach until the GPU finishes rendering.
     // This prevents the underlying CVPixelBuffer from being returned to the pool
     // and recycled/overwritten by the decoder too early, especially at high playback speeds.
