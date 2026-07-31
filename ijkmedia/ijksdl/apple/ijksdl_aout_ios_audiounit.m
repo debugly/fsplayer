@@ -41,7 +41,7 @@ struct SDL_Aout_Opaque {
 static int aout_open_audio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_AudioSpec *obtained)
 {
     assert(desired);
-    SDLTRACE("aout_open_audio()\n");
+    SDLTRACE("%s\n",__FUNCTION__);
     SDL_Aout_Opaque *opaque = aout->opaque;
     NSError * error = nil;
     
@@ -100,7 +100,7 @@ static void aout_set_automatically_setup_audio_session(SDL_Aout *aout, bool auto
 
 static void aout_pause_audio(SDL_Aout *aout, int pause_on)
 {
-    SDLTRACE("aout_pause_audio(%d)\n", pause_on);
+    SDLTRACE("%s:%d\n", __FUNCTION__, pause_on);
     SDL_Aout_Opaque *opaque = aout->opaque;
 
     if (pause_on) {
@@ -112,7 +112,7 @@ static void aout_pause_audio(SDL_Aout *aout, int pause_on)
 
 static void aout_flush_audio(SDL_Aout *aout)
 {
-    SDLTRACE("aout_flush_audio()\n");
+    SDLTRACE("%s\n",__FUNCTION__);
     SDL_Aout_Opaque *opaque = aout->opaque;
 
     [opaque->aoutController flush];
@@ -120,7 +120,7 @@ static void aout_flush_audio(SDL_Aout *aout)
 
 static void aout_close_audio(SDL_Aout *aout)
 {
-    SDLTRACE("aout_close_audio()\n");
+    SDLTRACE("%s\n",__FUNCTION__);
     SDL_Aout_Opaque *opaque = aout->opaque;
 
     [opaque->aoutController close];
@@ -128,7 +128,7 @@ static void aout_close_audio(SDL_Aout *aout)
 
 static void aout_set_playback_rate(SDL_Aout *aout, float playbackRate)
 {
-    SDLTRACE("aout_close_audio()\n");
+    SDLTRACE("%s:%g\n", __FUNCTION__, playbackRate);
     SDL_Aout_Opaque *opaque = aout->opaque;
 
     [opaque->aoutController setPlaybackRate:playbackRate];
@@ -136,7 +136,7 @@ static void aout_set_playback_rate(SDL_Aout *aout, float playbackRate)
 
 static void aout_set_playback_volume(SDL_Aout *aout, float volume)
 {
-    SDLTRACE("aout_set_volume()\n");
+    SDLTRACE("%s:%g\n", __FUNCTION__, volume);
     SDL_Aout_Opaque *opaque = aout->opaque;
 
     [opaque->aoutController setPlaybackVolume:volume];
