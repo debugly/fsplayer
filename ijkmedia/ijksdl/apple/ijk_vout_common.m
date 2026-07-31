@@ -21,3 +21,14 @@
  */
 
 #import "ijk_vout_common.h"
+#import <VideoToolbox/VideoToolbox.h>
+
+int is_videotoolbox_supported_av1(void)
+{
+    return VTIsHardwareDecodeSupported(kCMVideoCodecType_AV1);
+}
+
+int is_videotoolbox_supported_hevc(void)
+{
+    return VTIsHardwareDecodeSupported(kCMVideoCodecType_HEVC);
+}

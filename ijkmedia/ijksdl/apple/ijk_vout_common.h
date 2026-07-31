@@ -28,4 +28,7 @@
 #define FS_TransferFunction_SMPTE_ST_428_1 CFSTR("SMPTE_ST_428_1")
 #define FS_TransferFunction_Linear CFSTR("Linear")
 
+int is_videotoolbox_supported_av1(void);
+int is_videotoolbox_supported_hevc(void);
+
 #endif
