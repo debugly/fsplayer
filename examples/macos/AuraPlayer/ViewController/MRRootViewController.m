@@ -130,6 +130,10 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 @property (nonatomic, strong) MROverlayView *sidebarOverlayView;
 @property (nonatomic, strong) NSLayoutConstraint *sidebarTrailingConstraint;
 @property (nonatomic, strong) NSView *leftScreenshotPillView;
+@property (nonatomic, strong) MRHoverColorButton *screenshotBtn;
+@property (nonatomic, strong) MRHoverColorButton *recordBtn;
+@property (nonatomic, strong) NSView *recordPill;
+@property (nonatomic, assign) BOOL isRecording;
 @property (nonatomic, strong) MRHoverColorButton *fullscreenBtn;
 
 @property (nonatomic, strong) NSView *hoverTimePill;
@@ -639,7 +643,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [self.volumePillView.heightAnchor constraintEqualToConstant:164]
     ]];
     
-    // Setup custom left screenshot button (1.5x play button size = 54x54 pill)
+    // Setup custom left panel with transparent stack view containing screenshot button and record button
     MRHoverColorButton *screenshotBtn = [[MRHoverColorButton alloc] init];
     screenshotBtn.imageScaling = NSImageScaleProportionallyUpOrDown;
     NSImage *cameraImg = nil;
@@ -652,14 +656,37 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     screenshotBtn.image = cameraImg;
     screenshotBtn.target = self;
     screenshotBtn.action = @selector(onCaptureShot);
+    self.screenshotBtn = screenshotBtn;
     
-    self.leftScreenshotPillView = [self wrapInPill:screenshotBtn withPaddingX:12 paddingY:12 cornerRadius:27];
+    NSView *screenshotPill = [self wrapInPill:screenshotBtn withPaddingX:12 paddingY:12 cornerRadius:27];
+    
+    MRHoverColorButton *recordBtn = [[MRHoverColorButton alloc] init];
+    recordBtn.imageScaling = NSImageScaleProportionallyUpOrDown;
+    recordBtn.target = self;
+    recordBtn.action = @selector(onRecordBtnPressed:);
+    self.recordBtn = recordBtn;
+    
+    NSView *recordPill = [self wrapInPill:recordBtn withPaddingX:12 paddingY:12 cornerRadius:27];
+    self.recordPill = recordPill;
+    [self updateRecordButtonUI];
+    
+    NSStackView *leftControlStack = [[NSStackView alloc] init];
+    leftControlStack.translatesAutoresizingMaskIntoConstraints = NO;
+    leftControlStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    leftControlStack.spacing = 12;
+    leftControlStack.alignment = NSLayoutAttributeCenterX;
+    [leftControlStack addArrangedSubview:screenshotPill];
+    [leftControlStack addArrangedSubview:recordPill];
+    
+    self.leftScreenshotPillView = leftControlStack;
     [self.view addSubview:self.leftScreenshotPillView positioned:NSWindowAbove relativeTo:self.playerCtrlPanel];
     self.leftScreenshotPillView.alphaValue = self.playerCtrlPanel.alphaValue;
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.leftScreenshotPillView.widthAnchor constraintEqualToConstant:54],
-        [self.leftScreenshotPillView.heightAnchor constraintEqualToConstant:54],
+        [screenshotPill.widthAnchor constraintEqualToConstant:54],
+        [screenshotPill.heightAnchor constraintEqualToConstant:54],
+        [recordPill.widthAnchor constraintEqualToConstant:54],
+        [recordPill.heightAnchor constraintEqualToConstant:54],
         [self.leftScreenshotPillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24],
         [self.leftScreenshotPillView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
     ]];
@@ -1571,7 +1598,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         NSDictionary *dic = self.player.monitor.mediaMeta;
         NSString *lrc = dic[FS_KEY_LYRICS];
         if (lrc.length > 0) {
-            NSString *dir = [self dirForCurrentPlayingUrl];
+            NSString *dir = [self caputeDirForCurrentPlayingUrl];
             NSString *movieName = [self.playingUrl lastPathComponent];
             NSString *fileName = [NSString stringWithFormat:@"%@.lrc",movieName];
             NSString *filePath = [dir stringByAppendingPathComponent:fileName];
@@ -2140,14 +2167,13 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self onToggleSettingsSideBar:sender];
 }
 
-static BOOL useExact = NO;
-
-- (void)startRecord:(NSString *)filePath
+- (int)startRecord:(NSString *)filePath
 {
     int error;
     NSString *type;
+    BOOL isExact = [MRCocoaBindingUserDefault record_method_is_exact];
     
-    if (useExact) {
+    if (isExact) {
         type = @"exact";
         error = [self.player startExactRecord:filePath];
     } else {
@@ -2160,42 +2186,110 @@ static BOOL useExact = NO;
     } else {
         NSLog(@"开始录制 %@,path:%@" ,type ,filePath);
     }
+    return error;
 }
 
 - (int)stopRecord
 {
-    if (useExact) {
+    BOOL isExact = [MRCocoaBindingUserDefault record_method_is_exact];
+    if (isExact) {
         return [self.player stopExactRecord];
     } else {
         return [self.player stopFastRecord];
     }
 }
 
-- (IBAction)onToggleRecord:(NSButton *)sender
+- (void)updateRecordButtonUI
 {
-    if (sender.state == NSControlStateValueOff) {
+    NSImage *recImg = nil;
+    if (self.isRecording) {
+        if (@available(macOS 11.0, *)) {
+            NSImageSymbolConfiguration *config = [NSImageSymbolConfiguration configurationWithPointSize:22 weight:NSFontWeightBold];
+            if (@available(macOS 12.0, *)) {
+                NSImageSymbolConfiguration *colorConfig = [NSImageSymbolConfiguration configurationWithPaletteColors:@[[NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0]]];
+                config = [config configurationByApplyingConfiguration:colorConfig];
+            }
+            recImg = [[NSImage imageWithSystemSymbolName:@"stop.circle.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:config];
+        } else {
+            recImg = [NSImage imageNamed:NSImageNameTouchBarRecordStopTemplate];
+        }
+        if (!recImg) {
+            recImg = [NSImage imageNamed:NSImageNameMultipleDocuments];
+        }
+        self.recordBtn.image = recImg;
+        self.recordBtn.contentTintColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
+        self.recordPill.layer.backgroundColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:0.3].CGColor;
+        self.recordPill.layer.borderColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:0.8].CGColor;
+        self.recordPill.layer.borderWidth = 1.5;
+        self.recordBtn.toolTip = @"停止录制";
+    } else {
+        if (@available(macOS 11.0, *)) {
+            NSImageSymbolConfiguration *config = [NSImageSymbolConfiguration configurationWithPointSize:22 weight:NSFontWeightMedium];
+            recImg = [[NSImage imageWithSystemSymbolName:@"record.circle" accessibilityDescription:nil] imageWithSymbolConfiguration:config];
+        } else {
+            recImg = [NSImage imageNamed:NSImageNameTouchBarRecordStartTemplate];
+        }
+        if (!recImg) {
+            recImg = [NSImage imageNamed:NSImageNameMultipleDocuments];
+        }
+        self.recordBtn.image = recImg;
+        self.recordBtn.contentTintColor = [NSColor whiteColor];
+        self.recordPill.layer.backgroundColor = [NSColor colorWithWhite:0.15 alpha:0.6].CGColor;
+        self.recordPill.layer.borderWidth = 0.0;
+        self.recordBtn.toolTip = @"开始录制";
+    }
+}
+
+- (void)onRecordBtnPressed:(id)sender
+{
+    if (self.isRecording) {
         int error = [self stopRecord];
         NSLog(@"停止录制:%d", error);
+        self.isRecording = NO;
+        [self updateRecordButtonUI];
     } else {
-        // 获取Caches目录路径
-        NSArray<NSString *> *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-        NSString *cacheDirectory = [paths firstObject];
+        // 保存目录
+        NSURL *recordDirURL = [MRCocoaBindingUserDefault recordDirectoryURL];
+        NSString *recordDir = recordDirURL.path;
+        if (!recordDir) {
+            recordDir = [NSFileManager mr_DirWithType:NSMoviesDirectory WithPathComponents:@[@"AuraPlay"]];
+        }
+        [NSFileManager mr_mkdirP:recordDir];
+        
         // 获取当前时间戳（毫秒级）
         NSDate *now = [NSDate date];
         long long timestamp = (long long)([now timeIntervalSince1970] * 1000);
-        NSString *extension = [[self.player.content lastPathComponent] pathExtension];
-        if (!extension) {
-            extension = [[self.player getInputFormatExtensions] firstObject];
+        
+        // 保存格式
+        NSString *fmtStr = [MRCocoaBindingUserDefault record_format_string];
+        NSString *extension = fmtStr;
+        if ([fmtStr isEqualToString:@"auto"]) {
+            extension = [[self.player.content lastPathComponent] pathExtension];
+            if (!extension || extension.length == 0) {
+                extension = [[self.player getInputFormatExtensions] firstObject];
+            }
+            if (!extension || extension.length == 0) {
+                extension = @"mp4";
+            }
         }
-        if (!extension) {
-            extension = @"mkv";
-        }
-        // 格式化为字符串
+        
+        // 格式化文件名并构建完整路径
         NSString *fileName = [NSString stringWithFormat:@"%lld.%@", timestamp, extension];
-        // 构建完整文件路径
-        NSString *filePath = [cacheDirectory stringByAppendingPathComponent:fileName];
-        [self startRecord:filePath];
+        NSString *filePath = [recordDir stringByAppendingPathComponent:fileName];
+        
+        int error = [self startRecord:filePath];
+        if (error == 0) {
+            self.isRecording = YES;
+            [self updateRecordButtonUI];
+        } else {
+            NSLog(@"录制失败(error:%d)，无法进入录制状态", error);
+        }
     }
+}
+
+- (IBAction)onToggleRecord:(NSButton *)sender
+{
+    [self onRecordBtnPressed:sender];
 }
 
 - (IBAction)onToggleMultiRenderer:(NSButton *)sender
@@ -2230,6 +2324,11 @@ static BOOL useExact = NO;
 
 - (void)onStop
 {
+    if (self.isRecording) {
+        [self stopRecord];
+        self.isRecording = NO;
+        [self updateRecordButtonUI];
+    }
     [self saveCurrentPlayRecord];
     [self doStopPlay];
 }
@@ -2338,15 +2437,11 @@ static BOOL useExact = NO;
 - (void)seekTo:(float)cp
 {
     NSLog(@"seek to:%g",cp);
-//    if (self.seeking) {
-//        NSLog(@"xql ignore seek.");
-//        return;
-//    }
-//    self.seeking = YES;
+
     if (cp < 0) {
         cp = 0;
     }
-//    [self.player pause];
+
     self.seekCostLb.stringValue = @"";
     if (self.player.monitor.duration > 0) {
         if (cp >= self.player.monitor.duration) {
@@ -2759,7 +2854,7 @@ static BOOL useExact = NO;
     return path;
 }
 
-- (NSString *)dirForCurrentPlayingUrl
+- (NSString *)caputeDirForCurrentPlayingUrl
 {
     NSURL *customURL = [MRCocoaBindingUserDefault snapshotDirectoryURL];
     if (customURL) {
@@ -2776,7 +2871,7 @@ static BOOL useExact = NO;
 {
     CGImageRef img = [self.player.view snapshot:[MRCocoaBindingUserDefault snapshot_type]];
     if (img) {
-        NSString *dir = [self dirForCurrentPlayingUrl];
+        NSString *dir = [self caputeDirForCurrentPlayingUrl];
         NSString *movieName = [self.playingUrl lastPathComponent];
         if (!movieName) movieName = @"capture";
         NSString *fmt = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_format"];
@@ -2787,7 +2882,6 @@ static BOOL useExact = NO;
         [MRUtil saveImageToFile:img path:filePath];
     }
 }
-
 
 - (void)updateFullscreenButtonImage:(BOOL)isFullScreen {
     if (!self.fullscreenBtn) return;

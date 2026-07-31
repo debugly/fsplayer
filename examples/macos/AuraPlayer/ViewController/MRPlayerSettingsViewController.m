@@ -898,6 +898,64 @@ static NSButton *MRCreateSwitch(void) {
            
     [self.moreDocView addArrangedSubview:[self createPopUpRowWithLabel:@"日志级别:" popUpButton:logPopUp]];
 
+    // Recording Settings
+    [self.moreDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"录制设置"]];
+    
+    // Record Save Directory Row
+    NSView *recDirRow = [[NSView alloc] init];
+    recDirRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [recDirRow.heightAnchor constraintEqualToConstant:24].active = YES;
+    
+    NSTextField *recDirLbl = [self createLabelWithText:@"保存目录:"];
+    [recDirRow addSubview:recDirLbl];
+    
+    NSPathControl *recPathCtrl = [[NSPathControl alloc] init];
+    recPathCtrl.pathStyle = NSPathStylePopUp;
+    recPathCtrl.controlSize = NSControlSizeSmall;
+    recPathCtrl.translatesAutoresizingMaskIntoConstraints = NO;
+    NSURL *savedRecordURL = [MRCocoaBindingUserDefault recordDirectoryURL];
+    if (savedRecordURL) {
+        recPathCtrl.URL = savedRecordURL;
+    }
+    recPathCtrl.target = self;
+    recPathCtrl.action = @selector(onRecordPathCtrlChanged:);
+    [recDirRow addSubview:recPathCtrl];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [recDirLbl.leadingAnchor constraintEqualToAnchor:recDirRow.leadingAnchor],
+        [recDirLbl.centerYAnchor constraintEqualToAnchor:recDirRow.centerYAnchor],
+        
+        [recPathCtrl.leadingAnchor constraintEqualToAnchor:recDirLbl.trailingAnchor constant:8],
+        [recPathCtrl.centerYAnchor constraintEqualToAnchor:recDirRow.centerYAnchor],
+        [recPathCtrl.widthAnchor constraintEqualToConstant:190]
+    ]];
+    [self.moreDocView addArrangedSubview:recDirRow];
+    
+    // Record Save Format Row
+    NSArray<NSString *> *recFmtItems = [MRCocoaBindingUserDefault recordSupportedFormats];
+    NSMutableArray<NSNumber *> *tags = [NSMutableArray array];
+    for (NSInteger i = 0; i < recFmtItems.count; i++) {
+        [tags addObject:@(i)];
+    }
+    NSSegmentedControl *recFmtSeg = [self createSegmentedWithItems:recFmtItems
+                                                       defaultKey:@"record_format"
+                                                             tags:tags];
+    recFmtSeg.target = self;
+    recFmtSeg.action = @selector(onRecordFormatChanged:);
+    
+    NSString *currentRecFmt = [MRCocoaBindingUserDefault record_format_string];
+    NSInteger fmtIdx = [recFmtItems indexOfObject:currentRecFmt];
+    if (fmtIdx != NSNotFound) {
+        recFmtSeg.selectedSegment = fmtIdx;
+    }
+    [self.moreDocView addArrangedSubview:[self createSegmentedRowWithLabel:@"保存格式:" segmented:recFmtSeg]];
+    
+    // Record Method Row
+    NSSegmentedControl *recMethodSeg = [self createSegmentedWithItems:@[@"快速", @"精确"]
+                                                          defaultKey:@"record_method"
+                                                                tags:@[@0, @1]];
+    [self.moreDocView addArrangedSubview:[self createSegmentedRowWithLabel:@"录制方法:" segmented:recMethodSeg]];
+    
     [self.moreDocView addArrangedSubview:[self createSeparatorLine]];
 
     // Section 2: Screenshot Settings
@@ -1086,6 +1144,24 @@ static NSButton *MRCreateSwitch(void) {
     NSURL *selectedURL = sender.URL;
     if (selectedURL) {
         [MRCocoaBindingUserDefault setSnapshotDirectoryURL:selectedURL];
+    }
+}
+
+- (void)onRecordPathCtrlChanged:(NSPathControl *)sender
+{
+    NSURL *selectedURL = sender.URL;
+    if (selectedURL) {
+        [MRCocoaBindingUserDefault setRecordDirectoryURL:selectedURL];
+    }
+}
+
+- (void)onRecordFormatChanged:(NSSegmentedControl *)sender
+{
+    NSArray<NSString *> *recFmtItems = [MRCocoaBindingUserDefault recordSupportedFormats];
+    NSInteger idx = sender.selectedSegment;
+    if (idx >= 0 && idx < recFmtItems.count) {
+        NSString *fmt = recFmtItems[idx];
+        [MRCocoaBindingUserDefault setValue:fmt forKey:@"record_format"];
     }
 }
 

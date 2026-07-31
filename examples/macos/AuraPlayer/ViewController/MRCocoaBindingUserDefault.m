@@ -13,6 +13,7 @@
 #import <AppKit/NSUserDefaultsController.h>
 #import <AppKit/NSColor.h>
 #import <FSPlayer/FSMediaPlayback.h>
+#import "NSFileManager+Sandbox.h"
 
 @interface MRCocoaBindingUserDefault()
 
@@ -118,6 +119,8 @@ static NSColor *MRUnarchiveColor(NSData *data) {
         @"audio_delay" : @(0),
         @"snapshot_type" : @(3),
         @"snapshot_format" : @"jpg",
+        @"record_format" : @(0),
+        @"record_method" : @(0),
         @"accurate_seek" : @(1),
         @"seek_step" : @(15),
         @"lock_screen_ratio" : @(1),
@@ -478,31 +481,130 @@ static NSColor *MRUnarchiveColor(NSData *data) {
 + (NSURL *)snapshotDirectoryURL
 {
     NSData *bookmarkData = [[NSUserDefaults standardUserDefaults] objectForKey:@"snapshot_directory_bookmark"];
-    if (!bookmarkData) {
-        NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_directory_path"];
-        if (path) {
-            return [NSURL fileURLWithPath:path];
+    if (bookmarkData) {
+        BOOL isStale = NO;
+        NSError *error = nil;
+        NSURL *url = [NSURL URLByResolvingBookmarkData:bookmarkData
+                                               options:NSURLBookmarkResolutionWithSecurityScope
+                                         relativeToURL:nil
+                                   bookmarkDataIsStale:&isStale
+                                                 error:&error];
+        if (url) {
+            [url startAccessingSecurityScopedResource];
+            return url;
         }
-        return nil;
-    }
-    
-    BOOL isStale = NO;
-    NSError *error = nil;
-    NSURL *url = [NSURL URLByResolvingBookmarkData:bookmarkData
-                                           options:NSURLBookmarkResolutionWithSecurityScope
-                                     relativeToURL:nil
-                               bookmarkDataIsStale:&isStale
-                                             error:&error];
-    if (url) {
-        [url startAccessingSecurityScopedResource];
-        return url;
     }
     
     NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_directory_path"];
     if (path) {
         return [NSURL fileURLWithPath:path];
     }
+    
+    // Default to user's Pictures/AuraPlayer directory
+    NSString *defaultDir = [NSFileManager mr_DirWithType:NSPicturesDirectory WithPathComponents:@[@"AuraPlayer"]];
+    if (defaultDir) {
+        return [NSURL fileURLWithPath:defaultDir];
+    }
+    
+    NSString *picturesDir = [NSSearchPathForDirectoriesInDomains(NSPicturesDirectory, NSUserDomainMask, YES) firstObject];
+    if (picturesDir) {
+        NSString *auraPlayerDir = [picturesDir stringByAppendingPathComponent:@"AuraPlayer"];
+        [[NSFileManager defaultManager] createDirectoryAtPath:auraPlayerDir withIntermediateDirectories:YES attributes:nil error:nil];
+        return [NSURL fileURLWithPath:auraPlayerDir];
+    }
+    
     return nil;
+}
+
++ (void)setRecordDirectoryURL:(NSURL *)url
+{
+    NSError *error = nil;
+    NSData *bookmarkData = [url bookmarkDataWithOptions:NSURLBookmarkCreationWithSecurityScope
+                          includingResourceValuesForKeys:nil
+                                         relativeToURL:nil
+                                                 error:&error];
+    if (bookmarkData) {
+        [[NSUserDefaults standardUserDefaults] setObject:bookmarkData forKey:@"record_directory_bookmark"];
+        [[NSUserDefaults standardUserDefaults] setObject:url.path forKey:@"record_directory_path"];
+    } else {
+        NSLog(@"Failed to create record bookmark: %@", error);
+    }
+}
+
++ (NSURL *)recordDirectoryURL
+{
+    NSData *bookmarkData = [[NSUserDefaults standardUserDefaults] objectForKey:@"record_directory_bookmark"];
+    if (bookmarkData) {
+        BOOL isStale = NO;
+        NSError *error = nil;
+        NSURL *url = [NSURL URLByResolvingBookmarkData:bookmarkData
+                                               options:NSURLBookmarkResolutionWithSecurityScope
+                                         relativeToURL:nil
+                                   bookmarkDataIsStale:&isStale
+                                                 error:&error];
+        if (url) {
+            [url startAccessingSecurityScopedResource];
+            return url;
+        }
+    }
+    
+    NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:@"record_directory_path"];
+    if (path) {
+        return [NSURL fileURLWithPath:path];
+    }
+    
+    // Default to user's Movies/AuraPlay directory
+    NSString *defaultDir = [NSFileManager mr_DirWithType:NSMoviesDirectory WithPathComponents:@[@"AuraPlay"]];
+    if (defaultDir) {
+        return [NSURL fileURLWithPath:defaultDir];
+    }
+    
+    NSString *moviesDir = [NSSearchPathForDirectoriesInDomains(NSMoviesDirectory, NSUserDomainMask, YES) firstObject];
+    if (moviesDir) {
+        NSString *auraPlayDir = [moviesDir stringByAppendingPathComponent:@"AuraPlay"];
+        [[NSFileManager defaultManager] createDirectoryAtPath:auraPlayDir withIntermediateDirectories:YES attributes:nil error:nil];
+        return [NSURL fileURLWithPath:auraPlayDir];
+    }
+    
+    return nil;
+}
+
++ (NSArray<NSString *> *)recordSupportedFormats
+{
+    return @[@"mp4", @"mov", @"mkv", @"ts", @"auto"];
+}
+
++ (int)record_format
+{
+    return [self intForKey:@"record_format"];
+}
+
++ (NSString *)record_format_string
+{
+    id val = [self anyForKey:@"record_format"];
+    NSArray<NSString *> *formats = [self recordSupportedFormats];
+    if ([val isKindOfClass:[NSString class]] && [(NSString *)val length] > 0) {
+        if ([formats containsObject:val]) {
+            return (NSString *)val;
+        }
+    }
+    if ([val respondsToSelector:@selector(intValue)]) {
+        int idx = [val intValue];
+        if (idx >= 0 && idx < formats.count) {
+            return formats[idx];
+        }
+    }
+    return formats.firstObject ?: @"mp4";
+}
+
++ (int)record_method
+{
+    return [self intForKey:@"record_method"];
+}
+
++ (BOOL)record_method_is_exact
+{
+    return [self record_method] == 1;
 }
 
 + (void)clearAllPlaybackHistory

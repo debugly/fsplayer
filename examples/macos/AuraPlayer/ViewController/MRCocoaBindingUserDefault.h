@@ -36,6 +36,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (NSURL *)snapshotDirectoryURL;
 + (void)setSnapshotDirectoryURL:(NSURL *)url;
+
++ (NSURL *)recordDirectoryURL;
++ (void)setRecordDirectoryURL:(NSURL *)url;
++ (NSArray<NSString *> *)recordSupportedFormats;
++ (int)record_format;
++ (NSString *)record_format_string;
++ (int)record_method;
++ (BOOL)record_method_is_exact;
+
 + (void)clearAllPlaybackHistory;
 
 + (NSString *)log_level;
