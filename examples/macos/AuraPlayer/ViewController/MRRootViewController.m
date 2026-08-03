@@ -107,7 +107,6 @@ static NSString *MRFormatPlayedTime(double currentPosition, double duration) {
 
 @property (nonatomic, copy) NSString *playingUrl;
 @property (nonatomic, weak) NSTimer *tickTimer;
-@property (nonatomic, assign, getter=isUsingHardwareAccelerate) BOOL usingHardwareAccelerate;
 @property (nonatomic, strong, nullable) NSWindow *extraRenderWindow;
 
 @property (nonatomic, assign) BOOL shouldShowHudView;
@@ -357,7 +356,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     
     self.playedTimeLb.stringValue = @"--:-- / --:--";
     
-    self.usingHardwareAccelerate = [self preferHW];
     [self loadSavedPlaylist];
 }
 
@@ -1730,8 +1728,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 - (void)fsPlayerVideoDecoderFatal:(NSNotification *)notifi
 {
     if (self.player == notifi.object) {
-        if (self.isUsingHardwareAccelerate) {
-            self.usingHardwareAccelerate = NO;
+        if ([self preferHW]) {
             [MRCocoaBindingUserDefault setValue:@(NO) forKey:@"use_hw"];
             NSLog(@"decoder fatal:%@;close videotoolbox hwaccel and fall back to software decoder.", notifi.userInfo);
             [self.player switchVideoDecoder:NO];
@@ -2006,7 +2003,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 #warning 根据地址，动态修改
     BOOL isLive = [urlStr hasPrefix:@"rtmp"] || [urlStr hasPrefix:@"rtsp"];
 //    isLive = NO;
-    [self perpareFSPlayer:urlStr hwaccel:self.isUsingHardwareAccelerate isLive:isLive];
+    [self perpareFSPlayer:urlStr hwaccel:[self preferHW] isLive:isLive];
     NSString *videoName = [urlStr lastPathComponent];
     
     NSInteger idx = [self.playList indexOfObject:self.playingUrl] + 1;
@@ -2413,7 +2410,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)retry
 {
-    self.usingHardwareAccelerate = [self preferHW];
     float playbackRate = self.player.playbackRate;
     
     NSString *url = self.playingUrl;
@@ -2483,7 +2479,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)resetPreferenceEachPlay
 {
-    self.usingHardwareAccelerate = [self preferHW];
     self.player.view.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
 
     [MRCocoaBindingUserDefault setValue:@(0.0) forKey:@"subtitle_delay"];
@@ -2890,7 +2885,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         BOOL use_hw = [v boolValue];
-        self.usingHardwareAccelerate = use_hw;
         if (self.player) {
             [self.player switchVideoDecoder:use_hw];
         } else {
@@ -2919,7 +2913,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         }
         if (mode > 0 && [MRCocoaBindingUserDefault use_hw]) {
             [MRCocoaBindingUserDefault setUse_hw:NO];
-            self.usingHardwareAccelerate = NO;
         }
     } forKey:@"deinterlace"];
 
