@@ -31,7 +31,6 @@
 #include "libavformat/avformat.h"
 #if IS_FFMPEG_6
 #include "libffmpeg/config_components.h"
-
 #include "libavformat/http.h"
 #include "libavutil/aes.h"
 #include "libavutil/avstring.h"
@@ -2771,7 +2770,7 @@ static const AVClass fs_hls_class = {
 
 #if IS_FFMPEG_7
 const FFInputFormat ijkff_ijkplaceholder1_demuxer = {
-    .p.name         = "debug_hls",
+    .p.name         = "fs_hls",
     .p.long_name    = NULL_IF_CONFIG_SMALL("FSPlayer HLS"),
     .p.priv_class   = &fs_hls_class,
     .p.flags        = AVFMT_NOGENSEARCH | AVFMT_TS_DISCONT | AVFMT_NO_BYTE_SEEK,
