@@ -119,7 +119,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @synthesize isVideoSync = _isVideoSync;
 @synthesize subtitlePreference = _subtitlePreference;
 
-static void FSPlayerSafeDestroy(FSPlayer *player) {
+static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     __block IjkMediaPlayer *mediaPlayer = player->_mediaPlayer;
     if (!mediaPlayer) {
         return;
@@ -166,7 +166,9 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
         dispatch_async(dispatch_get_main_queue(), UIHandler);
     }
     
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    NSLog(@"ijkmp will shutdown sync:%d", synchronous);
+    
+    void (^destroyBlock)(void) = ^{
         ijkmp_stop(mediaPlayer);
         ijkmp_shutdown(mediaPlayer);
         ijkmp_dec_ref_p(&mediaPlayer);
@@ -177,7 +179,13 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
             CFRelease((__bridge CFTypeRef)weakHolder);
             weakHolder = nil;
         }
-    });
+    };
+    
+    if (synchronous) {
+        destroyBlock();
+    } else {
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), destroyBlock);
+    }
 }
 
 - (void)setScreenOn: (BOOL)on
@@ -375,7 +383,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
 
 - (void)dealloc
 {
-    FSPlayerSafeDestroy(self);
+    FSPlayerSafeDestroy(self, NO);
     
     av_log(NULL, AV_LOG_DEBUG, "FSPlayer dealloc\n");
 }
@@ -486,12 +494,12 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     ijkmp_stop(_mediaPlayer);
 }
 
-- (void)shutdown
+- (void)shutdownSync:(BOOL)sync
 {
     if (!_mediaPlayer)
         return;
     
-    FSPlayerSafeDestroy(self);
+    FSPlayerSafeDestroy(self, sync);
     // FSPlayerSafeDestroy会异步调用ijkmp_stop，这里需要及时更新下
     if ([NSThread isMainThread]) {
         [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_STOPPED];
@@ -502,6 +510,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player) {
     }
 
     [self didShutdown];
+}
+
+- (void)shutdown
+{
+    [self shutdownSync:NO];
 }
 
 - (void)didShutdown

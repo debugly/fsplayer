@@ -86,7 +86,10 @@ typedef enum FSAudioChannel {
 - (void)pause;
 - (void)stop;
 - (BOOL)isPlaying;
+//async
 - (void)shutdown;
+//YES:sync,NO:async
+- (void)shutdownSync:(BOOL)sync;
 #if TARGET_OS_IOS
 - (void)setPauseInBackground:(BOOL)pause;
 #endif
