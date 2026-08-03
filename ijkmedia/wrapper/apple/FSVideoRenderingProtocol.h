@@ -180,9 +180,8 @@ typedef enum : NSUInteger {
 
 #if !TARGET_OS_OSX
 - (UIImage *)snapshot;
-#else
-- (CGImageRef)snapshot:(FSSnapshotType)aType;
 #endif
+- (CGImageRef)snapshot:(FSSnapshotType)aType;
 - (NSString *)name;
 - (id)context;
 

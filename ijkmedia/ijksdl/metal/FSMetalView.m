@@ -579,6 +579,44 @@ typedef CGRect NSRect;
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
 }
 
+// 合成成一张 BGRA 纹理并缓存到 attach 上，转成普通单帧。
+// 合成交给 FSMetalTileGridPipeline；之后旋转/缩放/调色/快照都走单帧路径作用于整张图，
+// 避免逐 tile 旋转导致画面错乱。合成只做一次：完成后 tilePieces 置空、videoPicture 被填充。
+// 注意：必须在持有 renderSnapshotLock 时调用（与显示/快照共用纹理缓存，需串行）。
+- (BOOL)ensureTileGridComposited:(FSOverlayAttach *)attach
+{
+    if (attach.tilePieces.count == 0) {
+        // 已合成过，或本就不是 tile-grid。
+        return YES;
+    }
+
+    if (!self.tileGridPipeline) {
+        self.tileGridPipeline = [[FSMetalTileGridPipeline alloc] initWithDevice:self.device];
+    }
+
+    CVMetalTextureCacheRef textureCache = NULL;
+#if USE_METAL_TEXTURE_CACHE
+    textureCache = _pictureTextureCache;
+#endif
+
+    // 合成（或命中缓存）后直接拿到可显示的纹理，不再每帧重新生成纹理。
+    id<MTLTexture> texture = [self.tileGridPipeline compositeTileGrid:attach
+                                                        textureCache:textureCache
+                                                        commandQueue:self.commandQueue];
+    if (!texture) {
+        return NO;
+    }
+
+    // 转成普通单帧：直接用合成纹理；videoPicture 仅用于建立 BGRA 显示管线（按像素格式选 shader）。
+    // 合成结果即显示尺寸，pixelW/H 与 w/h 相等（采样时无需裁剪）。
+    attach.videoTextures = @[texture];
+    attach.videoPicture = CVPixelBufferRetain(self.tileGridPipeline.compositedPixelBuffer); // 由 attach dealloc 释放
+    attach.pixelW = attach.w;
+    attach.pixelH = attach.h;
+    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer/textures
+    return YES;
+}
+
 #pragma mark - Display Link & Core Rendering Flow
 
 - (void)setNeedsRefreshCurrentPic
@@ -660,6 +698,7 @@ typedef CGRect NSRect;
     //use current DisplayLink thread
     [self draw];
 }
+
 // [self draw] driven
 - (void)drawRect:(NSRect)dirtyRect
 {
@@ -1016,81 +1055,14 @@ typedef CGRect NSRect;
 }
 
 #if TARGET_OS_IOS || TARGET_OS_TV
-
-- (void)applicationDidEnterBackground {
-    self.isEnterBackground = YES;
-    _displayLinkWrapper.paused = YES;
-}
-
-- (void)applicationWillEnterForeground {
-    self.isEnterBackground = NO;
-    _displayLinkWrapper.paused = NO;
-}
-
 - (UIImage *)snapshot
 {
     CGImageRef cgImg = [self snapshot:FSSnapshotTypeScreen];
     return [[UIImage alloc]initWithCGImage:cgImg];
 }
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    
-    if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
 #else
 
-- (void)resizeWithOldSuperviewSize:(NSSize)oldSize
-{
-    [super resizeWithOldSuperviewSize:oldSize];
-    [self setNeedsRefreshCurrentPic];
-}
-
 #endif
-
-#pragma mark HEIC tile-grid
-
-// 合成成一张 BGRA 纹理并缓存到 attach 上，转成普通单帧。
-// 合成交给 FSMetalTileGridPipeline；之后旋转/缩放/调色/快照都走单帧路径作用于整张图，
-// 避免逐 tile 旋转导致画面错乱。合成只做一次：完成后 tilePieces 置空、videoPicture 被填充。
-// 注意：必须在持有 renderSnapshotLock 时调用（与显示/快照共用纹理缓存，需串行）。
-- (BOOL)ensureTileGridComposited:(FSOverlayAttach *)attach
-{
-    if (attach.tilePieces.count == 0) {
-        // 已合成过，或本就不是 tile-grid。
-        return YES;
-    }
-
-    if (!self.tileGridPipeline) {
-        self.tileGridPipeline = [[FSMetalTileGridPipeline alloc] initWithDevice:self.device];
-    }
-
-    CVMetalTextureCacheRef textureCache = NULL;
-#if USE_METAL_TEXTURE_CACHE
-    textureCache = _pictureTextureCache;
-#endif
-
-    // 合成（或命中缓存）后直接拿到可显示的纹理，不再每帧重新生成纹理。
-    id<MTLTexture> texture = [self.tileGridPipeline compositeTileGrid:attach
-                                                        textureCache:textureCache
-                                                        commandQueue:self.commandQueue];
-    if (!texture) {
-        return NO;
-    }
-
-    // 转成普通单帧：直接用合成纹理；videoPicture 仅用于建立 BGRA 显示管线（按像素格式选 shader）。
-    // 合成结果即显示尺寸，pixelW/H 与 w/h 相等（采样时无需裁剪）。
-    attach.videoTextures = @[texture];
-    attach.videoPicture = CVPixelBufferRetain(self.tileGridPipeline.compositedPixelBuffer); // 由 attach dealloc 释放
-    attach.pixelW = attach.w;
-    attach.pixelH = attach.h;
-    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer/textures
-    return YES;
-}
 
 #pragma mark - Property Setters & Informational Getters
 
@@ -1253,21 +1225,7 @@ typedef CGRect NSRect;
 - (void)screenParametersDidChange:(NSNotification *)notification {
     [self updateHDRDisplayMode];
 }
-#endif
 
-#if TARGET_OS_IOS
-- (void)didMoveToWindow {
-    [super didMoveToWindow];
-    if (self.window) {
-        if (@available(iOS 16.0, *)) {
-            [self updateHDRDisplayMode];
-        } else {
-            // Fallback on earlier versions
-        }
-    }
-}
-#endif
-#if TARGET_OS_OSX
 - (NSView *)hitTest:(NSPoint)point
 {
     for (NSView *sub in [self subviews]) {
@@ -1289,10 +1247,50 @@ typedef CGRect NSRect;
 {
     return YES;
 }
+
+- (void)resizeWithOldSuperviewSize:(NSSize)oldSize
+{
+    [super resizeWithOldSuperviewSize:oldSize];
+    [self setNeedsRefreshCurrentPic];
+}
+
 #else
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    
+    if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
+        [self setNeedsRefreshCurrentPic];
+    }
+}
+
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
 {
     return NO;
+}
+
+- (void)applicationDidEnterBackground {
+    self.isEnterBackground = YES;
+    _displayLinkWrapper.paused = YES;
+}
+
+- (void)applicationWillEnterForeground {
+    self.isEnterBackground = NO;
+    _displayLinkWrapper.paused = NO;
+}
+#endif
+
+#if TARGET_OS_IOS
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    if (self.window) {
+        if (@available(iOS 16.0, *)) {
+            [self updateHDRDisplayMode];
+        } else {
+            // Fallback on earlier versions
+        }
+    }
 }
 #endif
 
