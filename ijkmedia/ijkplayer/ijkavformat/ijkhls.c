@@ -72,13 +72,13 @@
  * one anonymous toplevel variant for this, to maintain the structure.
  */
 
-enum KeyType {
+enum FS_KeyType {
     KEY_NONE,
     KEY_AES_128,
     KEY_SAMPLE_AES
 };
 
-struct segment {
+struct fs_segment {
     int64_t previous_duration;
     int64_t start_time;
     int64_t duration;
@@ -86,15 +86,15 @@ struct segment {
     int64_t size;
     char *url;
     char *key;
-    enum KeyType key_type;
+    enum FS_KeyType key_type;
     uint8_t iv[16];
     /* associated Media Initialization Section, treated as a segment */
-    struct segment *init_section;
+    struct fs_segment *init_section;
 };
 
-struct rendition;
+struct fs_rendition;
 
-enum PlaylistType {
+enum FS_PlaylistType {
     PLS_TYPE_UNSPECIFIED,
     PLS_TYPE_EVENT,
     PLS_TYPE_VOD
@@ -105,7 +105,7 @@ enum PlaylistType {
  * it has an open AVIOContext too, and potentially an AVPacket
  * containing the next packet from this stream.
  */
-struct playlist {
+struct fs_playlist {
     char url[MAX_URL_SIZE];
     FFIOContext pb;
     uint8_t* read_buffer;
@@ -125,13 +125,13 @@ struct playlist {
     int n_main_streams;
 
     int finished;
-    enum PlaylistType type;
+    enum FS_PlaylistType type;
     int64_t target_duration;
     int64_t start_seq_no;
     int time_offset_flag;
     int64_t start_time_offset;
     int n_segments;
-    struct segment **segments;
+    struct fs_segment **segments;
     int needed;
     int broken;
     int64_t cur_seq_no;
@@ -141,7 +141,7 @@ struct playlist {
     int64_t last_load_time;
 
     /* Currently active Media Initialization Section */
-    struct segment *cur_init_section;
+    struct fs_segment *cur_init_section;
     uint8_t *init_sec_buf;
     unsigned int init_sec_buf_size;
     unsigned int init_sec_data_len;
@@ -173,12 +173,12 @@ struct playlist {
      * with them, and variant main Media Playlists may have
      * multiple (playlist-less) renditions associated with them. */
     int n_renditions;
-    struct rendition **renditions;
+    struct fs_rendition **renditions;
 
     /* Media Initialization Sections (EXT-X-MAP) associated with this
      * playlist, if any. */
     int n_init_sections;
-    struct segment **init_sections;
+    struct fs_segment **init_sections;
 };
 
 /*
@@ -187,21 +187,21 @@ struct playlist {
  * contained in the main Media Playlist of the variant (in which case
  * playlist is NULL).
  */
-struct rendition {
+struct fs_rendition {
     enum AVMediaType type;
-    struct playlist *playlist;
+    struct fs_playlist *playlist;
     char group_id[MAX_FIELD_LEN];
     char language[MAX_FIELD_LEN];
     char name[MAX_FIELD_LEN];
     int disposition;
 };
 
-struct variant {
+struct fs_variant {
     int bandwidth;
 
     /* every variant contains at least the main Media Playlist in index 0 */
     int n_playlists;
-    struct playlist **playlists;
+    struct fs_playlist **playlists;
 
     char audio_group[MAX_FIELD_LEN];
     char video_group[MAX_FIELD_LEN];
@@ -212,11 +212,11 @@ typedef struct FS_HLSContext {
     AVClass *class;
     AVFormatContext *ctx;
     int n_variants;
-    struct variant **variants;
+    struct fs_variant **variants;
     int n_playlists;
-    struct playlist **playlists;
+    struct fs_playlist **playlists;
     int n_renditions;
-    struct rendition **renditions;
+    struct fs_rendition **renditions;
 
     int64_t cur_seq_no;
     int m3u8_hold_counters;
@@ -241,7 +241,7 @@ typedef struct FS_HLSContext {
     char *seg_inherit_opts;
 } FS_HLSContext;
 
-static void free_segment_dynarray(struct segment **segments, int n_segments)
+static void free_segment_dynarray(struct fs_segment **segments, int n_segments)
 {
     int i;
     for (i = 0; i < n_segments; i++) {
@@ -251,14 +251,14 @@ static void free_segment_dynarray(struct segment **segments, int n_segments)
     }
 }
 
-static void free_segment_list(struct playlist *pls)
+static void free_segment_list(struct fs_playlist *pls)
 {
     free_segment_dynarray(pls->segments, pls->n_segments);
     av_freep(&pls->segments);
     pls->n_segments = 0;
 }
 
-static void free_init_section_list(struct playlist *pls)
+static void free_init_section_list(struct fs_playlist *pls)
 {
     int i;
     for (i = 0; i < pls->n_init_sections; i++) {
@@ -274,7 +274,7 @@ static void free_playlist_list(FS_HLSContext *c)
 {
     int i;
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
         free_segment_list(pls);
         free_init_section_list(pls);
         av_freep(&pls->main_streams);
@@ -303,7 +303,7 @@ static void free_variant_list(FS_HLSContext *c)
 {
     int i;
     for (i = 0; i < c->n_variants; i++) {
-        struct variant *var = c->variants[i];
+        struct fs_variant *var = c->variants[i];
         av_freep(&var->playlists);
         av_free(var);
     }
@@ -320,10 +320,10 @@ static void free_rendition_list(FS_HLSContext *c)
     c->n_renditions = 0;
 }
 
-static struct playlist *new_playlist(FS_HLSContext *c, const char *url,
+static struct fs_playlist *new_playlist(FS_HLSContext *c, const char *url,
                                      const char *base)
 {
-    struct playlist *pls = av_mallocz(sizeof(struct playlist));
+    struct fs_playlist *pls = av_mallocz(sizeof(struct fs_playlist));
     if (!pls)
         return NULL;
     pls->pkt = av_packet_alloc();
@@ -354,17 +354,17 @@ struct variant_info {
     char subtitles[MAX_FIELD_LEN];
 };
 
-static struct variant *new_variant(FS_HLSContext *c, struct variant_info *info,
+static struct fs_variant *new_variant(FS_HLSContext *c, struct variant_info *info,
                                    const char *url, const char *base)
 {
-    struct variant *var;
-    struct playlist *pls;
+    struct fs_variant *var;
+    struct fs_playlist *pls;
 
     pls = new_playlist(c, url, base);
     if (!pls)
         return NULL;
 
-    var = av_mallocz(sizeof(struct variant));
+    var = av_mallocz(sizeof(struct fs_variant));
     if (!var)
         return NULL;
 
@@ -424,11 +424,11 @@ struct init_section_info {
     char byterange[32];
 };
 
-static struct segment *new_init_section(struct playlist *pls,
+static struct fs_segment *new_init_section(struct fs_playlist *pls,
                                         struct init_section_info *info,
                                         const char *url_base)
 {
-    struct segment *sec;
+    struct fs_segment *sec;
     char tmp_str[MAX_URL_SIZE], *ptr = tmp_str;
 
     if (!info->uri[0])
@@ -492,10 +492,10 @@ struct rendition_info {
     char characteristics[MAX_CHARACTERISTICS_LEN];
 };
 
-static struct rendition *new_rendition(FS_HLSContext *c, struct rendition_info *info,
+static struct fs_rendition *new_rendition(FS_HLSContext *c, struct rendition_info *info,
                                       const char *url_base)
 {
-    struct rendition *rend;
+    struct fs_rendition *rend;
     enum AVMediaType type = AVMEDIA_TYPE_UNKNOWN;
     char *characteristic;
     char *chr_ptr;
@@ -530,7 +530,7 @@ static struct rendition *new_rendition(FS_HLSContext *c, struct rendition_info *
             return NULL;
         }
 
-    rend = av_mallocz(sizeof(struct rendition));
+    rend = av_mallocz(sizeof(struct fs_rendition));
     if (!rend)
         return NULL;
 
@@ -625,7 +625,7 @@ static void handle_rendition_args(struct rendition_info *info, const char *key,
  * allocated the variant and playlist already)
  * *pls == NULL  => Master Playlist or parentless Media Playlist
  * *pls != NULL => parented Media Playlist, playlist+variant allocated */
-static int ensure_playlist(FS_HLSContext *c, struct playlist **pls, const char *url)
+static int ensure_playlist(FS_HLSContext *c, struct fs_playlist **pls, const char *url)
 {
     if (*pls)
         return 0;
@@ -740,7 +740,7 @@ static int open_url(AVFormatContext *s, AVIOContext **pb, const char *url,
     return ret;
 }
 
-static int test_segment(AVFormatContext *s, const AVInputFormat *in_fmt, struct playlist *pls, struct segment *seg)
+static int test_segment(AVFormatContext *s, const AVInputFormat *in_fmt, struct fs_playlist *pls, struct fs_segment *seg)
 {
     FS_HLSContext *c = s->priv_data;
     int matchA = 3;
@@ -785,13 +785,13 @@ static int test_segment(AVFormatContext *s, const AVInputFormat *in_fmt, struct 
 }
 
 static int parse_playlist(FS_HLSContext *c, const char *url,
-                          struct playlist *pls, AVIOContext *in)
+                          struct fs_playlist *pls, AVIOContext *in)
 {
     int64_t previous_duration1 = 0, previous_duration = 0, total_duration = 0;
 
     int ret = 0, is_segment = 0, is_variant = 0;
     int64_t duration = 0;
-    enum KeyType key_type = KEY_NONE;
+    enum FS_KeyType key_type = KEY_NONE;
     uint8_t iv[16] = "";
     int has_iv = 0;
     char key[MAX_URL_SIZE] = "";
@@ -803,9 +803,9 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
     uint8_t *new_url = NULL;
     struct variant_info variant_info;
     char tmp_str[MAX_URL_SIZE];
-    struct segment *cur_init_section = NULL;
+    struct fs_segment *cur_init_section = NULL;
     int is_http = av_strstart(url, "http", NULL);
-    struct segment **prev_segments = NULL;
+    struct fs_segment **prev_segments = NULL;
     int prev_n_segments = 0;
     int64_t prev_start_seq_no = -1;
 
@@ -1001,11 +1001,11 @@ static int parse_playlist(FS_HLSContext *c, const char *url,
                 is_variant = 0;
             }
             if (is_segment) {
-                struct segment *seg;
+                struct fs_segment *seg;
                 ret = ensure_playlist(c, &pls, url);
                 if (ret < 0)
                     goto fail;
-                seg = av_malloc(sizeof(struct segment));
+                seg = av_malloc(sizeof(struct fs_segment));
                 if (!seg) {
                     ret = AVERROR(ENOMEM);
                     goto fail;
@@ -1122,7 +1122,7 @@ fail:
     return ret;
 }
 
-static struct segment *current_segment(struct playlist *pls)
+static struct fs_segment *current_segment(struct fs_playlist *pls)
 {
     int64_t n = pls->cur_seq_no - pls->start_seq_no;
     if (n >= pls->n_segments)
@@ -1130,7 +1130,7 @@ static struct segment *current_segment(struct playlist *pls)
     return pls->segments[n];
 }
 
-static struct segment *next_segment(struct playlist *pls)
+static struct fs_segment *next_segment(struct fs_playlist *pls)
 {
     int64_t n = pls->cur_seq_no - pls->start_seq_no + 1;
     if (n >= pls->n_segments)
@@ -1138,7 +1138,7 @@ static struct segment *next_segment(struct playlist *pls)
     return pls->segments[n];
 }
 
-static int read_from_url(struct playlist *pls, struct segment *seg,
+static int read_from_url(struct fs_playlist *pls, struct fs_segment *seg,
                          uint8_t *buf, int buf_size)
 {
     int ret;
@@ -1184,7 +1184,7 @@ static void parse_id3(AVFormatContext *s, AVIOContext *pb,
 }
 
 /* Check if the ID3 metadata contents have changed */
-static int id3_has_changed_values(struct playlist *pls, AVDictionary *metadata,
+static int id3_has_changed_values(struct fs_playlist *pls, AVDictionary *metadata,
                                   ID3v2ExtraMetaAPIC *apic)
 {
     const AVDictionaryEntry *entry = NULL;
@@ -1217,7 +1217,7 @@ static int id3_has_changed_values(struct playlist *pls, AVDictionary *metadata,
 }
 
 /* Parse ID3 data and handle the found data */
-static void handle_id3(AVIOContext *pb, struct playlist *pls)
+static void handle_id3(AVIOContext *pb, struct fs_playlist *pls)
 {
     AVDictionary *metadata = NULL;
     ID3v2ExtraMetaAPIC *apic = NULL;
@@ -1259,7 +1259,7 @@ static void handle_id3(AVIOContext *pb, struct playlist *pls)
         ff_id3v2_free_extra_meta(&extra_meta);
 }
 
-static void intercept_id3(struct playlist *pls, uint8_t *buf,
+static void intercept_id3(struct fs_playlist *pls, uint8_t *buf,
                          int buf_size, int *len)
 {
     /* intercept id3 tags, we do not want to pass them to the raw
@@ -1267,7 +1267,7 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
     int bytes;
     int id3_buf_pos = 0;
     int fill_buf = 0;
-    struct segment *seg = current_segment(pls);
+    struct fs_segment *seg = current_segment(pls);
 
     /* gather all the id3 tags */
     while (1) {
@@ -1359,7 +1359,7 @@ static void intercept_id3(struct playlist *pls, uint8_t *buf,
         pls->is_id3_timestamped = (pls->id3_mpegts_timestamp != AV_NOPTS_VALUE);
 }
 
-static int open_input(FS_HLSContext *c, struct playlist *pls, struct segment *seg, AVIOContext **in)
+static int open_input(FS_HLSContext *c, struct fs_playlist *pls, struct fs_segment *seg, AVIOContext **in)
 {
     AVDictionary *opts = NULL;
     int ret;
@@ -1442,7 +1442,7 @@ cleanup:
     return ret;
 }
 
-static int update_init_section(struct playlist *pls, struct segment *seg)
+static int update_init_section(struct fs_playlist *pls, struct fs_segment *seg)
 {
     static const int max_init_section_size = 1024*1024;
     FS_HLSContext *c = pls->parent->priv_data;
@@ -1499,14 +1499,14 @@ static int update_init_section(struct playlist *pls, struct segment *seg)
     return 0;
 }
 
-static int64_t default_reload_interval(struct playlist *pls)
+static int64_t default_reload_interval(struct fs_playlist *pls)
 {
     return pls->n_segments > 0 ?
                           pls->segments[pls->n_segments - 1]->duration :
                           pls->target_duration;
 }
 
-static int playlist_needed(struct playlist *pls)
+static int playlist_needed(struct fs_playlist *pls)
 {
     AVFormatContext *s = pls->parent;
     int i, j;
@@ -1554,13 +1554,13 @@ static int playlist_needed(struct playlist *pls)
 
 static int read_data(void *opaque, uint8_t *buf, int buf_size)
 {
-    struct playlist *v = opaque;
+    struct fs_playlist *v = opaque;
     FS_HLSContext *c = v->parent->priv_data;
     int ret;
     int just_opened = 0;
     int reload_count = 0;
     int segment_retries = 0;
-    struct segment *seg;
+    struct fs_segment *seg;
 
 restart:
     if (!v->needed)
@@ -1722,13 +1722,13 @@ reload:
     goto restart;
 }
 
-static void add_renditions_to_variant(FS_HLSContext *c, struct variant *var,
+static void add_renditions_to_variant(FS_HLSContext *c, struct fs_variant *var,
                                       enum AVMediaType type, const char *group_id)
 {
     int i;
 
     for (i = 0; i < c->n_renditions; i++) {
-        struct rendition *rend = c->renditions[i];
+        struct fs_rendition *rend = c->renditions[i];
 
         if (rend->type == type && !strcmp(rend->group_id, group_id)) {
 
@@ -1746,7 +1746,7 @@ static void add_renditions_to_variant(FS_HLSContext *c, struct variant *var,
     }
 }
 
-static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pls,
+static void add_metadata_from_renditions(AVFormatContext *s, struct fs_playlist *pls,
                                          enum AVMediaType type)
 {
     int rend_idx = 0;
@@ -1759,7 +1759,7 @@ static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pl
             continue;
 
         for (; rend_idx < pls->n_renditions; rend_idx++) {
-            struct rendition *rend = pls->renditions[rend_idx];
+            struct fs_rendition *rend = pls->renditions[rend_idx];
 
             if (rend->type != type)
                 continue;
@@ -1778,7 +1778,7 @@ static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pl
 
 /* if timestamp was in valid range: returns 1 and sets seq_no
  * if not: returns 0 and sets seq_no to closest segment */
-static int find_timestamp_in_playlist(FS_HLSContext *c, struct playlist *pls,
+static int find_timestamp_in_playlist(FS_HLSContext *c, struct fs_playlist *pls,
                                       int64_t timestamp, int64_t *seq_no,
                                       int64_t *seg_start_ts)
 {
@@ -1811,7 +1811,7 @@ static int find_timestamp_in_playlist(FS_HLSContext *c, struct playlist *pls,
     return 0;
 }
 
-static int64_t select_cur_seq_no(FS_HLSContext *c, struct playlist *pls)
+static int64_t select_cur_seq_no(FS_HLSContext *c, struct fs_playlist *pls)
 {
     int64_t seq_no;
 
@@ -1896,14 +1896,14 @@ static int nested_io_open(AVFormatContext *s, AVIOContext **pb, const char *url,
     return AVERROR(EPERM);
 }
 
-static void add_stream_to_programs(AVFormatContext *s, struct playlist *pls, AVStream *stream)
+static void add_stream_to_programs(AVFormatContext *s, struct fs_playlist *pls, AVStream *stream)
 {
     FS_HLSContext *c = s->priv_data;
     int i, j;
     int bandwidth = -1;
 
     for (i = 0; i < c->n_variants; i++) {
-        struct variant *v = c->variants[i];
+        struct fs_variant *v = c->variants[i];
 
         for (j = 0; j < v->n_playlists; j++) {
             if (v->playlists[j] != pls)
@@ -1922,7 +1922,7 @@ static void add_stream_to_programs(AVFormatContext *s, struct playlist *pls, AVS
         av_dict_set_int(&stream->metadata, "variant_bitrate", bandwidth, 0);
 }
 
-static int set_stream_info_from_input_stream(AVStream *st, struct playlist *pls, AVStream *ist)
+static int set_stream_info_from_input_stream(AVStream *st, struct fs_playlist *pls, AVStream *ist)
 {
     int err;
 
@@ -1946,7 +1946,7 @@ static int set_stream_info_from_input_stream(AVStream *st, struct playlist *pls,
 }
 
 /* add new subdemuxer streams to our context, if any */
-static int update_streams_from_subdemuxer(AVFormatContext *s, struct playlist *pls)
+static int update_streams_from_subdemuxer(AVFormatContext *s, struct fs_playlist *pls)
 {
     int err;
 
@@ -1978,7 +1978,7 @@ static void update_noheader_flag(AVFormatContext *s)
     int i;
 
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
 
         if (pls->has_noheader_flag) {
             flag_needed = 1;
@@ -2077,7 +2077,7 @@ static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
      * parse each individual playlist. */
     if (c->n_playlists > 1 || c->playlists[0]->n_segments == 0) {
         for (i = 0; i < c->n_playlists; i++) {
-            struct playlist *pls = c->playlists[i];
+            struct fs_playlist *pls = c->playlists[i];
             pls->m3u8_hold_counters = 0;
             if ((ret = parse_playlist(c, pls->url, pls, NULL)) < 0) {
                 av_log(s, AV_LOG_WARNING, "parse_playlist error %s [%s]\n", av_err2str(ret), pls->url);
@@ -2107,7 +2107,7 @@ static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
 
     /* Associate renditions with variants */
     for (i = 0; i < c->n_variants; i++) {
-        struct variant *var = c->variants[i];
+        struct fs_variant *var = c->variants[i];
 
         if (var->audio_group[0])
             add_renditions_to_variant(c, var, AVMEDIA_TYPE_AUDIO, var->audio_group);
@@ -2119,7 +2119,7 @@ static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
 
     /* Create a program for each variant */
     for (i = 0; i < c->n_variants; i++) {
-        struct variant *v = c->variants[i];
+        struct fs_variant *v = c->variants[i];
         AVProgram *program;
 
         program = av_new_program(s, i);
@@ -2130,7 +2130,7 @@ static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
 
     /* Select the starting segments */
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
 
         if (pls->n_segments == 0)
             continue;
@@ -2141,11 +2141,11 @@ static int hls_read_header2(AVFormatContext *s, AVDictionary **a_options)
 
     /* Open the demuxer for each playlist */
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
         const AVInputFormat *in_fmt = NULL;
         char *url;
         AVDictionary *options = NULL;
-        struct segment *seg = NULL;
+        struct fs_segment *seg = NULL;
 
         if (!(pls->ctx = avformat_alloc_context()))
             return AVERROR(ENOMEM);
@@ -2340,7 +2340,7 @@ static int recheck_discard_flags(AVFormatContext *s, int first)
 
     /* Check if any new streams are needed */
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
 
         cur_needed = playlist_needed(c->playlists[i]);
 
@@ -2372,7 +2372,7 @@ static int recheck_discard_flags(AVFormatContext *s, int first)
     return changed;
 }
 
-static void fill_timing_for_id3_timestamped_stream(struct playlist *pls)
+static void fill_timing_for_id3_timestamped_stream(struct fs_playlist *pls)
 {
     if (pls->id3_offset >= 0) {
         pls->pkt->dts = pls->id3_mpegts_timestamp +
@@ -2397,7 +2397,7 @@ static void fill_timing_for_id3_timestamped_stream(struct playlist *pls)
     pls->pkt->pts = AV_NOPTS_VALUE;
 }
 
-static AVRational get_timebase(struct playlist *pls)
+static AVRational get_timebase(struct fs_playlist *pls)
 {
     if (pls->is_id3_timestamped)
         return MPEG_TIME_BASE_Q;
@@ -2405,8 +2405,8 @@ static AVRational get_timebase(struct playlist *pls)
     return pls->ctx->streams[pls->pkt->stream_index]->time_base;
 }
 
-static int compare_ts_with_wrapdetect(int64_t ts_a, struct playlist *pls_a,
-                                      int64_t ts_b, struct playlist *pls_b)
+static int compare_ts_with_wrapdetect(int64_t ts_a, struct fs_playlist *pls_a,
+                                      int64_t ts_b, struct fs_playlist *pls_b)
 {
     int64_t scaled_ts_a = av_rescale_q(ts_a, get_timebase(pls_a), MPEG_TIME_BASE_Q);
     int64_t scaled_ts_b = av_rescale_q(ts_b, get_timebase(pls_b), MPEG_TIME_BASE_Q);
@@ -2423,7 +2423,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
     c->first_packet = 0;
 
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
         /* Make sure we've got one buffered packet from each open playlist
          * stream */
         if (pls->needed && !pls->pkt->data) {
@@ -2431,7 +2431,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
                 int64_t pkt_ts = AV_NOPTS_VALUE;
                 int64_t ts_diff;
                 AVRational tb;
-                struct segment *seg = NULL;
+                struct fs_segment *seg = NULL;
                 ret = av_read_frame(pls->ctx, pls->pkt);
                 if (ret < 0) {
                     if (!avio_feof(&pls->pb.pub) && ret != AVERROR_EOF)
@@ -2447,7 +2447,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
                         if (pls->finished) {
                             int seq_no = (int)(pls->cur_seq_no - pls->start_seq_no);
                             if (seq_no < pls->n_segments && s->streams[pkt->stream_index]) {
-                                struct segment *seg = pls->segments[seq_no];
+                                struct fs_segment *seg = pls->segments[seq_no];
                                 if (seg->previous_duration > 0) {
                                     int64_t pred = av_rescale_q(seg->previous_duration,
                                                             AV_TIME_BASE_Q,
@@ -2512,7 +2512,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
         }
         /* Check if this stream has the packet with the lowest dts */
         if (pls->pkt->data) {
-            struct playlist *minpls = minplaylist < 0 ?
+            struct fs_playlist *minpls = minplaylist < 0 ?
                                      NULL : c->playlists[minplaylist];
             if (minplaylist < 0) {
                 minplaylist = i;
@@ -2529,7 +2529,7 @@ static int hls_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     /* If we got a packet, return it */
     if (minplaylist >= 0) {
-        struct playlist *pls = c->playlists[minplaylist];
+        struct fs_playlist *pls = c->playlists[minplaylist];
         AVStream *ist;
         AVStream *st;
 
@@ -2592,7 +2592,7 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
                                int64_t timestamp, int flags)
 {
     FS_HLSContext *c = s->priv_data;
-    struct playlist *seek_pls = NULL;
+    struct fs_playlist *seek_pls = NULL;
     int i, j;
     int stream_subdemuxer_index = 0;
     int64_t first_timestamp, seek_timestamp, duration;
@@ -2616,7 +2616,7 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
 
     /* find the playlist with the specified stream */
     for (i = 0; i < c->n_playlists; i++) {
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
         for (j = 0; j < pls->n_main_streams; j++) {
             if (pls->main_streams[j] == s->streams[stream_index]) {
                 seek_pls = pls;
@@ -2643,7 +2643,7 @@ static int hls_read_seek(AVFormatContext *s, int stream_index,
 
     for (i = 0; i < c->n_playlists; i++) {
         /* Reset reading */
-        struct playlist *pls = c->playlists[i];
+        struct fs_playlist *pls = c->playlists[i];
         AVIOContext *const pb = &pls->pb.pub;
         ff_format_io_close(pls->parent, &pls->input);
         pls->input_read_done = 0;
