@@ -142,6 +142,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)setLogHandler:(void (^_Nullable)(FSLogLevel level,  NSString * _Nonnull tag,  NSString * _Nonnull msg))handler;
 
 + (NSDictionary *)supportedDecoders;
++ (BOOL)isHardwareDecodeSupportedForHEVC;
 ///1.0.7
 + (NSString *)playerVersion;
 ///n7.1.3-32-g23d663f

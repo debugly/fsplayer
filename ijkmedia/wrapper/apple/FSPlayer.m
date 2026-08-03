@@ -38,6 +38,7 @@
 #include "../ijkmedia/ijkplayer/apple/ijkplayer_ios.h"
 #include "../ijkmedia/ijkplayer/ijkmeta.h"
 #include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
+#include "ijksdl/apple/ijk_vout_common.h"
 
 static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
@@ -682,6 +683,16 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
         [codecArr addObject:dic];
     }
     return [codesByType copy];
+}
+
++ (BOOL)isHardwareDecodeSupportedForHEVC
+{
+    static dispatch_once_t onceToken;
+    static BOOL supported = NO;
+    dispatch_once(&onceToken, ^{
+        supported = is_videotoolbox_supported_hevc();
+    });
+    return supported;
 }
 
 + (NSString *)playerVersion
