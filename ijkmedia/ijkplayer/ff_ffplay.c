@@ -1474,15 +1474,35 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
                 overlay_format = SDL_FCC_P216;
             } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
                 overlay_format = SDL_FCC_AYUV64;
-            } else
-        
-            {
+            } else {
                 const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
                 if (pfd->nb_components > 0) {
                     if (pfd->comp[0].depth == 10) {
                         overlay_format = SDL_FCC_P010;
                     } else {
                         overlay_format = SDL_FCC_NV12;
+                        switch (src_format) {
+                            case AV_PIX_FMT_BGRA:
+                                overlay_format = SDL_FCC_BGRA;
+                                break;
+                            case AV_PIX_FMT_BGR0:
+                                overlay_format = SDL_FCC_BGR0;
+                                break;
+                            case AV_PIX_FMT_ARGB: {
+                                overlay_format = SDL_FCC_ARGB;
+                                break;
+                            }
+                            case AV_PIX_FMT_0RGB: {
+                                overlay_format = SDL_FCC_0RGB;
+                                break;
+                            }
+                            default: {
+                                if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+                                    overlay_format = SDL_FCC_BGRA;
+                                }
+                                break;
+                            }
+                        }
                     }
                 }
             }
