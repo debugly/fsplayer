@@ -479,7 +479,6 @@ typedef struct FFPlayer {
     int audio_disable;
     int video_disable;
     int subtitle_disable;
-    const char* wanted_stream_spec[AVMEDIA_TYPE_NB];
     int seek_by_bytes;
     int display_disable;
     int show_status;
@@ -638,7 +637,6 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     av_freep(&ffp->input_filename);
     ffp->audio_disable          = 0;
     ffp->video_disable          = 0;
-    memset(ffp->wanted_stream_spec, 0, sizeof(ffp->wanted_stream_spec));
     ffp->seek_by_bytes          = -1;
     ffp->display_disable        = 0;
     ffp->show_status            = -1;
