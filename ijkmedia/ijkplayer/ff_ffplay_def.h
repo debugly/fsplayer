@@ -516,7 +516,6 @@ typedef struct FFPlayer {
     int sar_num;
     int sar_den;
 
-    char *subtitle_codec_info;
     Uint32 overlay_format;
 
     int prepared;
@@ -684,8 +683,6 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     
     ffp->sar_num                = 0;
     ffp->sar_den                = 0;
-
-    av_freep(&ffp->subtitle_codec_info);
 #ifdef __APPLE__
     ffp->overlay_format         = SDL_FCC__GLES2;
 #else

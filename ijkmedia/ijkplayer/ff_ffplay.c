@@ -421,8 +421,6 @@ static int ff_apply_subtitle_stream_change(FFPlayer *ffp)
     int pre_stream;
     int r = ff_sub_update_stream_if_need(is->ffSub, &update_stream, &pre_stream);
     if (r > 0) {
-        AVCodecContext * avctx = ff_sub_get_avctx(is->ffSub);
-        ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
         ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, update_stream);
         ffp_notify_msg1(ffp, FFP_MSG_SELECTED_STREAM_CHANGED);
         
@@ -435,13 +433,11 @@ static int ff_apply_subtitle_stream_change(FFPlayer *ffp)
             ff_sub_seek_to(is->ffSub, delay, sec);
         }
     } else if (r == 0) {
-        ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, "");
         ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, -1);
         ffp_notify_msg1(ffp, FFP_MSG_SELECTED_STREAM_CHANGED);
     } else if (r < -1) {
         //when closed pre stream,need send stream changed msg.
         if (pre_stream >= 0) {
-            ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, "");
             ijkmeta_set_int64_l(ffp->meta, FSM_KEY_TIMEDTEXT_STREAM, -1);
             ffp_notify_msg1(ffp, FFP_MSG_SELECTED_STREAM_CHANGED);
         }
@@ -5468,15 +5464,6 @@ void ffp_check_buffering_l(FFPlayer *ffp)
 int ffp_video_thread(FFPlayer *ffp)
 {
     return ffplay_video_thread(ffp);
-}
-
-
-
-void ffp_set_subtitle_codec_info(FFPlayer *ffp, const char *module, const char *codec)
-{
-    av_freep(&ffp->subtitle_codec_info);
-    ffp->subtitle_codec_info = av_asprintf("%s, %s", module ? module : "", codec ? codec : "");
-    av_log(ffp, AV_LOG_INFO, "SubtitleCodec: %s\n", ffp->subtitle_codec_info);
 }
 
 void ffp_set_playback_rate(FFPlayer *ffp, float rate)

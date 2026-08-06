@@ -684,11 +684,6 @@ int subComponent_get_stream(FFSubComponent *com)
     return -1;
 }
 
-AVCodecContext * subComponent_get_avctx(FFSubComponent *com)
-{
-    return com ? com->decoder.avctx : NULL;
-}
-
 void subComponent_update_preference(FFSubComponent *com, FSSubtitlePreference* sp)
 {
     if (!com) {

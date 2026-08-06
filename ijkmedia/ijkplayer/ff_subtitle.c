@@ -581,15 +581,6 @@ int ff_sub_update_stream_if_need(FFSubtitle *sub, int *update_stream, int *pre_s
     return r;
 }
 
-AVCodecContext * ff_sub_get_avctx(FFSubtitle *sub)
-{
-    if (!sub || !sub->com) {
-        return NULL;
-    }
-    
-    return subComponent_get_avctx(sub->com);
-}
-
 int ff_sub_get_current_stream(FFSubtitle *sub, int *pending)
 {
     if (!sub) {

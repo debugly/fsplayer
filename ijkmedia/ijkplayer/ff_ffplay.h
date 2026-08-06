@@ -80,8 +80,6 @@ void      ffp_check_buffering_l(FFPlayer *ffp);
 
 int       ffp_video_thread(FFPlayer *ffp);
 
-void      ffp_set_subtitle_codec_info(FFPlayer *ffp, const char *module, const char *codec);
-
 void      ffp_set_playback_rate(FFPlayer *ffp, float rate);
 void      ffp_set_playback_volume(FFPlayer *ffp, float volume);
 int       ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected);

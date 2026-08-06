@@ -47,7 +47,6 @@ int ff_sub_record_need_select_stream(FFSubtitle *sub, int st_idx);
 int ff_sub_is_need_update_preference(FFSubtitle *sub);
 //-1: no change. 0:close current. 1:opened new, less than -1 means open failed
 int ff_sub_update_stream_if_need(FFSubtitle *sub, int *update_stream, int *pre_stream);
-AVCodecContext * ff_sub_get_avctx(FFSubtitle *sub);
 //less than 0 means none opened stream,pending is will use stream id
 int ff_sub_get_current_stream(FFSubtitle *sub, int *pending);
 //0 means has no sub;1 means internal sub;2 means external sub;
