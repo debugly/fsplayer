@@ -54,7 +54,6 @@ FS_Pipenode *ffpipenode_create_video_decoder_from_ffplay(FFPlayer *ffp)
     node->func_destroy  = func_destroy;
     node->func_run_sync = func_run_sync;
 
-    ffp_set_video_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(ffp->is->viddec.avctx->codec_id));
     //maybe hw is not support the video format.
     //node->vdec_type = ffp->is->viddec.avctx->hw_device_ctx ? FFP_PROPV_DECODER_AVCODEC_HW : FFP_PROPV_DECODER_AVCODEC;
     return node;

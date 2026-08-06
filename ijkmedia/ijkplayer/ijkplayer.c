@@ -182,30 +182,6 @@ void ijkmp_set_option_int(IjkMediaPlayer *mp, int opt_category, const char *name
     // MPTRACE("%s()=void\n", __func__);
 }
 
-int ijkmp_get_video_codec_info(IjkMediaPlayer *mp, char **codec_info)
-{
-    assert(mp);
-
-    MPTRACE("%s\n", __func__);
-    pthread_mutex_lock(&mp->mutex);
-    int ret = ffp_get_video_codec_info(mp->ffplayer, codec_info);
-    pthread_mutex_unlock(&mp->mutex);
-    MPTRACE("%s()=void\n", __func__);
-    return ret;
-}
-
-int ijkmp_get_audio_codec_info(IjkMediaPlayer *mp, char **codec_info)
-{
-    assert(mp);
-
-    MPTRACE("%s\n", __func__);
-    pthread_mutex_lock(&mp->mutex);
-    int ret = ffp_get_audio_codec_info(mp->ffplayer, codec_info);
-    pthread_mutex_unlock(&mp->mutex);
-    MPTRACE("%s()=void\n", __func__);
-    return ret;
-}
-
 void ijkmp_set_playback_rate(IjkMediaPlayer *mp, float rate)
 {
     assert(mp);
