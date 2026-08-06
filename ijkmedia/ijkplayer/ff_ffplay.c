@@ -1914,7 +1914,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     AVFilterContext *filt_src = NULL, *filt_out = NULL, *last_filter = NULL;
     AVCodecParameters *codecpar = is->video_st->codecpar;
     AVRational fr = av_guess_frame_rate(is->ic, is->video_st, NULL);
-    const AVDictionaryEntry *e = NULL;
     AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
     if (!par)
         return AVERROR(ENOMEM);
@@ -1951,7 +1950,7 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 //    av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "hue=s=0");
 //
 //    av_log(ffp, AV_LOG_INFO, "configure_video_filters: vfilters_buf='%s', deinterlace=%d\n", vfilters_buf, ffp->deinterlace);
-
+    const AVDictionaryEntry *e = NULL;
 #if IS_FFMPEG_6
     while ((e = av_dict_iterate(ffp->sws_dict, e))) {
 #else
@@ -2159,7 +2158,6 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
     int sample_rates[2] = { 0, -1 };
     AVFilterContext *filt_asrc = NULL, *filt_asink = NULL;
     char aresample_swr_opts[512] = "";
-    const AVDictionaryEntry *e = NULL;
     AVBPrint bp;
     char asrc_args[256];
     int ret;
@@ -2173,6 +2171,7 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
     is->agraph->nb_threads = filter_nbthreads;
 
     av_bprint_init(&bp, 0, AV_BPRINT_SIZE_AUTOMATIC);
+    const AVDictionaryEntry *e = NULL;
 #if IS_FFMPEG_6
     while ((e = av_dict_iterate(ffp->swr_opts, e)))
 #else
@@ -3254,7 +3253,6 @@ static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
                       AVDictionary **dst, AVDictionary **opts_used)
 {
     AVDictionary    *ret = NULL;
-    const AVDictionaryEntry *t = NULL;
     int            flags = s->oformat ? AV_OPT_FLAG_ENCODING_PARAM
                                       : AV_OPT_FLAG_DECODING_PARAM;
     char          prefix = 0;
@@ -3277,6 +3275,7 @@ static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
         av_log(NULL, AV_LOG_DEBUG, "filter_codec_opts igore media type:%d\n",st->codecpar->codec_type);
         break;
     }
+    const AVDictionaryEntry *t = NULL;
 #if IS_FFMPEG_6
     while ((t = av_dict_iterate(opts, t)))
 #else
@@ -3382,7 +3381,6 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     const AVCodec *codec = NULL;
     const char *forced_codec_name = NULL;
     AVDictionary *opts = NULL;
-    const AVDictionaryEntry *t = NULL;
     int sample_rate;
     AVChannelLayout ch_layout = { 0 };
     int ret = 0;
@@ -3473,10 +3471,11 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
         goto fail;
     }
+    const AVDictionaryEntry *t = NULL;
 #if IS_FFMPEG_6
-    if ((t = av_dict_iterate(opts, NULL)))
+    while ((t = av_dict_iterate(opts, t)))
 #else
-    if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX)))
+    while ((t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX)))
 #endif
     {
         av_log(NULL, AV_LOG_ERROR, "codec Option %s not found.\n", t->key);
@@ -3746,7 +3745,6 @@ static int read_thread(void *arg)
     int64_t stream_start_time;
     int completed = 0;
     int pkt_in_play_range = 0;
-    const AVDictionaryEntry *t;
     SDL_mutex *wait_mutex = SDL_CreateMutex();
     int scan_all_pmts_set = 0;
     int64_t pkt_ts;
@@ -3812,10 +3810,11 @@ static int read_thread(void *arg)
     ffp_notify_str2(ffp, FFP_MSG_OPEN_INPUT, ic->iformat->name);
     if (scan_all_pmts_set)
         av_dict_set(&ffp->format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
+    const AVDictionaryEntry *t = NULL;
 #if IS_FFMPEG_6
-    if ((t = av_dict_iterate(ffp->format_opts, NULL)))
+    while ((t = av_dict_iterate(ffp->format_opts, t)))
 #else
-    if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX)))
+    while ((t = av_dict_get(ffp->format_opts, "", t, AV_DICT_IGNORE_SUFFIX)))
 #endif
     {
         av_log(NULL, AV_LOG_ERROR, "format Option %s not found.\n", t->key);
