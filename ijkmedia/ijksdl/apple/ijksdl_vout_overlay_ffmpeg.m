@@ -57,7 +57,6 @@ struct SDL_VoutOverlay_Opaque {
 };
 
 #if IS_TILEGRID_HEIC_ENABLED
-
 typedef struct FSTileSlot {
     CVPixelBufferRef pb;   // 已拷贝的 tile CVPixelBuffer（owned）
     int x, y;              // tile 在 canvas 上的位置
