@@ -24,6 +24,7 @@
 
 #import "FSOptions.h"
 #include "ijkplayer/apple/ijkplayer_ios.h"
+#define FS_DEFAULT_WHITELIST @"concat,http,tcp,https,crypto,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp"
 
 @implementation FSOptions {
     NSMutableDictionary *_optionCategories;
@@ -47,7 +48,9 @@
     [options setFormatOptionIntValue:30 * 1000 * 1000   forKey:@"timeout"];
     //the user-agent option is deprecated, please use user_agent option
     [options setFormatOptionValue:@"fsplayer"           forKey:@"user_agent"];
-
+    //set default whitelist
+    [options setFormatOptionValue:FS_DEFAULT_WHITELIST forKey:@"protocol_whitelist"];
+    
     options.showHudView = NO;
     
     options.automaticallySetupAudioSession = YES;
@@ -165,6 +168,22 @@
 - (void)setPlayerOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategoryPlayer];
+}
+
+- (void)setProtocolWhitelist:(NSString *)protocolWhitelist
+{
+    if ([_protocolWhitelist isEqualToString:protocolWhitelist]) {
+        return;
+    }
+    NSString *whitelist;
+    //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_FORMAT,"safe", 0);
+    if (protocolWhitelist.length > 0) {
+        //httpproxy
+        whitelist = [NSString stringWithFormat:@"%@,%@",FS_DEFAULT_WHITELIST,protocolWhitelist];
+    } else {
+        whitelist = FS_DEFAULT_WHITELIST;
+    }
+    [self setFormatOptionValue:whitelist forKey:@"protocol_whitelist"];
 }
 
 @end

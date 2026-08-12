@@ -264,15 +264,6 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     }
     
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
-    //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_FORMAT,"safe", 0);
-    //ijkmp_set_option(_mediaPlayer,FSMP_OPT_CATEGORY_PLAYER,"protocol_whitelist","ffconcat,file,http,https");
-    //httpproxy
-    const char *default_p_whitelist = "concat,http,tcp,https,crypto,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp";
-    if (options.protocolWhitelist.length > 0) {
-        NSString *whitelist = [[NSString stringWithUTF8String:default_p_whitelist] stringByAppendingFormat:@",%@",options.protocolWhitelist];
-        default_p_whitelist = [whitelist UTF8String];
-    }
-    ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_FORMAT, "protocol_whitelist", default_p_whitelist);
     
     _subtitlePreference = fs_subtitle_default_preference();
     
