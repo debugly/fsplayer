@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DA0100012F69490000EDBE7F /* MRMediaItem.m in Sources */ = {isa = PBXBuildFile; fileRef = DA0100042F69490000EDBE7F /* MRMediaItem.m */; };
+		DA0100022F69490000EDBE7F /* MRM3UParser.m in Sources */ = {isa = PBXBuildFile; fileRef = DA0100062F69490000EDBE7F /* MRM3UParser.m */; };
 		C905CF212B55163C00D59730 /* MRRootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C905CF1F2B55163C00D59730 /* MRRootViewController.m */; };
 		C905CF222B55163C00D59730 /* MRRootViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C905CF202B55163C00D59730 /* MRRootViewController.xib */; };
 		C92F1A242DAE240200540BD5 /* MRTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = C92F1A232DAE240200540BD5 /* MRTextField.m */; };
@@ -107,6 +109,10 @@
 
 /* Begin PBXFileReference section */
 		1B92B1D02DC37CDF00B58436 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
+		DA0100032F69490000EDBE7F /* MRMediaItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRMediaItem.h; sourceTree = "<group>"; };
+		DA0100042F69490000EDBE7F /* MRMediaItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRMediaItem.m; sourceTree = "<group>"; };
+		DA0100052F69490000EDBE7F /* MRM3UParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MRM3UParser.h; sourceTree = "<group>"; };
+		DA0100062F69490000EDBE7F /* MRM3UParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MRM3UParser.m; sourceTree = "<group>"; };
 		C905CF1E2B55163C00D59730 /* MRRootViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MRRootViewController.h; sourceTree = "<group>"; };
 		C905CF1F2B55163C00D59730 /* MRRootViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MRRootViewController.m; sourceTree = "<group>"; };
 		C905CF202B55163C00D59730 /* MRRootViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MRRootViewController.xib; sourceTree = "<group>"; };
@@ -341,6 +347,10 @@
 			children = (
 				DD9B138B22C23A79002D1D79 /* AppDelegate.h */,
 				DD9B138C22C23A79002D1D79 /* AppDelegate.m */,
+				DA0100032F69490000EDBE7F /* MRMediaItem.h */,
+				DA0100042F69490000EDBE7F /* MRMediaItem.m */,
+				DA0100052F69490000EDBE7F /* MRM3UParser.h */,
+				DA0100062F69490000EDBE7F /* MRM3UParser.m */,
 				C92F1A1F2DAE239C00540BD5 /* CustomView */,
 				C98E41692D9A281A0076F2F8 /* ViewController */,
 				DD050F9A25A43A1300F01E2F /* DragView */,
@@ -518,6 +528,8 @@
 				DD0443E627E7749800CB946B /* MRActionProcessor+Private.m in Sources */,
 				DD050F9E25A43A1300F01E2F /* MRDragView.m in Sources */,
 				C986F7BA2DADF2C6006D5F4E /* MRInputURLViewController.m in Sources */,
+				DA0100012F69490000EDBE7F /* MRMediaItem.m in Sources */,
+				DA0100022F69490000EDBE7F /* MRM3UParser.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

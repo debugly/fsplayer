@@ -23,6 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updatePlaylist:(NSArray<NSString *> *)playlist currentlyPlaying:(nullable NSString *)playingUrl;
 
+/// Update the playlist with metadata (title, logo, group) for enriched display.
+/// @param metadata  Dictionary mapping URL string → @{@"title":, @"logo":, @"group":}.
+///                  Pass nil or empty dict for plain URL display (backward compatible).
+- (void)updatePlaylist:(NSArray<NSString *> *)playlist
+      currentlyPlaying:(nullable NSString *)playingUrl
+              metadata:(nullable NSDictionary<NSString *, NSDictionary *> *)metadata;
+
 @end
 
 NS_ASSUME_NONNULL_END

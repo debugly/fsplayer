@@ -37,7 +37,8 @@
         _indexLb.selectable = NO;
         _indexLb.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
         _indexLb.textColor = [NSColor secondaryLabelColor];
-        _indexLb.alignment = NSTextAlignmentCenter;
+        _indexLb.alignment = NSTextAlignmentRight;
+        _indexLb.usesSingleLineMode = YES;
         [self addSubview:_indexLb];
         
         _playIconLb = [[NSTextField alloc] init];
@@ -74,9 +75,9 @@
         [self addSubview:_deleteBtn];
         
         [NSLayoutConstraint activateConstraints:@[
-            [_indexLb.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10],
+            [_indexLb.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8],
             [_indexLb.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [_indexLb.widthAnchor constraintEqualToConstant:22],
+            [_indexLb.widthAnchor constraintEqualToConstant:30],
             
             [_playIconLb.leadingAnchor constraintEqualToAnchor:_indexLb.trailingAnchor constant:2],
             [_playIconLb.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -104,9 +105,14 @@
 
 - (void)updateWithUrl:(NSString *)urlStr index:(NSInteger)index isPlaying:(BOOL)isPlaying onDelete:(void (^)(void))onDelete
 {
+    [self updateWithUrl:urlStr title:nil index:index isPlaying:isPlaying onDelete:onDelete];
+}
+
+- (void)updateWithUrl:(NSString *)urlStr title:(nullable NSString *)displayTitle index:(NSInteger)index isPlaying:(BOOL)isPlaying onDelete:(void (^)(void))onDelete
+{
     self.onDeleteBlock = onDelete;
     self.indexLb.stringValue = [NSString stringWithFormat:@"%ld", (long)(index + 1)];
-    self.titleLb.stringValue = [urlStr lastPathComponent] ?: @"";
+    self.titleLb.stringValue = (displayTitle.length > 0) ? displayTitle : ([urlStr lastPathComponent] ?: @"");
     
     if (isPlaying) {
         self.playIconLb.hidden = NO;
@@ -184,6 +190,7 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
 @property (nonatomic, copy, readwrite) NSArray<NSString *> *playlistItems;
 @property (nonatomic, copy) NSArray<NSString *> *rawPlaylist;
 @property (nonatomic, copy, readwrite, nullable) NSString *currentlyPlayingUrl;
+@property (nonatomic, copy, nullable) NSDictionary<NSString *, NSDictionary *> *playlistMetadata;
 @property (nonatomic, assign) BOOL isAlphabeticalSortEnabled;
 
 @property (nonatomic, strong) NSVisualEffectView *vibrantView;
@@ -418,8 +425,16 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
 
 - (void)updatePlaylist:(NSArray<NSString *> *)playlist currentlyPlaying:(nullable NSString *)playingUrl
 {
+    [self updatePlaylist:playlist currentlyPlaying:playingUrl metadata:nil];
+}
+
+- (void)updatePlaylist:(NSArray<NSString *> *)playlist
+      currentlyPlaying:(nullable NSString *)playingUrl
+              metadata:(nullable NSDictionary<NSString *, NSDictionary *> *)metadata
+{
     _rawPlaylist = [playlist copy] ?: @[];
     _currentlyPlayingUrl = [playingUrl copy];
+    _playlistMetadata = [metadata copy];
     [self applySortingAndReload];
 }
 
@@ -436,12 +451,21 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
     }
 }
 
+- (NSString *)displayTitleForURL:(NSString *)url
+{
+    NSString *title = self.playlistMetadata[url][@"title"];
+    if (title.length > 0) return title;
+    return [url lastPathComponent] ?: @"";
+}
+
 - (void)applySortingAndReload
 {
     if (self.isAlphabeticalSortEnabled && self.rawPlaylist.count > 0) {
+        __weakSelf__
         self.playlistItems = [self.rawPlaylist sortedArrayUsingComparator:^NSComparisonResult(NSString *obj1, NSString *obj2) {
-            NSString *name1 = [obj1 lastPathComponent] ?: @"";
-            NSString *name2 = [obj2 lastPathComponent] ?: @"";
+            __strongSelf__
+            NSString *name1 = [self displayTitleForURL:obj1];
+            NSString *name2 = [self displayTitleForURL:obj2];
             return [name1 localizedStandardCompare:name2];
         }];
     } else {
@@ -525,9 +549,10 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
     if (row >= 0 && row < self.playlistItems.count) {
         NSString *url = self.playlistItems[row];
         BOOL isPlaying = [url isEqualToString:self.currentlyPlayingUrl];
+        NSString *title = self.playlistMetadata[url][@"title"];
         
         __weakSelf__
-        [cell updateWithUrl:url index:row isPlaying:isPlaying onDelete:^{
+        [cell updateWithUrl:url title:title index:row isPlaying:isPlaying onDelete:^{
             __strongSelf__
             NSInteger rawIndex = [self.rawPlaylist indexOfObject:url];
             if (rawIndex != NSNotFound && self.onRemovePlayItem) {
