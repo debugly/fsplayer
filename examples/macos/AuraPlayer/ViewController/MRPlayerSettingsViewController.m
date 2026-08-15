@@ -714,9 +714,11 @@ static NSButton *MRCreateSwitch(void) {
         
         NSColorWell *colorWell = [[NSColorWell alloc] init];
         colorWell.translatesAutoresizingMaskIntoConstraints = NO;
+#if defined(MAC_OS_X_VERSION_13_0) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_13_0
         if (@available(macOS 13.0, *)) {
             colorWell.colorWellStyle = NSColorWellStyleMinimal;
         }
+#endif
         [colorWell.widthAnchor constraintEqualToConstant:54].active = YES;
         [colorWell.heightAnchor constraintEqualToConstant:23].active = YES;
         
