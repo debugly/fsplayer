@@ -21,7 +21,9 @@
 // The render pipeline generated from the vertex and fragment shaders in the .metal shader file.
 @property (nonatomic, strong) id<MTLRenderPipelineState> renderPipeline;
 @property (nonatomic, strong) id<MTLBuffer> vertexBuffer;
+#if USE_ARGUMENT_BUFFERS
 @property (nonatomic, strong) id<MTLArgumentEncoder> argumentEncoder;
+#endif
 @property (nonatomic, strong) id<MTLBuffer> convertMatrixBuff;
 @property (nonatomic, assign) BOOL convertMatrixChanged;
 
@@ -85,11 +87,14 @@
     //id<MTLLibrary> defaultLibrary = [device newDefaultLibrary];
     id<MTLFunction> vertexFunction = [defaultLibrary newFunctionWithName:@"mvpShader"];
     NSAssert(vertexFunction, @"can't find Vertex Function:vertexShader");
-    id<MTLFunction> fragmentFunction = [defaultLibrary newFunctionWithName:self.pipelineMeta.fragmentName];
-    NSAssert(vertexFunction, @"can't find Fragment Function:%@",self.pipelineMeta.fragmentName);
-    id <MTLArgumentEncoder> argumentEncoder =
-        [fragmentFunction newArgumentEncoderWithBufferIndex:FSFragmentBufferLocation0];
-
+    NSString *fragmentName = self.pipelineMeta.fragmentName;
+#if USE_ARGUMENT_BUFFERS
+    if (![fragmentName hasSuffix:@"_argbuf"] && ![fragmentName hasPrefix:@"subtile"]) {
+        fragmentName = [fragmentName stringByAppendingString:@"_argbuf"];
+    }
+#endif
+    id<MTLFunction> fragmentFunction = [defaultLibrary newFunctionWithName:fragmentName];
+    NSAssert(fragmentFunction, @"can't find Fragment Function:%@", fragmentName);
     // Configure a pipeline descriptor that is used to create a pipeline state.
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     pipelineStateDescriptor.vertexFunction = vertexFunction;
@@ -107,13 +112,12 @@
     }
 
     id<MTLRenderPipelineState> pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
-                                                                                      error:&error]; // 创建图形渲染管道，耗性能操作不宜频繁调用
-    // Pipeline State creation could fail if the pipeline descriptor isn't set up properly.
-    //  If the Metal API validation is enabled, you can find out more information about what
-    //  went wrong.  (Metal API validation is enabled by default when a debug build is run
-    //  from Xcode.)
+                                                                                         error:&error]; // 创建图形渲染管道，耗性能操作不宜频繁调用
     NSAssert(pipelineState, @"Failed to create pipeline state: %@", error);
-    self.argumentEncoder = argumentEncoder;
+
+#if USE_ARGUMENT_BUFFERS
+    self.argumentEncoder = [fragmentFunction newArgumentEncoderWithBufferIndex:FSFragmentBufferLocation0];
+#endif
     self.renderPipeline = pipelineState;
     return YES;
 }
@@ -271,6 +275,11 @@
 - (void)uploadTextureWithEncoder:(id<MTLRenderCommandEncoder>)encoder
                         textures:(NSArray*)textures
 {
+    if ([textures count] == 0) {
+        ALOGE("skip draw: no texture\n");
+        return;
+    }
+
     [self updateVertexIfNeed];
     // Pass in the parameter data.
     [encoder setVertexBuffer:self.vertexBuffer
@@ -279,6 +288,7 @@
  
     [self updateConvertMatrixBufferIfNeed];
     
+#if USE_ARGUMENT_BUFFERS
     // Each draw needs its own argument buffer snapshot. Reusing one mutable buffer for
     // multiple draw calls in the same command encoder can make earlier draws observe
     // later texture bindings when the GPU executes asynchronously.
@@ -299,19 +309,28 @@
             [encoder useResource:t usage:MTLResourceUsageRead];
         }
     }
-    [self.argumentEncoder setBuffer:self.convertMatrixBuff offset:0 atIndex:FSFragmentMatrixIndexConvert];
     
-    // to map to the GPU's address space.
-    if (@available(macOS 10.15, ios 13.0, tvOS 13.0, *)) {
-        [encoder useResource:self.convertMatrixBuff usage:MTLResourceUsageRead stages:MTLRenderStageFragment];
-    } else {
-        // Fallback on earlier versions
-        [encoder useResource:self.convertMatrixBuff usage:MTLResourceUsageRead];
+    if (self.convertMatrixBuff) {
+        [self.argumentEncoder setBuffer:self.convertMatrixBuff
+                                 offset:0
+                                atIndex:FSFragmentMatrixIndexConvert];
+        if (@available(macOS 10.15, ios 13.0, tvOS 13.0, *)) {
+            [encoder useResource:self.convertMatrixBuff usage:MTLResourceUsageRead stages:MTLRenderStageFragment];
+        } else {
+            [encoder useResource:self.convertMatrixBuff usage:MTLResourceUsageRead];
+        }
     }
     
     [encoder setFragmentBuffer:drawArgumentBuffer
                         offset:0
                        atIndex:FSFragmentBufferLocation0];
+#else
+    // Direct parameter binding path (without Argument Buffer)
+    for (NSUInteger i = 0; i < [textures count]; i++) {
+        [encoder setFragmentTexture:textures[i] atIndex:FSFragmentTextureIndexTextureY + i];
+    }
+    [encoder setFragmentBuffer:self.convertMatrixBuff offset:0 atIndex:FSFragmentMatrixIndexConvert];
+#endif
     
     // 设置渲染管道，以保证顶点和片元两个shader会被调用
     [encoder setRenderPipelineState:self.renderPipeline];

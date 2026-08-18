@@ -101,15 +101,7 @@ fragment float4 subtileSWAPRGFragment(RasterizerData input [[stage_in]],
     return textureY.sample(textureSampler, input.textureCoordinate).bgra;
 }
 
-
-#if __METAL_VERSION__ >= 200
-
-struct FSFragmentShaderArguments {
-    texture2d<float> textureY [[ id(FSFragmentTextureIndexTextureY) ]];
-    texture2d<float> textureU [[ id(FSFragmentTextureIndexTextureU) ]];
-    texture2d<float> textureV [[ id(FSFragmentTextureIndexTextureV) ]];
-    device FSConvertMatrix * convertMatrix [[ id(FSFragmentMatrixIndexConvert) ]];
-};
+// MARK: - Shared Vertex Shaders & Utility Functions (Common to all architectures)
 
 vertex RasterizerData subVertexShader(uint vertexID [[vertex_id]],
                                       constant FSVertex *vertices [[buffer(FSVertexInputIndexVertices)]])
@@ -120,7 +112,7 @@ vertex RasterizerData subVertexShader(uint vertexID [[vertex_id]],
     return out;
 }
 
-//支持mvp矩阵
+// 支持 mvp 矩阵
 vertex RasterizerData mvpShader(uint vertexID [[vertex_id]],
                                 constant FSVertexData & data [[buffer(FSVertexInputIndexVertices)]])
 {
@@ -132,12 +124,12 @@ vertex RasterizerData mvpShader(uint vertexID [[vertex_id]],
     return out;
 }
 
-float3 rgb_adjust(float3 rgb,float4 rgbAdjustment) {
-    //C 是对比度值，B 是亮度值，S 是饱和度
+float3 rgb_adjust(float3 rgb, float4 rgbAdjustment) {
+    // C 是对比度值，B 是亮度值，S 是饱和度
     float B = rgbAdjustment.x;
     float S = rgbAdjustment.y;
     float C = rgbAdjustment.z;
-    float on= rgbAdjustment.w;
+    float on = rgbAdjustment.w;
     if (on > 0.99) {
         rgb = (rgb - 0.5) * C + 0.5;
         rgb = rgb + (0.75 * B - 0.5) / 2.5 - 0.1;
@@ -148,7 +140,7 @@ float3 rgb_adjust(float3 rgb,float4 rgbAdjustment) {
     }
 }
 
-// mark -hdr helps
+// MARK: - HDR Helpers
 
 constant matrix_float3x3 RGB2020_TO_XYZ = matrix_float3x3(
                                             0.6370, 0.1446, 0.1689,
@@ -161,7 +153,6 @@ constant matrix_float3x3 XYZ_TO_RGB709 = matrix_float3x3(
                                             0.0556, -0.2040, 1.0570);
 
 constant matrix_float3x3 RGB2020_TO_RGB709 = RGB2020_TO_XYZ * XYZ_TO_RGB709;
-
 
 // [arib b67 eotf
 float arib_b67_inverse_oetf(float x)
@@ -208,7 +199,6 @@ float3 arib_b67_eotf_vec(float3 v)
 // arib b67 eotf]
 
 // [st 2084 eotf
-
 float st_2084_eotf(float x)
 {
     constexpr float ST2084_M1 = 0.1593017578125;
@@ -233,7 +223,7 @@ float3 st_2084_eotf_vec(float3 v)
 
 // st 2084 eotf]
 
-// Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
+// Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
 float tonemap_ACES(float x)
 {
     const float a = 2.51;
@@ -244,7 +234,7 @@ float tonemap_ACES(float x)
     return (x * (a * x + b)) / (x * (c * x + d) + e);
 }
 
-// Hable 2010, "Filmic Tonemapping Operators"
+// Hable 2010, "Filmic Tonemapping Operators"
 float tonemap_Uncharted2(float x)
 {
     const float A = 0.15;
@@ -313,8 +303,8 @@ float3 rec_1886_eotf_vec(float3 v)
 }
 
 // bt709]
-// mark -hdr helps
 
+// mark -hdr helps
 // HDR direct output for EDR/HDR-capable displays.
 // Applies EOTF and gamut conversion (BT.2020 → linear sRGB) but skips tone-mapping.
 // Output is in linear light; 1.0 == SDR reference white (~203 nits per BT.2408).
@@ -362,36 +352,51 @@ float3 hdr2sdr(float3 rgb_2020, FSColorTransferFunc transferFun)
     return myFragColor;
 }
 
-float4 yuv2rgb(float3 yuv, device FSConvertMatrix* convertMatrix)
+// 统一核心 YUV2RGB 算法
+inline float4 yuv2rgb_internal(float3 yuv, matrix_float3x3 colorMatrix, vector_float3 offset, vector_float4 adjustment, int hdrContent, int hdrDisplay, FSColorTransferFunc transferFun)
 {
-    //先把 [0.0,1.0] 范围的YUV 处理为 [0.0,1.0] 范围的RGB
-    float3 rgb = convertMatrix->colorMatrix * (yuv + convertMatrix->offset);
+    // 先把 [0.0,1.0] 范围的 YUV 处理为 [0.0,1.0] 范围的 RGB
+    float3 rgb = colorMatrix * (yuv + offset);
+    // HDR 转 SDR
     float3 myFragColor;
-    if (convertMatrix->hdrContent) {
-        if (convertMatrix->hdrDisplay) {
+    if (hdrContent) {
+        if (hdrDisplay) {
             // HDR display mode: output linear light for EDR layer (no tone-mapping)
-            myFragColor = hdr_direct(rgb, convertMatrix->transferFun);
+            myFragColor = hdr_direct(rgb, transferFun);
         } else {
             // SDR display mode: tone-map HDR → SDR
-            myFragColor = hdr2sdr(rgb, convertMatrix->transferFun);
+            myFragColor = hdr2sdr(rgb, transferFun);
         }
     } else {
         myFragColor = rgb;
     }
-    //color adjustment
-    return float4(rgb_adjust(myFragColor,convertMatrix->adjustment),1.0);
+    // Color adjustment
+    return float4(rgb_adjust(myFragColor, adjustment), 1.0);
+}
+
+// MARK: - Argument Buffer Fragment Shaders (Apple Silicon arm64 / iOS / tvOS)
+
+struct FSFragmentShaderArguments {
+    texture2d<float> textureY [[ id(FSFragmentTextureIndexTextureY) ]];
+    texture2d<float> textureU [[ id(FSFragmentTextureIndexTextureU) ]];
+    texture2d<float> textureV [[ id(FSFragmentTextureIndexTextureV) ]];
+    device FSConvertMatrix * convertMatrix [[ id(FSFragmentMatrixIndexConvert) ]];
+};
+
+// 重载 1：供 Argument Buffer (device 指针) 调用
+inline float4 yuv2rgb(float3 yuv, device FSConvertMatrix *convertMatrix)
+{
+    return yuv2rgb_internal(yuv, convertMatrix->colorMatrix, convertMatrix->offset, convertMatrix->adjustment, convertMatrix->hdrContent, convertMatrix->hdrDisplay, convertMatrix->transferFun);
 }
 
 /// @brief hdr BiPlanar fragment shader
 /// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
 /// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY/UV 是索引
 /// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
-fragment float4 nv12FragmentShader(RasterizerData input [[stage_in]],
-                                   device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
+fragment float4 nv12FragmentShader_argbuf(RasterizerData input [[stage_in]],
+                                          device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     texture2d<float> textureY = fragmentShaderArgs.textureY;
     texture2d<float> textureUV = fragmentShaderArgs.textureU;
     
@@ -404,12 +409,10 @@ fragment float4 nv12FragmentShader(RasterizerData input [[stage_in]],
 /// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
 /// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY/U/V 是索引
 /// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
-fragment float4 yuv420pFragmentShader(RasterizerData input [[stage_in]],
-                                      device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
+fragment float4 yuv420pFragmentShader_argbuf(RasterizerData input [[stage_in]],
+                                             device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     texture2d<float> textureY = fragmentShaderArgs.textureY;
     texture2d<float> textureU = fragmentShaderArgs.textureU;
     texture2d<float> textureV = fragmentShaderArgs.textureV;
@@ -425,12 +428,10 @@ fragment float4 yuv420pFragmentShader(RasterizerData input [[stage_in]],
 /// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
 /// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
 /// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
-fragment float4 uyvy422FragmentShader(RasterizerData input [[stage_in]],
-                                      device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
+fragment float4 uyvy422FragmentShader_argbuf(RasterizerData input [[stage_in]],
+                                             device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     texture2d<float> textureY = fragmentShaderArgs.textureY;
     float3 tc = textureY.sample(textureSampler, input.textureCoordinate).rgb;
     float3 yuv = float3(tc.g, tc.b, tc.r);
@@ -442,12 +443,10 @@ fragment float4 uyvy422FragmentShader(RasterizerData input [[stage_in]],
 /// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
 /// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
 /// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
-fragment float4 ayuvFragmentShader(RasterizerData input [[stage_in]],
-                                   device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
+fragment float4 ayuvFragmentShader_argbuf(RasterizerData input [[stage_in]],
+                                          device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     texture2d<float> textureY = fragmentShaderArgs.textureY;
     float4 tc = textureY.sample(textureSampler, input.textureCoordinate).rgba;
     float3 yuv = float3(tc.g, tc.b, tc.a);
@@ -458,168 +457,101 @@ fragment float4 ayuvFragmentShader(RasterizerData input [[stage_in]],
 /// @brief bgra fragment shader
 /// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
 /// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
-fragment float4 bgraFragmentShader(RasterizerData input [[stage_in]],
-                                   device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
+fragment float4 bgraFragmentShader_argbuf(RasterizerData input [[stage_in]],
+                                          device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     texture2d<float> textureY = fragmentShaderArgs.textureY;
-    //auto converted bgra -> rgba
     float4 rgba = textureY.sample(textureSampler, input.textureCoordinate);
-    //color adjustment
     device FSConvertMatrix* convertMatrix = fragmentShaderArgs.convertMatrix;
-    return float4(rgb_adjust(rgba.rgb, convertMatrix->adjustment),rgba.a);
+    return float4(rgb_adjust(rgba.rgb, convertMatrix->adjustment), rgba.a);
 }
 
 /// @brief argb fragment shader
 /// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
 /// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
-fragment float4 argbFragmentShader(RasterizerData input [[stage_in]],
-                                   device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
+fragment float4 argbFragmentShader_argbuf(RasterizerData input [[stage_in]],
+                                          device FSFragmentShaderArguments & fragmentShaderArgs [[ buffer(FSFragmentBufferLocation0) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     texture2d<float> textureY = fragmentShaderArgs.textureY;
-    //auto converted bgra -> rgba;but data is argb,so target is grab
     float4 grab = textureY.sample(textureSampler, input.textureCoordinate);
-    //color adjustment
     device FSConvertMatrix* convertMatrix = fragmentShaderArgs.convertMatrix;
-    return float4(rgb_adjust(grab.gra, convertMatrix->adjustment),grab.b);
+    return float4(rgb_adjust(grab.gra, convertMatrix->adjustment), grab.b);
 }
 
-#else
+// MARK: - Direct Parameter Binding Fragment Shaders (Intel x86_64 / Rosetta)
 
-vertex RasterizerData subVertexShader(uint vertexID [[vertex_id]],
-                                      constant FSVertex *vertices [[buffer(FSVertexInputIndexVertices)]])
+// 重载 2：供 Direct Parameter Binding (constant 引用) 调用
+inline float4 yuv2rgb(float3 yuv, constant FSConvertMatrix &convertMatrix)
 {
-    RasterizerData out;
-    out.clipSpacePosition = float4(vertices[vertexID].position, 0.0, 1.0);
-    out.textureCoordinate = vertices[vertexID].textureCoordinate;
-    return out;
+    return yuv2rgb_internal(yuv, convertMatrix.colorMatrix, convertMatrix.offset, convertMatrix.adjustment, convertMatrix.hdrContent, convertMatrix.hdrDisplay, convertMatrix.transferFun);
 }
 
-//支持mvp矩阵
-vertex RasterizerData mvpShader(uint vertexID [[vertex_id]],
-                                constant FSVertexData & data [[buffer(FSVertexInputIndexVertices)]])
-{
-    RasterizerData out;
-    FSVertex _vertex = data.vertexes[vertexID];
-    float4 position = float4(_vertex.position, 0.0, 1.0);
-    out.clipSpacePosition = data.modelMatrix * position;
-    out.textureCoordinate = _vertex.textureCoordinate;
-    return out;
-}
-
-float3 rgb_adjust(float3 rgb,float4 rgbAdjustment) {
-    //C 是对比度值，B 是亮度值，S 是饱和度
-    float B = rgbAdjustment.x;
-    float S = rgbAdjustment.y;
-    float C = rgbAdjustment.z;
-    float on= rgbAdjustment.w;
-    if (on > 0.99) {
-        rgb = (rgb - 0.5) * C + 0.5;
-        rgb = rgb + (0.75 * B - 0.5) / 2.5 - 0.1;
-        float3 intensity = float3(rgb * float3(0.299, 0.587, 0.114));
-        return intensity + S * (rgb - intensity);
-    } else {
-        return rgb;
-    }
-}
-
-/// @brief bgra fragment shader
-/// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
-/// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
-fragment float4 bgraFragmentShader(RasterizerData input [[stage_in]],
-                                   texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
-                                   constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
-{
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
-    //auto converted bgra -> rgba
-    float4 rgba = textureY.sample(textureSampler, input.textureCoordinate);
-    //color adjustment
-    return float4(rgb_adjust(rgba.rgb, convertMatrix.adjustment),rgba.a);
-}
-
-/// @brief argb fragment shader
-/// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
-/// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
-fragment float4 argbFragmentShader(RasterizerData input [[stage_in]],
-                                   texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
-                                   constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
-{
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
-    //auto converted bgra -> rgba
-    float4 grab = textureY.sample(textureSampler, input.textureCoordinate);
-    //color adjustment
-    return float4(rgb_adjust(grab.gra, convertMatrix.adjustment),grab.b);
-}
-
-/// @brief nv12 fragment shader
-/// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
-/// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY/UV 是索引
-/// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
+/// @brief nv12 fragment shader (Direct Parameter Binding)
 fragment float4 nv12FragmentShader(RasterizerData input [[stage_in]],
                                    texture2d<float> textureY  [[ texture(FSFragmentTextureIndexTextureY)  ]],
                                    texture2d<float> textureUV [[ texture(FSFragmentTextureIndexTextureU) ]],
                                    constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
-    
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     float3 yuv = float3(textureY.sample(textureSampler,  input.textureCoordinate).r,
                         textureUV.sample(textureSampler, input.textureCoordinate).rg);
-    
-    float3 rgb = convertMatrix.matrix * (yuv + convertMatrix.offset);
-    //color adjustment
-    return float4(rgb_adjust(rgb,convertMatrix.adjustment),1.0);
+    return yuv2rgb(yuv, convertMatrix);
 }
 
-/// @brief yuv420p fragment shader
-/// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
-/// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY/U/V 是索引
-/// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
+/// @brief yuv420p fragment shader (Direct Parameter Binding)
 fragment float4 yuv420pFragmentShader(RasterizerData input [[stage_in]],
                                       texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
                                       texture2d<float> textureU [[ texture(FSFragmentTextureIndexTextureU) ]],
                                       texture2d<float> textureV [[ texture(FSFragmentTextureIndexTextureV) ]],
                                       constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
-    
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     float3 yuv = float3(textureY.sample(textureSampler, input.textureCoordinate).r,
                         textureU.sample(textureSampler, input.textureCoordinate).r,
                         textureV.sample(textureSampler, input.textureCoordinate).r);
-    
-    float3 rgb = convertMatrix.matrix * (yuv + convertMatrix.offset);
-    //color adjustment
-    return float4(rgb_adjust(rgb,convertMatrix.adjustment),1.0);
+    return yuv2rgb(yuv, convertMatrix);
 }
 
-/// @brief uyvy422 fragment shader
-/// @param stage_in表示这个数据来自光栅化。（光栅化是顶点处理之后的步骤，业务层无法修改）
-/// @param texture表明是纹理数据，FSFragmentTextureIndexTextureY 是索引
-/// @param buffer表明是缓存数据，FSFragmentBufferIndexMatrix是索引
+/// @brief uyvy422 fragment shader (Direct Parameter Binding)
 fragment float4 uyvy422FragmentShader(RasterizerData input [[stage_in]],
                                       texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
                                       constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
 {
-    // sampler是采样器
-    constexpr sampler textureSampler (mag_filter::linear,
-                                      min_filter::linear);
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     float3 tc = textureY.sample(textureSampler, input.textureCoordinate).rgb;
     float3 yuv = float3(tc.g, tc.b, tc.r);
-    
-    float3 rgb = convertMatrix.matrix * (yuv + convertMatrix.offset);
-    //color adjustment
-    return float4(rgb_adjust(rgb,convertMatrix.adjustment),1.0);
+    return yuv2rgb(yuv, convertMatrix);
 }
-#endif
+
+/// @brief ayuv fragment shader (Direct Parameter Binding)
+fragment float4 ayuvFragmentShader(RasterizerData input [[stage_in]],
+                                   texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
+                                   constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
+{
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
+    float4 tc = textureY.sample(textureSampler, input.textureCoordinate).rgba;
+    float3 yuv = float3(tc.g, tc.b, tc.a);
+    return yuv2rgb(yuv, convertMatrix);
+}
+
+/// @brief bgra fragment shader (Direct Parameter Binding)
+fragment float4 bgraFragmentShader(RasterizerData input [[stage_in]],
+                                   texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
+                                   constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
+{
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
+    float4 rgba = textureY.sample(textureSampler, input.textureCoordinate);
+    return float4(rgb_adjust(rgba.rgb, convertMatrix.adjustment), rgba.a);
+}
+
+/// @brief argb fragment shader (Direct Parameter Binding)
+fragment float4 argbFragmentShader(RasterizerData input [[stage_in]],
+                                   texture2d<float> textureY [[ texture(FSFragmentTextureIndexTextureY) ]],
+                                   constant FSConvertMatrix &convertMatrix [[ buffer(FSFragmentMatrixIndexConvert) ]])
+{
+    constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
+    float4 grab = textureY.sample(textureSampler, input.textureCoordinate);
+    return float4(rgb_adjust(grab.gra, convertMatrix.adjustment), grab.b);
+}

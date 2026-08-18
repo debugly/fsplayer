@@ -7,6 +7,15 @@
 //
 
 #import <simd/simd.h>
+#import <TargetConditionals.h>
+
+#ifndef USE_ARGUMENT_BUFFERS
+  #if defined(__x86_64__) || defined(__x86_64) || (defined(TARGET_CPU_X86_64) && TARGET_CPU_X86_64)
+    #define USE_ARGUMENT_BUFFERS 0  // Intel x86_64: 停用 Argument Buffer，走直绑模式避开 Tier 1 驱动 Bug
+  #else
+    #define USE_ARGUMENT_BUFFERS 1  // Apple Silicon (arm64) / iOS / tvOS 保持 Argument Buffer 高性能路径
+  #endif
+#endif
 
 typedef enum FSYUV2RGBColorMatrixType
 {
