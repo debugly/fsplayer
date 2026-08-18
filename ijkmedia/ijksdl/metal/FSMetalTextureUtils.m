@@ -4,6 +4,36 @@
 //
 //  Created by debugly on 2026/6/18.
 //
+/*
+ libsystem_platform
+ +0x00969
+ _platform_memmove$VARIANT$Haswell
+
+ AppleIntelKBLGraphicsMTLDriver
+ +0x19cbd
+ IGRenderStateBindless::generateFixedBindlessHeap
+ AppleIntelKBLGraphicsMTLDriver
+ +0x19b4d
+ IGRenderStateBindless::write
+ AppleIntelKBLGraphicsMTLDriver
+ +0x788c1
+ IGAccelRenderCommandEncoder::programPipeline
+ AppleIntelKBLGraphicsMTLDriver
+ +0x778db
+ IGAccelRenderCommandEncoder::drawPrimitives
+ AppleIntelKBLGraphicsMTLDriver
+ +0x61da3
+ -[MTLIGAccelRenderCommandEncoder drawPrimitives:vertexStart:vertexCount:]
+ FSPlayer
+ +0x1cf58
+ -[FSMetalRenderer uploadTextureWithEncoder:textures:] (FSMetalRenderer.m:336)
+ FSPlayer
+ +0x21b61
+ -[FSMetalViewNext encodePicture:renderEncoder:viewport:ratio:hdrPercentage:] (FSMetalViewNext.m:349)
+ FSPlayer
+ +0x2288a
+ -[FSMetalViewNext drawRect:] (FSMetalViewNext.m:483)
+ */
 
 #import "FSMetalTextureUtils.h"
 #import "FSMetalShaderTypes.h"
@@ -42,6 +72,24 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
                                                                                            width:width
                                                                                           height:height
                                                                                        mipmapped:NO];
+#if TARGET_OS_OSX
+    if (@available(macOS 10.15, *)) {
+        if ([device hasUnifiedMemory]) {
+            textureDesc.storageMode = MTLStorageModeShared;
+        } else {
+            textureDesc.storageMode = MTLStorageModeManaged;
+        }
+    } else {
+        if ([device isLowPower]) {
+            textureDesc.storageMode = MTLStorageModeShared;
+        } else {
+            textureDesc.storageMode = MTLStorageModeManaged;
+        }
+    }
+#else
+    textureDesc.storageMode = MTLStorageModeShared;
+#endif
+
     id<MTLTexture> texture = [device newTextureWithDescriptor:textureDesc];
     if (!texture) {
         ALOGE("upload texture failed: create texture, plane:%d format:%d\n", plane, (int)format);
