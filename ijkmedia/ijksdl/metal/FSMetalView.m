@@ -760,7 +760,9 @@ typedef CGRect NSRect;
     #if USE_METAL_TEXTURE_CACHE
         textureCache = _pictureTextureCache;
     #endif
-        currentAttach.videoTextures = [FSMetalTextureUtils doGenerateTexture:currentAttach.videoPicture textureCache:textureCache device:self.device];
+        NSMutableArray *cvTextures = nil;
+        currentAttach.videoTextures = [FSMetalTextureUtils doGenerateTexture:currentAttach.videoPicture textureCache:textureCache device:self.device outCVTextures:&cvTextures];
+        currentAttach.videoCVTextures = cvTextures;
     }
     
     if (self.displayDelegate && [self.displayDelegate respondsToSelector:@selector(videoRenderingDidDisplay:attach:)]) {
@@ -914,7 +916,9 @@ typedef CGRect NSRect;
         #if USE_METAL_TEXTURE_CACHE
             textureCache = self.pictureTextureCache;
         #endif
-            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
+            NSMutableArray *cvTextures = nil;
+            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device outCVTextures:&cvTextures];
+            attach.videoCVTextures = cvTextures;
         }
         
         [self encodePicture:attach
@@ -1019,7 +1023,9 @@ typedef CGRect NSRect;
         #if USE_METAL_TEXTURE_CACHE
             textureCache = self.pictureTextureCache;
         #endif
-            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device];
+            NSMutableArray *cvTextures = nil;
+            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:textureCache device:self.device outCVTextures:&cvTextures];
+            attach.videoCVTextures = cvTextures;
         }
         CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:drawableSize];
         [self encodePicture:attach

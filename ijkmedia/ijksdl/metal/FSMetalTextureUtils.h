@@ -24,6 +24,13 @@ NS_ASSUME_NONNULL_BEGIN
                                            textureCache:(nullable CVMetalTextureCacheRef)textureCache
                                                  device:(id<MTLDevice>)device;
 
+/// 从 pixelBuffer 生成 Metal 纹理，同时通过 outCVTextures 输出包裹了 CVPixelBuffer 的 CVMetalTextureRef 引用。
+/// 获得 outCVTextures 后由调用方（如 FSOverlayAttach）负责在合适时机执行 CFRelease。
++ (nullable NSArray<id<MTLTexture>> *)doGenerateTexture:(CVPixelBufferRef)pixelBuffer
+                                           textureCache:(nullable CVMetalTextureCacheRef)textureCache
+                                                 device:(id<MTLDevice>)device
+                                          outCVTextures:(NSMutableArray * _Nullable * _Nullable)outCVTextures;
+
 @end
 
 NS_ASSUME_NONNULL_END

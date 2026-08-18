@@ -55,6 +55,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) int w;         // tile 尺寸
 @property(nonatomic) int h;
 @property(nonatomic) NSArray * _Nullable textures;              // 首次使用时生成并缓存
+@property(nonatomic) NSArray * _Nullable cvTextures;            // 对应的 CVMetalTextureRef 包装引用
 @end
 
 @interface FSOverlayAttach : NSObject
@@ -75,6 +76,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 @property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
 @property(nonatomic) NSArray * _Nullable videoTextures;
+@property(nonatomic) NSArray * _Nullable videoCVTextures;      // 对应的 CVMetalTextureRef 包装引用
 
 // HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
 @property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;

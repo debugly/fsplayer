@@ -19,6 +19,7 @@
     // 输入相同则直接复用缓存的纹理，避免每次渲染都重新合成/生成纹理导致内存暴涨。
     CVPixelBufferRef _cachedComposite;     // 纹理的后备缓冲
     id<MTLTexture> _cachedTexture;         // 可直接采样显示的合成纹理
+    NSArray *_cachedCVTextures;            // 对应的 CVMetalTextureRef 包装引用
     NSArray<NSString *> *_cachedTileKey;
     int _cachedW;
     int _cachedH;
@@ -44,6 +45,15 @@
     if (_cachedComposite) {
         CVPixelBufferRelease(_cachedComposite);
         _cachedComposite = NULL;
+    }
+    if (_cachedCVTextures) {
+        for (id item in _cachedCVTextures) {
+            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
+            if (texRef) {
+                CFRelease(texRef);
+            }
+        }
+        _cachedCVTextures = nil;
     }
 }
 
@@ -158,9 +168,12 @@
     for (FSTilePiece *piece in attach.tilePieces) {
         if (!piece.pixelBuffer || piece.w <= 0 || piece.h <= 0) continue;
         if (!piece.textures) {
+            NSMutableArray *cvTextures = nil;
             piece.textures = [FSMetalTextureUtils doGenerateTexture:piece.pixelBuffer
-                                               textureCache:textureCache
-                                                     device:_device];
+                                                       textureCache:textureCache
+                                                             device:_device
+                                                      outCVTextures:&cvTextures];
+            piece.cvTextures = cvTextures;
         }
         if (!piece.textures) continue;
 
@@ -199,9 +212,8 @@
 
     // 从合成后的 BGRA 缓冲生成一张可采样显示的纹理（与显示路径采样方式一致）。
     CVPixelBufferRef composed = [fbo pixelBuffer];
-    id<MTLTexture> texture = [FSMetalTextureUtils doGenerateTexture:composed
-                                               textureCache:textureCache
-                                                     device:_device].firstObject;
+    NSMutableArray *cvTextures = nil;
+    id<MTLTexture> texture = [FSMetalTextureUtils doGenerateTexture:composed textureCache:textureCache device:_device outCVTextures:&cvTextures].firstObject;
     if (!texture) {
         return nil;
     }
@@ -210,8 +222,18 @@
     if (_cachedComposite) {
         CVPixelBufferRelease(_cachedComposite);
     }
+    if (_cachedCVTextures) {
+        for (id item in _cachedCVTextures) {
+            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
+            if (texRef) {
+                CFRelease(texRef);
+            }
+        }
+        _cachedCVTextures = nil;
+    }
     _cachedComposite = CVPixelBufferRetain(composed);
     _cachedTexture = texture;
+    _cachedCVTextures = cvTextures;
     _cachedTileKey = tileKey;
     _cachedW = canvasW;
     _cachedH = canvasH;

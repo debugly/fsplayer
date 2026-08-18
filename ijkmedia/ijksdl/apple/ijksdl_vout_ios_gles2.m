@@ -40,6 +40,15 @@
         CVPixelBufferRelease(_pixelBuffer);
         _pixelBuffer = NULL;
     }
+    if (_cvTextures) {
+        for (id item in _cvTextures) {
+            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
+            if (texRef) {
+                CFRelease(texRef);
+            }
+        }
+        _cvTextures = nil;
+    }
 }
 
 @end
@@ -52,7 +61,16 @@
         CVPixelBufferRelease(self.videoPicture);
         self.videoPicture = NULL;
     }
-    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer
+    if (self.videoCVTextures) {
+        for (id item in self.videoCVTextures) {
+            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
+            if (texRef) {
+                CFRelease(texRef);
+            }
+        }
+        self.videoCVTextures = nil;
+    }
+    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer 与 cvTextures
     self.tilePieces = nil;
     self.subTexture = nil;
     if (self.overlay) {

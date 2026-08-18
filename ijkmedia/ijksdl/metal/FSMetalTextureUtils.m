@@ -58,11 +58,22 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
                                   textureCache:(CVMetalTextureCacheRef)textureCache
                                         device:(id<MTLDevice>)device
 {
+    return [self doGenerateTexture:pixelBuffer textureCache:textureCache device:device outCVTextures:NULL];
+}
+
++ (NSArray<id<MTLTexture>> *)doGenerateTexture:(CVPixelBufferRef)pixelBuffer
+                                  textureCache:(CVMetalTextureCacheRef)textureCache
+                                        device:(id<MTLDevice>)device
+                                 outCVTextures:(NSMutableArray * _Nullable * _Nullable)outCVTextures
+{
     if (!pixelBuffer) {
         return nil;
     }
 
     NSMutableArray *result = [NSMutableArray array];
+    if (outCVTextures) {
+        *outCVTextures = nil;
+    }
 
     OSType type = CVPixelBufferGetPixelFormatType(pixelBuffer);
     mp_format *ft = mp_get_metal_format(type);
@@ -91,12 +102,19 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         if (textureCache) {
             CVMetalTextureRef textureRef = NULL;
             CVReturn status = CVMetalTextureCacheCreateTextureFromImage(NULL, textureCache, pixelBuffer, NULL, format, width, height, i, &textureRef);
-            if (status == kCVReturnSuccess) {
+            if (status == kCVReturnSuccess && textureRef != NULL) {
                 texture = CVMetalTextureGetTexture(textureRef);
                 if (texture == nil) {
                     ALOGE("wrap texture failed: null texture, plane:%d format:%4s\n", i, (char *)&type);
+                    CFRelease(textureRef);
+                } else if (outCVTextures) {
+                    if (!*outCVTextures) {
+                        *outCVTextures = [NSMutableArray array];
+                    }
+                    [*outCVTextures addObject:(__bridge id)textureRef];
+                } else {
+                    CFRelease(textureRef);
                 }
-                CFRelease(textureRef);
             } else {
                 ALOGE("wrap texture failed:%d, plane:%d mtlformat:%d format:%4s\n",
                       status, i, (int)format, (char *)&type);
@@ -114,7 +132,13 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
         }
 
         if (texture == nil) {
-            // 任一平面失败就整帧丢弃，宁可掉帧
+            // 任一平面失败就整帧丢弃，并清理已收集的 CVMetalTextureRef
+            if (outCVTextures && *outCVTextures) {
+                for (id item in *outCVTextures) {
+                    CFRelease((__bridge CVMetalTextureRef)item);
+                }
+                *outCVTextures = nil;
+            }
             CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
             return nil;
         }
