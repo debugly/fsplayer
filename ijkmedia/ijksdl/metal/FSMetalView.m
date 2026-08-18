@@ -129,9 +129,9 @@ typedef CGRect NSRect;
 #if USE_METAL_TEXTURE_CACHE
     CVReturn ret = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_pictureTextureCache);
     if (ret != kCVReturnSuccess) {
-        ALOGE("Create MetalTextureCache Failed:%d.",ret);
-        self.device = nil;
-        return NO;
+        //cache 创建失败不影响播放,纹理生成会自动回退 CPU 上传
+        ALOGE("Create MetalTextureCache Failed:%d, fallback to CPU texture upload.",ret);
+        _pictureTextureCache = NULL;
     }
 #endif
     // default is kCAGravityResize,the content will be filled to new bounds when change view's frame by Implicit Animation
