@@ -430,10 +430,9 @@ static int subtitle_thread(void *arg)
                     sp->height = com->sub_height;
                     sp->shown = 0;
                     
+                    bzero(sp->sub_list, sizeof(sp->sub_list));
                     if (num_rect > 0) {
                         memcpy(sp->sub_list, buffers, num_rect * sizeof(buffers[0]));
-                    } else {
-                        bzero(sp->sub_list, sizeof(sp->sub_list));
                     }
                     frame_queue_push(com->frameq);
                 } else if (++got_counter >= 3) {
@@ -521,6 +520,10 @@ static int subComponent_packet_from_frame_queue(FFSubComponent *com, double pts,
         for (int j = 0; j < sizeof(sp->sub_list)/sizeof(sp->sub_list[0]); j++) {
             FFSubtitleBuffer *sb = sp->sub_list[j];
             if (sb) {
+                if (packet->len >= SUB_REF_MAX_LEN) {
+                    av_log(NULL, AV_LOG_WARNING, "sub packet buffer fill full >= %d\n", SUB_REF_MAX_LEN);
+                    break;
+                }
                 packet->e[packet->len++] = ff_subtitle_buffer_retain(sb);
             } else {
                 break;
