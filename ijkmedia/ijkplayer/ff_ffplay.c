@@ -44,7 +44,6 @@
 #include "libavutil/time.h"
 #include "libavutil/bprint.h"
 #include "libavutil/buffer.h"
-#include "libavutil/hwcontext.h"
 #include "libavformat/avformat.h"
 #if CONFIG_AVDEVICE
 #include "libavdevice/avdevice.h"
@@ -1505,31 +1504,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
                         }
                     }
                 }
-            }
-        #endif
-        #if defined(__APPLE__) && defined(__x86_64__)
-            // Intel 集显(如 Iris Plus 640)上 Metal(CVMetalTextureCache) 渲染多平面 YUV 会
-            // 出现绿/粉花屏；改用单平面 packed YUV422 规避(单平面纹理在 Intel 上正常，与硬解
-            // 输出单平面思路一致)。按 color range 选择，使 sws 转换结果与 CVPixelBuffer 标注的
-            // range 一致：video-range -> UYVY(2vuy)，full-range -> YUV2(yuvs)。
-            // 10bit/16bit(P010/P216/P416) 一并降到 8bit UYVY——HDR 的 BT2020/PQ 信息在 color
-            // attachment 里，不随降位深丢失，渲染层仍走 HDR 还原(代价只是 8bit 量化的 banding)。
-            // 注意：RGB(BGRA/BGR0/ARGB/0RGB) 与单平面 AYUV64 本就是单平面、Intel 正常，保持不变；
-            // 尤其 AYUV64 带 alpha，转 UYVY 会丢 alpha。
-            switch (overlay_format) {
-                case SDL_FCC_I420:
-                case SDL_FCC_YV12:
-                case SDL_FCC_NV12:
-                case SDL_FCC_P010:
-                case SDL_FCC_P216:
-                case SDL_FCC_P416:
-                    overlay_format = SDL_FCC_UYVY;
-                    break;
-                case SDL_FCC_J420:
-                    overlay_format = SDL_FCC_YUV2;
-                    break;
-                default:
-                    break;
             }
         #endif
             //
@@ -3182,49 +3156,14 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
 {
 #warning metal todo rbg24
     const enum AVPixelFormat supported_fmts[] = {AV_PIX_FMT_VIDEOTOOLBOX,AV_PIX_FMT_NV12,AV_PIX_FMT_YUV420P,AV_PIX_FMT_UYVY422,AV_PIX_FMT_RGB24,AV_PIX_FMT_ARGB,AV_PIX_FMT_0RGB,AV_PIX_FMT_BGRA,AV_PIX_FMT_BGR0};
-
+    
     for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
         for (int i = 0; i < sizeof(supported_fmts) / sizeof(enum AVPixelFormat); i++) {
-#if TARGET_CPU_ARM64
             if (*p == supported_fmts[i])
                 return *p;
-#else
-            if (*p != supported_fmts[i])
-                continue;
-            // Intel 集显(如 Iris Plus 640)上 CVMetalTextureCache 对多平面(NV12/yuv420p)的
-            // plane1(CbCr) 寻址有缺陷，会出现绿/粉色块。让 VideoToolbox 从源头直接输出单平面，
-            // 绕开多平面。做法是预建 hw_frames_ctx 指定 sw_format：videotoolbox.c 的
-            // ff_videotoolbox_common_init 检测到 hw_frames_ctx 已存在就用其 sw_format，
-            // 跳过默认的 NV12 协商。Apple Silicon(arm64) 不编译此分支，仍走 NV12 多平面零拷贝。
-            //
-            // 注意 color range：ffmpeg 的 VT 映射表里 UYVY422(2vuy) 只对应 video-range，
-            // full-range 视频必须用 BGRA(32BGRA)，否则 cv_pix_fmt_type 映射失败、硬解初始化报错。
-            if (*p == AV_PIX_FMT_VIDEOTOOLBOX && ctx->hw_device_ctx && !ctx->hw_frames_ctx) {
-                enum AVPixelFormat sw_fmt = (ctx->color_range == AVCOL_RANGE_JPEG)
-                                          ? AV_PIX_FMT_BGRA      // full-range：单平面 RGB
-                                          : AV_PIX_FMT_UYVY422;  // video-range：单平面 packed YUV
-                AVBufferRef *frames_ref = av_hwframe_ctx_alloc(ctx->hw_device_ctx);
-                if (frames_ref) {
-                    AVHWFramesContext *frames_ctx = (AVHWFramesContext *)frames_ref->data;
-                    frames_ctx->format    = AV_PIX_FMT_VIDEOTOOLBOX;
-                    frames_ctx->sw_format = sw_fmt;
-                    frames_ctx->width     = ctx->coded_width;
-                    frames_ctx->height    = ctx->coded_height;
-                    if (av_hwframe_ctx_init(frames_ref) >= 0) {
-                        ctx->hw_frames_ctx = frames_ref;
-                        ALOGI("Intel: request VideoToolbox single-plane output, sw_format=%s\n",
-                              av_get_pix_fmt_name(sw_fmt));
-                    } else {
-                        av_buffer_unref(&frames_ref);
-                        ALOGW("Intel: init single-plane hw_frames_ctx failed, fallback to default NV12\n");
-                    }
-                }
-            }
-            return *p;
-#endif
         }
     }
-
+    
     return AV_PIX_FMT_NONE;
 }
 
