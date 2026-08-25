@@ -659,8 +659,15 @@ int ff_sub_put_packet_backup(FFSubtitle *sub, AVPacket *pkt)
 
 void ff_sub_seek_to(FFSubtitle *sub, double delay, double v_pts)
 {
+    double wantDisplay = v_pts - delay;
+    //多往前seek2s,这样能避免往回seek后没有字幕问题，因为第一帧pgs字幕的du无法预估
+    if (wantDisplay > 2) {
+        wantDisplay -= 2;
+    }
+    if (sub->com) {
+        subComponent_setMixPts(sub->com, wantDisplay);
+    }
     if (ff_sub_current_stream_type(sub) == 2) {
-        float wantDisplay = v_pts - delay;
         SDL_LockMutex(sub->mutex);
         exSub_seek_to(sub->exSub, wantDisplay);
         SDL_UnlockMutex(sub->mutex);

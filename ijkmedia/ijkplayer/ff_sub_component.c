@@ -724,3 +724,11 @@ void subComponent_update_preference(FFSubComponent *com, FSSubtitlePreference* s
         com->sp_changed = 1;
     }
 }
+
+void subComponent_setMixPts(FFSubComponent *com,double pts)
+{
+    if (!com) {
+        return;
+    }
+    com->min_pts = pts;
+}
