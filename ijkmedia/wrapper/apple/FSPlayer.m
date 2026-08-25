@@ -2486,7 +2486,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     }
 }
 
-# pragma mark set audio channel
+#pragma mark set audio channel
 
 - (void)setAudioChannel:(FSAudioChannel)config
 {
@@ -2516,7 +2516,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     return nil;
 }
 
-# pragma mark record video
+#pragma mark record video
 
 - (int)startFastRecord:(NSString *)filePath
 {
@@ -2554,7 +2554,17 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (NSURL *)contentURL
 {
-    return [NSURL URLWithString:self.content];
+    if ([self.content hasPrefix:@"/"]) {
+        return [NSURL fileURLWithPath:self.content];
+    }
+    NSURL *url = [NSURL URLWithString:self.content];
+    if (!url && self.content) {
+        NSString *escaped = [self.content stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+        if (escaped) {
+            url = [NSURL URLWithString:escaped];
+        }
+    }
+    return url;
 }
 
 @end
