@@ -1930,10 +1930,11 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 //    av_log(ffp, AV_LOG_INFO, "configure_video_filters: vfilters_buf='%s', deinterlace=%d\n", vfilters_buf, ffp->deinterlace);
     const AVDictionaryEntry *e = NULL;
 #if IS_FFMPEG_6
-    while ((e = av_dict_iterate(ffp->sws_dict, e))) {
+    while ((e = av_dict_iterate(ffp->sws_dict, e)))
 #else
-    while ((e = av_dict_get(ffp->sws_dict, "", e, AV_DICT_IGNORE_SUFFIX))) {
+    while ((e = av_dict_get(ffp->sws_dict, "", e, AV_DICT_IGNORE_SUFFIX)))
 #endif
+    {
         if (!strcmp(e->key, "sws_flags")) {
             av_strlcatf(sws_flags_str, sizeof(sws_flags_str), "%s=%s:", "flags", e->value);
         } else
