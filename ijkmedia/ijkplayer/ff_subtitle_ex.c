@@ -39,7 +39,7 @@ typedef struct FFExSubtitle {
     int abort_request;
 }FFExSubtitle;
 
-static int stream_has_enough_packets(PacketQueue *queue, int min_frames)
+static int sub_stream_has_enough_packets(PacketQueue *queue, int min_frames)
 {
     return queue->abort_request || queue->nb_packets > min_frames;
 }
@@ -71,7 +71,7 @@ static int ex_read_thread(void *opaque)
                 continue;
             }
             
-            if (stream_has_enough_packets(sub->pktq, 16)) {
+            if (sub_stream_has_enough_packets(sub->pktq, 16)) {
                 av_usleep(3 * 1000);
                 continue;
             }
