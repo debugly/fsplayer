@@ -230,6 +230,7 @@ static int decode_a_frame(FFSubComponent *com, Decoder *d, AVSubtitle *pkt)
                 com->pre_loading = -1;
                 com->ass_processed = -1;
                 com->previous_uploading = -1;
+                ResetSubtitleBufferArray(&com->sub_buffer_array, NULL);
                 av_log(NULL, AV_LOG_INFO, "sub flush serial:%d\n",d->pkt_serial);
             }
         }
