@@ -119,21 +119,23 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
             result = -4;
             break;
         }
+
+        double delta = com->previous_uploading - com->pre_loading;
+        if (delta > A_ASS_IMG_DURATION) {
+            com->pre_loading = com->previous_uploading;
+            frame_queue_flush_readable(com->frameq);
+            av_log(NULL, AV_LOG_DEBUG, "sub catch up to video, was behind:%0.3fs\n", delta);
+            result = -5;
+            break;
+        }
+
         //fetch writable slot is important because when read a new event you must put to the frameq other than drop.libass already record the diff,when use ask again will give you no change！
         Frame *sp = frame_queue_peek_writable_noblock(com->frameq);
         if (!sp) {
-            result = -7;
+            result = -6;
             break;
         }
-        
-        double delta = com->previous_uploading - com->pre_loading;
-        if (delta > 0.08) {
-            //subtitle is slower than video, so need fast forward
-            com->pre_loading = com->previous_uploading + 0.2;
-            Frame *sp = frame_queue_peek_offset(com->frameq, 0);
-            double pts = sp ? sp->pts : -1;
-            av_log(NULL, AV_LOG_WARNING, "sub is slower than video:%0.3fs,cached frame:%d,pts:%f",delta,frame_queue_nb_remaining(com->frameq),pts);
-        }
+
         double pts = com->pre_loading;
         FFSubtitleBuffer *buffer = NULL;
         int r = ff_ass_upload_buffer(com->assRenderer, pts, &buffer, 0);
@@ -169,7 +171,7 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
         }
         if (!buffer) {
             com->pre_loading += A_ASS_IMG_DURATION;
-            result = -6;
+            result = -7;
             break;
         }
         
