@@ -769,7 +769,8 @@ int ff_sub_add_ex_subtitle(FFSubtitle *sub, const char *file_name, IjkMediaMeta 
     int already_added = 0;
     //maybe already added.
     SDL_LockMutex(sub->mutex);
-    for (int i = 0; i < sub->next_idx; i++) {
+    int i;
+    for (i = 0; i < sub->next_idx; i++) {
         char* next = sub->pathArr[i];
         if (next && (0 == av_strcasecmp(next, file_name))) {
             already_added = 1;
@@ -780,7 +781,7 @@ int ff_sub_add_ex_subtitle(FFSubtitle *sub, const char *file_name, IjkMediaMeta 
     
     if (already_added) {
         if (out_idx) {
-            *out_idx = -1;
+            *out_idx = i + FS_EX_SUBTITLE_STREAM_MIN_OFFSET;
         }
         return 1;
     }
