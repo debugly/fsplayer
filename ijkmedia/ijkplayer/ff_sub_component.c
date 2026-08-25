@@ -562,6 +562,12 @@ int subComponent_upload_buffer(FFSubComponent *com, double pts, FFSubtitleBuffer
         return -1;
     }
     
+    // Ignore transient upward PTS spikes (> 5s jump relative to previous_uploading)
+    if (com->previous_uploading > 0 && pts > com->previous_uploading + 5.0) {
+        av_log(NULL, AV_LOG_WARNING, "sub pts:%0.3f > prev_uploading:%0.3f + 5.0s, ignoring transient spike\n", pts, com->previous_uploading);
+        return -1;
+    }
+    
     com->previous_uploading = pts;
     
     if (com->assRenderer) {
