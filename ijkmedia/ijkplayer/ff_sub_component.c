@@ -424,6 +424,13 @@ static int subtitle_thread(void *arg)
                                 pre->duration = sp->pts - pre->pts;
                                 //av_log(NULL, AV_LOG_DEBUG, "fix duration:%0.3f pts:%0.3f pre->pts:%0.3f\n", pre->duration, sp->pts, pre->pts);
                             }
+                        } else if (pts < com->min_pts) {
+                            //av_log(NULL, AV_LOG_INFO, "sub skip not in play range pts:%0.3f < min pts:%0.3f, drop\n", pts, com->min_pts);
+                            for (int k = 0; k < num_rect; k++) {
+                                ff_subtitle_buffer_release(&buffers[k]);
+                            }
+                            avsubtitle_free(&sub);
+                            continue;
                         }
                     }
                     sp->frame_serial = serial;
