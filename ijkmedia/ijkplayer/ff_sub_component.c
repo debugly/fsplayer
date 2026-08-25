@@ -382,10 +382,26 @@ static int subtitle_thread(void *arg)
                 }
                 
                 if (num_rect == 0) {
+                    //PGS clear packet: no bitmap, its pts marks the exact end of
+                    //the currently displayed subtitle. Use it to set the tail
+                    //frame's duration precisely instead of relying on the next
+                    //display packet or the SUB_MAX_KEEP_DU fallback.
+                    if (com->bitmapRenderer) {
+                        double clear_pts = pts + (double)sub.start_display_time / 1000.0;
+                        Frame *pre = frame_queue_peek_pre_writable(com->frameq);
+                        //only backfill when the clear targets that tail frame
+                        //(clear_pts must lie after its start); otherwise drop it.
+                        if (pre && clear_pts > pre->pts) {
+                            double du = clear_pts - pre->pts;
+                            //clear packet is authoritative: override even a valid
+                            //av_log(NULL, AV_LOG_DEBUG, "sub clear packet set duration:%0.3f pts:%0.3f clear_pts:%0.3f\n", du, pre->pts, clear_pts);
+                            pre->duration = du;
+                        }
+                    }
                     avsubtitle_free(&sub);
                     continue;
                 }
-                
+
                 if (com->bitmapRenderer) {
                     Frame *sp = frame_queue_peek_writable(com->frameq);
                     if (com->packetq->abort_request || !sp) {
@@ -400,7 +416,13 @@ static int subtitle_thread(void *arg)
                         sp->duration = -1;
                         Frame *pre = frame_queue_peek_pre_writable(com->frameq);
                         if (pre) {
-                            pre->duration = sp->pts - pre->pts;
+                            //Backfill the previous frame's end with this frame's start,
+                            //but only if a clear packet has not already set it precisely
+                            //(pre->duration > 0).
+                            if (pre->duration <= 0) {
+                                pre->duration = sp->pts - pre->pts;
+                                //av_log(NULL, AV_LOG_DEBUG, "fix duration:%0.3f pts:%0.3f pre->pts:%0.3f\n", pre->duration, sp->pts, pre->pts);
+                            }
                         }
                     }
                     sp->frame_serial = serial;
