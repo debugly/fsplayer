@@ -163,10 +163,9 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
             }
             pre_buffer = ff_subtitle_buffer_retain(buffer);
         } else {
-            //clean
+            //no subtitle image at this pts, skip to next step
             com->pre_loading += A_ASS_IMG_DURATION;
-            result = -5;
-            break;
+            continue;
         }
         if (!buffer) {
             com->pre_loading += A_ASS_IMG_DURATION;
