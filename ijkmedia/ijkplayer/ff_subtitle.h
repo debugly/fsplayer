@@ -52,7 +52,7 @@ int ff_sub_get_current_stream(FFSubtitle *sub, int *pending);
 //0 means has no sub;1 means internal sub;2 means external sub;
 int ff_sub_current_stream_type(FFSubtitle *sub);
 
-int ff_sub_get_texture(FFSubtitle *sub, float pts, SDL_GPU *gpu, SDL_TextureOverlay **texture);
+int ff_sub_get_texture(FFSubtitle *sub, double pts, SDL_GPU *gpu, SDL_TextureOverlay **texture);
 int ff_sub_drop_old_frames(FFSubtitle *sub);
 int ff_sub_frame_cache_remaining(FFSubtitle *sub);
 
@@ -62,8 +62,8 @@ int ff_sub_put_packet(FFSubtitle *sub, AVPacket *pkt);
 int ff_sub_put_packet_backup(FFSubtitle *sub, AVPacket *pkt);
 int ff_sub_packet_queue_flush(FFSubtitle *sub);
 
-int ff_sub_set_delay(FFSubtitle *sub, float delay, float cp);
-float ff_sub_get_delay(FFSubtitle *sub);
+int ff_sub_set_delay(FFSubtitle *sub, double delay, double cp);
+double ff_sub_get_delay(FFSubtitle *sub);
 
 //return 1 means need refresh display
 int ff_update_sub_preference(FFSubtitle *sub, FSSubtitlePreference* sp);
@@ -71,6 +71,6 @@ int ff_update_sub_preference(FFSubtitle *sub, FSSubtitlePreference* sp);
 //for external subtitle.
 int ff_sub_add_ex_subtitle(FFSubtitle *sub, const char *file_name, IjkMediaMeta **out_meta, int *out_idx);
 //only effect on external subtitle
-void ff_sub_seek_to(FFSubtitle *sub, float delay, float v_pts);
+void ff_sub_seek_to(FFSubtitle *sub, double delay, double v_pts);
 
 #endif /* ff_subtitle_h */

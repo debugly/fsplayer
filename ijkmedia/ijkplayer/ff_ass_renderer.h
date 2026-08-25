@@ -58,8 +58,8 @@ FF_ASS_Renderer *ff_ass_render_create_default(uint8_t *subtitle_header, int subt
 FF_ASS_Renderer * ff_ass_render_retain(FF_ASS_Renderer *ar);
 void ff_ass_render_release(FF_ASS_Renderer **arp);
 
-int ff_ass_upload_buffer(FF_ASS_Renderer * assRenderer, float begin, FFSubtitleBuffer **buffer, int ignore_change);
-void ff_ass_process_chunk(FF_ASS_Renderer * assRenderer, const char *ass_line, float begin, float end);
+int ff_ass_upload_buffer(FF_ASS_Renderer * assRenderer, double begin, FFSubtitleBuffer **buffer, int ignore_change);
+void ff_ass_process_chunk(FF_ASS_Renderer * assRenderer, const char *ass_line, double begin, double end);
 void ff_ass_flush_events(FF_ASS_Renderer * assRenderer);
 
 #endif /* ff_ass_steam_renderer_h */

@@ -581,7 +581,7 @@ void ff_ass_render_release(FF_ASS_Renderer **arp)
     }
 }
 
-int ff_ass_upload_buffer(FF_ASS_Renderer * assRenderer, float begin, FFSubtitleBuffer ** buffer, int ignore_change)
+int ff_ass_upload_buffer(FF_ASS_Renderer * assRenderer, double begin, FFSubtitleBuffer ** buffer, int ignore_change)
 {
     if (!assRenderer) {
         return -1;
@@ -589,7 +589,7 @@ int ff_ass_upload_buffer(FF_ASS_Renderer * assRenderer, float begin, FFSubtitleB
     return assRenderer->iformat->upload_buffer(assRenderer, begin * 1000, buffer, ignore_change);
 }
 
-void ff_ass_process_chunk(FF_ASS_Renderer * assRenderer, const char *ass_line, float begin, float end)
+void ff_ass_process_chunk(FF_ASS_Renderer * assRenderer, const char *ass_line, double begin, double end)
 {
     if (!assRenderer) {
         return;

@@ -44,11 +44,11 @@ typedef struct FFSubComponent{
     FFSubtitleBufferPacket sub_buffer_array;
     FSSubtitlePreference sp;
     int sp_changed;
-    float startTime;
-    
-    float previous_uploading;
-    float ass_processed;
-    float pre_loading;
+    double startTime;
+    double previous_uploading;
+    double ass_processed;
+    double pre_loading;
+    double min_pts;
 
 }FFSubComponent;
 
@@ -126,7 +126,7 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
             break;
         }
         
-        float delta = com->previous_uploading - com->pre_loading;
+        double delta = com->previous_uploading - com->pre_loading;
         if (delta > 0.08) {
             //subtitle is slower than video, so need fast forward
             com->pre_loading = com->previous_uploading + 0.2;
@@ -371,8 +371,8 @@ static int subtitle_thread(void *arg)
                         if (!ass_line)
                             continue;
                         if (!create_ass_renderer_if_need(com)) {
-                            const float begin = pts + (float)sub.start_display_time / 1000.0;
-                            float end = sub.end_display_time - sub.start_display_time;
+                            const double begin = pts + (double)sub.start_display_time / 1000.0;
+                            double end = sub.end_display_time - sub.start_display_time;
                             ff_ass_process_chunk(com->assRenderer, ass_line, begin * 1000, end);
                             com->ass_processed = begin + end/1000.0;
                             num_rect++;
@@ -431,7 +431,7 @@ static int subtitle_thread(void *arg)
     return 0;
 }
 
-static int subComponent_packet_from_frame_queue(FFSubComponent *com, float pts, FFSubtitleBufferPacket *packet, int ignore_cache)
+static int subComponent_packet_from_frame_queue(FFSubComponent *com, double pts, FFSubtitleBufferPacket *packet, int ignore_cache)
 {
     if (!com || !packet) {
         return -1;
@@ -470,7 +470,7 @@ static int subComponent_packet_from_frame_queue(FFSubComponent *com, float pts, 
         } else {
             Frame *next = frame_queue_peek_offset(com->frameq, i + 1);
             if (next) {
-                float du = next->pts - sp->pts;
+                double du = next->pts - sp->pts;
                 if (du <= 0) {
                     av_log(NULL, AV_LOG_ERROR,"sub stream drop overtime2 frame:%0.3f\n",sp->pts);
                     frame_queue_next(com->frameq);
@@ -480,7 +480,7 @@ static int subComponent_packet_from_frame_queue(FFSubComponent *com, float pts, 
                     sp->duration = du;
                 }
             } else {
-                float delta = pts - sp->pts;
+                double delta = pts - sp->pts;
                 if (delta > SUB_MAX_KEEP_DU) {
                     av_log(NULL, AV_LOG_ERROR,"sub stream drop overtime3 frame:%f\n",sp->pts);
                     frame_queue_next(com->frameq);
@@ -520,7 +520,7 @@ static int subComponent_packet_from_frame_queue(FFSubComponent *com, float pts, 
     }
 }
 
-static int subComponent_packet_ass_from_frame_queue(FFSubComponent *com, float pts, FFSubtitleBufferPacket *packet)
+static int subComponent_packet_ass_from_frame_queue(FFSubComponent *com, double pts, FFSubtitleBufferPacket *packet)
 {
     if (com->sp_changed) {
         return FF_SUB_PENDING;
@@ -528,12 +528,12 @@ static int subComponent_packet_ass_from_frame_queue(FFSubComponent *com, float p
     return subComponent_packet_from_frame_queue(com, pts, packet, 0);
 }
 
-static int subComponent_packet_for_ass(FFSubComponent *com, float pts, FFSubtitleBufferPacket *packet)
+static int subComponent_packet_for_ass(FFSubComponent *com, double pts, FFSubtitleBufferPacket *packet)
 {
     return subComponent_packet_ass_from_frame_queue(com, pts, packet);
 }
 
-int subComponent_upload_buffer(FFSubComponent *com, float pts, FFSubtitleBufferPacket *packet)
+int subComponent_upload_buffer(FFSubComponent *com, double pts, FFSubtitleBufferPacket *packet)
 {
     if (!com || com->packetq->abort_request || !packet) {
         return -1;
@@ -572,7 +572,7 @@ int subComponent_upload_buffer(FFSubComponent *com, float pts, FFSubtitleBufferP
     }
 }
 
-int subComponent_open(FFSubComponent **cp, int stream_index, AVStream* stream, PacketQueue* packetq, FrameQueue* frameq, const char *enc, subComponent_retry_callback callback, void *opaque, int vw, int vh, float startTime)
+int subComponent_open(FFSubComponent **cp, int stream_index, AVStream* stream, PacketQueue* packetq, FrameQueue* frameq, const char *enc, subComponent_retry_callback callback, void *opaque, int vw, int vh, double startTime)
 {
     assert(frameq);
     assert(packetq);

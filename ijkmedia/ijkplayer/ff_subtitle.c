@@ -51,11 +51,11 @@ typedef struct FFSubtitle {
     PacketQueue packetq;
     PacketQueue packetq2;
     FrameQueue frameq;
-    float delay;
-    float current_pts;
+    double delay;
+    double current_pts;
     AVFormatContext* ic_internal;
     int maxStream_internal;
-    float streamStartTime;//ic start_time (s)
+    double streamStartTime;//ic start_time (s)
     
     FFExSubtitle* exSub;
     char* pathArr[FS_EX_SUBTITLE_STREAM_MAX_COUNT];
@@ -202,7 +202,7 @@ int ff_sub_drop_old_frames(FFSubtitle *sub)
     return frame_queue_flush_old_serial(&sub->frameq, sub->packetq.serial);;
 }
 
-static int ff_sub_upload_buffer(FFSubtitle *sub, float pts, FFSubtitleBufferPacket *packet)
+static int ff_sub_upload_buffer(FFSubtitle *sub, double pts, FFSubtitleBufferPacket *packet)
 {
     if (!sub || !packet) {
         return -1;
@@ -271,7 +271,7 @@ static SDL_TextureOverlay * subtitle_upload_fbo(SDL_GPU *gpu, SDL_FBOOverlay *fb
 }
 
 //if *texture is not NULL, it was retained
-static int ff_sub_upload_texture(FFSubtitle *sub, float pts, SDL_GPU *gpu, SDL_TextureOverlay **texture)
+static int ff_sub_upload_texture(FFSubtitle *sub, double pts, SDL_GPU *gpu, SDL_TextureOverlay **texture)
 {
     if (!sub || !texture) {
         return -1;
@@ -317,7 +317,7 @@ end:
     return r;
 }
 
-int ff_sub_get_texture(FFSubtitle *sub, float pts, SDL_GPU *gpu, SDL_TextureOverlay **texture)
+int ff_sub_get_texture(FFSubtitle *sub, double pts, SDL_GPU *gpu, SDL_TextureOverlay **texture)
 {
     if (!texture) {
         return -1;
@@ -657,7 +657,7 @@ int ff_sub_put_packet_backup(FFSubtitle *sub, AVPacket *pkt)
     return -1;
 }
 
-void ff_sub_seek_to(FFSubtitle *sub, float delay, float v_pts)
+void ff_sub_seek_to(FFSubtitle *sub, double delay, double v_pts)
 {
     if (ff_sub_current_stream_type(sub) == 2) {
         float wantDisplay = v_pts - delay;
@@ -667,16 +667,16 @@ void ff_sub_seek_to(FFSubtitle *sub, float delay, float v_pts)
     }
 }
 
-int ff_sub_set_delay(FFSubtitle *sub, float delay, float v_pts)
+int ff_sub_set_delay(FFSubtitle *sub, double delay, double v_pts)
 {
     if (!sub) {
         return -1;
     }
     
-    float wantDisplay = v_pts - delay;
+    double wantDisplay = v_pts - delay;
     //subtile's frame queue greater than can display pts
     if (sub->current_pts > wantDisplay) {
-        float diff = fabsf(delay - sub->delay);
+        double diff = fabs(delay - sub->delay);
         sub->delay = delay;
         //need seek to wantDisplay;
         int type = ff_sub_current_stream_type(sub);
@@ -702,7 +702,7 @@ int ff_sub_set_delay(FFSubtitle *sub, float delay, float v_pts)
     }
 }
 
-float ff_sub_get_delay(FFSubtitle *sub)
+double ff_sub_get_delay(FFSubtitle *sub)
 {
     return sub ? sub->delay : 0.0;
 }
