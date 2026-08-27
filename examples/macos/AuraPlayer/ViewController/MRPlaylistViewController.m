@@ -13,8 +13,6 @@
 
 @interface MRPlaylistCellView : NSTableCellView
 
-@property (nonatomic, strong) NSTextField *indexLb;
-@property (nonatomic, strong) NSTextField *playIconLb;
 @property (nonatomic, strong) NSTextField *titleLb;
 @property (nonatomic, strong) MRHoverTextButton *deleteBtn;
 @property (nonatomic, copy) void (^onDeleteBlock)(void);
@@ -28,30 +26,6 @@
     self = [super initWithFrame:frameRect];
     if (self) {
         self.wantsLayer = YES;
-        
-        _indexLb = [[NSTextField alloc] init];
-        _indexLb.translatesAutoresizingMaskIntoConstraints = NO;
-        _indexLb.bezeled = NO;
-        _indexLb.drawsBackground = NO;
-        _indexLb.editable = NO;
-        _indexLb.selectable = NO;
-        _indexLb.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
-        _indexLb.textColor = [NSColor secondaryLabelColor];
-        _indexLb.alignment = NSTextAlignmentRight;
-        _indexLb.usesSingleLineMode = YES;
-        [self addSubview:_indexLb];
-        
-        _playIconLb = [[NSTextField alloc] init];
-        _playIconLb.translatesAutoresizingMaskIntoConstraints = NO;
-        _playIconLb.bezeled = NO;
-        _playIconLb.drawsBackground = NO;
-        _playIconLb.editable = NO;
-        _playIconLb.selectable = NO;
-        _playIconLb.stringValue = @"▶";
-        _playIconLb.font = [NSFont systemFontOfSize:10 weight:NSFontWeightBold];
-        _playIconLb.textColor = [NSColor colorWithRed:0.25 green:0.85 blue:0.45 alpha:1.0];
-        _playIconLb.alignment = NSTextAlignmentCenter;
-        [self addSubview:_playIconLb];
         
         _titleLb = [[NSTextField alloc] init];
         _titleLb.translatesAutoresizingMaskIntoConstraints = NO;
@@ -75,15 +49,7 @@
         [self addSubview:_deleteBtn];
         
         [NSLayoutConstraint activateConstraints:@[
-            [_indexLb.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8],
-            [_indexLb.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [_indexLb.widthAnchor constraintEqualToConstant:30],
-            
-            [_playIconLb.leadingAnchor constraintEqualToAnchor:_indexLb.trailingAnchor constant:2],
-            [_playIconLb.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-            [_playIconLb.widthAnchor constraintEqualToConstant:14],
-            
-            [_titleLb.leadingAnchor constraintEqualToAnchor:_playIconLb.trailingAnchor constant:4],
+            [_titleLb.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:15],
             [_titleLb.trailingAnchor constraintEqualToAnchor:_deleteBtn.leadingAnchor constant:-6],
             [_titleLb.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
             
@@ -111,19 +77,19 @@
 - (void)updateWithUrl:(NSString *)urlStr title:(nullable NSString *)displayTitle index:(NSInteger)index isPlaying:(BOOL)isPlaying onDelete:(void (^)(void))onDelete
 {
     self.onDeleteBlock = onDelete;
-    self.indexLb.stringValue = [NSString stringWithFormat:@"%ld", (long)(index + 1)];
-    self.titleLb.stringValue = (displayTitle.length > 0) ? displayTitle : ([urlStr lastPathComponent] ?: @"");
+    NSString *rawTitle = (displayTitle.length > 0) ? displayTitle : ([urlStr lastPathComponent] ?: @"");
+    NSString *decodedTitle = [rawTitle stringByRemovingPercentEncoding];
+    NSString *finalTitle = (decodedTitle.length > 0) ? decodedTitle : rawTitle;
+    self.titleLb.stringValue = finalTitle;
+    self.toolTip = finalTitle;
+    self.titleLb.toolTip = finalTitle;
     
     if (isPlaying) {
-        self.playIconLb.hidden = NO;
-        self.titleLb.textColor = [NSColor colorWithRed:0.35 green:0.75 blue:1.0 alpha:1.0];
+        self.titleLb.textColor = [NSColor colorWithRed:229.0/255.0 green:9.0/255.0 blue:20.0/255.0 alpha:1.0];
         self.titleLb.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightBold];
-        self.indexLb.textColor = [NSColor colorWithRed:0.35 green:0.75 blue:1.0 alpha:1.0];
     } else {
-        self.playIconLb.hidden = YES;
         self.titleLb.textColor = [NSColor whiteColor];
         self.titleLb.font = [NSFont systemFontOfSize:12.5 weight:NSFontWeightRegular];
-        self.indexLb.textColor = [NSColor secondaryLabelColor];
     }
 }
 
@@ -306,7 +272,7 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
         [headerContent.trailingAnchor constraintEqualToAnchor:_headerView.trailingAnchor],
         [headerContent.bottomAnchor constraintEqualToAnchor:_headerView.bottomAnchor],
         
-        [titleLb.leadingAnchor constraintEqualToAnchor:headerContent.leadingAnchor constant:16],
+        [titleLb.leadingAnchor constraintEqualToAnchor:headerContent.leadingAnchor constant:15],
         [titleLb.centerYAnchor constraintEqualToAnchor:headerContent.centerYAnchor],
         
         [_countLb.leadingAnchor constraintEqualToAnchor:titleLb.trailingAnchor constant:4],
@@ -338,6 +304,7 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
     _tableView = [[NSTableView alloc] init];
     _tableView.headerView = nil;
     _tableView.rowHeight = 42;
+    _tableView.intercellSpacing = NSZeroSize;
     _tableView.selectionHighlightStyle = NSTableViewSelectionHighlightStyleRegular;
     _tableView.backgroundColor = [NSColor clearColor];
     _tableView.delegate = self;
@@ -454,8 +421,11 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
 - (NSString *)displayTitleForURL:(NSString *)url
 {
     NSString *title = self.playlistMetadata[url][@"title"];
-    if (title.length > 0) return title;
-    return [url lastPathComponent] ?: @"";
+    if (title.length == 0) {
+        title = [url lastPathComponent] ?: @"";
+    }
+    NSString *decoded = [title stringByRemovingPercentEncoding];
+    return (decoded.length > 0) ? decoded : title;
 }
 
 - (void)applySortingAndReload
@@ -549,7 +519,7 @@ static NSString * const kMRPlaylistSortAlphabeticalKey = @"MRPlaylistSortAlphabe
     if (row >= 0 && row < self.playlistItems.count) {
         NSString *url = self.playlistItems[row];
         BOOL isPlaying = [url isEqualToString:self.currentlyPlayingUrl];
-        NSString *title = self.playlistMetadata[url][@"title"];
+        NSString *title = [self displayTitleForURL:url];
         
         __weakSelf__
         [cell updateWithUrl:url title:title index:row isPlaying:isPlaying onDelete:^{

@@ -2107,7 +2107,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self perpareFSPlayer:urlStr hwaccel:[self preferHW] isLive:isLive];
     // Use metadata title if available, otherwise fall back to lastPathComponent
     NSString *metaTitle = self.playlistMeta[urlStr][@"title"];
-    NSString *videoName = (metaTitle.length > 0) ? metaTitle : ([urlStr lastPathComponent] ?: urlStr);
+    NSString *rawName = (metaTitle.length > 0) ? metaTitle : ([urlStr lastPathComponent] ?: urlStr);
+    NSString *decodedName = [rawName stringByRemovingPercentEncoding];
+    NSString *videoName = (decodedName.length > 0) ? decodedName : rawName;
     
     NSInteger idx = [self.playList indexOfObject:self.playingUrl] + 1;
     
