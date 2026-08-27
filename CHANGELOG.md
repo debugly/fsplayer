@@ -1,3 +1,8 @@
+## tag 1.1.0
+
+- Update OpenSSL and other libraries #95
+- fix ffmpeg8 can't find libwep decoder bug
+
 ## tag 1.0.9
 
 - fix some intel device display green screen or snow pixel screen bug
