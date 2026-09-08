@@ -1,10 +1,13 @@
 ChangeLog
 -----------------------
-* Update CHANGELOG.md
 * Update README.md
-* Upgrade version in version.sh then exec
+* Update CHANGELOG.md
+* Update doc/deps-tags.md
 * Commit "bump version to xxx" and push
+* Merge to main branch
 
 Take off
 -----------------------
-* Push master to github
+* Run workflow publish new Release
+* Create a new branch
+* Upgrade version in version.sh then exec
