@@ -62,16 +62,29 @@ jobs:
       run: ./examples/xcframewrok/make-podspec.sh "${{ env.TAG }}"
     - name: Make Distribution Resources
       run: |
-        mkdir dist
-        cp CHANGELOG.md dist 
-        cp README.md dist
-        cp COPYING.LGPLv3 dist/LICENSE
-        cp -pPR examples/xcframewrok/FSPlayer.xcframework dist
-        cd dist
-        zip -ryq FSPlayer.zip ./*
+        package_dist() {
+          local name="$1"
+          local xcf_path="$2"
+          local temp_dir="dist/${name}"
+
+          mkdir -p "$temp_dir"
+          cp CHANGELOG.md README.md "$temp_dir/"
+          cp COPYING.LGPLv3 "$temp_dir/LICENSE"
+          cp -pPR "$xcf_path" "$temp_dir/"
+          (cd "$temp_dir" && zip -ryq "../${name}.zip" ./*)
+          rm -rf "$temp_dir"
+        }
+
+        mkdir -p dist
+        package_dist "FSPlayer" "examples/xcframewrok/FSPlayer.xcframework"
+        package_dist "FSPlayer-iOS" "examples/xcframewrok/ios/FSPlayer.xcframework"
+        package_dist "FSPlayer-macOS" "examples/xcframewrok/macos/FSPlayer.xcframework"
+        package_dist "FSPlayer-tvOS" "examples/xcframewrok/tvos/FSPlayer.xcframework"
     - name: Upload Release Asset
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         branch=$(git branch --show-current)
-        gh release create ${{ env.TAG }} --target $branch -t "👏👏 FSPlayer ${{ env.TAG }}" dist/FSPlayer.zip examples/xcframewrok/FSPlayer.spec.json
+        gh release create ${{ env.TAG }} --target $branch -t "👏👏 FSPlayer ${{ env.TAG }}" \
+          dist/FSPlayer.zip dist/FSPlayer-iOS.zip dist/FSPlayer-macOS.zip dist/FSPlayer-tvOS.zip \
+          examples/xcframewrok/FSPlayer.spec.json examples/xcframewrok/FSPlayer-iOS.spec.json examples/xcframewrok/FSPlayer-macOS.spec.json examples/xcframewrok/FSPlayer-tvOS.spec.json

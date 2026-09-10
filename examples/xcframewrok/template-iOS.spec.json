@@ -1,0 +1,50 @@
+{
+  "name": "FSPlayer-iOS",
+  "version": "__VERSION__",
+  "summary": "FSPlayer is a free (as in freedom) media player for iOS apps.",
+  "description": "FSPlayer is a free (as in freedom) media player for iOS apps.\n\nIt supports a wide variety of media file formats, audio and video codecs, and subtitle types.",
+  "homepage": "https://github.com/debugly/fsplayer",
+  "documentation_url": "https://github.com/debugly/fsplayer",
+  "social_media_url": "https://github.com/debugly/fsplayer",
+  "license": {
+    "type": "LGPL",
+    "file": "FSPlayer-iOS/LICENSE"
+  },
+  "authors": {
+    "MattReach": "qianlongxu@gmail.com"
+  },
+  "platforms": {
+    "ios": "12.0"
+  },
+  "source": {
+    "http": "https://github.com/debugly/fsplayer/releases/download/__VERSION__/FSPlayer-iOS.zip"
+  },
+  "preserve_paths": [
+    "FSPlayer-iOS/README.md",
+    "FSPlayer-iOS/CHANGELOG.md",
+    "FSPlayer-iOS/LICENSE"
+  ],
+  "vendored_frameworks": "FSPlayer.xcframework",
+  "libraries": [
+    "z",
+    "iconv",
+    "xml2",
+    "bz2",
+    "c++",
+    "lzma"
+  ],
+  "frameworks": [
+    "AVFoundation",
+    "AudioToolbox",
+    "CoreMedia",
+    "CoreVideo",
+    "VideoToolbox",
+    "Metal"
+  ],
+  "ios": {
+    "frameworks": [
+      "UIKit",
+      "OpenGLES"
+    ]
+  }
+}
