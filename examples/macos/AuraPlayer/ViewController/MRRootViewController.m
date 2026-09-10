@@ -1217,6 +1217,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                     self.player.view.zRotateDegrees = rotateDegrees;
                 }
                 NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.player.view.xRotateDegrees,(int)self.player.view.yRotateDegrees,(int)self.player.view.zRotateDegrees);
+                return YES;
             }
             case kVK_ANSI_S:
             {
