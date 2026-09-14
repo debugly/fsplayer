@@ -33,8 +33,6 @@ NSString *const FSPlayerPlaybackStateDidChangeNotification = @"FSPlayerPlaybackS
 
 NSString *const FSPlayerLoadStateDidChangeNotification = @"FSPlayerLoadStateDidChangeNotification";
 
-NSString *const FSPlayerIsAirPlayVideoActiveDidChangeNotification = @"FSPlayerIsAirPlayVideoActiveDidChangeNotification";
-
 NSString *const FSPlayerBufferingDidChangeNotification = @"FSPlayerBufferingDidChangeNotification";
 
 NSString *const FSPlayerCurrentPlaybackTimeDidChangeNotification = @"FSPlayerCurrentPlaybackTimeDidChangeNotification";
@@ -53,11 +51,14 @@ NSString *const FSPlayerOpenInputNotification               = @"FSPlayerOpenInpu
 NSString *const FSPlayerFindStreamInfoNotification          = @"FSPlayerFindStreamInfoNotification";
 NSString *const FSPlayerComponentOpenNotification           = @"FSPlayerComponentOpenNotification";
 
-NSString *const FSPlayerAccurateSeekCompleteNotification = @"FSPlayerAccurateSeekCompleteNotification";
-
 NSString *const FSPlayerDidSeekCompleteNotification = @"FSPlayerDidSeekCompleteNotification";
+//FSPlayerDidSeekCompleteNotification's userInfo
 NSString *const FSPlayerDidSeekCompleteTargetKey = @"FSPlayerDidSeekCompleteTargetKey";
+//FSPlayerDidSeekCompleteNotification's userInfo
 NSString *const FSPlayerDidSeekCompleteErrorKey = @"FSPlayerDidSeekCompleteErrorKey";
+
+NSString *const FSPlayerAccurateSeekCompleteNotification = @"FSPlayerAccurateSeekCompleteNotification";
+//FSPlayerAccurateSeekCompleteNotification's userInfo
 NSString *const FSPlayerDidAccurateSeekCompleteCurPos = @"FSPlayerDidAccurateSeekCompleteCurPos";
 
 NSString *const FSPlayerSeekAudioStartNotification  = @"FSPlayerSeekAudioStartNotification";

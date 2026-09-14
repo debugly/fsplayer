@@ -108,11 +108,6 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @synthesize scalingMode = _scalingMode;
 @synthesize shouldAutoplay = _shouldAutoplay;
 
-@synthesize allowsMediaAirPlay = _allowsMediaAirPlay;
-@synthesize airPlayMediaActive = _airPlayMediaActive;
-
-@synthesize isDanmakuMediaAirPlay = _isDanmakuMediaAirPlay;
-
 @synthesize monitor = _monitor;
 @synthesize shouldShowHudView           = _shouldShowHudView;
 @synthesize isSeekBuffering = _isSeekBuffering;
@@ -2198,55 +2193,6 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
         return -1;
     }
 }
-
-#pragma mark Airplay
-
--(BOOL)allowsMediaAirPlay
-{
-    if (!self)
-        return NO;
-    return _allowsMediaAirPlay;
-}
-
--(void)setAllowsMediaAirPlay:(BOOL)b
-{
-    if (!self)
-        return;
-    _allowsMediaAirPlay = b;
-}
-
--(BOOL)airPlayMediaActive
-{
-    if (!self)
-        return NO;
-    if (_isDanmakuMediaAirPlay) {
-        return YES;
-    }
-    return NO;
-}
-
--(BOOL)isDanmakuMediaAirPlay
-{
-    return _isDanmakuMediaAirPlay;
-}
-
--(void)setIsDanmakuMediaAirPlay:(BOOL)isDanmakuMediaAirPlay
-{
-    _isDanmakuMediaAirPlay = isDanmakuMediaAirPlay;
-
-#if TARGET_OS_IOS
-    if (_isDanmakuMediaAirPlay) {
-        _videoRendering.scaleFactor = 1.0f;
-    } else {
-        CGFloat scale = [[UIScreen mainScreen] scale];
-        if (scale < 0.1f)
-            scale = 1.0f;
-        _videoRendering.scaleFactor = scale;
-    }
-#endif
-     [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsAirPlayVideoActiveDidChangeNotification object:nil userInfo:nil];
-}
-
 
 #pragma mark Option Conventionce
 
