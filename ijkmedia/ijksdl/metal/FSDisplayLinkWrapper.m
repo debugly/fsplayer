@@ -32,10 +32,12 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
                                       CVOptionFlags flagsIn,
                                       CVOptionFlags *flagsOut,
                                       void *displayLinkContext) {
-    FSDisplayLinkWrapper *wrapper = (__bridge FSDisplayLinkWrapper *)displayLinkContext;
-    CFTimeInterval timestamp = inOutputTime->hostTime / CVGetHostClockFrequency();
-    if (wrapper.callback) {
-        wrapper.callback(timestamp);
+    @autoreleasepool {
+        FSDisplayLinkWrapper *wrapper = (__bridge FSDisplayLinkWrapper *)displayLinkContext;
+        CFTimeInterval timestamp = inOutputTime->hostTime / CVGetHostClockFrequency();
+        if (wrapper.callback) {
+            wrapper.callback(timestamp);
+        }
     }
     return kCVReturnSuccess;
 }
