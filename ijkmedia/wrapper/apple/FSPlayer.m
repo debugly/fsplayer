@@ -251,6 +251,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         
         // init hud
         _hudCardView = [[FSHudCardView alloc] initWithFrame:CGRectZero];
+        [_hudCardView appendTitle:[videoRendering name]];
         self.shouldShowHudView = options.showHudView;
     } else {
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
