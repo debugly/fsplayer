@@ -7,7 +7,6 @@ Math utility functions that work, create, and modify vectors, matrices, and quat
 */
 
 #include "FSMathUtilities.h"
-#include <assert.h>
 #include <stdlib.h>
 
 /*
