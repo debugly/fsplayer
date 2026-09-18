@@ -72,6 +72,9 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
 
 #if !TARGET_OS_OSX
 - (void)displayLinkFired:(CADisplayLink *)displayLink {
+    // FSDisplayLinkWrapper already wraps the callback in an autoreleasepool
+    // (CVDisplayLink on macOS) / runs it on the main runloop (CADisplayLink
+    // on iOS/tvOS), so no per-frame pool is needed here.
     if (self.callback) {
         self.callback(displayLink.targetTimestamp);
     }
@@ -79,59 +82,51 @@ static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink,
 #endif
 
 - (void)start {
-#if TARGET_OS_OSX
     if (_displayLink) {
+    #if TARGET_OS_OSX
         CVDisplayLinkStart(_displayLink);
-    }
-#else
-    if (_displayLink) {
+    #else
         [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    #endif
     }
-#endif
 }
 
 - (void)stop {
-#if TARGET_OS_OSX
     if (_displayLink) {
+    #if TARGET_OS_OSX
         CVDisplayLinkStop(_displayLink);
-    }
-#else
-    if (_displayLink) {
+    #else
         [_displayLink invalidate];
         _displayLink = nil;
+    #endif
     }
-#endif
 }
 
 - (void)invalidate {
-#if TARGET_OS_OSX
     if (_displayLink) {
+    #if TARGET_OS_OSX
         CVDisplayLinkStop(_displayLink);
         CVDisplayLinkRelease(_displayLink);
         _displayLink = NULL;
-    }
-#else
-    if (_displayLink) {
+    #else
         [_displayLink invalidate];
         _displayLink = nil;
+    #endif
     }
-#endif
 }
 
 - (void)setPaused:(BOOL)paused {
-#if TARGET_OS_OSX
     if (_displayLink) {
+    #if TARGET_OS_OSX
         if (paused) {
             CVDisplayLinkStop(_displayLink);
         } else {
             CVDisplayLinkStart(_displayLink);
         }
-    }
-#else
-    if (_displayLink) {
+    #else
         _displayLink.paused = paused;
+    #endif
     }
-#endif
 }
 
 - (BOOL)isPaused {
