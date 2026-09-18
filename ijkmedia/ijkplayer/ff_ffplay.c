@@ -3152,21 +3152,6 @@ static int audio_open(FFPlayer *opaque, AVChannelLayout *wanted_channel_layout, 
 }
 
 #ifdef __APPLE__
-static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
-                                        const enum AVPixelFormat *pix_fmts)
-{
-    const enum AVPixelFormat supported_fmts[] = {AV_PIX_FMT_VIDEOTOOLBOX,AV_PIX_FMT_NV12,AV_PIX_FMT_YUV420P,AV_PIX_FMT_UYVY422,AV_PIX_FMT_ARGB,AV_PIX_FMT_0RGB,AV_PIX_FMT_BGRA,AV_PIX_FMT_BGR0};
-    
-    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
-        for (int i = 0; i < sizeof(supported_fmts) / sizeof(enum AVPixelFormat); i++) {
-            if (*p == supported_fmts[i])
-                return *p;
-        }
-    }
-    
-    return AV_PIX_FMT_NONE;
-}
-
 static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) {
     int err = 0;
     AVBufferRef *hw_device_ctx = NULL;
@@ -3174,8 +3159,18 @@ static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) 
         ALOGE("create mac HW device failed for type: %d\n", config->device_type);
         return err;
     }
-    //将硬件支持的图像格式传给解码器的方法
-    ctx->get_format = get_hw_format;
+    //硬解初始化失败自动降级到软解优化：避免硬解出错等到 avcodec_send_packet 时检测到错误再给上层抛事件后重启的弯路
+    /*
+     Format videotoolbox_vld chosen by get_format().
+     Format videotoolbox_vld requires hwaccel vp9_videotoolbox initialisation.
+     VideoToolbox decoder for this format not found.
+     Failed setup for format videotoolbox_vld: hwaccel initialisation returned error:-65537
+     Format videotoolbox_vld not usable, retrying get_format() without it.
+     Picture size 0x0 is invalid
+     Failed to initialize decoder for 3840x2160 @ 62
+     avcodec_send_packet failed:Invalid data found when processing input(-1094995529).
+     */
+    //ctx->get_format = get_hw_format;
     av_opt_set_int(ctx, "refcounted_frames", 1, 0);
     //创建hw_device_ctx传给解码器上下文，必须在avcodec_open2之前并且之后不能修改
     ctx->hw_device_ctx = hw_device_ctx;
