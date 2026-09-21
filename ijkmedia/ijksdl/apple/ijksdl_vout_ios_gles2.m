@@ -215,20 +215,24 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     }
 #endif
     
-    CVPixelBufferRef videoPic = SDL_Overlay_getCVPixelBufferRef(overlay);
-    // AVFrame-passthrough (FSPlaceboView software path): no CVPixelBuffer is created;
-    // the decoded frame is carried directly.
+    // render_avframe renderers (FSPlaceboView) consume the AVFrame directly;
+    // skip the CVPixelBuffer extraction entirely on that path.
+    CVPixelBufferRef videoPic = vout->render_avframe ? NULL : SDL_Overlay_getCVPixelBufferRef(overlay);
     AVFrame *swframe = (overlay->format == SDL_FCC__FFVTB) ? SDL_VoutFFmpeg_GetAVFrame(overlay) : NULL;
-
-    if (videoPic || swframe) {
+    AVFrame *vtbframe = (overlay->format == SDL_FCC__VTB) ? SDL_VoutFFmpeg_HW_GetAVFrame(overlay) : NULL;
+    
+    if (videoPic || swframe || vtbframe) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
-
+        
         if (videoPic) {
             attach.pixelW = (int)CVPixelBufferGetWidth(videoPic);
             attach.pixelH = (int)CVPixelBufferGetHeight(videoPic);
             attach.videoPicture = CVPixelBufferRetain(videoPic);
+        } else if (vtbframe) {
+            attach.pixelW = vtbframe->width;
+            attach.pixelH = vtbframe->height;
         } else {
             attach.pixelW = swframe->width;
             attach.pixelH = swframe->height;
@@ -238,14 +242,9 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         attach.sarDen = overlay->sar_den;
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
         attach.hasAlpha = overlay->has_alpha;
-        // Carry the full frame (with DoVi/HDR side data).
-        // Hardware frames wrap a VideoToolbox CVPixelBuffer; software frames carry the
-        // raw decoded AVFrame.
-        if (overlay->format == SDL_FCC__VTB) {
-            AVFrame *src = SDL_VoutFFmpeg_HW_GetAVFrame(overlay);
-            if (src) {
-                attach.avframe = av_frame_clone(src);
-            }
+        // Carry the full frame (with DoVi/HDR side data) for the libplacebo renderer.
+        if (vtbframe) {
+            attach.avframe = av_frame_clone(vtbframe);
         } else if (swframe) {
             attach.avframe = av_frame_clone(swframe);
         }
