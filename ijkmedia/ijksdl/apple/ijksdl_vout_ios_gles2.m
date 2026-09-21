@@ -130,43 +130,31 @@ static void vout_free_l(SDL_Vout *vout)
             opaque->cvPixelBufferPool = NULL;
         }
     }
-
+    
     SDL_Vout_FreeInternal(vout);
-}
-
-static CVPixelBufferRef SDL_Overlay_getCVPixelBufferRef(SDL_VoutOverlay *overlay)
-{
-    switch (overlay->format) {
-        case SDL_FCC__VTB:
-            return SDL_VoutFFmpeg_HW_GetCVPixelBufferRef(overlay);
-        case SDL_FCC__FFVTB:
-            return SDL_VoutFFmpeg_GetCVPixelBufferRef(overlay);
-        default:
-            return NULL;
-    }
 }
 
 static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
     SDL_Vout_Opaque *opaque = vout->opaque;
     UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
-
+    
     if (!gl_view) {
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
         return -1;
     }
-
+    
     if (!overlay) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     }
-
+    
     if (overlay->w <= 0 || overlay->h <= 0) {
         ALOGE("vout_display_overlay_l: invalid overlay dimensions(%d, %d)\n", overlay->w, overlay->h);
         return -3;
     }
-
+    
     if (SDL_FCC__VTB != overlay->format && SDL_FCC__FFVTB != overlay->format) {
         ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
         return -4;
@@ -185,7 +173,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         int *ws = (int *)calloc(count, sizeof(int));
         int *hs = (int *)calloc(count, sizeof(int));
         int got = SDL_VoutOverlay_GetTileCVPixelBuffers(overlay, bufs, xs, ys, ws, hs, count);
-
+        
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
@@ -197,7 +185,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
         attach.hasAlpha = overlay->has_alpha;
         attach.videoPicture = NULL;
-
+        
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
             if (!bufs[i]) continue;
@@ -209,28 +197,27 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         }
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
-
+        
         free(bufs); free(xs); free(ys); free(ws); free(hs);
         return [gl_view displayAttach:attach];
     }
 #endif
     
-    // render_avframe renderers (FSPlaceboView) consume the AVFrame directly;
-    // skip the CVPixelBuffer extraction entirely on that path.
-    CVPixelBufferRef videoPic = vout->render_avframe ? NULL : SDL_Overlay_getCVPixelBufferRef(overlay);
+    // The renderer consumes the decoded AVFrame directly: FSPlaceboView uploads it,
+    // FSMetalView derives a CVPixelBuffer from it on the render thread. The dispatch
+    // layer no longer pulls a CVPixelBuffer here (that logic moved into the renderer).
     AVFrame *swframe = (overlay->format == SDL_FCC__FFVTB) ? SDL_VoutFFmpeg_GetAVFrame(overlay) : NULL;
     AVFrame *vtbframe = (overlay->format == SDL_FCC__VTB) ? SDL_VoutFFmpeg_HW_GetAVFrame(overlay) : NULL;
     
-    if (videoPic || swframe || vtbframe) {
+    if (swframe || vtbframe) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
         
-        if (videoPic) {
-            attach.pixelW = (int)CVPixelBufferGetWidth(videoPic);
-            attach.pixelH = (int)CVPixelBufferGetHeight(videoPic);
-            attach.videoPicture = CVPixelBufferRetain(videoPic);
-        } else if (vtbframe) {
+        // pixelW/H default to the frame's coded size; renderers that need the padded
+        // buffer dimensions (FSMetalView crop) overwrite these once they materialise
+        // the CVPixelBuffer.
+        if (vtbframe) {
             attach.pixelW = vtbframe->width;
             attach.pixelH = vtbframe->height;
         } else {
@@ -242,7 +229,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         attach.sarDen = overlay->sar_den;
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
         attach.hasAlpha = overlay->has_alpha;
-        // Carry the full frame (with DoVi/HDR side data) for the libplacebo renderer.
+        // Carry the full frame (with DoVi/HDR side data) to the renderer.
         if (vtbframe) {
             attach.avframe = av_frame_clone(vtbframe);
         } else if (swframe) {
@@ -271,7 +258,7 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     SDL_Vout *vout = SDL_Vout_CreateInternal(sizeof(SDL_Vout_Opaque));
     if (!vout)
         return NULL;
-
+    
     SDL_Vout_Opaque *opaque = vout->opaque;
     opaque->cv_format = -1;
     vout->create_overlay = vout_create_overlay;
@@ -359,14 +346,14 @@ static CGContextRef _CreateCGBitmapContext(size_t w, size_t h, size_t bpc, size_
     //CGColorSpaceCreateWithName(kCGColorSpaceSRGB)
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef bitmapContext = CGBitmapContextCreate(
-        NULL,
-        w,
-        h,
-        bpc,
-        bpr,
-        colorSpace,
-        bmi
-    );
+                                                       NULL,
+                                                       w,
+                                                       h,
+                                                       bpc,
+                                                       bpr,
+                                                       colorSpace,
+                                                       bmi
+                                                       );
     
     CGColorSpaceRelease(colorSpace);
     return bitmapContext;
@@ -423,7 +410,7 @@ static BOOL saveImageToFile(CGImageRef img,NSString *imgPath)
     if (imageUTType == NULL) {
         imageUTType = kUTTypePNG;
     }
-
+    
     CFStringRef key = kCGImageDestinationLossyCompressionQuality;
     CFStringRef value = CFSTR("0.5");
     const void * keys[] = {key};

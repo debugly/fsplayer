@@ -31,9 +31,9 @@
 #include "ijksdl_inc_ffmpeg.h"
 
 SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout *vout);
-CVPixelBufferRef SDL_VoutFFmpeg_HW_GetCVPixelBufferRef(SDL_VoutOverlay *overlay);
-// Returns the full AVFrame (with side data, e.g. Dolby Vision RPU) backing this
-// overlay.
+// Returns the full AVFrame (with side data, e.g. Dolby Vision RPU, and the data[3]
+// CVPixelBuffer for VideoToolbox) backing this overlay, consumed by the renderer.
+// Valid until the overlay is unref'd.
 AVFrame *SDL_VoutFFmpeg_HW_GetAVFrame(SDL_VoutOverlay *overlay);
 
 #endif

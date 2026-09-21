@@ -33,8 +33,7 @@
 struct FSTileSlot;
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
-    CVPixelBufferRef pixel_buffer;
-    AVFrame *av_frame;   /* full frame ref (incl. DoVi side data) */
+    AVFrame *av_frame;   /* full frame ref (incl. DoVi side data + data[3] CVPixelBuffer) for the renderer */
     Uint16 pitches[AV_NUM_DATA_POINTERS];
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
@@ -118,6 +117,22 @@ static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
 }
 #endif
 
+static void func_unref(SDL_VoutOverlay *overlay)
+{
+    if (!overlay) {
+        return;
+    }
+    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+    if (!opaque) {
+        return;
+    }
+    
+    if (opaque->av_frame) {
+        av_frame_free(&opaque->av_frame);
+    }
+    return;
+}
+
 static void func_free_l(SDL_VoutOverlay *overlay)
 {
     if (!overlay)
@@ -125,10 +140,13 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     if (!opaque)
         return;
-    overlay->unref(overlay);
+    func_unref(overlay);
+#if IS_TILEGRID_HEIC_ENABLED
+    tile_slots_free(opaque);
+#endif
     if (opaque->mutex)
         SDL_DestroyMutex(opaque->mutex);
-
+    
     SDL_VoutOverlay_FreeInternal(overlay);
 }
 
@@ -142,24 +160,6 @@ static int func_unlock(SDL_VoutOverlay *overlay)
 {
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     return SDL_UnlockMutex(opaque->mutex);
-}
-
-static void func_unref(SDL_VoutOverlay *overlay)
-{
-    if (!overlay) {
-        return;
-    }
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    if (!opaque) {
-        return;
-    }
-
-    CVBufferRelease(opaque->pixel_buffer);
-    opaque->pixel_buffer = NULL;
-    if (opaque->av_frame) {
-        av_frame_free(&opaque->av_frame);
-    }
-    return;
 }
 
 static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
@@ -185,21 +185,17 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
             tmeta = NULL; // 非法元数据，回落到单帧
         }
     }
-
+    
     if (tmeta) {
         // 首次进入 tile 模式：初始化槽位
         if (!opaque->tile_mode ||
             opaque->tile_expected != tmeta->nb_tiles ||
             opaque->tile_canvas_w != tmeta->canvas_w ||
             opaque->tile_canvas_h != tmeta->canvas_h) {
-
+            
             // 之前可能有残留，先清理
             tile_slots_free(opaque);
-            if (opaque->pixel_buffer) {
-                CVPixelBufferRelease(opaque->pixel_buffer);
-                opaque->pixel_buffer = NULL;
-            }
-
+            
             opaque->tile_mode     = 1;
             opaque->tile_expected = tmeta->nb_tiles;
             opaque->tile_received = 0;
@@ -213,20 +209,20 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
                 opaque->tile_mode     = 0;
                 return -100;
             }
-
+            
             overlay->is_tile_grid   = 1;
             overlay->tile_canvas_w  = tmeta->canvas_w;
             overlay->tile_canvas_h  = tmeta->canvas_h;
             overlay->w              = tmeta->w;
             overlay->h              = tmeta->h;
         }
-
+        
         int idx = tmeta->tile_index;
         if (idx < 0 || idx >= opaque->tile_expected) {
             ALOGE("tile_mode: invalid tile_index %d (expected<%d)", idx, opaque->tile_expected);
             return 0; // 忽略，继续累积
         }
-
+        
         FSTileSlot *slot = &opaque->tiles[idx];
         // 如果该槽位已有（重复 put 导致），先释放旧的
         if (slot->pb) {
@@ -235,7 +231,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
             slot->filled = 0;
             if (opaque->tile_received > 0) opaque->tile_received--;
         }
-
+        
         slot->pb     = CVPixelBufferRetain(pixel_buffer);
         slot->x      = tmeta->tile_x;
         slot->y      = tmeta->tile_y;
@@ -243,14 +239,14 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         slot->h      = tmeta->tile_h > 0 ? tmeta->tile_h : frame->height;
         slot->filled = 1;
         opaque->tile_received++;
-
+        
         ALOGD("tile_mode: received tile %d/%d at (%d,%d) %dx%d",
               opaque->tile_received, opaque->tile_expected,
               slot->x, slot->y, slot->w, slot->h);
-
+        
         // pitches 先维持个合理值，渲染侧不再用 overlay->pitches
         overlay->pitches[0] = CVPixelBufferGetWidth(pixel_buffer);
-
+        
         if (opaque->tile_received >= opaque->tile_expected) {
             opaque->tile_ready = 1;
             ALOGI("tile_mode: all %d tiles gathered, canvas=%dx%d",
@@ -258,7 +254,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         }
         return 0;
     }
-
+    
     /* ---------- 普通单帧路径（非 tile 或 opaque 丢失） ---------- */
     // 若此前处于 tile 模式（切换到普通视频），清理 tile 状态
     if (opaque->tile_mode) {
@@ -269,13 +265,11 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     }
 #endif
     
-    if (opaque->pixel_buffer != NULL) {
-        CVPixelBufferRelease(opaque->pixel_buffer);
-    }
-    opaque->pixel_buffer = CVPixelBufferRetain(pixel_buffer);
-
-    /* Keep a ref to the whole frame so the video renderer can read its
-       side data (e.g. Dolby Vision RPU). Cheap: av_frame_ref is ref-counted. */
+    /* Keep a ref to the whole frame so the renderer can read its native planes and
+     side data (e.g. Dolby Vision RPU). For VideoToolbox the CVPixelBuffer lives in
+     frame->data[3], so retaining the frame keeps the pixel buffer alive too — the
+     renderer (FSMetalView / FSPlaceboView) pulls it from the frame directly.
+     Cheap: av_frame_ref is ref-counted. */
     if (opaque->av_frame) {
         av_frame_unref(opaque->av_frame);
     } else {
@@ -285,7 +279,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         av_frame_ref(opaque->av_frame, frame);
     }
     overlay->format = SDL_FCC__VTB;
-
+    
     if (CVPixelBufferIsPlanar(pixel_buffer)) {
         int planes = (int)CVPixelBufferGetPlaneCount(pixel_buffer);
         for (int i = 0; i < planes; i ++) {
@@ -311,29 +305,20 @@ static bool check_object(SDL_VoutOverlay* object, const char *func_name)
         ALOGE("%s: invalid pipeline\n", func_name);
         return false;
     }
-
+    
     if (object->opaque_class != &g_vout_overlay_videotoolbox_class) {
         ALOGE("%s.%s: unsupported method\n", object->opaque_class->name, func_name);
         return false;
     }
-
+    
     return true;
-}
-
-CVPixelBufferRef SDL_VoutFFmpeg_HW_GetCVPixelBufferRef(SDL_VoutOverlay *overlay)
-{
-    if (!check_object(overlay, __func__))
-        return NULL;
-
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    return opaque->pixel_buffer;
 }
 
 AVFrame *SDL_VoutFFmpeg_HW_GetAVFrame(SDL_VoutOverlay *overlay)
 {
     if (!check_object(overlay, __func__))
         return NULL;
-
+    
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     return opaque->av_frame;
 }
@@ -354,7 +339,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout
     overlay->h          = height;
     overlay->pitches    = opaque->pitches;
     overlay->is_private = 1;
-
+    
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;

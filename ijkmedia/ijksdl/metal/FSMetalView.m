@@ -24,6 +24,7 @@
 #import "FSMediaPlayback.h"
 #import "FSDisplayLinkWrapper.h"
 #import "FSMetalTextureUtils.h"
+#import "../apple/ijk_cvpixelbuffer.h"
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 typedef CGRect NSRect;
@@ -60,6 +61,11 @@ typedef CGRect NSRect;
 @end
 
 @implementation FSMetalView
+{
+    // Pool reused when converting software-decoded AVFrames into CVPixelBuffers on the
+    // render thread (moved here from the retired SDL_VoutOverlay conversion).
+    FSSwPixelBufferPool _swPixelBufferPool;
+}
 
 @synthesize scalingMode = _scalingMode;
 // rotate preference
@@ -91,6 +97,9 @@ typedef CGRect NSRect;
     if (_pictureTextureCache) {
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
+    }
+    if (_swPixelBufferPool.pool) {
+        FSSwPixelBufferPoolRelease(&_swPixelBufferPool);
     }
 }
 
@@ -619,12 +628,53 @@ typedef CGRect NSRect;
     self.refreshCurrentPicBlock = block;
 }
 
+// Produce a +1 retained CVPixelBuffer from a decoded AVFrame. VideoToolbox frames
+// already carry the buffer in data[3] (zero copy, just retained); software frames are
+// converted via the shared FSCVPixelBufferCreateFromAVFrame, reusing a per-view pool
+// (recreated on dimension/format change) to avoid a per-frame allocation.
+// Returns NULL on unsupported formats. Caller owns the returned buffer.
+- (CVPixelBufferRef)pixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
+{
+    if (!frame) {
+        return NULL;
+    }
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
+        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
+    }
+
+    if (frame->width <= 0 || frame->height <= 0) {
+        return NULL;
+    }
+
+    CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool,
+                                                          frame->width, frame->height, frame->format);
+    return FSCVPixelBufferCreateFromAVFrame(frame, pool);
+}
+
 - (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
     //call form (ff_vout thread)
-    
+
     attach.tag = self.previousTag + 1;
-    
+
+    // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did
+    // not attach one (AVFrame-passthrough path). VideoToolbox frames wrap the pixel
+    // buffer in data[3]; software frames are converted (planes copied, color/DoVi
+    // side data stamped as CVBuffer attachments) so the rest of the Metal pipeline —
+    // texture cache, colorspace detection, snapshots — keeps working unchanged.
+    if (!attach.videoPicture && attach.avframe) {
+        CVPixelBufferRef pb = [self pixelBufferFromAVFrame:attach.avframe];
+        if (pb) {
+            attach.videoPicture = pb; // +1 retained; balanced by FSOverlayAttach dealloc
+            // Derive pixelW/H from the actual buffer, not frame->width: VideoToolbox
+            // buffers are padded to coded width, and the crop calc in the picture
+            // pipeline needs the buffer's real (padded) dimensions.
+            attach.pixelW = (int)CVPixelBufferGetWidth(pb);
+            attach.pixelH = (int)CVPixelBufferGetHeight(pb);
+        }
+    }
+
     if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
         attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
     }
