@@ -658,6 +658,16 @@ typedef CGRect NSRect;
 
     attach.tag = self.previousTag + 1;
 
+    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
+    BOOL hasTiles = (attach.tilePieces.count > 0);
+    if (!attach.videoPicture && !hasTiles) {
+        ALOGD("FSMetalView: displayAttach refresh frame\n");
+        [self.renderSnapshotLock lock];
+        self.currentAttach = attach;
+        [self.renderSnapshotLock unlock];
+        return NO;
+    }
+    
     // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did
     // not attach one (AVFrame-passthrough path). VideoToolbox frames wrap the pixel
     // buffer in data[3]; software frames are converted (planes copied, color/DoVi
@@ -679,13 +689,6 @@ typedef CGRect NSRect;
         attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
     }
 
-    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
-    BOOL hasTiles = (attach.tilePieces.count > 0);
-    if (!attach.videoPicture && !hasTiles) {
-        ALOGW("FSMetalView: videoPicture is nil and no tile pieces\n");
-        return NO;
-    }
-    
     if (self.preventDisplay) {
         return YES;
     }
