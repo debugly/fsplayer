@@ -622,7 +622,7 @@ typedef CGRect NSRect;
     attach.videoPicture = CVPixelBufferRetain(self.tileGridPipeline.compositedPixelBuffer); // 由 attach dealloc 释放
     attach.pixelW = attach.w;
     attach.pixelH = attach.h;
-    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer/textures
+    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer
     return YES;
 }
 

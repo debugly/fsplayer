@@ -165,17 +165,9 @@
     double display_w = canvasW;
     double display_h = canvasH;
 
+    // 渲染各 tile 到一张大图上，由于后续不会再渲染，所以中间过程无需缓存。
     for (FSTilePiece *piece in attach.tilePieces) {
         if (!piece.pixelBuffer || piece.w <= 0 || piece.h <= 0) continue;
-        if (!piece.textures) {
-            NSMutableArray *cvTextures = nil;
-            piece.textures = [FSMetalTextureUtils doGenerateTexture:piece.pixelBuffer
-                                                       textureCache:textureCache
-                                                             device:_device
-                                                      outCVTextures:&cvTextures];
-            piece.cvTextures = cvTextures;
-        }
-        if (!piece.textures) continue;
 
         // 边缘处理：位于最右/最下的 Tile 物理尺寸可能含 Padding，
         // 取实际显示区域并据此确定 Viewport 与纹理裁剪区域。
@@ -188,6 +180,11 @@
             valid_h = display_h - piece.y;
         }
         if (valid_w <= 0 || valid_h <= 0) continue;
+
+        NSArray *textures = [FSMetalTextureUtils doGenerateTexture:piece.pixelBuffer
+                                                      textureCache:textureCache
+                                                            device:_device];
+        if (!textures) continue;
 
         // FBO 视口原点左上、y 向下，和 tile 在 canvas 的像素位置一致。
         MTLViewport tile_vp;
@@ -204,7 +201,7 @@
         self.renderer.textureCrop = CGSizeMake(cropX, cropY);
 
         [encoder setViewport:tile_vp];
-        [self.renderer uploadTextureWithEncoder:encoder textures:piece.textures];
+        [self.renderer uploadTextureWithEncoder:encoder textures:textures];
     }
     [encoder endEncoding];
     [commandBuffer commit];
