@@ -73,10 +73,10 @@ void SDL_VoutFreeP(SDL_Vout **pvout)
     *pvout = NULL;
 }
 
-int SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+int SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
     if (vout && vout->display_overlay)
-        return vout->display_overlay(vout, overlay, sub_overlay);
+        return vout->display_overlay(vout, frame, overlay, sub_overlay);
 
     return -1;
 }

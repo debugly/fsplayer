@@ -134,8 +134,13 @@ static void vout_free_l(SDL_Vout *vout)
     SDL_Vout_FreeInternal(vout);
 }
 
-static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
+    // `frame` is the owning Frame from the player's picture queue. It is threaded in
+    // here so a later step can have renderers consume frame->frame (the AVFrame)
+    // directly; for now the frame data still flows through `overlay`, so this is unused.
+    (void)frame;
+
     SDL_Vout_Opaque *opaque = vout->opaque;
     UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
     
@@ -208,9 +213,9 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     // layer no longer pulls a CVPixelBuffer here (that logic moved into the renderer).
     // Both Apple overlay impls (VTB & software) publish the frame on overlay->av_frame,
     // so no format branch is needed to pick an accessor.
-    AVFrame *frame = overlay->av_frame;
-    
-    if (frame) {
+    AVFrame *av_frame = overlay->av_frame;
+
+    if (av_frame) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
@@ -218,15 +223,15 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         // pixelW/H default to the frame's coded size; renderers that need the padded
         // buffer dimensions (FSMetalView crop) overwrite these once they materialise
         // the CVPixelBuffer.
-        attach.pixelW = frame->width;
-        attach.pixelH = frame->height;
+        attach.pixelW = av_frame->width;
+        attach.pixelH = av_frame->height;
         attach.fps    = overlay->fps;
         attach.sarNum = overlay->sar_num;
         attach.sarDen = overlay->sar_den;
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
         attach.hasAlpha = overlay->has_alpha;
         // Carry the full frame (with DoVi/HDR side data) to the renderer.
-        attach.avframe = av_frame_clone(frame);
+        attach.avframe = av_frame_clone(av_frame);
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     } else {
@@ -235,11 +240,11 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     }
 }
 
-static int vout_display_overlay(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
     @autoreleasepool {
         SDL_LockMutex(vout->mutex);
-        int retval = vout_display_overlay_l(vout, overlay, sub_overlay);
+        int retval = vout_display_overlay_l(vout, frame, overlay, sub_overlay);
         SDL_UnlockMutex(vout->mutex);
         return retval;
     }

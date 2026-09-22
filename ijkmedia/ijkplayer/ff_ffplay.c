@@ -478,7 +478,7 @@ static void video_image_display2(FFPlayer *ffp)
                 SDL_Delay(20);
             }
         }
-        SDL_VoutDisplayYUVOverlay(ffp->vout, vp->bmp, sub_overlay);
+        SDL_VoutDisplayYUVOverlay(ffp->vout, vp, vp->bmp, sub_overlay);
         SDL_TextureOverlay_Release(&sub_overlay);
         
         ffp->stat.vfps = SDL_SpeedSamplerAdd(&ffp->vfps_sampler, FFP_SHOW_VFPS_FFPLAY, "vfps[ffplay]");
@@ -4591,7 +4591,7 @@ static int video_refresh_thread(void *arg)
     }
     //clean GLView's attach,because the attach retained sub_overlay;
     //otherwise sub_overlay will be free in main thread!
-    SDL_VoutDisplayYUVOverlay(ffp->vout, NULL, NULL);
+    SDL_VoutDisplayYUVOverlay(ffp->vout, NULL, NULL, NULL);
     ff_sub_desctoy_objs(is->ffSub);
     return 0;
 }
