@@ -88,7 +88,7 @@
     CGColorSpaceRef cs    = (CGColorSpaceRef)CVBufferGetAttachment(pb, kCVImageBufferCGColorSpaceKey, NULL);
     CFStringRef csName    = cs ? CGColorSpaceGetName(cs) : NULL;
 
-    ALOGD("[TileGrid] fmt=%s(0x%08x) matrix=%s primaries=%s transfer=%s colorspace=%s\n",
+    ALOGD("HEIC TileGrid fmt=%s(0x%08x) matrix=%s primaries=%s transfer=%s colorspace=%s\n",
           fcc, (unsigned)fmt,
           matrix    ? [(__bridge NSString *)matrix    UTF8String] : "(nil)",
           primaries ? [(__bridge NSString *)primaries UTF8String] : "(nil)",

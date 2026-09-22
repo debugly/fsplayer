@@ -4296,14 +4296,14 @@ static int read_thread(void *arg)
                         unsigned int count = group->nb_streams;
 
                         av_log(NULL, AV_LOG_INFO,
-                               "Group %u (Type: %d) contains %u streams.\n",
+                               "HEIC Group %u (Type: %d) contains %u streams.\n",
                                i, group->type, count);
 
                         // 2. 只有当类型是 Tile Grid 时，才进行拼图逻辑判断
                         if (group->type == AV_STREAM_GROUP_PARAMS_TILE_GRID) {
                             AVStreamGroupTileGrid *grid = group->params.tile_grid;
                             av_log(NULL, AV_LOG_INFO,
-                                   "  Tile grid: nb_tiles=%u, canvas=%dx%d, roi=(%d,%d %dx%d)\n",
+                                   "HEIC Tile grid: nb_tiles=%u, canvas=%dx%d, roi=(%d,%d %dx%d)\n",
                                    grid->nb_tiles, grid->coded_width, grid->coded_height,
                                    grid->horizontal_offset, grid->vertical_offset,
                                    grid->width, grid->height);
@@ -4361,7 +4361,7 @@ static int read_thread(void *arg)
                             }
 
                             av_log(NULL, AV_LOG_DEBUG,
-                                   "put tile packet: group=%u stream=%d tile_idx=%d pos=(%d,%d)\n",
+                                   "HEIC put tile packet: group=%u stream=%d tile_idx=%d pos=(%d,%d)\n",
                                    i, pkt->stream_index, tile_index, tile_x, tile_y);
 
                             packet_queue_put(&is->videoq, pkt);

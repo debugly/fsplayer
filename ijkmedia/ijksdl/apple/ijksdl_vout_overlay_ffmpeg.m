@@ -195,7 +195,7 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
                 opaque->tile_canvas_h = tmeta->canvas_h;
                 opaque->tiles = (FSTileSlot *)calloc((size_t)tmeta->nb_tiles, sizeof(FSTileSlot));
                 if (!opaque->tiles) {
-                    ALOGE("tile_mode: allocate tiles array failed");
+                    ALOGE("HEIC tile_mode: allocate tiles array failed");
                     opaque->tile_expected = 0;
                     opaque->tile_mode     = 0;
                     return -100;
@@ -210,7 +210,7 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             
             int idx = tmeta->tile_index;
             if (idx < 0 || idx >= opaque->tile_expected) {
-                ALOGE("tile_mode: invalid tile_index %d (expected<%d)", idx, opaque->tile_expected);
+                ALOGE("HEIC tile_mode: invalid tile_index %d (expected<%d)", idx, opaque->tile_expected);
                 return 0; // 忽略，继续累积
             }
             
@@ -226,7 +226,7 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             // 每个 tile 分辨率可能与 pool 不符，直接不走 pool
             CVPixelBufferRef pb = FSCVPixelBufferCreateFromAVFrame(frame, NULL);
             if (!pb) {
-                ALOGE("tile_mode: createCVPixelBufferFromAVFrame failed for tile %d", idx);
+                ALOGE("HEIC tile_mode: createCVPixelBufferFromAVFrame failed for tile %d", idx);
                 return 0;
             }
             slot->pb     = pb;
@@ -237,7 +237,7 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             slot->filled = 1;
             opaque->tile_received++;
             
-            ALOGD("tile_mode: received tile %d/%d at (%d,%d) %dx%d",
+            ALOGD("HEIC tile_mode: received tile %d/%d at (%d,%d) %dx%d",
                   opaque->tile_received, opaque->tile_expected,
                   slot->x, slot->y, slot->w, slot->h);
             
@@ -246,7 +246,7 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             
             if (opaque->tile_received >= opaque->tile_expected) {
                 opaque->tile_ready = 1;
-                ALOGI("tile_mode: all %d tiles gathered, canvas=%dx%d",
+                ALOGI("HEIC tile_mode: all %d tiles gathered, canvas=%dx%d",
                       opaque->tile_expected, opaque->tile_canvas_w, opaque->tile_canvas_h);
             }
             return 0;
