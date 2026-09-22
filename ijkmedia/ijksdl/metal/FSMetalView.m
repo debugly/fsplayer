@@ -85,10 +85,27 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
+    // 先停掉 display link，确保没有回调仍在向 textureCache 生成/释放纹理。
+    // CVDisplayLinkStop 会等待正在执行的回调返回（回调内已用 @autoreleasepool 及时释放纹理）。
     [_displayLinkWrapper invalidate];
     _displayLinkWrapper = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+
+    // 释放顺序很关键：所有持有 CVMetalTexture（其 backing 属于 _pictureTextureCache）
+    // 的对象必须在 CFRelease(cache) 之前先释放，否则纹理 finalize 时会回调进已释放的
+    // cache，造成崩溃。ARC 默认在 dealloc 方法体结束后才释放 strong ivar，太晚了，
+    // 因此这里显式提前置空。
+    _currentAttach = nil;
+    _drawingAttach = nil;
+    _tileGridPipeline = nil;
+    _picturePipeline = nil;
+    _subPipeline = nil;
+    _backgroundPipeline = nil;
+    _backgroundTexture = nil;
+
     if (_pictureTextureCache) {
+        // 释放前 flush，回收 cache 内已无引用的纹理，避免残留纹理在 cache 释放后 finalize。
+        CVMetalTextureCacheFlush(_pictureTextureCache, 0);
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
     }
@@ -183,7 +200,13 @@ typedef CGRect NSRect;
     _displayLinkWrapper = [[FSDisplayLinkWrapper alloc] initWithCallback:^(CFTimeInterval timestamp) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
-        [self displayAttachWithTimestamp:timestamp];
+        // 每帧独立的自动释放池：本次回调里生成的 CVMetalTexture/MTLTexture 等自动释放对象
+        // 在回调结束时立即在 CVDisplayLink 线程释放，而不是堆积到线程退出时才 drain。
+        // 否则切换播放源销毁 view 时，线程退出 drain 的纹理会回调进正在被主线程
+        // CFRelease 的 textureCache，造成并发释放崩溃（bufferBackingNotInUse @ 0x0）。
+        @autoreleasepool {
+            [self displayAttachWithTimestamp:timestamp];
+        }
     }];
 #if TARGET_OS_OSX
     [_displayLinkWrapper updateWithWindow:self.window];
@@ -659,24 +682,34 @@ typedef CGRect NSRect;
     // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
     // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
     // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
-    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
-    if (!pipelineRef && currentAttach.tilePieces.count > 0) {
-        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
+    //
+    // HDR 判定用原始参考 buffer：普通帧用 videoPicture，tile-grid 用首个 tile 的像素缓冲。
+    BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
+    CVPixelBufferRef videoPicture = currentAttach.videoPicture;
+    if (!videoPicture && hasTileGrid) {
+        videoPicture = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
     }
-    
-    if (!pipelineRef) {
+
+    if (!videoPicture) {
         return;
     }
-    
+
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pipelineRef];
+        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:videoPicture];
         [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
 #endif
-    
+
     [self.renderSnapshotLock lock];
-    [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
+    // tile-grid 必须先合成成单帧（BGRA）再建管线：否则管线会按原始 tile 的像素格式
+    // 格式建立，但是采样合成后是 BGRA 纹理，chroma 缺失导致画面全绿。
+    if (hasTileGrid && ![self ensureTileGridComposited:currentAttach]) {
+        [self.renderSnapshotLock unlock];
+        return;
+    }
+    // 用合成后的 videoPicture（tile-grid 为 BGRA，普通帧即原缓冲）建立显示管线。
+    [self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha];
     if (currentAttach.subTexture) {
         [self setupSubPipelineIfNeed];
     }
