@@ -43,6 +43,13 @@ struct SDL_VoutOverlay {
     int w; /**< Read-only, avframe's width */
     int h; /**< Read-only, avframe's height */
     Uint32 format; /**< Read-only,on Apple plat is SDL_FCC__VTB or  SDL_FCC__FFVTB; other plat SDL_FCC_I420 */
+    /* Read-only. On Apple: the decoded frame backing this overlay, retained by
+       func_fill_frame and released in SDL_VoutUnrefYUVOverlay. Carries color / Dolby
+       Vision side data and, for VideoToolbox, the data[3] CVPixelBuffer. Renderers
+       (FSMetalView / FSPlaceboView) consume it directly; both Apple overlay impls (VTB &
+       software) publish it here so the dispatch layer needn't know which produced it.
+       Unused (NULL) on other platforms, which render from overlay->pixels. */
+    AVFrame *av_frame;
 #ifndef __APPLE__
     Uint8 **pixels; /**< Read-write */
     int planes; /**< Read-only */
@@ -73,7 +80,6 @@ struct SDL_VoutOverlay {
     void    (*free_l)(SDL_VoutOverlay *overlay);
     int     (*lock)(SDL_VoutOverlay *overlay);
     int     (*unlock)(SDL_VoutOverlay *overlay);
-    void    (*unref)(SDL_VoutOverlay *overlay);
 
     int     (*func_fill_frame)(SDL_VoutOverlay *overlay, const AVFrame *frame);
 #if IS_TILEGRID_HEIC_ENABLED

@@ -196,6 +196,11 @@ void SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay)
     if (!overlay)
         return;
 
+    /* Release the retained decoded frame here so both Apple overlay impls don't each
+       repeat it in their free_l. NULL (a no-op) on platforms that don't set it. */
+    if (overlay->av_frame)
+        av_frame_free(&overlay->av_frame);
+
     if (overlay->free_l) {
         overlay->free_l(overlay);
     } else {
@@ -205,8 +210,14 @@ void SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay)
 
 void SDL_VoutUnrefYUVOverlay(SDL_VoutOverlay *overlay)
 {
-    if (overlay && overlay->unref)
-        overlay->unref(overlay);
+    if (!overlay)
+        return;
+    /* Called on every frame-queue recycle (frame_queue_unref_item). Drop the retained
+       decoded frame promptly so its planes and (for VideoToolbox) the data[3] pool
+       buffer are released instead of lingering until the next fill. NULL (a no-op) on
+       platforms that don't set it. */
+    if (overlay->av_frame)
+        av_frame_free(&overlay->av_frame);
 }
 
 int SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame)

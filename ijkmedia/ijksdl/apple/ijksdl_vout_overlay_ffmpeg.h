@@ -34,6 +34,5 @@
 #import <CoreVideo/CoreVideo.h>
 
 SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int src_format, SDL_Vout *vout);
-AVFrame *SDL_VoutFFmpeg_GetAVFrame(SDL_VoutOverlay *overlay);
 
 #endif

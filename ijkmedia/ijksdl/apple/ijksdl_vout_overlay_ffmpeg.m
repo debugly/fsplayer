@@ -37,11 +37,6 @@ struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
     Uint16 pitches[AV_NUM_DATA_POINTERS];
 
-    // The decoded source frame, retained for the renderer. FSPlaceboView uploads it via
-    // pl_map_avframe (needs color / Dolby Vision side data); FSMetalView converts it to a
-    // CVPixelBuffer on the render thread. The overlay no longer produces a CVPixelBuffer
-    // for the single-frame path.
-    AVFrame *av_frame;
     // When set, this vout drives an AVFrame-passthrough renderer (FSPlaceboView). Used to
     // skip HEIC tile accumulation (only FSMetalView consumes tile CVPixelBuffers today).
     int render_avframe;
@@ -130,45 +125,6 @@ static SDL_Class g_vout_overlay_ffmpeg_class = {
     .name = "FFmpegVoutOverlay",
 };
 
-static bool check_object(SDL_VoutOverlay* object, const char *func_name)
-{
-    if (!object || !object->opaque || !object->opaque_class) {
-        ALOGE("%s: invalid pipeline\n", func_name);
-        return false;
-    }
-
-    if (object->opaque_class != &g_vout_overlay_ffmpeg_class) {
-        ALOGE("%s.%s: unsupported method\n", object->opaque_class->name, func_name);
-        return false;
-    }
-
-    return true;
-}
-
-AVFrame *SDL_VoutFFmpeg_GetAVFrame(SDL_VoutOverlay *overlay)
-{
-    if (!check_object(overlay, __func__))
-        return NULL;
-
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    return opaque->av_frame;
-}
-
-static void func_unref(SDL_VoutOverlay *overlay)
-{
-    if (!overlay)
-        return;
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    if (!opaque)
-        return;
-    /* Called on every frame-queue recycle (frame_queue_unref_item): drop the retained
-       decoded frame promptly instead of pinning it until the next fill. Tile-grid
-       accumulation state is left intact — it is keyed to the overlay, not a single frame. */
-    if (opaque->av_frame) {
-        av_frame_free(&opaque->av_frame);
-    }
-}
-
 static void func_free_l(SDL_VoutOverlay *overlay)
 {
     SDLTRACE("SDL_Overlay(ffmpeg): overlay_free_l(%p)\n", overlay);
@@ -178,13 +134,13 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     if (!opaque)
         return;
-    func_unref(overlay);
+    /* overlay->av_frame is released by the generic SDL_VoutFreeYUVOverlay/UnrefYUVOverlay. */
 #if IS_TILEGRID_HEIC_ENABLED
     tile_slots_free(opaque);
 #endif
     if (opaque->mutex)
         SDL_DestroyMutex(opaque->mutex);
-    
+
     SDL_VoutOverlay_FreeInternal(overlay);
 }
 
@@ -310,13 +266,14 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
     // Single-frame path: retain the raw decoded frame (with color / Dolby Vision side
     // data) and let the renderer derive what it needs. FSMetalView converts it to a
     // CVPixelBuffer on the render thread (pool-reused); FSPlaceboView uploads it directly.
-    // The overlay no longer produces a CVPixelBuffer here.
-    if (!opaque->av_frame) {
-        opaque->av_frame = av_frame_alloc();
-        if (!opaque->av_frame) return -100;
+    // The overlay no longer produces a CVPixelBuffer here. Published on the overlay for
+    // the dispatch layer.
+    if (!overlay->av_frame) {
+        overlay->av_frame = av_frame_alloc();
+        if (!overlay->av_frame) return -100;
     }
-    av_frame_unref(opaque->av_frame);
-    if (av_frame_ref(opaque->av_frame, frame) < 0) return -100;
+    av_frame_unref(overlay->av_frame);
+    if (av_frame_ref(overlay->av_frame, frame) < 0) return -100;
     overlay->w = frame->width;
     overlay->h = frame->height;
     return 0;
@@ -348,7 +305,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     overlay->w            = width;
     overlay->h            = height;
     overlay->free_l             = func_free_l;
-    overlay->unref              = func_unref;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
     overlay->func_fill_frame    = func_fill_avframe_to_cvpixelbuffer;

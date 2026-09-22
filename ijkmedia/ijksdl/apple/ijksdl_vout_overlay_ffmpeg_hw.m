@@ -33,7 +33,6 @@
 struct FSTileSlot;
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
-    AVFrame *av_frame;   /* full frame ref (incl. DoVi side data + data[3] CVPixelBuffer) for the renderer */
     Uint16 pitches[AV_NUM_DATA_POINTERS];
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
@@ -117,22 +116,6 @@ static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
 }
 #endif
 
-static void func_unref(SDL_VoutOverlay *overlay)
-{
-    if (!overlay) {
-        return;
-    }
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    if (!opaque) {
-        return;
-    }
-    
-    if (opaque->av_frame) {
-        av_frame_free(&opaque->av_frame);
-    }
-    return;
-}
-
 static void func_free_l(SDL_VoutOverlay *overlay)
 {
     if (!overlay)
@@ -140,7 +123,7 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     if (!opaque)
         return;
-    func_unref(overlay);
+    /* overlay->av_frame is released by the generic SDL_VoutFreeYUVOverlay/UnrefYUVOverlay. */
 #if IS_TILEGRID_HEIC_ENABLED
     tile_slots_free(opaque);
 #endif
@@ -269,14 +252,14 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
      side data (e.g. Dolby Vision RPU). For VideoToolbox the CVPixelBuffer lives in
      frame->data[3], so retaining the frame keeps the pixel buffer alive too — the
      renderer (FSMetalView / FSPlaceboView) pulls it from the frame directly.
-     Cheap: av_frame_ref is ref-counted. */
-    if (opaque->av_frame) {
-        av_frame_unref(opaque->av_frame);
+     Cheap: av_frame_ref is ref-counted. Published on the overlay for the dispatch layer. */
+    if (overlay->av_frame) {
+        av_frame_unref(overlay->av_frame);
     } else {
-        opaque->av_frame = av_frame_alloc();
+        overlay->av_frame = av_frame_alloc();
     }
-    if (opaque->av_frame) {
-        av_frame_ref(opaque->av_frame, frame);
+    if (overlay->av_frame) {
+        av_frame_ref(overlay->av_frame, frame);
     }
     overlay->format = SDL_FCC__VTB;
     
@@ -299,30 +282,6 @@ static SDL_Class g_vout_overlay_videotoolbox_class = {
     .name = "VideoToolboxVoutOverlay",
 };
 
-static bool check_object(SDL_VoutOverlay* object, const char *func_name)
-{
-    if (!object || !object->opaque || !object->opaque_class) {
-        ALOGE("%s: invalid pipeline\n", func_name);
-        return false;
-    }
-    
-    if (object->opaque_class != &g_vout_overlay_videotoolbox_class) {
-        ALOGE("%s.%s: unsupported method\n", object->opaque_class->name, func_name);
-        return false;
-    }
-    
-    return true;
-}
-
-AVFrame *SDL_VoutFFmpeg_HW_GetAVFrame(SDL_VoutOverlay *overlay)
-{
-    if (!check_object(overlay, __func__))
-        return NULL;
-    
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    return opaque->av_frame;
-}
-
 SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout *display)
 {
     SDLTRACE("SDL_FFmpeg_HW_CreateOverlay(w=%d, h=%d, fmt=_VTB, dp=%p)\n",
@@ -343,7 +302,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
-    overlay->unref              = func_unref;
     overlay->func_fill_frame    = func_fill_frame;
 #if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;

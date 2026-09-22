@@ -206,10 +206,11 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     // The renderer consumes the decoded AVFrame directly: FSPlaceboView uploads it,
     // FSMetalView derives a CVPixelBuffer from it on the render thread. The dispatch
     // layer no longer pulls a CVPixelBuffer here (that logic moved into the renderer).
-    AVFrame *swframe = (overlay->format == SDL_FCC__FFVTB) ? SDL_VoutFFmpeg_GetAVFrame(overlay) : NULL;
-    AVFrame *vtbframe = (overlay->format == SDL_FCC__VTB) ? SDL_VoutFFmpeg_HW_GetAVFrame(overlay) : NULL;
+    // Both Apple overlay impls (VTB & software) publish the frame on overlay->av_frame,
+    // so no format branch is needed to pick an accessor.
+    AVFrame *frame = overlay->av_frame;
     
-    if (swframe || vtbframe) {
+    if (frame) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
@@ -217,24 +218,15 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
         // pixelW/H default to the frame's coded size; renderers that need the padded
         // buffer dimensions (FSMetalView crop) overwrite these once they materialise
         // the CVPixelBuffer.
-        if (vtbframe) {
-            attach.pixelW = vtbframe->width;
-            attach.pixelH = vtbframe->height;
-        } else {
-            attach.pixelW = swframe->width;
-            attach.pixelH = swframe->height;
-        }
+        attach.pixelW = frame->width;
+        attach.pixelH = frame->height;
         attach.fps    = overlay->fps;
         attach.sarNum = overlay->sar_num;
         attach.sarDen = overlay->sar_den;
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
         attach.hasAlpha = overlay->has_alpha;
         // Carry the full frame (with DoVi/HDR side data) to the renderer.
-        if (vtbframe) {
-            attach.avframe = av_frame_clone(vtbframe);
-        } else if (swframe) {
-            attach.avframe = av_frame_clone(swframe);
-        }
+        attach.avframe = av_frame_clone(frame);
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     } else {
