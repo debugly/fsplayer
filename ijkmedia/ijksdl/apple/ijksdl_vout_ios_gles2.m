@@ -40,15 +40,6 @@
         CVPixelBufferRelease(_pixelBuffer);
         _pixelBuffer = NULL;
     }
-    if (_cvTextures) {
-        for (id item in _cvTextures) {
-            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
-            if (texRef) {
-                CFRelease(texRef);
-            }
-        }
-        _cvTextures = nil;
-    }
 }
 
 @end

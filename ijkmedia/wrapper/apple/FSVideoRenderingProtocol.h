@@ -54,8 +54,6 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) int y;
 @property(nonatomic) int w;         // tile 尺寸
 @property(nonatomic) int h;
-@property(nonatomic) NSArray * _Nullable textures;              // 首次使用时生成并缓存
-@property(nonatomic) NSArray * _Nullable cvTextures;            // 对应的 CVMetalTextureRef 包装引用
 @end
 
 @interface FSOverlayAttach : NSObject
