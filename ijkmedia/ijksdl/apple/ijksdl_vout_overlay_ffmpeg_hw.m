@@ -125,6 +125,9 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     if (!opaque)
         return;
     overlay->unref(overlay);
+#if IS_TILEGRID_HEIC_ENABLED
+    tile_slots_free(opaque);
+#endif
     if (opaque->mutex)
         SDL_DestroyMutex(opaque->mutex);
 
