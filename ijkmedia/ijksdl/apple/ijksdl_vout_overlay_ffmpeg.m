@@ -199,8 +199,6 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             overlay->is_tile_grid   = 1;
             overlay->tile_canvas_w  = tmeta->canvas_w;
             overlay->tile_canvas_h  = tmeta->canvas_h;
-            overlay->w              = tmeta->w;
-            overlay->h              = tmeta->h;
         }
         
         int idx = tmeta->tile_index;
@@ -272,8 +270,6 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
     }
     av_frame_unref(overlay->av_frame);
     if (av_frame_ref(overlay->av_frame, frame) < 0) return -100;
-    overlay->w = frame->width;
-    overlay->h = frame->height;
     return 0;
 }
 
@@ -300,8 +296,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
 //    overlay->format       = SDL_FCC__FFVTB;
     overlay->is_private   = 1;
     overlay->pitches      = opaque->pitches;
-    overlay->w            = width;
-    overlay->h            = height;
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;

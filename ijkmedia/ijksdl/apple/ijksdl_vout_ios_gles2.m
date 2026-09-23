@@ -131,10 +131,9 @@ static void vout_free_l(SDL_Vout *vout)
 
 static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
-    // `frame` is the owning Frame from the player's picture queue. It is threaded in
-    // here so a later step can have renderers consume frame->frame (the AVFrame)
-    // directly; for now the frame data still flows through `overlay`, so this is unused.
-    (void)frame;
+    // `frame` is the owning Frame from the player's picture queue. It carries the
+    // display geometry (frame->w/h) the renderer scales to; pixel data still flows
+    // through `overlay` (overlay->av_frame / tile AVFrames).
 
     SDL_Vout_Opaque *opaque = vout->opaque;
     UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
@@ -149,9 +148,10 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     }
-    
-    if (overlay->w <= 0 || overlay->h <= 0) {
-        ALOGE("vout_display_overlay_l: invalid overlay dimensions(%d, %d)\n", overlay->w, overlay->h);
+
+    if (!frame || frame->disp_w <= 0 || frame->disp_h <= 0) {
+        ALOGE("vout_display_overlay_l: invalid frame dimensions(%d, %d)\n",
+              frame ? frame->disp_w : -1, frame ? frame->disp_h : -1);
         return -3;
     }
 
@@ -176,8 +176,8 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         int got = SDL_VoutOverlay_GetTileAVFrames(overlay, frames, xs, ys, ws, hs, count);
 
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
-        attach.w = overlay->w;
-        attach.h = overlay->h;
+        attach.w = frame->disp_w;
+        attach.h = frame->disp_h;
         attach.pixelW = overlay->tile_canvas_w;
         attach.pixelH = overlay->tile_canvas_h;
         attach.fps    = frame->fps;
@@ -227,9 +227,9 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         }
         
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
-        attach.w = overlay->w;
-        attach.h = overlay->h;
-        
+        attach.w = frame->disp_w;
+        attach.h = frame->disp_h;
+
         // pixelW/H default to the frame's coded size; renderers that need the padded
         // buffer dimensions (FSMetalView crop) overwrite these once they materialise
         // the CVPixelBuffer.

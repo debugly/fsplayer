@@ -1587,25 +1587,31 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
      * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
      * 以避免 alloc_picture 在 tile 切换时反复重建 overlay。
      */
-    int tile_canvas_w_fix = 0;
-    int tile_canvas_h_fix = 0;
+    /* cmp_w/h: buffer/canvas size that drives alloc_picture (tile-grid uses the
+       padded canvas). disp_w/h: display size the renderer scales to (SDL_VoutOverlay->w/h
+       before the hoist; tile-grid uses the grid's display dims, not the padded canvas). */
+    int cmp_w = src_frame->width;
+    int cmp_h = src_frame->height;
+    int disp_w = src_frame->width;
+    int disp_h = src_frame->height;
     if (src_frame->opaque_ref &&
         src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
         FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
         if (tmeta->nb_tiles > 0 && tmeta->canvas_w > 0 && tmeta->canvas_h > 0) {
-            tile_canvas_w_fix = tmeta->canvas_w;
-            tile_canvas_h_fix = tmeta->canvas_h;
+            cmp_w  = tmeta->canvas_w;
+            cmp_h  = tmeta->canvas_h;
+            disp_w = tmeta->w;
+            disp_h = tmeta->h;
         }
     }
-    int cmp_w = tile_canvas_w_fix > 0 ? tile_canvas_w_fix : src_frame->width;
-    int cmp_h = tile_canvas_h_fix > 0 ? tile_canvas_h_fix : src_frame->height;
 #else
     int cmp_w = src_frame->width;
     int cmp_h = src_frame->height;
+    int disp_w = src_frame->width;
+    int disp_h = src_frame->height;
 #endif
     
     /* alloc or resize hardware picture buffer */
-    
     if (!vp->bmp || !vp->allocated ||
         vp->width  != cmp_w ||
         vp->height != cmp_h ||
@@ -1630,6 +1636,11 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         if (is->videoq.abort_request)
             return -1;
     }
+
+    /* Display dims carried to the renderer (formerly SDL_VoutOverlay->w/h),
+       refreshed every frame like the overlay's func_fill_frame did. */
+    vp->disp_w = disp_w;
+    vp->disp_h = disp_h;
 
     /* if the frame is not skipped, then display it */
     if (vp->bmp) {

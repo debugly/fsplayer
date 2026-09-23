@@ -40,9 +40,8 @@
 typedef struct SDL_VoutOverlay_Opaque SDL_VoutOverlay_Opaque;
 typedef struct SDL_VoutOverlay SDL_VoutOverlay;
 struct SDL_VoutOverlay {
-    int w; /**< Read-only, avframe's width */
-    int h; /**< Read-only, avframe's height */
-//    Uint32 format; /**< Read-only,on Apple plat is SDL_FCC__VTB or  SDL_FCC__FFVTB; other plat SDL_FCC_I420 */
+    /* Display geometry moved to Frame (frame->w/h), carried through the dispatch
+       layer. Renderers read it from FSOverlayAttach, not from the overlay. */
     /* Read-only. On Apple: the decoded frame backing this overlay, retained by
        func_fill_frame and released in SDL_VoutUnrefYUVOverlay. Carries color / Dolby
        Vision side data and, for VideoToolbox, the data[3] CVPixelBuffer. Renderers

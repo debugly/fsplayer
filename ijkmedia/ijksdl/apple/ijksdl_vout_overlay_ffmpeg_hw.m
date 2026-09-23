@@ -195,8 +195,6 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
             overlay->is_tile_grid   = 1;
             overlay->tile_canvas_w  = tmeta->canvas_w;
             overlay->tile_canvas_h  = tmeta->canvas_h;
-            overlay->w              = tmeta->w;
-            overlay->h              = tmeta->h;
         }
         
         int idx = tmeta->tile_index;
@@ -282,8 +280,6 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     }
     
     overlay->is_private = 1;
-    overlay->w = (int)frame->width;
-    overlay->h = (int)frame->height;
     return 0;
 }
 
@@ -303,8 +299,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     overlay->opaque_class = &g_vout_overlay_videotoolbox_class;
 //    overlay->format     = SDL_FCC__VTB;
-    overlay->w          = width;
-    overlay->h          = height;
     overlay->pitches    = opaque->pitches;
     overlay->is_private = 1;
     

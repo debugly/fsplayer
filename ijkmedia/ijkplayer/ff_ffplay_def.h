@@ -200,6 +200,11 @@ typedef struct Frame {
     int allocated;
     int width;
     int height;
+    /* Display dimensions carried to the renderer (was SDL_VoutOverlay->w/h).
+       Single-frame: equals width/height. HEIC tile-grid: the grid's display size
+       (tmeta->w/h), which differs from width/height (the padded canvas size). */
+    int disp_w;
+    int disp_h;
     int format;
     AVRational sar;
     int shown;
