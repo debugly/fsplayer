@@ -1286,6 +1286,149 @@ static void ffp_calculate_accurate_seek_drop_diff(FFPlayer *ffp) {
     }
 }
 
+static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFrame **outFrame) {
+    const int src_format = src_frame->format;
+    Uint32 overlay_format = vout->overlay_format;
+    if (SDL_FCC__GLES2 == overlay_format) {
+    #if defined(__ANDROID__)
+        overlay_format = SDL_FCC_YV12;
+    #elif defined(__APPLE__)
+    #if TARGET_OS_OSX
+        if (src_format == AV_PIX_FMT_UYVY422) {
+            overlay_format = SDL_FCC_UYVY;
+        } else if (src_format == AV_PIX_FMT_YUYV422) {
+            overlay_format = SDL_FCC_YUV2;
+        } else
+    #endif
+    // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
+    #if TARGET_CPU_ARM64
+        if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
+            overlay_format = SDL_FCC_J420;
+        } else if (src_format == AV_PIX_FMT_YUV420P) {
+            overlay_format = SDL_FCC_I420;
+        } else if (src_format == AV_PIX_FMT_YUVJ420P) {
+            overlay_format = SDL_FCC_J420;
+        } else if (src_format == AV_PIX_FMT_YUV420P10) {
+            overlay_format = SDL_FCC_P010;
+        } else if (src_format == AV_PIX_FMT_YUV422P10) {
+            overlay_format = SDL_FCC_P010;
+        } else if (src_format == AV_PIX_FMT_YUV444P10) {
+            overlay_format = SDL_FCC_P010;
+        } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
+            overlay_format = SDL_FCC_P416;
+        } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
+            overlay_format = SDL_FCC_P216;
+        } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
+            overlay_format = SDL_FCC_AYUV64;
+        } else
+    #endif
+        {
+            const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
+            if (pfd->nb_components > 0) {
+                if (pfd->comp[0].depth == 10) {
+                    overlay_format = SDL_FCC_P010;
+                } else {
+                    overlay_format = SDL_FCC_NV12;
+                    switch (src_format) {
+                        case AV_PIX_FMT_BGRA:
+                            overlay_format = SDL_FCC_BGRA;
+                            break;
+                        case AV_PIX_FMT_BGR0:
+                            overlay_format = SDL_FCC_BGR0;
+                            break;
+                        case AV_PIX_FMT_ARGB: {
+                            overlay_format = SDL_FCC_ARGB;
+                            break;
+                        }
+                        case AV_PIX_FMT_0RGB: {
+                            overlay_format = SDL_FCC_0RGB;
+                            break;
+                        }
+                        default: {
+                            if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+                                overlay_format = SDL_FCC_BGRA;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    #endif
+        //
+        vout->overlay_format = overlay_format;
+    }
+    
+    enum AVPixelFormat dst_format = AV_PIX_FMT_NONE;
+    switch (overlay_format) {
+        case SDL_FCC_J420:
+        case SDL_FCC_I420:
+        case SDL_FCC_YV12:
+        {
+            if (overlay_format == SDL_FCC_J420) {
+                dst_format = AV_PIX_FMT_YUVJ420P;
+            } else {
+                dst_format = AV_PIX_FMT_YUV420P;
+            }
+            break;
+        }
+        case SDL_FCC_NV12: {
+            dst_format = AV_PIX_FMT_NV12;
+            break;
+        }
+        case SDL_FCC_BGRA: {
+            dst_format = AV_PIX_FMT_BGRA;
+            break;
+        }
+        case SDL_FCC_BGR0: {
+            dst_format = AV_PIX_FMT_BGR0;
+            break;
+        }
+        case SDL_FCC_ARGB: {
+            dst_format = AV_PIX_FMT_ARGB;
+            break;
+        }
+        case SDL_FCC_0RGB: {
+            dst_format = AV_PIX_FMT_0RGB;
+            break;
+        }
+        case SDL_FCC_UYVY: {
+            dst_format = AV_PIX_FMT_UYVY422;
+            break;
+        }
+        case SDL_FCC_YUV2: {
+            dst_format = AV_PIX_FMT_YUYV422;
+            break;
+        }
+        case SDL_FCC_P010: {
+            dst_format = AV_PIX_FMT_P010;
+        }
+            break;
+        case SDL_FCC_P416: {
+            dst_format = AV_PIX_FMT_P416;
+        }
+            break;
+        case SDL_FCC_P216: {
+            dst_format = AV_PIX_FMT_P216;
+        }
+            break;
+        case SDL_FCC_AYUV64: {
+            dst_format = AV_PIX_FMT_AYUV64;
+        }
+            break;
+        default:
+            ALOGE("unknow overly format:%.4s(0x%x)\n", (char*)&overlay_format, overlay_format);
+            return -1000;
+            break;
+    }
+    
+    if (src_format != dst_format) {
+        return SDL_VoutConvertFrame(vout, dst_format, src_frame, outFrame);
+    }
+    
+    return 0;
+}
+
 static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
 {
     VideoState *is = ffp->is;
@@ -1433,153 +1576,13 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         return -1;
 
     vp->sar = src_frame->sample_aspect_ratio;
-
-    //TODO: windows and android plat.
-    //软解时，上层指定了明确的overlay-format时需要转格式。
+    //软解时，根据上层指定的 overlay-format 进行格式转换
     if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
-        const int src_format = src_frame->format;
-        Uint32 overlay_format = ffp->vout->overlay_format;
-        if (SDL_FCC__GLES2 == overlay_format) {
-        #if defined(__ANDROID__)
-            overlay_format = SDL_FCC_YV12;
-        #elif defined(__APPLE__)
-        #if TARGET_OS_OSX
-            if (src_format == AV_PIX_FMT_UYVY422) {
-                overlay_format = SDL_FCC_UYVY;
-            } else if (src_format == AV_PIX_FMT_YUYV422) {
-                overlay_format = SDL_FCC_YUV2;
-            } else
-        #endif
-        // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
-        #if TARGET_CPU_ARM64
-            if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
-                overlay_format = SDL_FCC_J420;
-            } else if (src_format == AV_PIX_FMT_YUV420P) {
-                overlay_format = SDL_FCC_I420;
-            } else if (src_format == AV_PIX_FMT_YUVJ420P) {
-                overlay_format = SDL_FCC_J420;
-            } else if (src_format == AV_PIX_FMT_YUV420P10) {
-                overlay_format = SDL_FCC_P010;
-            } else if (src_format == AV_PIX_FMT_YUV422P10) {
-                overlay_format = SDL_FCC_P010;
-            } else if (src_format == AV_PIX_FMT_YUV444P10) {
-                overlay_format = SDL_FCC_P010;
-            } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
-                overlay_format = SDL_FCC_P416;
-            } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
-                overlay_format = SDL_FCC_P216;
-            } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
-                overlay_format = SDL_FCC_AYUV64;
-            } else
-        #endif
-            {
-                const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
-                if (pfd->nb_components > 0) {
-                    if (pfd->comp[0].depth == 10) {
-                        overlay_format = SDL_FCC_P010;
-                    } else {
-                        overlay_format = SDL_FCC_NV12;
-                        switch (src_format) {
-                            case AV_PIX_FMT_BGRA:
-                                overlay_format = SDL_FCC_BGRA;
-                                break;
-                            case AV_PIX_FMT_BGR0:
-                                overlay_format = SDL_FCC_BGR0;
-                                break;
-                            case AV_PIX_FMT_ARGB: {
-                                overlay_format = SDL_FCC_ARGB;
-                                break;
-                            }
-                            case AV_PIX_FMT_0RGB: {
-                                overlay_format = SDL_FCC_0RGB;
-                                break;
-                            }
-                            default: {
-                                if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
-                                    overlay_format = SDL_FCC_BGRA;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        #endif
-            //
-            ffp->vout->overlay_format = overlay_format;
+        const AVFrame *outFrame = NULL;
+        if (convert_frame_format(ffp->vout, src_frame, &outFrame)) {
+            return -2;
         }
-        
-        enum AVPixelFormat dst_format = AV_PIX_FMT_NONE;
-        switch (overlay_format) {
-            case SDL_FCC_J420:
-            case SDL_FCC_I420:
-            case SDL_FCC_YV12:
-            {
-                if (overlay_format == SDL_FCC_J420) {
-                    dst_format = AV_PIX_FMT_YUVJ420P;
-                } else {
-                    dst_format = AV_PIX_FMT_YUV420P;
-                }
-                break;
-            }
-            case SDL_FCC_NV12: {
-                dst_format = AV_PIX_FMT_NV12;
-                break;
-            }
-            case SDL_FCC_BGRA: {
-                dst_format = AV_PIX_FMT_BGRA;
-                break;
-            }
-            case SDL_FCC_BGR0: {
-                dst_format = AV_PIX_FMT_BGR0;
-                break;
-            }
-            case SDL_FCC_ARGB: {
-                dst_format = AV_PIX_FMT_ARGB;
-                break;
-            }
-            case SDL_FCC_0RGB: {
-                dst_format = AV_PIX_FMT_0RGB;
-                break;
-            }
-            case SDL_FCC_UYVY: {
-                dst_format = AV_PIX_FMT_UYVY422;
-                break;
-            }
-            case SDL_FCC_YUV2: {
-                dst_format = AV_PIX_FMT_YUYV422;
-                break;
-            }
-            case SDL_FCC_P010: {
-                dst_format = AV_PIX_FMT_P010;
-            }
-                break;
-            case SDL_FCC_P416: {
-                dst_format = AV_PIX_FMT_P416;
-            }
-                break;
-            case SDL_FCC_P216: {
-                dst_format = AV_PIX_FMT_P216;
-            }
-                break;
-            case SDL_FCC_AYUV64: {
-                dst_format = AV_PIX_FMT_AYUV64;
-            }
-                break;
-            default:
-                ALOGE("unknow overly format:%.4s(0x%x)\n", (char*)&overlay_format, overlay_format);
-                return -1000;
-                break;
-        }
-        
-        if (src_format != dst_format) {
-            const AVFrame *outFrame = NULL;
-            if (SDL_VoutConvertFrame(ffp->vout, dst_format, src_frame, &outFrame)) {
-                //convert failed.
-                return -2;
-            }
-            src_frame = (AVFrame *)outFrame;
-        }
+        src_frame = (AVFrame *)outFrame;
     }
     
 #if IS_TILEGRID_HEIC_ENABLED
