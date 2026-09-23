@@ -33,7 +33,6 @@
 struct FSTileSlot;
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
-    Uint16 pitches[AV_NUM_DATA_POINTERS];
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
     int         tile_mode;       // 1 表示当前正在累积 tile
@@ -233,10 +232,6 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         ALOGD("HEIC tile_mode: received tile %d/%d at (%d,%d) %dx%d",
               opaque->tile_received, opaque->tile_expected,
               slot->x, slot->y, slot->w, slot->h);
-        
-        // pitches 先维持个合理值，渲染侧不再用 overlay->pitches
-        overlay->pitches[0] = CVPixelBufferGetWidth(pixel_buffer);
-        
         if (opaque->tile_received >= opaque->tile_expected) {
             opaque->tile_ready = 1;
             ALOGI("HEIC tile_mode: all %d tiles gathered, canvas=%dx%d",
@@ -268,18 +263,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     if (overlay->av_frame) {
         av_frame_ref(overlay->av_frame, frame);
     }
-//    overlay->format = SDL_FCC__VTB;
 
-    if (CVPixelBufferIsPlanar(pixel_buffer)) {
-        int planes = (int)CVPixelBufferGetPlaneCount(pixel_buffer);
-        for (int i = 0; i < planes; i ++) {
-            overlay->pitches[i] = CVPixelBufferGetWidthOfPlane(pixel_buffer, i);
-        }
-    } else {
-        overlay->pitches[0] = CVPixelBufferGetWidth(pixel_buffer);
-    }
-    
-    overlay->is_private = 1;
     return 0;
 }
 
@@ -298,10 +282,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout
     }
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     overlay->opaque_class = &g_vout_overlay_videotoolbox_class;
-//    overlay->format     = SDL_FCC__VTB;
-    overlay->pitches    = opaque->pitches;
-    overlay->is_private = 1;
-    
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;

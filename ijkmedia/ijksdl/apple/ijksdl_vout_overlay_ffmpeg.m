@@ -34,7 +34,6 @@
 struct FSTileSlot;
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
-    Uint16 pitches[AV_NUM_DATA_POINTERS];
 
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
@@ -238,9 +237,6 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
               opaque->tile_received, opaque->tile_expected,
               slot->x, slot->y, slot->w, slot->h);
 
-        // pitches 先维持个合理值，渲染侧不再用 overlay->pitches
-        overlay->pitches[0] = frame->width;
-        
         if (opaque->tile_received >= opaque->tile_expected) {
             opaque->tile_ready = 1;
             ALOGI("HEIC tile_mode: all %d tiles gathered, canvas=%dx%d",
@@ -293,9 +289,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     opaque->mutex         = SDL_CreateMutex();
     overlay->opaque_class = &g_vout_overlay_ffmpeg_class;
-//    overlay->format       = SDL_FCC__FFVTB;
-    overlay->is_private   = 1;
-    overlay->pitches      = opaque->pitches;
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;

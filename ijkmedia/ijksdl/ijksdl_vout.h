@@ -49,13 +49,7 @@ struct SDL_VoutOverlay {
        software) publish it here so the dispatch layer needn't know which produced it.
        Unused (NULL) on other platforms, which render from overlay->pixels. */
     AVFrame *av_frame;
-#ifndef __APPLE__
-    Uint8 **pixels; /**< Read-write */
-    int planes; /**< Read-only */
-#endif
-    Uint16 *pitches; /**< in bytes, Read-only */
-    
-    int is_private;
+
 //    float fps;
 //    int sar_num;
 //    int sar_den;
