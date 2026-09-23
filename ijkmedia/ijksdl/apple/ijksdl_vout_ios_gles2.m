@@ -117,7 +117,7 @@ static void vout_free_l(SDL_Vout *vout)
     SDL_Vout_FreeInternal(vout);
 }
 
-static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay)
 {
     // `frame` is the owning Frame from the player's picture queue. It carries the
     // display geometry (frame->w/h) the renderer scales to;
@@ -129,24 +129,15 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
         return -1;
     }
-    
-    if (!overlay) {
+
+    if (!frame || frame->disp_w <= 0 || frame->disp_h <= 0) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     }
 
-    if (!frame || frame->disp_w <= 0 || frame->disp_h <= 0) {
-        ALOGE("vout_display_overlay_l: invalid frame dimensions(%d, %d)\n",
-              frame ? frame->disp_w : -1, frame ? frame->disp_h : -1);
-        return -3;
-    }
-
-//    if (SDL_FCC__VTB != overlay->format && SDL_FCC__FFVTB != overlay->format) {
-//        ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
-//        return -4;
-//    }
 #if IS_TILEGRID_HEIC_ENABLED
+    SDL_VoutOverlay *overlay = frame->bmp;
     /* HEIC tile grid 路径：把所有 tile 的 AVFrame 打包到 FSOverlayAttach.tilePieces，
        渲染侧（FSMetalView）再把每个 AVFrame 转成 CVPixelBuffer 后合成。 */
     if (overlay->is_tile_grid) {
@@ -237,11 +228,11 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
     }
 }
 
-static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay)
 {
     @autoreleasepool {
         SDL_LockMutex(vout->mutex);
-        int retval = vout_display_overlay_l(vout, frame, overlay, sub_overlay);
+        int retval = vout_display_overlay_l(vout, frame, sub_overlay);
         SDL_UnlockMutex(vout->mutex);
         return retval;
     }
