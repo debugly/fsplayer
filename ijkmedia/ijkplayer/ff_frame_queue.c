@@ -25,7 +25,6 @@
 void frame_queue_unref_item(Frame *vp)
 {
     av_frame_unref(vp->frame);
-    SDL_VoutUnrefYUVOverlay(vp->bmp);
     
     int count = 0;
     while (count < SUB_REF_MAX_LEN) {

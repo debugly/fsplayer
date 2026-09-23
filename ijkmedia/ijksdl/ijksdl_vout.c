@@ -155,7 +155,7 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
         
         int scaled = sws_scale(convert->sws_ctx, (const uint8_t**) inFrame->data, inFrame->linesize,
                   0, inFrame->height, convert->frame->data, convert->frame->linesize);
-        r = scaled == inFrame->height ? 0 : -1;
+        r = scaled == inFrame->height ? 0 : -6;
     }
     
     if (r == 0 && outFrame) {
@@ -208,29 +208,11 @@ void SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay)
 {
     if (!overlay)
         return;
-
-    /* Release the retained decoded frame here so both Apple overlay impls don't each
-       repeat it in their free_l. NULL (a no-op) on platforms that don't set it. */
-    if (overlay->av_frame)
-        av_frame_free(&overlay->av_frame);
-
     if (overlay->free_l) {
         overlay->free_l(overlay);
     } else {
         free(overlay);
     }
-}
-
-void SDL_VoutUnrefYUVOverlay(SDL_VoutOverlay *overlay)
-{
-    if (!overlay)
-        return;
-    /* Called on every frame-queue recycle (frame_queue_unref_item). Drop the retained
-       decoded frame promptly so its planes and (for VideoToolbox) the data[3] pool
-       buffer are released instead of lingering until the next fill. NULL (a no-op) on
-       platforms that don't set it. */
-    if (overlay->av_frame)
-        av_frame_free(&overlay->av_frame);
 }
 
 int SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame)

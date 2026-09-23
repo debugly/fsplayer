@@ -40,22 +40,6 @@
 typedef struct SDL_VoutOverlay_Opaque SDL_VoutOverlay_Opaque;
 typedef struct SDL_VoutOverlay SDL_VoutOverlay;
 struct SDL_VoutOverlay {
-    /* Display geometry moved to Frame (frame->w/h), carried through the dispatch
-       layer. Renderers read it from FSOverlayAttach, not from the overlay. */
-    /* Read-only. On Apple: the decoded frame backing this overlay, retained by
-       func_fill_frame and released in SDL_VoutUnrefYUVOverlay. Carries color / Dolby
-       Vision side data and, for VideoToolbox, the data[3] CVPixelBuffer. Renderers
-       (FSMetalView / FSPlaceboView) consume it directly; both Apple overlay impls (VTB &
-       software) publish it here so the dispatch layer needn't know which produced it.
-       Unused (NULL) on other platforms, which render from overlay->pixels. */
-    AVFrame *av_frame;
-
-//    float fps;
-//    int sar_num;
-//    int sar_den;
-    //for auto rotate video
-//    int auto_z_rotate_degrees;
-//    int has_alpha;
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 支持：
      * 当 overlay 处于 tile-grid 模式时 is_tile_grid=1,
@@ -129,7 +113,6 @@ SDL_VoutOverlay *SDL_Vout_CreateOverlay(int width, int height, int src_format, S
 int     SDL_VoutLockYUVOverlay(SDL_VoutOverlay *overlay);
 int     SDL_VoutUnlockYUVOverlay(SDL_VoutOverlay *overlay);
 void    SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay);
-void    SDL_VoutUnrefYUVOverlay(SDL_VoutOverlay *overlay);
 int     SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame);
 
 #if IS_TILEGRID_HEIC_ENABLED

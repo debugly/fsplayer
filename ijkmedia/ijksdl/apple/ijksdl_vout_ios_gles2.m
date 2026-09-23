@@ -120,8 +120,7 @@ static void vout_free_l(SDL_Vout *vout)
 static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
 {
     // `frame` is the owning Frame from the player's picture queue. It carries the
-    // display geometry (frame->w/h) the renderer scales to; pixel data still flows
-    // through `overlay` (overlay->av_frame / tile AVFrames).
+    // display geometry (frame->w/h) the renderer scales to;
 
     SDL_Vout_Opaque *opaque = vout->opaque;
     UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
@@ -204,9 +203,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
     // The renderer consumes the decoded AVFrame directly: FSPlaceboView uploads it,
     // FSMetalView derives a CVPixelBuffer from it on the render thread. The dispatch
     // layer no longer pulls a CVPixelBuffer here (that logic moved into the renderer).
-    // Both Apple overlay impls (VTB & software) publish the frame on overlay->av_frame,
-    // so no format branch is needed to pick an accessor.
-    AVFrame *av_frame = overlay->av_frame;
+    AVFrame *av_frame = frame->frame;
 
     if (av_frame) {
         int has_alpha = 0;

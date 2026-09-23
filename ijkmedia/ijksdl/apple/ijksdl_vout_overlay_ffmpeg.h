@@ -26,12 +26,7 @@
 #ifndef FSSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
 #define FSSDL__FFMPEG__IJKSDL_VOUT_OVERLAY_FFMPEG_H
 
-#include "ijksdl/ijksdl_stdinc.h"
 #include "ijksdl/ijksdl_vout.h"
-#include "ijksdl_inc_ffmpeg.h"
-
-#import <Foundation/Foundation.h>
-#import <CoreVideo/CoreVideo.h>
 
 SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int src_format, SDL_Vout *vout);
 

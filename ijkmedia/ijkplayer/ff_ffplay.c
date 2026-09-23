@@ -1585,6 +1585,11 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         src_frame = (AVFrame *)outFrame;
     }
     
+    int cmp_w = src_frame->width;
+    int cmp_h = src_frame->height;
+    int disp_w = src_frame->width;
+    int disp_h = src_frame->height;
+    
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile-grid: decode 输出是每个 tile 的独立 AVFrame，
      * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
@@ -1593,10 +1598,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     /* cmp_w/h: buffer/canvas size that drives alloc_picture (tile-grid uses the
        padded canvas). disp_w/h: display size the renderer scales to (SDL_VoutOverlay->w/h
        before the hoist; tile-grid uses the grid's display dims, not the padded canvas). */
-    int cmp_w = src_frame->width;
-    int cmp_h = src_frame->height;
-    int disp_w = src_frame->width;
-    int disp_h = src_frame->height;
     if (src_frame->opaque_ref &&
         src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
         FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
@@ -1607,11 +1608,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             disp_h = tmeta->h;
         }
     }
-#else
-    int cmp_w = src_frame->width;
-    int cmp_h = src_frame->height;
-    int disp_w = src_frame->width;
-    int disp_h = src_frame->height;
 #endif
     
     /* alloc or resize hardware picture buffer */
@@ -1644,7 +1640,7 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
        refreshed every frame like the overlay's func_fill_frame did. */
     vp->disp_w = disp_w;
     vp->disp_h = disp_h;
-
+    
     /* if the frame is not skipped, then display it */
     if (vp->bmp) {
         /* get a pointer on the bitmap */
@@ -1679,6 +1675,10 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         ffp->stat.sar_num = vp->sar.num;
         ffp->stat.sar_den = vp->sar.den;
         vp->fps = ffp->stat.vfps_probe;
+        
+        av_frame_unref(vp->frame);
+        if (av_frame_ref(vp->frame, src_frame) < 0)
+            return -3;
         
         if (ffp->autorotate) {
             //fill video ratate degrees

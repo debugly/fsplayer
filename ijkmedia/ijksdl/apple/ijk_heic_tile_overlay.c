@@ -143,8 +143,6 @@ int fs_tile_acc_fill(SDL_VoutOverlay *overlay, FSTileAccumulator *acc, const AVF
             }
 
             overlay->is_tile_grid   = 1;
-//            overlay->tile_canvas_w  = tmeta->canvas_w;
-//            overlay->tile_canvas_h  = tmeta->canvas_h;
         }
 
         int idx = tmeta->tile_index;
@@ -197,8 +195,6 @@ int fs_tile_acc_fill(SDL_VoutOverlay *overlay, FSTileAccumulator *acc, const AVF
     if (acc->tile_mode) {
         fs_tile_acc_free(acc);
         overlay->is_tile_grid  = 0;
-//        overlay->tile_canvas_w = 0;
-//        overlay->tile_canvas_h = 0;
     }
     return 0;
 }
