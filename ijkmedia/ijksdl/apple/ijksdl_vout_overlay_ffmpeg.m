@@ -73,7 +73,7 @@ static void func_get_tile_canvas(SDL_VoutOverlay *overlay,
 #endif
 
 static SDL_Class g_vout_overlay_ffmpeg_class = {
-    .name = "FFmpegVoutOverlay",
+    .name = "FSVoutOverlay",
 };
 
 static void func_free_l(SDL_VoutOverlay *overlay)
@@ -112,6 +112,16 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
     if (!overlay || !frame)
         return -100;
 
+    /* For VideoToolbox frames the CVPixelBuffer lives in data[3]; guard against
+       frames that arrive with the right format but an empty buffer slot. */
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pixel_buffer = (CVPixelBufferRef)frame->data[3];
+        if (!pixel_buffer) {
+            ALOGE("func_fill_avframe_to_cvpixelbuffer: VTB frame with NULL pixel_buffer\n");
+            return -1;
+        }
+    }
+
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
 
 #if IS_TILEGRID_HEIC_ENABLED
@@ -126,8 +136,9 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
     // Single-frame path: retain the raw decoded frame (with color / Dolby Vision side
     // data) and let the renderer derive what it needs. FSMetalView converts it to a
     // CVPixelBuffer on the render thread (pool-reused); FSPlaceboView uploads it directly.
-    // The overlay no longer produces a CVPixelBuffer here. Published on the overlay for
-    // the dispatch layer.
+    // For VideoToolbox frames the CVPixelBuffer lives in frame->data[3]; retaining the
+    // frame keeps it alive. The overlay no longer produces a CVPixelBuffer here; it is
+    // published on overlay->av_frame for the dispatch layer.
     if (!overlay->av_frame) {
         overlay->av_frame = av_frame_alloc();
         if (!overlay->av_frame) return -100;
@@ -152,7 +163,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
 
     const AVPixFmtDescriptor *pd = av_pix_fmt_desc_get(format);
     SDLTRACE("Create FFmpeg Overlay(w=%d, h=%d, fmt=%s, dp=%p)\n",
-             width, height, (const char*) pd->name, display);
+             width, height, pd ? pd->name : "hw/opaque", display);
     
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     opaque->mutex         = SDL_CreateMutex();

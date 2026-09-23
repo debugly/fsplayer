@@ -28,7 +28,6 @@
 #include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_vout_internal.h"
 #include "ijksdl_vout_overlay_ffmpeg.h"
-#include "ijksdl_vout_overlay_ffmpeg_hw.h"
 #include "ijkplayer/ff_subtitle_def.h"
 #import "ijksdl_gpu_metal.h"
 #include "ff_ffplay_def.h"
@@ -96,12 +95,7 @@ struct SDL_Vout_Opaque {
 
 static SDL_VoutOverlay *vout_create_overlay_l(int width, int height, int src_format, SDL_Vout *vout)
 {
-    switch (src_format) {
-        case AV_PIX_FMT_VIDEOTOOLBOX:
-            return SDL_VoutFFmpeg_HW_CreateOverlay(width, height, vout);
-        default:
-            return SDL_VoutFFmpeg_CreateOverlay(width, height, src_format, vout);
-    }
+    return SDL_VoutFFmpeg_CreateOverlay(width, height, src_format, vout);
 }
 
 static SDL_VoutOverlay *vout_create_overlay(int width, int height, int src_format, SDL_Vout *vout)
