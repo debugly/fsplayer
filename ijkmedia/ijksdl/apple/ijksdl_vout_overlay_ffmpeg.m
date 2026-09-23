@@ -297,7 +297,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     opaque->mutex         = SDL_CreateMutex();
     overlay->opaque_class = &g_vout_overlay_ffmpeg_class;
-    overlay->format       = SDL_FCC__FFVTB;
+//    overlay->format       = SDL_FCC__FFVTB;
     overlay->is_private   = 1;
     overlay->pitches      = opaque->pitches;
     overlay->w            = width;

@@ -42,7 +42,7 @@ typedef struct SDL_VoutOverlay SDL_VoutOverlay;
 struct SDL_VoutOverlay {
     int w; /**< Read-only, avframe's width */
     int h; /**< Read-only, avframe's height */
-    Uint32 format; /**< Read-only,on Apple plat is SDL_FCC__VTB or  SDL_FCC__FFVTB; other plat SDL_FCC_I420 */
+//    Uint32 format; /**< Read-only,on Apple plat is SDL_FCC__VTB or  SDL_FCC__FFVTB; other plat SDL_FCC_I420 */
     /* Read-only. On Apple: the decoded frame backing this overlay, retained by
        func_fill_frame and released in SDL_VoutUnrefYUVOverlay. Carries color / Dolby
        Vision side data and, for VideoToolbox, the data[3] CVPixelBuffer. Renderers
@@ -57,12 +57,12 @@ struct SDL_VoutOverlay {
     Uint16 *pitches; /**< in bytes, Read-only */
     
     int is_private;
-    float fps;
-    int sar_num;
-    int sar_den;
+//    float fps;
+//    int sar_num;
+//    int sar_den;
     //for auto rotate video
-    int auto_z_rotate_degrees;
-    int has_alpha;
+//    int auto_z_rotate_degrees;
+//    int has_alpha;
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 支持：
      * 当 overlay 处于 tile-grid 模式时 is_tile_grid=1,

@@ -270,8 +270,8 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     if (overlay->av_frame) {
         av_frame_ref(overlay->av_frame, frame);
     }
-    overlay->format = SDL_FCC__VTB;
-    
+//    overlay->format = SDL_FCC__VTB;
+
     if (CVPixelBufferIsPlanar(pixel_buffer)) {
         int planes = (int)CVPixelBufferGetPlaneCount(pixel_buffer);
         for (int i = 0; i < planes; i ++) {
@@ -302,7 +302,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout
     }
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     overlay->opaque_class = &g_vout_overlay_videotoolbox_class;
-    overlay->format     = SDL_FCC__VTB;
+//    overlay->format     = SDL_FCC__VTB;
     overlay->w          = width;
     overlay->h          = height;
     overlay->pitches    = opaque->pitches;

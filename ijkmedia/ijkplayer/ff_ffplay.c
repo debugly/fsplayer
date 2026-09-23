@@ -1662,19 +1662,9 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->pos = pos;
         vp->frame_serial = serial;
         vp->sar = av_guess_sample_aspect_ratio(is->ic, is->video_st, src_frame);
-        vp->bmp->sar_num = vp->sar.num;
-        vp->bmp->sar_den = vp->sar.den;
         ffp->stat.sar_num = vp->sar.num;
         ffp->stat.sar_den = vp->sar.den;
-        vp->bmp->fps = ffp->stat.vfps_probe;
-        
-        // 获取像素格式描述符
-        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(src_frame->format);
-        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
-            vp->bmp->has_alpha = 1;
-        } else {
-            vp->bmp->has_alpha = 0;
-        }
+        vp->fps = ffp->stat.vfps_probe;
         
         if (ffp->autorotate) {
             //fill video ratate degrees
@@ -1689,9 +1679,9 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
 //                causing it to play in the wrong direction
                 int32_t *displaymatrix = (int32_t *)sd->data;
                 int degrees = get_degree_with_displaymatrix(displaymatrix);
-                vp->bmp->auto_z_rotate_degrees = - degrees;
+                vp->auto_z_rotate_degrees = - degrees;
             } else {
-                vp->bmp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
+                vp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
             }
         }
         

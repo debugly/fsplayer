@@ -31,6 +31,7 @@
 #include "ijksdl_vout_overlay_ffmpeg_hw.h"
 #include "ijkplayer/ff_subtitle_def.h"
 #import "ijksdl_gpu_metal.h"
+#include "ff_ffplay_def.h"
 
 @implementation FSTilePiece
 
@@ -153,11 +154,11 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         ALOGE("vout_display_overlay_l: invalid overlay dimensions(%d, %d)\n", overlay->w, overlay->h);
         return -3;
     }
-    
-    if (SDL_FCC__VTB != overlay->format && SDL_FCC__FFVTB != overlay->format) {
-        ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
-        return -4;
-    }
+
+//    if (SDL_FCC__VTB != overlay->format && SDL_FCC__FFVTB != overlay->format) {
+//        ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
+//        return -4;
+//    }
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 路径：把所有 tile 的 AVFrame 打包到 FSOverlayAttach.tilePieces，
        渲染侧（FSMetalView）再把每个 AVFrame 转成 CVPixelBuffer 后合成。 */
@@ -179,16 +180,21 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         attach.h = overlay->h;
         attach.pixelW = overlay->tile_canvas_w;
         attach.pixelH = overlay->tile_canvas_h;
-        attach.fps    = overlay->fps;
-        attach.sarNum = overlay->sar_num;
-        attach.sarDen = overlay->sar_den;
-        attach.autoZRotate = overlay->auto_z_rotate_degrees;
-        attach.hasAlpha = overlay->has_alpha;
+        attach.fps    = frame->fps;
+        attach.sarNum = frame->sar.num;
+        attach.sarDen = frame->sar.den;
+        attach.autoZRotate = frame->auto_z_rotate_degrees;
         attach.videoPicture = NULL;
-        
+
+        int has_alpha = 0;
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
             if (!frames[i]) continue;
+            // 获取像素格式描述符
+            const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(frames[i]->format);
+            if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
+                has_alpha = 1;
+            }
             FSTilePiece *p = [[FSTilePiece alloc] init];
             // Clone the tile frame (owned by attach); the renderer converts it to a
             // CVPixelBuffer. Mirrors the single-frame av_frame_clone below.
@@ -199,7 +205,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         }
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
-
+        attach.hasAlpha = has_alpha;
         free(frames); free(xs); free(ys); free(ws); free(hs);
         return [gl_view displayAttach:attach];
     }
@@ -213,6 +219,13 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
     AVFrame *av_frame = overlay->av_frame;
 
     if (av_frame) {
+        int has_alpha = 0;
+        // 获取像素格式描述符
+        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(av_frame->format);
+        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
+            has_alpha = 1;
+        }
+        
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
@@ -222,11 +235,11 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         // the CVPixelBuffer.
         attach.pixelW = av_frame->width;
         attach.pixelH = av_frame->height;
-        attach.fps    = overlay->fps;
-        attach.sarNum = overlay->sar_num;
-        attach.sarDen = overlay->sar_den;
-        attach.autoZRotate = overlay->auto_z_rotate_degrees;
-        attach.hasAlpha = overlay->has_alpha;
+        attach.fps    = frame->fps;
+        attach.sarNum = frame->sar.num;
+        attach.sarDen = frame->sar.den;
+        attach.autoZRotate = frame->auto_z_rotate_degrees;
+        attach.hasAlpha = has_alpha;
         // Carry the full frame (with DoVi/HDR side data) to the renderer.
         attach.avframe = av_frame_clone(av_frame);
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);

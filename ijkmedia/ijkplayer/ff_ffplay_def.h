@@ -203,6 +203,8 @@ typedef struct Frame {
     int format;
     AVRational sar;
     int shown;
+    float fps;
+    int auto_z_rotate_degrees;
 } Frame;
 
 typedef struct FrameQueue {
