@@ -73,7 +73,6 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) int sarDen;
 //degrees
 @property(nonatomic) int autoZRotate;
-@property(nonatomic) int hasAlpha;
 
 @property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
 @property(nonatomic) NSArray * _Nullable videoTextures;
@@ -91,6 +90,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) id _Nullable subTexture;
 @property(nonatomic) long tag;
 
+- (BOOL)hasAlpha;
 @end
 
 static inline uint32_t fs_ass_color_to_int(UIColor *color) {

@@ -45,6 +45,16 @@
     }
 }
 
+- (BOOL)hasAlpha
+{
+    if (self.avframe) {
+        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(self.avframe->format);
+        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
+            return YES;
+        }
+    }
+    return NO;
+}
 @end
 
 @implementation FSOverlayAttach
@@ -83,6 +93,21 @@
     } else {
         return nil;
     }
+}
+
+- (BOOL)hasAlpha
+{
+    if (self.tilePieces.count > 0) {
+        return [self.tilePieces.firstObject hasAlpha];
+    }
+    
+    if (self.avframe) {
+        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(self.avframe->format);
+        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 @end
@@ -166,15 +191,9 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         attach.autoZRotate = frame->auto_z_rotate_degrees;
         attach.videoPicture = NULL;
 
-        int has_alpha = 0;
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
             if (!frames[i]) continue;
-            // 获取像素格式描述符
-            const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(frames[i]->format);
-            if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
-                has_alpha = 1;
-            }
             FSTilePiece *p = [[FSTilePiece alloc] init];
             // Clone the tile frame (owned by attach); the renderer converts it to a
             // CVPixelBuffer. Mirrors the single-frame av_frame_clone below.
@@ -185,7 +204,6 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         }
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
-        attach.hasAlpha = has_alpha;
         free(frames); free(xs); free(ys); free(ws); free(hs);
         return [gl_view displayAttach:attach];
     }
@@ -195,15 +213,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
     // FSMetalView derives a CVPixelBuffer from it on the render thread. The dispatch
     // layer no longer pulls a CVPixelBuffer here (that logic moved into the renderer).
     AVFrame *av_frame = frame->frame;
-
     if (av_frame) {
-        int has_alpha = 0;
-        // 获取像素格式描述符
-        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(av_frame->format);
-        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
-            has_alpha = 1;
-        }
-        
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = frame->disp_w;
         attach.h = frame->disp_h;
@@ -217,7 +227,6 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         attach.sarNum = frame->sar.num;
         attach.sarDen = frame->sar.den;
         attach.autoZRotate = frame->auto_z_rotate_degrees;
-        attach.hasAlpha = has_alpha;
         // Carry the full frame (with DoVi/HDR side data) to the renderer.
         attach.avframe = av_frame_clone(av_frame);
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
