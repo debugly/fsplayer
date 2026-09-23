@@ -1575,7 +1575,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     if (!(vp = frame_queue_peek_writable(&is->pictq)))
         return -1;
 
-    vp->sar = src_frame->sample_aspect_ratio;
     //软解时，根据上层指定的 overlay-format 进行格式转换
     if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
         const AVFrame *outFrame = NULL;
@@ -1671,10 +1670,10 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->duration = duration;
         vp->pos = pos;
         vp->frame_serial = serial;
+        vp->fps = ffp->stat.vfps_probe;
         vp->sar = av_guess_sample_aspect_ratio(is->ic, is->video_st, src_frame);
         ffp->stat.sar_num = vp->sar.num;
         ffp->stat.sar_den = vp->sar.den;
-        vp->fps = ffp->stat.vfps_probe;
         
         av_frame_unref(vp->frame);
         if (av_frame_ref(vp->frame, src_frame) < 0)
