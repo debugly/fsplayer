@@ -122,10 +122,6 @@ struct SDL_Vout {
     //convert image
     void *image_converter;
     int cvpixelbufferpool;
-    // When set, the attached renderer consumes the decoded AVFrame directly (e.g.
-    // FSPlaceboView via pl_map_avframe). Software frames then skip the overlay_format
-    // conversion + CVPixelBuffer round-trip and are carried as the raw AVFrame.
-    int render_avframe;
 };
 
 void SDL_VoutFree(SDL_Vout *vout);

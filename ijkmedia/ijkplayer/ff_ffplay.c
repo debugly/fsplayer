@@ -1435,9 +1435,8 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     vp->sar = src_frame->sample_aspect_ratio;
 
     //TODO: windows and android plat.
-    //软解时，上层指定了明确的overlay-format时需要转格式
+    //软解时，上层指定了明确的overlay-format时需要转格式。
     if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
-        
         const int src_format = src_frame->format;
         Uint32 overlay_format = ffp->vout->overlay_format;
         if (SDL_FCC__GLES2 == overlay_format) {
@@ -3152,6 +3151,22 @@ static int audio_open(FFPlayer *opaque, AVChannelLayout *wanted_channel_layout, 
 }
 
 #ifdef __APPLE__
+static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
+                                        const enum AVPixelFormat *pix_fmts)
+{
+    const enum AVPixelFormat supported_fmts[] = {AV_PIX_FMT_VIDEOTOOLBOX,AV_PIX_FMT_NV12,AV_PIX_FMT_YUV420P,AV_PIX_FMT_UYVY422,AV_PIX_FMT_ARGB,AV_PIX_FMT_0RGB,AV_PIX_FMT_BGRA,AV_PIX_FMT_BGR0};
+    
+    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+        for (int i = 0; i < sizeof(supported_fmts) / sizeof(enum AVPixelFormat); i++) {
+            if (*p == supported_fmts[i])
+                return *p;
+        }
+    }
+    
+    return AV_PIX_FMT_NONE;
+}
+
+
 static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) {
     int err = 0;
     AVBufferRef *hw_device_ctx = NULL;

@@ -36,9 +36,6 @@ struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
     Uint16 pitches[AV_NUM_DATA_POINTERS];
 
-    // When set, this vout drives an AVFrame-passthrough renderer (FSPlaceboView). Used to
-    // skip HEIC tile accumulation (only FSMetalView consumes tile CVPixelBuffers today).
-    int render_avframe;
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
     int         tile_mode;       // 1 表示当前正在累积 tile
@@ -163,107 +160,105 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
 
 #if IS_TILEGRID_HEIC_ENABLED
     /* ---------- HEIC tile grid 分支 ----------
-       Tile grids carry each tile's AVFrame up to the renderer (FSMetalView), which converts
-       to CVPixelBuffer itself — matching the single-frame path. Only FSMetalView composites
-       tiles today; AVFrame-passthrough renderers (FSPlaceboView, render_avframe) fall straight
-       through to the single-frame retain. */
-    if (!opaque->render_avframe) {
-        FSTileGridMetadata *tmeta = NULL;
-        if (frame->opaque_ref && frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
-            tmeta = (FSTileGridMetadata *)frame->opaque_ref->data;
-            if (tmeta->nb_tiles <= 0 || tmeta->canvas_w <= 0 || tmeta->canvas_h <= 0) {
-                tmeta = NULL; // 非法元数据，回落到单帧
-            }
+       Tile grids carry each tile's AVFrame up to the renderer, which converts to
+       CVPixelBuffer itself (FSMetalView) or uploads it directly (FSPlaceboView) —
+       matching the single-frame path. Tiles always accumulate here; renderers that
+       cannot composite tiles yet simply won't display them. */
+    FSTileGridMetadata *tmeta = NULL;
+    if (frame->opaque_ref && frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
+        tmeta = (FSTileGridMetadata *)frame->opaque_ref->data;
+        if (tmeta->nb_tiles <= 0 || tmeta->canvas_w <= 0 || tmeta->canvas_h <= 0) {
+            tmeta = NULL; // 非法元数据，回落到单帧
         }
+    }
 
-        if (tmeta) {
-            // 首次进入 tile 模式：初始化槽位
-            if (!opaque->tile_mode ||
-                opaque->tile_expected != tmeta->nb_tiles ||
-                opaque->tile_canvas_w != tmeta->canvas_w ||
-                opaque->tile_canvas_h != tmeta->canvas_h) {
-                
-                // 之前可能有残留，先清理
-                tile_slots_free(opaque);
-                
-                opaque->tile_mode     = 1;
-                opaque->tile_expected = tmeta->nb_tiles;
-                opaque->tile_received = 0;
-                opaque->tile_ready    = 0;
-                opaque->tile_canvas_w = tmeta->canvas_w;
-                opaque->tile_canvas_h = tmeta->canvas_h;
-                opaque->tiles = (FSTileSlot *)calloc((size_t)tmeta->nb_tiles, sizeof(FSTileSlot));
-                if (!opaque->tiles) {
-                    ALOGE("HEIC tile_mode: allocate tiles array failed");
-                    opaque->tile_expected = 0;
-                    opaque->tile_mode     = 0;
-                    return -100;
-                }
-                
-                overlay->is_tile_grid   = 1;
-                overlay->tile_canvas_w  = tmeta->canvas_w;
-                overlay->tile_canvas_h  = tmeta->canvas_h;
-                overlay->w              = tmeta->w;
-                overlay->h              = tmeta->h;
+    if (tmeta) {
+        // 首次进入 tile 模式：初始化槽位
+        if (!opaque->tile_mode ||
+            opaque->tile_expected != tmeta->nb_tiles ||
+            opaque->tile_canvas_w != tmeta->canvas_w ||
+            opaque->tile_canvas_h != tmeta->canvas_h) {
+            
+            // 之前可能有残留，先清理
+            tile_slots_free(opaque);
+            
+            opaque->tile_mode     = 1;
+            opaque->tile_expected = tmeta->nb_tiles;
+            opaque->tile_received = 0;
+            opaque->tile_ready    = 0;
+            opaque->tile_canvas_w = tmeta->canvas_w;
+            opaque->tile_canvas_h = tmeta->canvas_h;
+            opaque->tiles = (FSTileSlot *)calloc((size_t)tmeta->nb_tiles, sizeof(FSTileSlot));
+            if (!opaque->tiles) {
+                ALOGE("HEIC tile_mode: allocate tiles array failed");
+                opaque->tile_expected = 0;
+                opaque->tile_mode     = 0;
+                return -100;
             }
             
-            int idx = tmeta->tile_index;
-            if (idx < 0 || idx >= opaque->tile_expected) {
-                ALOGE("HEIC tile_mode: invalid tile_index %d (expected<%d)", idx, opaque->tile_expected);
-                return 0; // 忽略，继续累积
-            }
-            
-            FSTileSlot *slot = &opaque->tiles[idx];
-            // 如果该槽位已有（重复 put 导致），先释放旧的
-            if (slot->frame) {
-                av_frame_free(&slot->frame);
-                slot->filled = 0;
-                if (opaque->tile_received > 0) opaque->tile_received--;
-            }
-
-            // 保留该 tile 的原始 AVFrame（含色彩/像素信息），转成 CVPixelBuffer 的工作
-            // 交给渲染侧（FSMetalView）完成，overlay 层不再产出 CVPixelBuffer。
-            slot->frame = av_frame_alloc();
-            if (!slot->frame) {
-                ALOGE("HEIC tile_mode: av_frame_alloc failed for tile %d", idx);
-                return 0;
-            }
-            if (av_frame_ref(slot->frame, frame) < 0) {
-                ALOGE("HEIC tile_mode: av_frame_ref failed for tile %d", idx);
-                av_frame_free(&slot->frame);
-                return 0;
-            }
-            slot->x      = tmeta->tile_x;
-            slot->y      = tmeta->tile_y;
-            slot->w      = tmeta->tile_w > 0 ? tmeta->tile_w : frame->width;
-            slot->h      = tmeta->tile_h > 0 ? tmeta->tile_h : frame->height;
-            slot->filled = 1;
-            opaque->tile_received++;
-
-            ALOGD("HEIC tile_mode: received tile %d/%d at (%d,%d) %dx%d",
-                  opaque->tile_received, opaque->tile_expected,
-                  slot->x, slot->y, slot->w, slot->h);
-
-            // pitches 先维持个合理值，渲染侧不再用 overlay->pitches
-            overlay->pitches[0] = frame->width;
-            
-            if (opaque->tile_received >= opaque->tile_expected) {
-                opaque->tile_ready = 1;
-                ALOGI("HEIC tile_mode: all %d tiles gathered, canvas=%dx%d",
-                      opaque->tile_expected, opaque->tile_canvas_w, opaque->tile_canvas_h);
-            }
-            return 0;
+            overlay->is_tile_grid   = 1;
+            overlay->tile_canvas_w  = tmeta->canvas_w;
+            overlay->tile_canvas_h  = tmeta->canvas_h;
+            overlay->w              = tmeta->w;
+            overlay->h              = tmeta->h;
         }
         
-        /* ---------- 普通单帧路径（非 tile 或 opaque 丢失） ---------- */
-        // 若此前处于 tile 模式（切换到普通视频），清理 tile 状态
-        if (opaque->tile_mode) {
-            tile_slots_free(opaque);
-            overlay->is_tile_grid  = 0;
-            overlay->tile_canvas_w = 0;
-            overlay->tile_canvas_h = 0;
+        int idx = tmeta->tile_index;
+        if (idx < 0 || idx >= opaque->tile_expected) {
+            ALOGE("HEIC tile_mode: invalid tile_index %d (expected<%d)", idx, opaque->tile_expected);
+            return 0; // 忽略，继续累积
         }
-    } // !render_avframe
+        
+        FSTileSlot *slot = &opaque->tiles[idx];
+        // 如果该槽位已有（重复 put 导致），先释放旧的
+        if (slot->frame) {
+            av_frame_free(&slot->frame);
+            slot->filled = 0;
+            if (opaque->tile_received > 0) opaque->tile_received--;
+        }
+
+        // 保留该 tile 的原始 AVFrame（含色彩/像素信息），转成 CVPixelBuffer 的工作
+        // 交给渲染侧（FSMetalView）完成，overlay 层不再产出 CVPixelBuffer。
+        slot->frame = av_frame_alloc();
+        if (!slot->frame) {
+            ALOGE("HEIC tile_mode: av_frame_alloc failed for tile %d", idx);
+            return 0;
+        }
+        if (av_frame_ref(slot->frame, frame) < 0) {
+            ALOGE("HEIC tile_mode: av_frame_ref failed for tile %d", idx);
+            av_frame_free(&slot->frame);
+            return 0;
+        }
+        slot->x      = tmeta->tile_x;
+        slot->y      = tmeta->tile_y;
+        slot->w      = tmeta->tile_w > 0 ? tmeta->tile_w : frame->width;
+        slot->h      = tmeta->tile_h > 0 ? tmeta->tile_h : frame->height;
+        slot->filled = 1;
+        opaque->tile_received++;
+
+        ALOGD("HEIC tile_mode: received tile %d/%d at (%d,%d) %dx%d",
+              opaque->tile_received, opaque->tile_expected,
+              slot->x, slot->y, slot->w, slot->h);
+
+        // pitches 先维持个合理值，渲染侧不再用 overlay->pitches
+        overlay->pitches[0] = frame->width;
+        
+        if (opaque->tile_received >= opaque->tile_expected) {
+            opaque->tile_ready = 1;
+            ALOGI("HEIC tile_mode: all %d tiles gathered, canvas=%dx%d",
+                  opaque->tile_expected, opaque->tile_canvas_w, opaque->tile_canvas_h);
+        }
+        return 0;
+    }
+    
+    /* ---------- 普通单帧路径（非 tile 或 opaque 丢失） ---------- */
+    // 若此前处于 tile 模式（切换到普通视频），清理 tile 状态
+    if (opaque->tile_mode) {
+        tile_slots_free(opaque);
+        overlay->is_tile_grid  = 0;
+        overlay->tile_canvas_w = 0;
+        overlay->tile_canvas_h = 0;
+    }
 #endif
 
     // Single-frame path: retain the raw decoded frame (with color / Dolby Vision side
@@ -311,7 +306,6 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
     overlay->func_fill_frame    = func_fill_avframe_to_cvpixelbuffer;
-    opaque->render_avframe      = display->render_avframe;
 #if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;
