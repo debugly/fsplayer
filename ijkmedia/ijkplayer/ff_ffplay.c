@@ -1422,11 +1422,7 @@ static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFram
             break;
     }
     
-    if (src_format != dst_format) {
-        return SDL_VoutConvertFrame(vout, dst_format, src_frame, outFrame);
-    }
-    
-    return 0;
+    return SDL_VoutConvertFrame(vout, dst_format, src_frame, outFrame);
 }
 
 static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
