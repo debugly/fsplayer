@@ -107,7 +107,7 @@ static int func_unlock(SDL_VoutOverlay *overlay)
     return SDL_UnlockMutex(opaque->mutex);
 }
 
-static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AVFrame *frame)
+static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
 {
     if (!overlay || !frame)
         return -100;
@@ -171,7 +171,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
-    overlay->func_fill_frame    = func_fill_avframe_to_cvpixelbuffer;
+    overlay->func_fill_frame    = func_fill_frame;
 #if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;

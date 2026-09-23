@@ -88,8 +88,6 @@
 @end
 
 struct SDL_Vout_Opaque {
-    void *cvPixelBufferPool;
-    int cv_format;
     __strong UIView<FSVideoRenderingProtocol> *gl_view;
 };
 
@@ -114,10 +112,6 @@ static void vout_free_l(SDL_Vout *vout)
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque) {
         opaque->gl_view = nil;
-        if (opaque->cvPixelBufferPool) {
-            CVPixelBufferPoolRelease(opaque->cvPixelBufferPool);
-            opaque->cvPixelBufferPool = NULL;
-        }
     }
     
     SDL_Vout_FreeInternal(vout);
@@ -261,9 +255,6 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     SDL_Vout *vout = SDL_Vout_CreateInternal(sizeof(SDL_Vout_Opaque));
     if (!vout)
         return NULL;
-    
-    SDL_Vout_Opaque *opaque = vout->opaque;
-    opaque->cv_format = -1;
     vout->create_overlay = vout_create_overlay;
     vout->free_l = vout_free_l;
     vout->display_overlay = vout_display_overlay;
