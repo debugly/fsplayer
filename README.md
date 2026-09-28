@@ -7,7 +7,7 @@
 
 [![Stargazers repo roster for @debugly/fsplayer](https://reporoster.com/stars/debugly/fsplayer)](https://github.com/debugly/fsplayer/stargazers)
 
-## 功能&特点
+## 功能&amp;特点
 
 - [x] FFmpeg 8.1.2
 - [x] 支持透传 FFmpeg option 参数
@@ -28,12 +28,12 @@
 - [x] 优化了 file 协议 seek 后起播慢问题
 - [x] 音视频加密播放
 - [x] 强大的字幕功能
-  - 文本字幕(srt/vtt/ass)
-  - 图形字幕(dvbsub/dvdsub/pgssub/idx+sub)
-  - 同时支持内嵌和外挂
-  - 支持设置字幕延迟
-  - 支持 ASS 字幕的特效
-  - 支持设置文本字幕的样式
+  - [x] 文本字幕(srt/vtt/ass)
+  - [x] 图形字幕(dvbsub/dvdsub/pgssub/idx+sub)
+  - [x] 同时支持内嵌和外挂
+  - [x] 支持设置字幕延迟
+  - [x] 支持 ASS 字幕的特效
+  - [x] 支持设置文本字幕的样式
 - [x] 支持循环播放
 - [x] 支持切换音轨
 - [x] 支持设置音轨延迟
@@ -69,7 +69,7 @@
 - [x] 优化了音频比视频短，只剩下视频时可以正常观看和seek
 - [x] 软硬解切换不需要重启播放器
 - [x] 开启视频滤镜，软解支持反交错
-- [x] 同步销毁播放器
+- [x] 同步销毁播放器（默认异步）
 
 调研中
 
@@ -86,11 +86,13 @@
 - macOS Tahoe(26.5)
 - Xcode Version 26.6 (17F113)
 
-| 最低支持平台  | 架构                                     |
-| ----------- | --------------------------------------- |
-| iOS 12.0    | arm64、arm64_simulator、x86_64_simulator |
-| macOS 10.14 | arm64、x86_64                            |
-| tvOS 12.0   | arm64、arm64_simulator、x86_64_simulator |
+
+| 最低支持平台      | 架构                                        |
+| ----------- | ----------------------------------------- |
+| iOS 12.0    | arm64、arm64\_simulator、x86\_64\_simulator |
+| macOS 10.14 | arm64、x86\_64                             |
+| tvOS 12.0   | arm64、arm64\_simulator、x86\_64\_simulator |
+
 
 ## 更新记录
 
@@ -101,7 +103,6 @@
 FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，感觉不错可以 [请作者喝咖啡](./Donate.md) 。
 
 - 通过 Swift Package Manger 集成: [FSPlayer-SPM.git](https://github.com/debugly/FSPlayer-SPM.git)
-
 - 通过 Cocoapods 集成:
 
 ```

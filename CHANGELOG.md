@@ -1,3 +1,8 @@
+## tag 1.1.1
+
+- fix HEIC tile-grid green tint
+- refactor: vout output avframe instead of CVPixelBuffer,SDL_VoutOverlay aggregates the AVFrames of the tile grid pieces
+
 ## tag 1.1.0
 
 - Update OpenSSL and other libraries #95
