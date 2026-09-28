@@ -161,6 +161,19 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
     if (r == 0 && outFrame) {
         convert->frame->width  = inFrame->width;
         convert->frame->height = inFrame->height;
+
+        /* convert->frame is reused across frames, so av_frame_copy_props (called
+         * once at converter creation) leaves a stale opaque_ref. Refresh it from
+         * the current inFrame so per-frame metadata (e.g. HEIC tile-grid
+         * FSTileGridMetadata) propagates through the conversion. */
+        av_buffer_unref(&convert->frame->opaque_ref);
+        if (inFrame->opaque_ref) {
+            convert->frame->opaque_ref = av_buffer_ref(inFrame->opaque_ref);
+            if (!convert->frame->opaque_ref) {
+                return -5;
+            }
+        }
+
         *outFrame = convert->frame;
     }
     
