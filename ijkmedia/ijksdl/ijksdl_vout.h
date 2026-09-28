@@ -86,15 +86,16 @@ struct SDL_VoutOverlay {
     /* HEIC tile grid 查询接口（可选实现，NULL 表示不支持）
      *  func_is_tile_pending:  返回 1 表示当前还在累积 tile，上游不应把此帧 push 到渲染队列
      *  func_get_tile_count:   返回已收集到的 tile 数（一般等于 nb_tiles）
-     *  func_get_tile_buffers: 取出所有 tile 的 CVPixelBufferRef 及其在 canvas 上的 x/y/w/h
+     *  func_get_tile_avframes: 取出所有 tile 的 AVFrame（overlay 持有，调用方 borrow）及其在
+     *                          canvas 上的 x/y/w/h。渲染侧再把 AVFrame 转成 CVPixelBuffer。
      */
     int     (*func_is_tile_pending)(SDL_VoutOverlay *overlay);
     int     (*func_get_tile_count)(SDL_VoutOverlay *overlay);
-    int     (*func_get_tile_buffers)(SDL_VoutOverlay *overlay,
-                                     CVPixelBufferRef *out_buffers,
-                                     int *out_x, int *out_y,
-                                     int *out_w, int *out_h,
-                                     int max_count);
+    int     (*func_get_tile_avframes)(SDL_VoutOverlay *overlay,
+                                      AVFrame **out_frames,
+                                      int *out_x, int *out_y,
+                                      int *out_w, int *out_h,
+                                      int max_count);
 #endif
 };
 
@@ -146,11 +147,11 @@ int     SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *fra
 int     SDL_VoutOverlay_IsTilePending(SDL_VoutOverlay *overlay);
 /* HEIC tile grid: 已收集的 tile 数 */
 int     SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay);
-/* HEIC tile grid: 批量取 tile CVPixelBufferRef 及位置（调用方负责 CVPixelBufferRetain/Release） */
-int     SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
-                                              CVPixelBufferRef *out_buffers,
-                                              int *out_x, int *out_y,
-                                              int *out_w, int *out_h,
-                                              int max_count);
+/* HEIC tile grid: 批量取 tile AVFrame（overlay 持有，调用方 borrow，不要 free）及位置 */
+int     SDL_VoutOverlay_GetTileAVFrames(SDL_VoutOverlay *overlay,
+                                        AVFrame **out_frames,
+                                        int *out_x, int *out_y,
+                                        int *out_w, int *out_h,
+                                        int max_count);
 #endif
 #endif

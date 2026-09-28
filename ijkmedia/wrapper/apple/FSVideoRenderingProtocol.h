@@ -47,8 +47,11 @@ typedef NS_ENUM(NSInteger, FSScalingMode) {
 
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
-// HEIC tile grid: 单个 tile 的 CVPixelBuffer + 位置信息
+// HEIC tile grid: 单个 tile 的位置信息 + 帧数据。
+// avframe 由 dispatch 层从 overlay 克隆（owned）；pixelBuffer 由渲染器（FSMetalView）
+// 从 avframe 转换后填充并持有。
 @interface FSTilePiece : NSObject
+@property(nonatomic) struct AVFrame * _Nullable avframe;        // 持有 (owned, av_frame_free in dealloc)
 @property(nonatomic) CVPixelBufferRef _Nullable pixelBuffer;    // 持有 (owned, Retain/Release by this class)
 @property(nonatomic) int x;         // canvas 上左上角
 @property(nonatomic) int y;

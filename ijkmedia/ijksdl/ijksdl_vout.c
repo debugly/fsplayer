@@ -243,14 +243,14 @@ int SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay)
     return overlay->func_get_tile_count(overlay);
 }
 
-int SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
-                                          CVPixelBufferRef *out_buffers,
-                                          int *out_x, int *out_y,
-                                          int *out_w, int *out_h,
-                                          int max_count)
+int SDL_VoutOverlay_GetTileAVFrames(SDL_VoutOverlay *overlay,
+                                    AVFrame **out_frames,
+                                    int *out_x, int *out_y,
+                                    int *out_w, int *out_h,
+                                    int max_count)
 {
-    if (!overlay || !overlay->func_get_tile_buffers)
+    if (!overlay || !overlay->func_get_tile_avframes)
         return 0;
-    return overlay->func_get_tile_buffers(overlay, out_buffers, out_x, out_y, out_w, out_h, max_count);
+    return overlay->func_get_tile_avframes(overlay, out_frames, out_x, out_y, out_w, out_h, max_count);
 }
 #endif

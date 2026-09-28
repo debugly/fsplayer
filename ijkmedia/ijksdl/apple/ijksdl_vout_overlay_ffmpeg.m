@@ -26,7 +26,6 @@
 #include "ijksdl_vout_overlay_ffmpeg.h"
 #include "../ijksdl_vout_internal.h"
 #include "ijk_vout_common.h"
-#include "ijk_cvpixelbuffer.h"
 #include <libavutil/hwcontext_videotoolbox.h>
 #include <libavutil/buffer.h>
 #include "ijkplayer/ff_heic_tile.h"
@@ -54,7 +53,7 @@ struct SDL_VoutOverlay_Opaque {
 
 #if IS_TILEGRID_HEIC_ENABLED
 typedef struct FSTileSlot {
-    CVPixelBufferRef pb;   // 已拷贝的 tile CVPixelBuffer（owned）
+    AVFrame *frame;        // 已 av_frame_ref 的 tile 帧（owned），渲染侧再转 CVPixelBuffer
     int x, y;              // tile 在 canvas 上的位置
     int w, h;              // tile 尺寸
     int filled;            // 是否已填充
@@ -65,9 +64,8 @@ static void tile_slots_free(SDL_VoutOverlay_Opaque *opaque)
     if (!opaque || !opaque->tiles)
         return;
     for (int i = 0; i < opaque->tile_expected; i++) {
-        if (opaque->tiles[i].pb) {
-            CVPixelBufferRelease(opaque->tiles[i].pb);
-            opaque->tiles[i].pb = NULL;
+        if (opaque->tiles[i].frame) {
+            av_frame_free(&opaque->tiles[i].frame);
         }
     }
     free(opaque->tiles);
@@ -96,11 +94,11 @@ static int func_get_tile_count(SDL_VoutOverlay *overlay)
     return opaque->tile_received;
 }
 
-static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
-                                 CVPixelBufferRef *out_buffers,
-                                 int *out_x, int *out_y,
-                                 int *out_w, int *out_h,
-                                 int max_count)
+static int func_get_tile_avframes(SDL_VoutOverlay *overlay,
+                                  AVFrame **out_frames,
+                                  int *out_x, int *out_y,
+                                  int *out_w, int *out_h,
+                                  int max_count)
 {
     if (!overlay) return 0;
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
@@ -109,8 +107,8 @@ static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
     int k = 0;
     for (int i = 0; i < n; i++) {
         FSTileSlot *slot = &opaque->tiles[i];
-        if (!slot->filled || !slot->pb) continue;
-        if (out_buffers) out_buffers[k] = slot->pb;
+        if (!slot->filled || !slot->frame) continue;
+        if (out_frames) out_frames[k] = slot->frame;
         if (out_x) out_x[k] = slot->x;
         if (out_y) out_y[k] = slot->y;
         if (out_w) out_w[k] = slot->w;
@@ -165,9 +163,10 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
 
 #if IS_TILEGRID_HEIC_ENABLED
     /* ---------- HEIC tile grid 分支 ----------
-       Tile grids are still carried as CVPixelBuffers because no renderer consumes tile
-       AVFrames yet. Only MetalView can show them; AVFrame-passthrough renderers
-       (FSPlaceboView, render_avframe) fall straight through to the single-frame retain. */
+       Tile grids carry each tile's AVFrame up to the renderer (FSMetalView), which converts
+       to CVPixelBuffer itself — matching the single-frame path. Only FSMetalView composites
+       tiles today; AVFrame-passthrough renderers (FSPlaceboView, render_avframe) fall straight
+       through to the single-frame retain. */
     if (!opaque->render_avframe) {
         FSTileGridMetadata *tmeta = NULL;
         if (frame->opaque_ref && frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
@@ -216,33 +215,37 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
             
             FSTileSlot *slot = &opaque->tiles[idx];
             // 如果该槽位已有（重复 put 导致），先释放旧的
-            if (slot->pb) {
-                CVPixelBufferRelease(slot->pb);
-                slot->pb = NULL;
+            if (slot->frame) {
+                av_frame_free(&slot->frame);
                 slot->filled = 0;
                 if (opaque->tile_received > 0) opaque->tile_received--;
             }
-            
-            // 每个 tile 分辨率可能与 pool 不符，直接不走 pool
-            CVPixelBufferRef pb = FSCVPixelBufferCreateFromAVFrame(frame, NULL);
-            if (!pb) {
-                ALOGE("HEIC tile_mode: createCVPixelBufferFromAVFrame failed for tile %d", idx);
+
+            // 保留该 tile 的原始 AVFrame（含色彩/像素信息），转成 CVPixelBuffer 的工作
+            // 交给渲染侧（FSMetalView）完成，overlay 层不再产出 CVPixelBuffer。
+            slot->frame = av_frame_alloc();
+            if (!slot->frame) {
+                ALOGE("HEIC tile_mode: av_frame_alloc failed for tile %d", idx);
                 return 0;
             }
-            slot->pb     = pb;
+            if (av_frame_ref(slot->frame, frame) < 0) {
+                ALOGE("HEIC tile_mode: av_frame_ref failed for tile %d", idx);
+                av_frame_free(&slot->frame);
+                return 0;
+            }
             slot->x      = tmeta->tile_x;
             slot->y      = tmeta->tile_y;
             slot->w      = tmeta->tile_w > 0 ? tmeta->tile_w : frame->width;
             slot->h      = tmeta->tile_h > 0 ? tmeta->tile_h : frame->height;
             slot->filled = 1;
             opaque->tile_received++;
-            
+
             ALOGD("HEIC tile_mode: received tile %d/%d at (%d,%d) %dx%d",
                   opaque->tile_received, opaque->tile_expected,
                   slot->x, slot->y, slot->w, slot->h);
-            
+
             // pitches 先维持个合理值，渲染侧不再用 overlay->pitches
-            overlay->pitches[0] = CVPixelBufferGetWidth(pb);
+            overlay->pitches[0] = frame->width;
             
             if (opaque->tile_received >= opaque->tile_expected) {
                 opaque->tile_ready = 1;
@@ -312,7 +315,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
 #if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;
-    overlay->func_get_tile_buffers = func_get_tile_buffers;
+    overlay->func_get_tile_avframes = func_get_tile_avframes;
 #endif
 
     return overlay;

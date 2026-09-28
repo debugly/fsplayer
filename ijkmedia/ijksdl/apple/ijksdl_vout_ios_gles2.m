@@ -40,6 +40,9 @@
         CVPixelBufferRelease(_pixelBuffer);
         _pixelBuffer = NULL;
     }
+    if (_avframe) {
+        av_frame_free(&self->_avframe);
+    }
 }
 
 @end
@@ -156,20 +159,21 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         return -4;
     }
 #if IS_TILEGRID_HEIC_ENABLED
-    /* HEIC tile grid 路径：把所有 tile 打包到 FSOverlayAttach.tilePieces */
+    /* HEIC tile grid 路径：把所有 tile 的 AVFrame 打包到 FSOverlayAttach.tilePieces，
+       渲染侧（FSMetalView）再把每个 AVFrame 转成 CVPixelBuffer 后合成。 */
     if (overlay->is_tile_grid) {
         int count = SDL_VoutOverlay_GetTileCount(overlay);
         if (count <= 0) {
             ALOGE("vout_display_overlay_l: tile-grid overlay with 0 tiles\n");
             return -5;
         }
-        CVPixelBufferRef *bufs = (CVPixelBufferRef *)calloc(count, sizeof(CVPixelBufferRef));
+        AVFrame **frames = (AVFrame **)calloc(count, sizeof(AVFrame *));
         int *xs = (int *)calloc(count, sizeof(int));
         int *ys = (int *)calloc(count, sizeof(int));
         int *ws = (int *)calloc(count, sizeof(int));
         int *hs = (int *)calloc(count, sizeof(int));
-        int got = SDL_VoutOverlay_GetTileCVPixelBuffers(overlay, bufs, xs, ys, ws, hs, count);
-        
+        int got = SDL_VoutOverlay_GetTileAVFrames(overlay, frames, xs, ys, ws, hs, count);
+
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
@@ -184,17 +188,19 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
-            if (!bufs[i]) continue;
+            if (!frames[i]) continue;
             FSTilePiece *p = [[FSTilePiece alloc] init];
-            p.pixelBuffer = CVPixelBufferRetain(bufs[i]);
+            // Clone the tile frame (owned by attach); the renderer converts it to a
+            // CVPixelBuffer. Mirrors the single-frame av_frame_clone below.
+            p.avframe = av_frame_clone(frames[i]);
             p.x = xs[i]; p.y = ys[i];
             p.w = ws[i]; p.h = hs[i];
             [pieces addObject:p];
         }
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
-        
-        free(bufs); free(xs); free(ys); free(ws); free(hs);
+
+        free(frames); free(xs); free(ys); free(ws); free(hs);
         return [gl_view displayAttach:attach];
     }
 #endif

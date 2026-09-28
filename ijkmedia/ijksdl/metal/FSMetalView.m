@@ -675,6 +675,25 @@ typedef CGRect NSRect;
     return FSCVPixelBufferCreateFromAVFrame(frame, pool);
 }
 
+// Produce a +1 retained CVPixelBuffer from a single HEIC tile's AVFrame. Same conversion as
+// -pixelBufferFromAVFrame: but WITHOUT the per-view pool: tiles vary in size within a grid (and
+// across grids), so pooling would thrash. VTB frames still zero-copy via data[3].
+// Returns NULL on unsupported formats. Caller owns the returned buffer.
+- (CVPixelBufferRef)tilePixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
+{
+    if (!frame) {
+        return NULL;
+    }
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
+        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
+    }
+    if (frame->width <= 0 || frame->height <= 0) {
+        return NULL;
+    }
+    return FSCVPixelBufferCreateFromAVFrame(frame, NULL);
+}
+
 - (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
     //call form (ff_vout thread)
@@ -683,12 +702,25 @@ typedef CGRect NSRect;
 
     // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
     BOOL hasTiles = (attach.tilePieces.count > 0);
-    if (!attach.videoPicture && !hasTiles) {
+    
+    if (!attach.avframe && !hasTiles) {
         ALOGD("FSMetalView: displayAttach refresh frame\n");
         [self.renderSnapshotLock lock];
         self.currentAttach = attach;
         [self.renderSnapshotLock unlock];
         return NO;
+    }
+    
+    // Convert each tile's AVFrame to a CVPixelBuffer here (render side), matching the
+    // single-frame path. The dispatch layer only carries AVFrames now; the tile-grid
+    // pipeline still consumes piece.pixelBuffer. Done once per attach (not per draw) so the
+    // buffer pointer is stable across refresh/rotate → FSMetalTileGridPipeline cache still hits.
+    if (hasTiles) {
+        for (FSTilePiece *piece in attach.tilePieces) {
+            if (!piece.pixelBuffer && piece.avframe) {
+                piece.pixelBuffer = [self tilePixelBufferFromAVFrame:piece.avframe]; // +1 retained
+            }
+        }
     }
     
     // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did

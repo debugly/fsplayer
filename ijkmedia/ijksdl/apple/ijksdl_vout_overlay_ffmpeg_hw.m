@@ -49,7 +49,7 @@ struct SDL_VoutOverlay_Opaque {
 #if IS_TILEGRID_HEIC_ENABLED
 
 typedef struct FSTileSlot {
-    CVPixelBufferRef pb;   // 已拷贝的 tile CVPixelBuffer（owned）
+    AVFrame *frame;        // 已 av_frame_ref 的 tile 帧（owned），data[3] 携带 CVPixelBuffer
     int x, y;              // tile 在 canvas 上的位置
     int w, h;              // tile 尺寸
     int filled;            // 是否已填充
@@ -60,9 +60,8 @@ static void tile_slots_free(SDL_VoutOverlay_Opaque *opaque)
     if (!opaque || !opaque->tiles)
         return;
     for (int i = 0; i < opaque->tile_expected; i++) {
-        if (opaque->tiles[i].pb) {
-            CVPixelBufferRelease(opaque->tiles[i].pb);
-            opaque->tiles[i].pb = NULL;
+        if (opaque->tiles[i].frame) {
+            av_frame_free(&opaque->tiles[i].frame);
         }
     }
     free(opaque->tiles);
@@ -91,11 +90,11 @@ static int func_get_tile_count(SDL_VoutOverlay *overlay)
     return opaque->tile_received;
 }
 
-static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
-                                 CVPixelBufferRef *out_buffers,
-                                 int *out_x, int *out_y,
-                                 int *out_w, int *out_h,
-                                 int max_count)
+static int func_get_tile_avframes(SDL_VoutOverlay *overlay,
+                                  AVFrame **out_frames,
+                                  int *out_x, int *out_y,
+                                  int *out_w, int *out_h,
+                                  int max_count)
 {
     if (!overlay) return 0;
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
@@ -104,8 +103,8 @@ static int func_get_tile_buffers(SDL_VoutOverlay *overlay,
     int k = 0;
     for (int i = 0; i < n; i++) {
         FSTileSlot *slot = &opaque->tiles[i];
-        if (!slot->filled || !slot->pb) continue;
-        if (out_buffers) out_buffers[k] = slot->pb;
+        if (!slot->filled || !slot->frame) continue;
+        if (out_frames) out_frames[k] = slot->frame;
         if (out_x) out_x[k] = slot->x;
         if (out_y) out_y[k] = slot->y;
         if (out_w) out_w[k] = slot->w;
@@ -208,14 +207,24 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         
         FSTileSlot *slot = &opaque->tiles[idx];
         // 如果该槽位已有（重复 put 导致），先释放旧的
-        if (slot->pb) {
-            CVPixelBufferRelease(slot->pb);
-            slot->pb = NULL;
+        if (slot->frame) {
+            av_frame_free(&slot->frame);
             slot->filled = 0;
             if (opaque->tile_received > 0) opaque->tile_received--;
         }
-        
-        slot->pb     = CVPixelBufferRetain(pixel_buffer);
+
+        // 保留 tile 的原始 AVFrame（VTB 的 CVPixelBuffer 随 data[3] 一起被 av_frame_ref
+        // 保活）；转成 CVPixelBuffer 的工作交给渲染侧（FSMetalView）从 data[3] 取回。
+        slot->frame = av_frame_alloc();
+        if (!slot->frame) {
+            ALOGE("HEIC tile_mode: av_frame_alloc failed for tile %d", idx);
+            return 0;
+        }
+        if (av_frame_ref(slot->frame, frame) < 0) {
+            ALOGE("HEIC tile_mode: av_frame_ref failed for tile %d", idx);
+            av_frame_free(&slot->frame);
+            return 0;
+        }
         slot->x      = tmeta->tile_x;
         slot->y      = tmeta->tile_y;
         slot->w      = tmeta->tile_w > 0 ? tmeta->tile_w : frame->width;
@@ -306,7 +315,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout
 #if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;
-    overlay->func_get_tile_buffers = func_get_tile_buffers;
+    overlay->func_get_tile_avframes = func_get_tile_avframes;
 #endif
     opaque->mutex = SDL_CreateMutex();
     return overlay;
