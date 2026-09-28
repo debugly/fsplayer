@@ -63,8 +63,8 @@ struct SDL_VoutOverlay {
      * 普通单帧播放 is_tile_grid=0, 其余字段忽略。
      */
     int is_tile_grid;
-    int tile_canvas_w;
-    int tile_canvas_h;
+//    int tile_canvas_w;
+//    int tile_canvas_h;
 #endif
     
     SDL_Class               *opaque_class;
@@ -89,6 +89,7 @@ struct SDL_VoutOverlay {
                                       int *out_x, int *out_y,
                                       int *out_w, int *out_h,
                                       int max_count);
+    void    (*func_get_tile_canvas)(SDL_VoutOverlay *overlay, int *out_w, int *out_h);
 #endif
 };
 
@@ -142,5 +143,6 @@ int     SDL_VoutOverlay_GetTileAVFrames(SDL_VoutOverlay *overlay,
                                         int *out_x, int *out_y,
                                         int *out_w, int *out_h,
                                         int max_count);
+void    SDL_VoutOverlay_GetTileCanvas(SDL_VoutOverlay *overlay, int *out_w, int *out_h);
 #endif
 #endif

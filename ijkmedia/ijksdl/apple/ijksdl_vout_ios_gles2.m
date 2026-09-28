@@ -174,12 +174,14 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_VoutOv
         int *ws = (int *)calloc(count, sizeof(int));
         int *hs = (int *)calloc(count, sizeof(int));
         int got = SDL_VoutOverlay_GetTileAVFrames(overlay, frames, xs, ys, ws, hs, count);
-
+        int tile_canvas_w = 0,tile_canvas_h = 0;
+        SDL_VoutOverlay_GetTileCanvas(overlay, &tile_canvas_w, &tile_canvas_h);
+        
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = frame->disp_w;
         attach.h = frame->disp_h;
-        attach.pixelW = overlay->tile_canvas_w;
-        attach.pixelH = overlay->tile_canvas_h;
+        attach.pixelW = tile_canvas_w;
+        attach.pixelH = tile_canvas_h;
         attach.fps    = frame->fps;
         attach.sarNum = frame->sar.num;
         attach.sarDen = frame->sar.den;

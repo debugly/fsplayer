@@ -266,4 +266,12 @@ int SDL_VoutOverlay_GetTileAVFrames(SDL_VoutOverlay *overlay,
         return 0;
     return overlay->func_get_tile_avframes(overlay, out_frames, out_x, out_y, out_w, out_h, max_count);
 }
+
+void SDL_VoutOverlay_GetTileCanvas(SDL_VoutOverlay *overlay, int *out_w, int *out_h)
+{
+    if (!overlay || !overlay->func_get_tile_canvas)
+        return;
+    return overlay->func_get_tile_canvas(overlay, out_w, out_h);
+}
+
 #endif
