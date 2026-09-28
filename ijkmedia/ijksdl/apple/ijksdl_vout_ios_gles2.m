@@ -61,6 +61,10 @@
         CVPixelBufferRelease(self.videoPicture);
         self.videoPicture = NULL;
     }
+    if (self.avframe) {
+        av_frame_free(&self->_avframe);
+    }
+    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer
     if (self.videoCVTextures) {
         for (id item in self.videoCVTextures) {
             CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
@@ -212,19 +216,39 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
 #endif
     
     CVPixelBufferRef videoPic = SDL_Overlay_getCVPixelBufferRef(overlay);
-    if (videoPic) {
+    // AVFrame-passthrough (FSPlaceboView software path): no CVPixelBuffer is created;
+    // the decoded frame is carried directly.
+    AVFrame *swframe = (overlay->format == SDL_FCC__FFVTB) ? SDL_VoutFFmpeg_GetAVFrame(overlay) : NULL;
+
+    if (videoPic || swframe) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = overlay->w;
         attach.h = overlay->h;
-        
-        attach.pixelW = (int)CVPixelBufferGetWidth(videoPic);
-        attach.pixelH = (int)CVPixelBufferGetHeight(videoPic);
+
+        if (videoPic) {
+            attach.pixelW = (int)CVPixelBufferGetWidth(videoPic);
+            attach.pixelH = (int)CVPixelBufferGetHeight(videoPic);
+            attach.videoPicture = CVPixelBufferRetain(videoPic);
+        } else {
+            attach.pixelW = swframe->width;
+            attach.pixelH = swframe->height;
+        }
         attach.fps    = overlay->fps;
         attach.sarNum = overlay->sar_num;
         attach.sarDen = overlay->sar_den;
         attach.autoZRotate = overlay->auto_z_rotate_degrees;
         attach.hasAlpha = overlay->has_alpha;
-        attach.videoPicture = CVPixelBufferRetain(videoPic);
+        // Carry the full frame (with DoVi/HDR side data).
+        // Hardware frames wrap a VideoToolbox CVPixelBuffer; software frames carry the
+        // raw decoded AVFrame.
+        if (overlay->format == SDL_FCC__VTB) {
+            AVFrame *src = SDL_VoutFFmpeg_HW_GetAVFrame(overlay);
+            if (src) {
+                attach.avframe = av_frame_clone(src);
+            }
+        } else if (swframe) {
+            attach.avframe = av_frame_clone(swframe);
+        }
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     } else {

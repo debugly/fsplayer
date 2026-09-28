@@ -34,6 +34,7 @@ struct FSTileSlot;
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
     CVPixelBufferRef pixel_buffer;
+    AVFrame *av_frame;   /* full frame ref (incl. DoVi side data) */
     Uint16 pitches[AV_NUM_DATA_POINTERS];
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
@@ -155,6 +156,9 @@ static void func_unref(SDL_VoutOverlay *overlay)
 
     CVBufferRelease(opaque->pixel_buffer);
     opaque->pixel_buffer = NULL;
+    if (opaque->av_frame) {
+        av_frame_free(&opaque->av_frame);
+    }
     return;
 }
 
@@ -269,6 +273,17 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         CVPixelBufferRelease(opaque->pixel_buffer);
     }
     opaque->pixel_buffer = CVPixelBufferRetain(pixel_buffer);
+
+    /* Keep a ref to the whole frame so the video renderer can read its
+       side data (e.g. Dolby Vision RPU). Cheap: av_frame_ref is ref-counted. */
+    if (opaque->av_frame) {
+        av_frame_unref(opaque->av_frame);
+    } else {
+        opaque->av_frame = av_frame_alloc();
+    }
+    if (opaque->av_frame) {
+        av_frame_ref(opaque->av_frame, frame);
+    }
     overlay->format = SDL_FCC__VTB;
 
     if (CVPixelBufferIsPlanar(pixel_buffer)) {
@@ -312,6 +327,15 @@ CVPixelBufferRef SDL_VoutFFmpeg_HW_GetCVPixelBufferRef(SDL_VoutOverlay *overlay)
 
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     return opaque->pixel_buffer;
+}
+
+AVFrame *SDL_VoutFFmpeg_HW_GetAVFrame(SDL_VoutOverlay *overlay)
+{
+    if (!check_object(overlay, __func__))
+        return NULL;
+
+    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+    return opaque->av_frame;
 }
 
 SDL_VoutOverlay *SDL_VoutFFmpeg_HW_CreateOverlay(int width, int height, SDL_Vout *display)

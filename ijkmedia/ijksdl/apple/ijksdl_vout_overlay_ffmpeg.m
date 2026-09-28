@@ -44,6 +44,13 @@ struct SDL_VoutOverlay_Opaque {
 
     CVPixelBufferRef pixelBuffer;
     CVPixelBufferPoolRef pixelBufferPool;
+    // The decoded source frame, retained for renderers that consume the AVFrame
+    // directly (FSPlaceboView uploads it via pl_map_avframe, which needs the frame's
+    // color / Dolby Vision side data — not just the CVPixelBuffer pixels).
+    AVFrame *av_frame;
+    // When set, only retain av_frame; skip the CVPixelBuffer creation entirely (the
+    // renderer uploads the raw frame). Mirrors SDL_Vout.render_avframe.
+    int render_avframe;
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 模式 */
     int         tile_mode;       // 1 表示当前正在累积 tile
@@ -379,6 +386,15 @@ CVPixelBufferRef SDL_VoutFFmpeg_GetCVPixelBufferRef(SDL_VoutOverlay *overlay)
     return opaque->pixelBuffer;
 }
 
+AVFrame *SDL_VoutFFmpeg_GetAVFrame(SDL_VoutOverlay *overlay)
+{
+    if (!check_object(overlay, __func__))
+        return NULL;
+
+    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+    return opaque->av_frame;
+}
+
 static void func_free_l(SDL_VoutOverlay *overlay)
 {
     SDLTRACE("SDL_Overlay(ffmpeg): overlay_free_l(%p)\n", overlay);
@@ -392,6 +408,9 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     if (opaque->pixelBuffer) {
         CVPixelBufferRelease(opaque->pixelBuffer);
         opaque->pixelBuffer = NULL;
+    }
+    if (opaque->av_frame) {
+        av_frame_free(&opaque->av_frame);
     }
 #if IS_TILEGRID_HEIC_ENABLED
     tile_slots_free(opaque);
@@ -420,6 +439,22 @@ static int func_fill_avframe_to_cvpixelbuffer(SDL_VoutOverlay *overlay, const AV
         return -100;
 
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
+
+    // AVFrame-passthrough: the renderer (FSPlaceboView) uploads the decoded frame's
+    // native planes directly, so just retain the frame — no overlay_format conversion,
+    // no CVPixelBuffer. Keeps the raw planes + Dolby Vision side data intact.
+    if (opaque->render_avframe) {
+        if (!opaque->av_frame) {
+            opaque->av_frame = av_frame_alloc();
+            if (!opaque->av_frame) return -100;
+        }
+        av_frame_unref(opaque->av_frame);
+        if (av_frame_ref(opaque->av_frame, frame) < 0) return -100;
+        overlay->w = frame->width;
+        overlay->h = frame->height;
+        return 0;
+    }
+
 #if IS_TILEGRID_HEIC_ENABLED
     /* ---------- HEIC tile grid 分支 ---------- */
     FSTileGridMetadata *tmeta = NULL;
@@ -584,6 +619,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
     overlay->func_fill_frame    = func_fill_avframe_to_cvpixelbuffer;
+    opaque->render_avframe      = display->render_avframe;
 #if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;
@@ -591,7 +627,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height,int src_form
 #endif
     
     SDL_Vout_Opaque * voutOpaque = display->opaque;
-    if (display->cvpixelbufferpool && !voutOpaque->cvPixelBufferPool) {
+    if (display->cvpixelbufferpool && !voutOpaque->cvPixelBufferPool && !display->render_avframe) {
         CVPixelBufferPoolRef cvPixelBufferPool = NULL;
         createCVPixelBufferPoolFromAVFrame(&cvPixelBufferPool, width, height, format);
         voutOpaque->cvPixelBufferPool = cvPixelBufferPool;

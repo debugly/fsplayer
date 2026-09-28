@@ -35,5 +35,6 @@
 
 SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int src_format, SDL_Vout *vout);
 CVPixelBufferRef SDL_VoutFFmpeg_GetCVPixelBufferRef(SDL_VoutOverlay *overlay);
+AVFrame *SDL_VoutFFmpeg_GetAVFrame(SDL_VoutOverlay *overlay);
 
 #endif

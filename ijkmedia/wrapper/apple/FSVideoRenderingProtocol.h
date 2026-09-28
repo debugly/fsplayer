@@ -78,6 +78,11 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) NSArray * _Nullable videoTextures;
 @property(nonatomic) NSArray * _Nullable videoCVTextures;      // 对应的 CVMetalTextureRef 包装引用
 
+// Full decoded frame (av_frame_ref'd, owned; freed in dealloc). Carries side data
+// such as Dolby Vision RPU.
+// nil for renderers that only consume videoPicture (e.g. FSMetalView).
+@property(nonatomic) struct AVFrame * _Nullable avframe;
+
 // HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
 @property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
 
@@ -185,9 +190,11 @@ typedef enum : NSUInteger {
 #endif
 - (CGImageRef)snapshot:(FSSnapshotType)aType;
 - (NSString *)name;
-- (id)context;
 
 @optional;
+// GPU context used to build the subtitle SDL_GPU (e.g. FSMetalView returns its
+// MTLDevice).
+- (id)context;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
 // 高斯模糊背景图片：替代默认纯色背景，填充无视频或黑边区域。传 nil 清除。
 @property(nonatomic, strong, nullable) UIImage *backgroundImage;
@@ -196,6 +203,9 @@ typedef enum : NSUInteger {
 // 单次高斯模糊的 sigma（模糊半径），默认 30，值越大越模糊。
 @property(nonatomic) float backgroundBlurSigma;
 - (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
+// Release rendering resources (Vulkan/Metal/GPU). Called when the player stops
+// and removes the view. Implementations must be safe to call multiple times.
+- (void)destroy;
 
 @end
 

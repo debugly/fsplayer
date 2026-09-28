@@ -153,6 +153,9 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         if ([view respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
             [view registerRefreshCurrentPicObserver:nil];
         }
+        if ([view respondsToSelector:@selector(destroy)]) {
+            [view destroy];
+        }
         [view removeFromSuperview];
         view = nil;
         [hudCardView removeFromSuperview];
