@@ -47,6 +47,12 @@ struct SDL_VoutOverlay_Opaque {
     Uint16 pitches[AV_NUM_DATA_POINTERS];
     Uint8 *pixels[AV_NUM_DATA_POINTERS];
 
+    /* 1.1.1 起 overlay 的旧公共成员（format/w/h/ff_format）下沉到 opaque */
+    Uint32 format;
+    int w;
+    int h;
+    enum AVPixelFormat ff_format;
+
     int no_neon_warned;
 
     struct SwsContext *img_convert_ctx;
@@ -136,13 +142,13 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     SDL_VoutOverlay_FreeInternal(overlay);
 }
 
-static void overlay_fill(SDL_VoutOverlay *overlay, AVFrame *frame, int planes)
+static void overlay_fill(SDL_VoutOverlay_Opaque *opaque, AVFrame *frame, int planes)
 {
-    overlay->planes = planes;
+    opaque->planes = planes;
 
     for (int i = 0; i < AV_NUM_DATA_POINTERS; ++i) {
-        overlay->pixels[i] = frame->data[i];
-        overlay->pitches[i] = frame->linesize[i];
+        opaque->pixels[i] = frame->data[i];
+        opaque->pitches[i] = frame->linesize[i];
     }
 }
 
@@ -171,7 +177,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     
     
     enum AVPixelFormat dst_format = AV_PIX_FMT_NONE;
-    switch (overlay->format) {
+    switch (opaque->format) {
         case SDL_FCC_YV12:
             need_swap_uv = 1;
             // no break;
@@ -196,7 +202,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
             }
             break;
         default:
-            dst_format = overlay->ff_format;
+            dst_format = opaque->ff_format;
     }
 
 
@@ -205,10 +211,10 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
         // linked frame
         av_frame_ref(opaque->linked_frame, frame);
 
-        overlay_fill(overlay, opaque->linked_frame, opaque->planes);
+        overlay_fill(opaque, opaque->linked_frame, opaque->planes);
 
         if (need_swap_uv)
-            FFSWAP(Uint8*, overlay->pixels[1], overlay->pixels[2]);
+            FFSWAP(Uint8*, opaque->pixels[1], opaque->pixels[2]);
     } else {
         // managed frame
         AVFrame* managed_frame = opaque_obtain_managed_frame_buffer(opaque);
@@ -217,12 +223,12 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
             return -1;
         }
 
-        overlay_fill(overlay, opaque->managed_frame, opaque->planes);
+        overlay_fill(opaque, opaque->managed_frame, opaque->planes);
 
         // setup frame managed
-        for (int i = 0; i < overlay->planes; ++i) {
-            swscale_dst_pic.data[i] = overlay->pixels[i];
-            swscale_dst_pic.linesize[i] = overlay->pitches[i];
+        for (int i = 0; i < opaque->planes; ++i) {
+            swscale_dst_pic.data[i] = opaque->pixels[i];
+            swscale_dst_pic.linesize[i] = opaque->pitches[i];
         }
 
         if (need_swap_uv)
@@ -231,17 +237,6 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
 
 
     // swscale / direct draw
-    /*
-     ALOGE("ijk_image_convert w=%d, h=%d, df=%d, dd=%d, dl=%d, sf=%d, sd=%d, sl=%d",
-     (int)frame->width,
-     (int)frame->height,
-     (int)dst_format,
-     (int)swscale_dst_pic.data[0],
-     (int)swscale_dst_pic.linesize[0],
-     (int)frame->format,
-     (int)(const uint8_t**) frame->data,
-     (int)frame->linesize);
-     */
     if (use_linked_frame) {
         // do nothing
     } else if (ijk_image_convert(frame->width, frame->height,
@@ -310,11 +305,11 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int frame_f
     opaque->sws_flags     = SWS_BILINEAR;
 
     overlay->opaque_class = &g_vout_overlay_ffmpeg_class;
-    overlay->format       = overlay_format;
-    overlay->pitches      = opaque->pitches;
-    overlay->pixels       = opaque->pixels;
-    overlay->w            = width;
-    overlay->h            = height;
+    opaque->format        = overlay_format;
+    opaque->pitches[0]    = 0;
+    opaque->pixels[0]     = NULL;
+    opaque->w             = width;
+    opaque->h             = height;
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
@@ -438,13 +433,13 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int frame_f
     }
     
     //record ff_format
-    overlay->ff_format = ff_format;
+    opaque->ff_format = ff_format;
     opaque->managed_frame = opaque_setup_frame(opaque, ff_format, buf_width, buf_height);
     if (!opaque->managed_frame) {
         ALOGE("overlay->opaque->frame allocation failed\n");
         goto fail;
     }
-    overlay_fill(overlay, opaque->managed_frame, opaque->planes);
+    overlay_fill(opaque, opaque->managed_frame, opaque->planes);
 
     return overlay;
 

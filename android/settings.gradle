@@ -1,0 +1,4 @@
+rootProject.name = "fsplayer-android"
+
+include ':ijkplayer'
+include ':demo'

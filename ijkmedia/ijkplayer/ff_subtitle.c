@@ -276,6 +276,11 @@ static int ff_sub_upload_texture(FFSubtitle *sub, double pts, SDL_GPU *gpu, SDL_
     if (!sub || !texture) {
         return -1;
     }
+    // Android Vulkan 无 OpenGL GPU 层，ffp->gpu 恒为 NULL，字幕静默禁用
+    if (!gpu) {
+        *texture = NULL;
+        return -1;
+    }
     
     FFSubtitleBufferPacket packet = {0};
     int r = ff_sub_upload_buffer(sub, pts, &packet);

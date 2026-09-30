@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.debugly.fsplayer.demo'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.debugly.fsplayer.demo"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation project(':ijkplayer')
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}
