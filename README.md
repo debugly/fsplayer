@@ -115,7 +115,7 @@ Under investigation
 
 ## Integration
 
-FSPlayer is free and released under [LGPLv3](./COPYING.LGPLv3). If it's useful to you, [buy the author a coffee](./Donate.md).
+FSPlayer is free and released under [LGPLv2.1+](./COPYING.LGPLv2.1). If it's useful to you, [buy the author a coffee](./Donate.md).
 
 - Swift Package Manager: [FSPlayer-SPM](https://github.com/debugly/FSPlayer-SPM.git)
 - CocoaPods:

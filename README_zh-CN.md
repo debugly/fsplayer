@@ -123,7 +123,7 @@ FSPlayer 保留了你熟悉的 ijkplayer 大部分架构，同时应用了更加
 
 ## 集成
 
-FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，感觉不错可以 [请作者喝咖啡](./Donate.md) 。
+FSPlayer 完全免费，使用 [LGPLv2.1+](./COPYING.LGPLv2.1) 许可协议发布，感觉不错可以 [请作者喝咖啡](./Donate.md) 。
 
 - 通过 Swift Package Manger 集成: [FSPlayer-SPM.git](https://github.com/debugly/FSPlayer-SPM.git)
 - 通过 Cocoapods 集成:
