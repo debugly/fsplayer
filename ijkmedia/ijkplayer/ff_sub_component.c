@@ -438,7 +438,7 @@ static int subtitle_thread(void *arg)
                     sp->height = com->sub_height;
                     sp->shown = 0;
                     
-                    bzero(sp->sub_list, sizeof(sp->sub_list));
+                    memset(sp->sub_list, 0, sizeof(sp->sub_list));
                     if (num_rect > 0) {
                         memcpy(sp->sub_list, buffers, num_rect * sizeof(buffers[0]));
                     }

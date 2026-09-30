@@ -95,7 +95,7 @@
 #ifdef isnan
 #undef isnan
 #endif
-#define isnan(x) (isnan((double)(x)) || isnanf((float)(x)))
+#define isnan(x) __builtin_isnan((double)(x))
 #endif
 
 #if defined(__ANDROID__)
@@ -2776,7 +2776,7 @@ reload:
             }
 
             int ret_len = ijk_soundtouch_translate(is->handle, is->audio_new_buf, (float)(ffp->pf_playback_rate), (float)(1.0f/ffp->pf_playback_rate),
-                    resampled_data_size / 2, bytes_per_sample, is->audio_tgt.channels, af->frame->sample_rate);
+                    resampled_data_size / 2, bytes_per_sample, is->audio_tgt.ch_layout.nb_channels, af->frame->sample_rate);
             if (ret_len > 0) {
                 is->audio_buf = (uint8_t*)is->audio_new_buf;
                 resampled_data_size = ret_len;
