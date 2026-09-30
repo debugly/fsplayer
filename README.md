@@ -1,157 +1,173 @@
-<div align="center">
-<!--   <img alt="fsplayer" src="./primary-wide.png"> -->
-  <h1>FSPlayer</h1>
-  <img src="https://github.com/debugly/fsplayer/actions/workflows/apple.yml/badge.svg">
-  <img src="https://img.shields.io/badge/Platform-%20iOS%20macOS%20tvOS%20-blue.svg">
-</div>
+# FSPlayer
 
-[![Stargazers repo roster for @debugly/fsplayer](https://reporoster.com/stars/debugly/fsplayer)](https://github.com/debugly/fsplayer/stargazers)
+[Stargazers repo roster for @debugly/fsplayer](https://github.com/debugly/fsplayer/stargazers)
 
-## 功能&amp;特点
+**FSPlayer is the actively-maintained successor to [ijkplayer](https://github.com/bilibili/ijkplayer).** It keeps the proven `ijkplayer` architecture while replacing its aging foundation with a modern one: FFmpeg 8, Metal / Vulkan rendering, hardware-decode hot-switching, and first-class support for HDR, Dolby Vision, Blu-ray/ISO, and rich subtitle effects.
+
+> 🇨🇳 中文文档见 [README.md](./README_zh-CN.md)
+
+## Why FSPlayer over ijkplayer
+
+ijkplayer has been effectively unmaintained for years — its last release (`k0.8.8`) is from 2018 , It ships FFmpeg 4.0 (2021). Renders through OpenGL ES 2.0, and its own README lists native subtitle rendering and avfilter support as explicitly *not on plan*.
+
+FSPlayer keeps the same architecture you know, and moves the stack forward:
+
+
+|                                      | ijkplayer                                     | FSPlayer                                          |
+| ------------------------------------ | --------------------------------------------- | ------------------------------------------------- |
+| **Maintenance**                      | Stalled — last release 2017, last commit 2021 | Active — updated monthly                          |
+| **FFmpeg**                           | 3.4 (2017)                                    | **8.1.2**                                         |
+| **Platforms**                        | Android, iOS                                  | Android, iOS, macOS, tvOS,                        |
+| **Video output**                     | OpenGL ES 2.0                                 | **Metal** (iOS/macOS/tvOS) · **Vulkan** (Android) |
+| **4K / HDR / HDR10+ / Dolby Vision** | ✗                                             | **✓**                                             |
+| **Native subtitle rendering**        | ✗ (explicitly not on plan)                    | **✓** — ASS effects, text + bitmap subs           |
+| **Blu-ray / ISO / BDMV**             | ✗                                             | **✓** — incl. over network                        |
+| **avfilter / video filters**         | ✗ (explicitly not on plan)                    | **✓** — e.g. software deinterlacing               |
+| **HW-decode hot switch**             | ✗                                             | **✓** — no player restart needed                  |
+| **Distribution**                     | jcenter (dead) / manual                       | **SPM + CocoaPods**                               |
+| **License**                          | LGPLv2.1+                                     | LGPLv2.1+                                         |
+
+
+Already on ijkplayer? Migration is straightforward — see the [migration guide](./doc/migration.md).
+
+## FSPlayer All Features
 
 - [x] FFmpeg 8.1.2
-- [x] 支持透传 FFmpeg option 参数
-- [x] 支持获取下载速度
-- [x] 支持获取预加载进度
-- [x] 获取基本信息（音频：采样率、声道数、时长等，视频：宽、高、fps、时长等）
-- [x] 支持获取首帧解码时间、渲染时间
-- [x] 支持 file、http、https、udp、rtmp、rtp、rtsp、bluray、smb、ftp 等协议
-- [x] 支持设置 HTTP 超时、错误重试、UA、Cookie、Referer、Origin 等，如果是 m3u8 支持透传给 ts 请求
-- [x] 支持 HLS 直播或者点播
-- [x] 支持 AV1、uavs3 解码器
-- [x] 支持播放音频时显示内置封面
-- [x] 支持播放图片
-- [x] 支持精准 seek
-- [x] 支持软硬解设置
-- [x] 支持多实例播放
-- [x] 支持播放完成（EOF）后，重新seek继续播放
-- [x] 优化了 file 协议 seek 后起播慢问题
-- [x] 音视频加密播放
-- [x] 强大的字幕功能
-  - [x] 文本字幕(srt/vtt/ass)
-  - [x] 图形字幕(dvbsub/dvdsub/pgssub/idx+sub)
-  - [x] 同时支持内嵌和外挂
-  - [x] 支持设置字幕延迟
-  - [x] 支持 ASS 字幕的特效
-  - [x] 支持设置文本字幕的样式
-- [x] 支持循环播放
-- [x] 支持切换音轨
-- [x] 支持设置音轨延迟
-- [x] 支持随时截屏（jpg、png、tiff）
-- [x] 支持设置视频显示比例
-- [x] 支持设置旋转角度设置（0,90,180,270）
-- [x] 支持设置水平镜像，垂直镜像
-- [x] 支持设置视频镜像模式
-- [x] 支持设置视频背景颜色（默认黑色）
-- [x] 支持设置画面饱和度、亮度、对比度
-- [x] 支持将画面同时渲染到多个 View 上
-- [x] 支持实时获取音频 PCM 数据
-- [x] 支持自定义渲染 View
-- [x] 支持 4K/HDR/HDR10/HDR10+/Dolby Vision，Pro版本支持 Dolby Vision P5
-- [x] 智能识别 iso (blury、dvd、普通视频)
-- [x] mpegts 视频快进不花屏
-- [x] 支持网络协议播放 iso 镜像和 BDMV 文件夹
-- [x] 双声道音频可强制指定声道播放
-- [x] 获取当前显示的视频帧
-- [x] 录制视频，iOS保存到相册可播放
-- [x] 支持播放webp动画
-- [x] 支持自定义音频渲染器
-- [x] 缓冲进度通知
-- [x] 支持异步销毁，即使不调用 shutdown 也能正常销毁
-- [x] 支持设定播放器不管理 AudioSession 状态
-- [x] 优化播放器 View 旋转时的动画效果
-- [x] 支持播放瓦片网格 HEIC
-- [x] 支持高斯模糊背景
+- [x] Pass-through of FFmpeg options
+- [x] Download speed &amp; preload progress reporting
+- [x] Media info (audio sample rate / channels / duration; video width / height / fps / duration)
+- [x] First-frame decode &amp; render timing
+- [x] Protocols: file, http, https, udp, rtmp, rtp, rtsp, bluray, smb, ftp, …
+- [x] HTTP tuning: timeout, retry, User-Agent, Cookie, Referer, Origin (and pass-through to TS requests for m3u8)
+- [x] HLS live &amp; VOD
+- [x] AV1 and uavs3 decoders
+- [x] Embedded cover art for audio playback
+- [x] Image playback (incl. animated WebP)
+- [x] Accurate seeking
+- [x] Hardware / software decoding, switchable without restart
+- [x] Multiple concurrent instances
+- [x] Re-seek after EOF
+- [x] Fast start for `file` protocol seeks
+- [x] Encrypted A/V playback (e.g. AES-128 HLS)
+- [x] Powerful subtitles
+  - [x] Text subtitles (srt / vtt / ass)
+  - [x] Bitmap subtitles (dvbsub / dvdsub / pgssub / idx+sub)
+  - [x] Embedded and external
+  - [x] Subtitle delay
+  - [x] ASS effects
+  - [x] Text subtitle styling
+- [x] Loop playback
+- [x] Audio track switching &amp; track delay
+- [x] Snapshot (jpg, png, tiff)
+- [x] Display aspect ratio, rotation (0/90/180/270), horizontal &amp; vertical mirror
+- [x] Video background color (default black)
+- [x] Saturation / brightness / contrast
+- [x] Render one frame to multiple views
+- [x] Real-time PCM access
+- [x] Custom render view &amp; custom audio renderer
+- [x] 4K / HDR / HDR10 / HDR10+ / Dolby Vision (Pro adds Dolby Vision P5)
+- [x] Smart ISO detection (bluray / DVD / regular video)
+- [x] No pixelation on MPEG-TS fast-forward
+- [x] Network playback of ISO images and BDMV folders
+- [x] Force a channel on stereo audio
+- [x] Access the currently displayed video frame
+- [x] Video recording (iOS saves to Photos)
+- [x] Buffer progress notifications
+- [x] Async destroy (safe even without calling `shutdown`)
+- [x] Optional player-controlled AudioSession
+- [x] Smoother view rotation animation
+- [x] Tile-grid HEIC playback
+- [x] Gaussian blur background
 
-最新支持
+Latest additions
 
-- [x] 播放 HDR 视频时支持点亮 HDR 屏幕
-- [x] 优化了音频比视频短，只剩下视频时可以正常观看和seek
-- [x] 软硬解切换不需要重启播放器
-- [x] 开启视频滤镜，软解支持反交错
-- [x] 同步销毁播放器（默认异步）
+- [x] HDR display brightens the HDR screen
+- [x] Playable &amp; seekable when audio ends before video
+- [x] Video filters with software deinterlacing
+- [x] Synchronous destroy (async by default)
 
-调研中
+Under investigation
 
-- [ ] AV1 可以硬解，但个别视频会崩溃
-- [ ] 直播回放
-- [ ] 音视频可变速变调
-- [ ] 支持透明视频
-- [ ] 画中画
+- [ ] AV1 hardware decode (stable on most, some files still crash)
+- [ ] Live playback / timeshift
+- [ ] Variable playback rate with pitch correction
+- [ ] Transparent video
+- [ ] Picture-in-picture
 
-如果之前使用的 ijkplayer，可以轻松迁移到 fsplayer，请参考 [迁移指南](./doc/migration.md) 。
+## Build environment
 
-## 构建环境
-
-- macOS Tahoe(26.5)
-- Xcode Version 26.6 (17F113)
+- macOS Tahoe (26.5)
+- Xcode 26.6 (17F113)
+- Android NDK 27.3 (to build Android)
 
 
-| 最低支持平台      | 架构                                        |
-| ----------- | ----------------------------------------- |
-| iOS 12.0    | arm64、arm64\_simulator、x86\_64\_simulator |
-| macOS 10.14 | arm64、x86\_64                             |
-| tvOS 12.0   | arm64、arm64\_simulator、x86\_64\_simulator |
+| Minimum platform     | Architectures                               |
+| -------------------- | ------------------------------------------- |
+| iOS 12.0             | arm64, arm64\_simulator, x86\_64\_simulator |
+| macOS 10.14          | arm64, x86\_64                              |
+| tvOS 12.0            | arm64, arm64\_simulator, x86\_64\_simulator |
+| Android 7.0 (API 24) | arm64-v8a                                   |
 
 
-## 更新记录
+## Changelog
 
 - [CHANGELOG.md](CHANGELOG.md)
 
-## 集成
+## Integration
 
-FSPlayer 完全免费，使用 [LGPLv3](./COPYING.LGPLv3) 许可协议发布，感觉不错可以 [请作者喝咖啡](./Donate.md) 。
+FSPlayer is free and released under [LGPLv3](./COPYING.LGPLv3). If it's useful to you, [buy the author a coffee](./Donate.md).
 
-- 通过 Swift Package Manger 集成: [FSPlayer-SPM.git](https://github.com/debugly/FSPlayer-SPM.git)
-- 通过 Cocoapods 集成:
+- Swift Package Manager: [FSPlayer-SPM](https://github.com/debugly/FSPlayer-SPM.git)
+- CocoaPods:
 
 ```
 pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.1/FSPlayer.spec.json'
 ```
 
-### 调用
+### Usage
 
-```
+```objc
 FSOptions *options = [FSOptions optionsByDefault];
-//创建播放器
 self.player = [[FSPlayer alloc] initWithContent:url options:options];
-//创建播放器渲染view
-NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
+
+NSView <FSVideoRenderingProtocol>* playerView = self.player.view;
 playerView.frame = self.playerContainer.bounds;
 playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
-//加载完毕自动播放
+
 self.player.shouldAutoplay = YES;
-//异步加载
 [self.player prepareToPlay];
 ```
 
-更详细的使用[说明文档](https://fsplayer.debugly.cn/manuals/getting-started.html)
+Full [documentation](https://fsplayer.debugly.cn/manuals/getting-started.html).
 
-## 编译步骤
+## Building from source
 
-源码完全开放，可以自己编译 Framework：
+The source is fully open; build the framework (Apple) or AAR (Android) yourself:
 
 ```bash
-# Build iOS Framework
+# iOS
 ./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
 ./examples/ios/build-framework.sh
-# Build macOS Framework
+# macOS
 ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
 ./examples/macos/build-framework.sh
-# Build tvOS Framework
+# tvOS
 ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
 ./examples/tvos/build-framework.sh
+# Android
+./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
+cd android && ./gradlew assembleRelease
 ```
 
 ## FSPlayer-Pro
 
-在 FSPlayer 的基础上提供了更加强劲的功能，以动态库的形式提供。
+A drop-in dynamic library on top of FSPlayer with extra capabilities:
 
 - Dolby Vision P5
-- HLS 点播边播边缓存，已经缓存的 seek 回去播放不再耗流量，起播速度更快
-- 无缝切换音轨，避免了普通方式切换后需要seek到当前位置，播放器重新加载短暂没有声音并且黑屏的问题
-- 无缝切换清晰度
-- 播放网络 iso 镜像和 BDMV 文件夹时，首帧起播速度提升x倍，Seek 后首帧起播速度提升x倍
+- HLS VOD play-while-cache (seeking back to cached content costs no traffic and starts faster)
+- Seamless audio-track switching (no reload / no brief silence or black frame)
+- Seamless quality switching
+- Multi-x faster first-frame and seek start for network ISO / BDMV playback
 
-邮件联系：[debugly@icloud.com](mailto:debugly@icloud.com) 
+Contact: [debugly@icloud.com](mailto:debugly@icloud.com)
