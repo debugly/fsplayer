@@ -23,7 +23,7 @@ if ! command -v "$GLSLC" >/dev/null 2>&1 && [ ! -x "$GLSLC" ]; then
 fi
 
 # 输入文件 -> 生成符号前缀
-for src in yuv.vert yuv.frag external.frag; do
+for src in yuv.vert yuv.frag external.frag sub.vert sub.frag; do
     [ -f "$src" ] || continue
     "$GLSLC" -fshader-stage="${src##*.}" -o "$src.spv" "$src"
     sym=$(echo "$src" | tr './-' '___')

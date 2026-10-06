@@ -45,6 +45,11 @@
 #include "shaders/yuv.vert.spv.h"
 #include "shaders/yuv.frag.spv.h"
 #include "shaders/external.frag.spv.h"
+#include "shaders/sub.vert.spv.h"
+#include "shaders/sub.frag.spv.h"
+
+#include "ijksdl/ijksdl_gpu.h"
+#include "fs_vulkan_internal.h"
 
 /*
  * VK_ANDROID_external_memory_android_hardware_buffer 相关入口在 Vulkan 1.1 才
@@ -158,6 +163,18 @@ struct FSVulkanRenderer {
     int            mc_w;
     int            mc_h;
     uint64_t       mc_external_format;
+
+    /* ---- 字幕叠加层（SDL_GPU 产出的纹理，由 vout 每帧塞进来）---- */
+    FSVulkanContext       ctx;                /* 暴露给 SDL_GPU 层的设备上下文 */
+    SDL_TextureOverlay   *sub_overlay;
+    VkPipeline            sub_pipeline;
+    VkPipelineLayout      sub_pipeline_layout;
+    VkDescriptorSetLayout sub_desc_layout;
+    VkDescriptorPool      sub_desc_pool;
+    VkDescriptorSet       sub_desc_set;
+    VkBuffer              sub_quad_buffer;
+    VkDeviceMemory        sub_quad_mem;
+    int                   sub_desc_pending;   /* overlay 变了，描述符待重写 */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -945,6 +962,269 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
 }
 
 /* ------------------------------------------------------------------------- */
+/* 字幕叠加层                                                                 */
+/* ------------------------------------------------------------------------- */
+
+/* 单位四边形（0..1 + uv），字幕矩形由 push constant 给出 */
+static const FSQuadVertex kSubQuadVertices[6] = {
+    {{0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{1.0f, 1.0f}, {1.0f, 1.0f}},
+    {{0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{1.0f, 1.0f}, {1.0f, 1.0f}},
+    {{0.0f, 1.0f}, {0.0f, 1.0f}},
+};
+
+const FSVulkanContext *fs_vulkan_renderer_context(FSVulkanRenderer *r)
+{
+    if (!r)
+        return NULL;
+    r->ctx.physical_device  = r->physical_device;
+    r->ctx.device           = r->device;
+    r->ctx.queue            = r->graphics_queue;
+    r->ctx.queue_family     = r->queue_family;
+    r->ctx.command_pool     = r->command_pool;
+    r->ctx.swapchain_format = r->swapchain_format;
+    return &r->ctx;
+}
+
+/* overlay 变了 -> 重写描述符（只能在没有在飞的命令缓冲引用它时做） */
+static void update_sub_descriptor(FSVulkanRenderer *r)
+{
+    if (!r->sub_desc_pending)
+        return;
+    if (!r->sub_desc_set || !r->sub_overlay) {
+        r->sub_desc_pending = 0;
+        return;
+    }
+
+    FSVulkanSubTexture *tex = r->sub_overlay->getTexture(r->sub_overlay);
+    if (!tex || !tex->view) {
+        /* 纹理还没准备好，下一帧再试 */
+        return;
+    }
+
+    VkDescriptorImageInfo ii = {
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .imageView = tex->view,
+        .sampler = r->sampler,
+    };
+    VkWriteDescriptorSet wr = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = r->sub_desc_set,
+        .dstBinding = 1,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &ii,
+    };
+    vkUpdateDescriptorSets(r->device, 1, &wr, 0, NULL);
+    r->sub_desc_pending = 0;
+}
+
+/* 建字幕管线：单纹理 + 预乘 alpha 混合 */
+static int create_sub_resources(FSVulkanRenderer *r)
+{
+    if (r->sub_pipeline)
+        return 0;
+    if (r->swapchain_extent.width == 0)
+        return -1;
+
+    VkShaderModule vs = create_shader_module(r, sub_vert_spv, sub_vert_spv_len);
+    VkShaderModule fs = create_shader_module(r, sub_frag_spv, sub_frag_spv_len);
+    if (!vs || !fs)
+        goto fail;
+
+    {
+        VkDescriptorSetLayoutBinding b = {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        };
+        VkDescriptorSetLayoutCreateInfo dli = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1, .pBindings = &b,
+        };
+        if (vkCreateDescriptorSetLayout(r->device, &dli, NULL, &r->sub_desc_layout) != VK_SUCCESS)
+            goto fail;
+
+        VkDescriptorPoolSize ps = {
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+        };
+        VkDescriptorPoolCreateInfo pci = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets = 1,
+            .poolSizeCount = 1, .pPoolSizes = &ps,
+        };
+        if (vkCreateDescriptorPool(r->device, &pci, NULL, &r->sub_desc_pool) != VK_SUCCESS)
+            goto fail;
+
+        VkDescriptorSetAllocateInfo dai = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = r->sub_desc_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &r->sub_desc_layout,
+        };
+        if (vkAllocateDescriptorSets(r->device, &dai, &r->sub_desc_set) != VK_SUCCESS)
+            goto fail;
+
+        VkPushConstantRange pcr = {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(float) * 4,
+        };
+        VkPipelineLayoutCreateInfo pli = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1, .pSetLayouts = &r->sub_desc_layout,
+            .pushConstantRangeCount = 1, .pPushConstantRanges = &pcr,
+        };
+        if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->sub_pipeline_layout) != VK_SUCCESS)
+            goto fail;
+    }
+
+    {
+        VkPipelineShaderStageCreateInfo stages[2] = {
+            { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+              .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = vs, .pName = "main" },
+            { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+              .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = fs, .pName = "main" },
+        };
+        VkVertexInputBindingDescription binding = {
+            .binding = 0, .stride = sizeof(FSQuadVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        };
+        VkVertexInputAttributeDescription attrs[2] = {
+            { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,
+              .offset = offsetof(FSQuadVertex, pos) },
+            { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,
+              .offset = offsetof(FSQuadVertex, uv) },
+        };
+        VkPipelineVertexInputStateCreateInfo vis = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 1, .pVertexBindingDescriptions = &binding,
+            .vertexAttributeDescriptionCount = 2, .pVertexAttributeDescriptions = attrs,
+        };
+        VkPipelineInputAssemblyStateCreateInfo ias = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        };
+        VkViewport viewport = { 0, 0, (float)r->swapchain_extent.width,
+                                    (float)r->swapchain_extent.height, 0.0f, 1.0f };
+        VkRect2D scissor = { {0, 0}, r->swapchain_extent };
+        VkPipelineViewportStateCreateInfo vps = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1, .pViewports = &viewport,
+            .scissorCount = 1, .pScissors = &scissor,
+        };
+        VkPipelineRasterizationStateCreateInfo rs = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .polygonMode = VK_POLYGON_MODE_FILL, .cullMode = VK_CULL_MODE_NONE, .lineWidth = 1.0f,
+        };
+        VkPipelineMultisampleStateCreateInfo ms = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        };
+        /* 字幕位图已经预乘，源因子 ONE（对齐 Metal 字幕管线） */
+        VkPipelineColorBlendAttachmentState blend = {
+            .blendEnable = VK_TRUE,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .colorBlendOp = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .alphaBlendOp = VK_BLEND_OP_ADD,
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        };
+        VkPipelineColorBlendStateCreateInfo cbs = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+            .attachmentCount = 1, .pAttachments = &blend,
+        };
+        VkGraphicsPipelineCreateInfo gpi = {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = 2, .pStages = stages,
+            .pVertexInputState = &vis,
+            .pInputAssemblyState = &ias,
+            .pViewportState = &vps,
+            .pRasterizationState = &rs,
+            .pMultisampleState = &ms,
+            .pColorBlendState = &cbs,
+            .layout = r->sub_pipeline_layout,
+            .renderPass = r->render_pass,
+            .subpass = 0,
+        };
+        if (vkCreateGraphicsPipelines(r->device, VK_NULL_HANDLE, 1, &gpi, NULL,
+                                      &r->sub_pipeline) != VK_SUCCESS)
+            goto fail;
+    }
+
+    {
+        VkDeviceSize vbuf_size = sizeof(kSubQuadVertices);
+        if (create_buffer(r, vbuf_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                          &r->sub_quad_buffer, &r->sub_quad_mem) != VK_SUCCESS)
+            goto fail;
+        void *data = NULL;
+        vkMapMemory(r->device, r->sub_quad_mem, 0, vbuf_size, 0, &data);
+        memcpy(data, kSubQuadVertices, vbuf_size);
+        vkUnmapMemory(r->device, r->sub_quad_mem);
+    }
+
+    vkDestroyShaderModule(r->device, vs, NULL);
+    vkDestroyShaderModule(r->device, fs, NULL);
+    ALOGI("FSVulkanRenderer: subtitle pipeline ready\n");
+    return 0;
+
+fail:
+    if (vs) vkDestroyShaderModule(r->device, vs, NULL);
+    if (fs) vkDestroyShaderModule(r->device, fs, NULL);
+    ALOGE("FSVulkanRenderer: subtitle pipeline create failed\n");
+    return -1;
+}
+
+static void destroy_sub_resources(FSVulkanRenderer *r)
+{
+    if (r->sub_overlay) {
+        SDL_TextureOverlay_Release(&r->sub_overlay);
+    }
+    if (r->sub_pipeline)        vkDestroyPipeline(r->device, r->sub_pipeline, NULL);
+    if (r->sub_pipeline_layout) vkDestroyPipelineLayout(r->device, r->sub_pipeline_layout, NULL);
+    if (r->sub_desc_pool)       vkDestroyDescriptorPool(r->device, r->sub_desc_pool, NULL);
+    if (r->sub_desc_layout)     vkDestroyDescriptorSetLayout(r->device, r->sub_desc_layout, NULL);
+    if (r->sub_quad_buffer)     vkDestroyBuffer(r->device, r->sub_quad_buffer, NULL);
+    if (r->sub_quad_mem)        vkFreeMemory(r->device, r->sub_quad_mem, NULL);
+    r->sub_pipeline = VK_NULL_HANDLE;
+    r->sub_pipeline_layout = VK_NULL_HANDLE;
+    r->sub_desc_pool = VK_NULL_HANDLE;
+    r->sub_desc_layout = VK_NULL_HANDLE;
+    r->sub_desc_set = VK_NULL_HANDLE;
+    r->sub_quad_buffer = VK_NULL_HANDLE;
+    r->sub_quad_mem = VK_NULL_HANDLE;
+    r->sub_desc_pending = 0;
+}
+
+void fs_vulkan_renderer_set_sub_overlay(FSVulkanRenderer *r, struct SDL_TextureOverlay *overlay)
+{
+    if (!r)
+        return;
+    if (r->sub_overlay == overlay)
+        return;
+
+    if (r->sub_overlay)
+        SDL_TextureOverlay_Release(&r->sub_overlay);
+
+    r->sub_overlay = SDL_TextureOverlay_Retain(overlay);
+    r->sub_desc_pending = 1;
+}
+
+struct SDL_TextureOverlay *fs_vulkan_renderer_get_sub_overlay(FSVulkanRenderer *r)
+{
+    if (!r || !r->sub_overlay)
+        return NULL;
+    return SDL_TextureOverlay_Retain(r->sub_overlay);
+}
+
+/* ------------------------------------------------------------------------- */
 /* 公开接口                                                                   */
 /* ------------------------------------------------------------------------- */
 
@@ -1008,6 +1288,10 @@ int fs_vulkan_renderer_set_surface(FSVulkanRenderer *r, ANativeWindow *window)
     if (create_framebuffers(r) != VK_SUCCESS)
         return -1;
 
+    /* 字幕管线依赖 swapchain 尺寸（viewpoint 固定），失败只降级为无字幕 */
+    if (create_sub_resources(r) != 0)
+        ALOGW("FSVulkanRenderer: subtitle disabled (pipeline create failed)\n");
+
     r->surface_ready = 1;
     ALOGI("FSVulkanRenderer: surface ready, %ux%u\n", r->swapchain_extent.width, r->swapchain_extent.height);
     return 0;
@@ -1067,6 +1351,12 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     if (res != VK_SUCCESS)
         return -1;
 
+    /* 字幕纹理换了 -> 重写描述符；先等上一帧画完，避免描述符被在飞的命令缓冲引用 */
+    if (r->sub_desc_pending && r->sub_desc_set) {
+        vkDeviceWaitIdle(r->device);
+        update_sub_descriptor(r);
+    }
+
     vkResetCommandBuffer(r->command_buffer, 0);
     VkCommandBufferBeginInfo bi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
@@ -1101,12 +1391,34 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         .pClearValues = &clear,
     };
     vkCmdBeginRenderPass(r->command_buffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            layout, 0, 1, &desc_set, 0, NULL);
-    VkDeviceSize offsets = 0;
-    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &offsets);
-    vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+
+    /* pipeline 为空 = 只有字幕（例如音频轨在放、视频帧已被清掉） */
+    if (pipeline != VK_NULL_HANDLE) {
+        vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                layout, 0, 1, &desc_set, 0, NULL);
+        VkDeviceSize offsets = 0;
+        vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &offsets);
+        vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+    }
+
+    /* 视频之上叠字幕（预乘 alpha，覆盖整个显示区域） */
+    if (r->sub_overlay && r->sub_pipeline && !r->sub_desc_pending) {
+        FSVulkanSubTexture *tex = r->sub_overlay->getTexture(r->sub_overlay);
+        if (tex && tex->view) {
+            vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              r->sub_pipeline);
+            vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    r->sub_pipeline_layout, 0, 1, &r->sub_desc_set, 0, NULL);
+            VkDeviceSize sub_offset = 0;
+            vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->sub_quad_buffer, &sub_offset);
+            float sub_rect[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+            vkCmdPushConstants(r->command_buffer, r->sub_pipeline_layout,
+                               VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(sub_rect), sub_rect);
+            vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+        }
+    }
+
     vkCmdEndRenderPass(r->command_buffer);
     vkEndCommandBuffer(r->command_buffer);
 
@@ -1465,6 +1777,18 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
                             VK_NULL_HANDLE);
 }
 
+/*
+ * 只有字幕、没有视频帧（例如视频帧被清掉、只留音频在放）时调用：
+ * 清屏 + 画字幕四边形。
+ */
+int fs_vulkan_renderer_display_sub_overlay(FSVulkanRenderer *r)
+{
+    if (!r || !r->surface_ready || !r->sub_overlay)
+        return -1;
+
+    return draw_and_present(r, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE);
+}
+
 void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
 {
     if (!r)
@@ -1474,6 +1798,7 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
         vkDeviceWaitIdle(r->device);
 
         destroy_mc_resources(r);
+        destroy_sub_resources(r);   /* 依赖 render_pass，必须在其之前销毁 */
 
         if (r->sws_ctx) sws_freeContext(r->sws_ctx);
         if (r->converted_frame) av_frame_free(&r->converted_frame);

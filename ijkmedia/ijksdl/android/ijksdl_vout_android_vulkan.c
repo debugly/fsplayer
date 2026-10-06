@@ -28,12 +28,15 @@
 #include <android/native_window_jni.h>
 
 #include "ijksdl/ijksdl_vout_internal.h"
+#include "ijksdl/ijksdl_gpu.h"
 #include "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h"
 #include "ijkplayer/ff_ffplay_def.h"
 #include "vulkan/fs_vulkan_renderer.h"
+#include "vulkan/ijksdl_gpu_vulkan.h"
 
 struct SDL_Vout_Opaque {
     FSVulkanRenderer *renderer;
+    SDL_GPU *gpu;                 /* 字幕用的纹理/FBO 层（跑在同一个 Vulkan device 上）*/
     ANativeWindow *native_window;
 };
 
@@ -50,6 +53,13 @@ static void vout_free_l(SDL_Vout *vout)
 
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque) {
+        /*
+         * GPU（字幕纹理层）的壳归 ffplayer 所有（ffp_destroy 里 SDL_GPUFreeP），
+         * 但它的 Vulkan 资源必须赶在 renderer/device 之前释放。
+         */
+        if (opaque->gpu) {
+            SDL_VulkanGPU_DetachDevice(opaque->gpu);
+        }
         if (opaque->renderer) {
             fs_vulkan_renderer_destroy(opaque->renderer);
             opaque->renderer = NULL;
@@ -65,20 +75,27 @@ static void vout_free_l(SDL_Vout *vout)
 
 static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay)
 {
-    (void)sub_overlay;
-
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (!opaque || !opaque->renderer) {
         ALOGE("vout_display_overlay_l: no vulkan renderer\n");
         return -1;
     }
 
-    if (!frame || !frame->frame) {
-        ALOGE("vout_display_overlay_l: no video frame\n");
-        return -1;
+    /*
+     * 字幕叠加：字幕线程已经用 opaque->gpu（SDL_GPU）把这一帧的字幕画进纹理
+     * 或 FBO，这里只是把纹理交给渲染器，由渲染器在视频之上做预乘 alpha 混合。
+     * 引用由调用方（字幕层）持有，vout 不接管。
+     */
+    fs_vulkan_renderer_set_sub_overlay(opaque->renderer, sub_overlay);
+
+    AVFrame *av_frame = (frame && frame->frame) ? frame->frame : NULL;
+    if (!av_frame) {
+        /* 没有视频帧（如只放音频）：只刷一帧字幕，不报错 */
+        ALOGV("vout_display_overlay_l: subtitle only\n");
+        fs_vulkan_renderer_display_sub_overlay(opaque->renderer);
+        return 0;
     }
 
-    AVFrame *av_frame = frame->frame;
     int disp_w = frame->disp_w > 0 ? frame->disp_w : av_frame->width;
     int disp_h = frame->disp_h > 0 ? frame->disp_h : av_frame->height;
     int rotate = frame->auto_z_rotate_degrees;
@@ -109,6 +126,15 @@ SDL_Vout *SDL_VoutAndroid_CreateForVulkan(void)
         ALOGE("SDL_VoutAndroid_CreateForVulkan: create renderer failed\n");
         SDL_Vout_FreeInternal(vout);
         return NULL;
+    }
+
+    /*
+     * 字幕用的 SDL_GPU：和渲染器共用同一个 Vulkan device/queue，
+     * 这样字幕纹理不用跨设备拷贝。失败也不致命（只影响字幕）。
+     */
+    opaque->gpu = SDL_VulkanGPU_Create(fs_vulkan_renderer_context(opaque->renderer));
+    if (!opaque->gpu) {
+        ALOGW("SDL_VoutAndroid_CreateForVulkan: subtitle gpu unavailable\n");
     }
 
     vout->create_overlay = vout_create_overlay;
@@ -154,4 +180,13 @@ jobject SDL_VoutAndroid_GetMediaCodecSurface(JNIEnv *env, SDL_Vout *vout)
         return NULL;
 
     return fs_vulkan_renderer_get_mediacodec_surface(env, vout->opaque->renderer);
+}
+
+SDL_GPU *SDL_VoutAndroid_GetGPU(SDL_Vout *vout)
+{
+    if (!vout || !vout->opaque)
+        return NULL;
+
+    /* 借用：所有权在 ffplayer，vout 只负责销毁前 detach（见 vout_free_l） */
+    return vout->opaque->gpu;
 }

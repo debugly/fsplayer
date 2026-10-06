@@ -27,6 +27,7 @@
 #include <jni.h>
 #include "../ijksdl_stdinc.h"
 #include "../ijksdl_vout.h"
+#include "../ijksdl_gpu.h"
 
 /*
  * 安卓 Vulkan 视频渲染器（全新实现，替代 OpenGL ES / ANativeWindow 方案）。
@@ -54,5 +55,14 @@ int SDL_VoutAndroid_IsMediaCodecSupported(SDL_Vout *vout);
  * 返回 NewLocalRef，调用方负责 DeleteLocalRef；不支持时返回 NULL。
  */
 jobject SDL_VoutAndroid_GetMediaCodecSurface(JNIEnv *env, SDL_Vout *vout);
+
+/*
+ * 返回字幕用的 SDL_GPU（和渲染器共用 Vulkan device）。
+ *
+ * 所有权归 ffplayer（ffp_destroy 里 SDL_GPUFreeP 释放），vout 只是在销毁前
+ * 调 SDL_VulkanGPU_DetachDevice 释放它的 Vulkan 资源；vout 自身不释放它。
+ * 不可用时返回 NULL（字幕功能应关闭）。
+ */
+SDL_GPU *SDL_VoutAndroid_GetGPU(SDL_Vout *vout);
 
 #endif

@@ -13,9 +13,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private IjkMediaPlayer mPlayer;
     private SurfaceView mSurfaceView;
+    private String mSubtitlePath;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
     // 可用 intent extra "url" 覆盖（本地文件或网络地址）
+    // 可用 intent extra "subtitle" 挂一个外挂字幕（SRT/ASS）
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -27,6 +29,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mSurfaceView.getHolder().addCallback(this);
         setContentView(mSurfaceView);
 
+        mSubtitlePath = getIntent() != null ? getIntent().getStringExtra("subtitle") : null;
+
         mPlayer = new IjkMediaPlayer();
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
         mPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
@@ -34,6 +38,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             @Override
             public void onPrepared(IMediaPlayer mp) {
                 mp.start();
+                // 外挂字幕要在流打开之后挂（native 侧需要 is 已经建立）
+                if (mSubtitlePath != null && !mSubtitlePath.isEmpty()) {
+                    boolean ok = mPlayer.loadThenActiveSubtitle(mSubtitlePath);
+                    Toast.makeText(MainActivity.this,
+                            "loadThenActiveSubtitle(" + mSubtitlePath + ") = " + ok,
+                            Toast.LENGTH_LONG).show();
+                }
             }
         });
         mPlayer.setOnErrorListener(new IMediaPlayer.OnErrorListener() {

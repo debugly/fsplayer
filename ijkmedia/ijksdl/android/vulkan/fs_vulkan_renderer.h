@@ -29,6 +29,8 @@
 
 typedef struct ANativeWindow ANativeWindow;
 typedef struct FSVulkanRenderer FSVulkanRenderer;
+struct SDL_TextureOverlay;
+struct FSVulkanContext;
 
 /*
  * 创建 Vulkan 渲染器（只创建 instance/device，不创建 swapchain）。
@@ -59,5 +61,23 @@ int fs_vulkan_renderer_is_mediacodec_supported(FSVulkanRenderer *r);
 jobject fs_vulkan_renderer_get_mediacodec_surface(JNIEnv *env, FSVulkanRenderer *r);
 
 void fs_vulkan_renderer_destroy(FSVulkanRenderer *r);
+
+/* 只有字幕、没有视频帧时画一帧（清屏 + 字幕）。 */
+int fs_vulkan_renderer_display_sub_overlay(FSVulkanRenderer *r);
+
+/*
+ * 字幕叠加层。
+ *
+ * 渲染器不知道字幕内部结构：SDL_GPU 层（vulkan/ijksdl_gpu_vulkan.c）把字幕
+ * 画成一张纹理，vout 每帧把这张纹理交给渲染器，渲染器在视频之上做一次预乘
+ * alpha 混合的四边形绘制。
+ */
+void fs_vulkan_renderer_set_sub_overlay(FSVulkanRenderer *r, struct SDL_TextureOverlay *overlay);
+
+/* 取回叠加层（Retain，调用方负责 Release），用于字幕画完后取纹理。 */
+struct SDL_TextureOverlay *fs_vulkan_renderer_get_sub_overlay(FSVulkanRenderer *r);
+
+/* 暴露底层 Vulkan 设备上下文，供 SDL_GPU 层在同一 device/queue 上工作。 */
+const struct FSVulkanContext *fs_vulkan_renderer_context(FSVulkanRenderer *r);
 
 #endif
