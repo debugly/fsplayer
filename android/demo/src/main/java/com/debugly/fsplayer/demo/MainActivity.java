@@ -1,10 +1,16 @@
 package com.debugly.fsplayer.demo;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
@@ -14,11 +20,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private IjkMediaPlayer mPlayer;
     private SurfaceView mSurfaceView;
     private String mSubtitlePath;
+    private int mSnapshotType = -1;
+    private int mSnapshotDelayMs = 4000;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
     // 可用 intent extra "url" 覆盖（本地文件或网络地址）
     // 可用 intent extra "subtitle" 挂一个外挂字幕（SRT/ASS）
     // 可用 intent extra "scaleMode" 指定缩放模式 0 等比完整显示(默认) 1 等比铺满 2 拉伸
+    // 可用 intent extra "snapshotType" 在起播若干秒后截一张快照到 files/snapshot-<type>.png
+    //   0 原始尺寸 1 屏幕所见(默认) 2 原始尺寸+字幕 3 原始尺寸+字幕+效果
+    // 可用 intent extra "snapshotDelayMs" 改截屏延时（默认 4000）
+    // 可用 intent extra "pauseAfterMs" 指定起播后多少毫秒暂停（用来验证暂停时也能截屏）
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -31,6 +43,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         setContentView(mSurfaceView);
 
         mSubtitlePath = getIntent() != null ? getIntent().getStringExtra("subtitle") : null;
+        mSnapshotType = getIntent() != null ? getIntent().getIntExtra("snapshotType", -1) : -1;
+        mSnapshotDelayMs = getIntent() != null ? getIntent().getIntExtra("snapshotDelayMs", 4000) : 4000;
+        int pauseAfterMs = getIntent() != null ? getIntent().getIntExtra("pauseAfterMs", -1) : -1;
 
         mPlayer = new IjkMediaPlayer();
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
@@ -53,6 +68,28 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             "loadThenActiveSubtitle(" + mSubtitlePath + ") = " + ok,
                             Toast.LENGTH_LONG).show();
                 }
+                if (pauseAfterMs >= 0) {
+                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mPlayer.pause();
+                        }
+                    }, pauseAfterMs);
+                }
+                if (mSnapshotType >= 0) {
+                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            // 取快照会阻塞等渲染线程，别放在主线程上
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    saveSnapshot(mSnapshotType);
+                                }
+                            }).start();
+                        }
+                    }, mSnapshotDelayMs);
+                }
             }
         });
         mPlayer.setOnErrorListener(new IMediaPlayer.OnErrorListener() {
@@ -61,6 +98,36 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 Toast.makeText(MainActivity.this,
                         "播放出错 what=" + what + " extra=" + extra, Toast.LENGTH_LONG).show();
                 return false;
+            }
+        });
+    }
+
+    private void saveSnapshot(int type) {
+        final Bitmap bitmap = mPlayer.getSnapshot(type);
+        if (bitmap == null) {
+            toast("snapshot(" + type + ") 失败");
+            return;
+        }
+        File out = new File(getFilesDir(), "snapshot-" + type + ".png");
+        try {
+            FileOutputStream fos = new FileOutputStream(out);
+            try {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            } finally {
+                fos.close();
+            }
+        } catch (Exception e) {
+            toast("写快照失败: " + e.getMessage());
+            return;
+        }
+        toast("snapshot " + bitmap.getWidth() + "x" + bitmap.getHeight() + " -> " + out.getPath());
+    }
+
+    private void toast(final String message) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
     }

@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define VK_USE_PLATFORM_ANDROID_KHR 1
 #include <vulkan/vulkan.h>
@@ -183,6 +184,29 @@ struct FSVulkanRenderer {
     int   scaling_mode;             /* FSScalingMode */
     float video_rect[4];            /* x0, y0, x1, y1（NDC） */
     float video_uvmat[4];           /* 2x2 列主序，uv' = M * (uv - 0.5) + 0.5 */
+
+    /* 上一帧的画面：快照要用同样的管线和参数重画一次 */
+    int              video_w, video_h;      /* 解码帧原始尺寸 */
+    int              last_rot;              /* 归一化到 0/90/180/270 */
+    VkPipeline       last_pipeline;
+    VkPipelineLayout last_layout;
+    VkDescriptorSet  last_desc_set;
+
+    /* ---- 快照 ---- */
+    volatile int   snapshot_type;      /* -1 = 没有请求 */
+    volatile int   snapshot_ready;     /* 0 等待 / 1 完成 / -1 失败 */
+    int            snapshot_w, snapshot_h;
+    void          *snapshot_pixels;    /* RGBA8888，交给调用方 free */
+    VkRenderPass   snap_pass;
+    VkImage        snap_image;
+    VkDeviceMemory snap_mem;
+    VkImageView    snap_view;
+    VkFramebuffer  snap_framebuffer;
+    VkBuffer       snap_buffer;
+    VkDeviceMemory snap_buffer_mem;
+    VkDeviceSize   snap_buffer_size;
+    int            snap_w, snap_h;
+    int            snap_recorded;      /* 本帧录了快照 pass */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -625,6 +649,12 @@ static VkResult build_graphics_pipeline(FSVulkanRenderer *r, const unsigned char
         .viewportCount = 1, .pViewports = &viewport,
         .scissorCount = 1, .pScissors = &scissor,
     };
+    /* 动态视口：快照要把同一套管线画到别的分辨率的离屏图上 */
+    VkDynamicState dyn_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo ds = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = 2, .pDynamicStates = dyn_states,
+    };
 
     VkPipelineRasterizationStateCreateInfo rs = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -654,6 +684,7 @@ static VkResult build_graphics_pipeline(FSVulkanRenderer *r, const unsigned char
         .pVertexInputState = &vis,
         .pInputAssemblyState = &ias,
         .pViewportState = &vps,
+        .pDynamicState = &ds,
         .pRasterizationState = &rs,
         .pMultisampleState = &ms,
         .pColorBlendState = &cbs,
@@ -1131,6 +1162,11 @@ static int create_sub_resources(FSVulkanRenderer *r)
             .viewportCount = 1, .pViewports = &viewport,
             .scissorCount = 1, .pScissors = &scissor,
         };
+        VkDynamicState dyn_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo ds = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .dynamicStateCount = 2, .pDynamicStates = dyn_states,
+        };
         VkPipelineRasterizationStateCreateInfo rs = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .polygonMode = VK_POLYGON_MODE_FILL, .cullMode = VK_CULL_MODE_NONE, .lineWidth = 1.0f,
@@ -1161,6 +1197,7 @@ static int create_sub_resources(FSVulkanRenderer *r)
             .pVertexInputState = &vis,
             .pInputAssemblyState = &ias,
             .pViewportState = &vps,
+            .pDynamicState = &ds,
             .pRasterizationState = &rs,
             .pMultisampleState = &ms,
             .pColorBlendState = &cbs,
@@ -1274,6 +1311,7 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
 
     r->converted_frame = av_frame_alloc();
 
+    r->snapshot_type = -1;
     r->scaling_mode = FS_SCALING_MODE_ASPECT_FIT;
     r->video_rect[0] = -1.0f; r->video_rect[1] = -1.0f;
     r->video_rect[2] =  1.0f; r->video_rect[3] =  1.0f;
@@ -1361,6 +1399,294 @@ static int ensure_yuv420p(FSVulkanRenderer *r, const AVFrame *frame,
     return 0;
 }
 
+
+/* ------------------------------------------------------------------------- */
+/* 快照：把当前帧离屏重画一次并回读成 RGBA                                        */
+/* ------------------------------------------------------------------------- */
+
+static void destroy_snapshot_target(FSVulkanRenderer *r)
+{
+    if (!r->device)
+        return;
+    if (r->snap_framebuffer)  { vkDestroyFramebuffer(r->device, r->snap_framebuffer, NULL); r->snap_framebuffer = VK_NULL_HANDLE; }
+    if (r->snap_view)         { vkDestroyImageView(r->device, r->snap_view, NULL);         r->snap_view = VK_NULL_HANDLE; }
+    if (r->snap_image)        { vkDestroyImage(r->device, r->snap_image, NULL);            r->snap_image = VK_NULL_HANDLE; }
+    if (r->snap_mem)          { vkFreeMemory(r->device, r->snap_mem, NULL);                r->snap_mem = VK_NULL_HANDLE; }
+    if (r->snap_buffer)       { vkDestroyBuffer(r->device, r->snap_buffer, NULL);          r->snap_buffer = VK_NULL_HANDLE; }
+    if (r->snap_buffer_mem)   { vkFreeMemory(r->device, r->snap_buffer_mem, NULL);         r->snap_buffer_mem = VK_NULL_HANDLE; }
+    r->snap_buffer_size = 0;
+    r->snap_w = r->snap_h = 0;
+}
+
+/*
+ * 快照的 render pass：附件格式必须和 swapchain 一致，现有的视频/字幕管线才和它兼容
+ * （Vulkan 的 render pass 兼容性只看附件格式/采样数/子 pass 结构，不看 load/store 与 layout）。
+ */
+static VkResult create_snapshot_resources(FSVulkanRenderer *r, int w, int h)
+{
+    if (w <= 0 || h <= 0)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    if (!r->snap_pass) {
+        VkAttachmentDescription att = {
+            .format = r->swapchain_format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        };
+        VkAttachmentReference ref = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+        VkSubpassDescription sub = {
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .colorAttachmentCount = 1, .pColorAttachments = &ref,
+        };
+        VkRenderPassCreateInfo rpci = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+            .attachmentCount = 1, .pAttachments = &att,
+            .subpassCount = 1, .pSubpasses = &sub,
+        };
+        if (vkCreateRenderPass(r->device, &rpci, NULL, &r->snap_pass) != VK_SUCCESS)
+            return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    if (r->snap_framebuffer && r->snap_w == w && r->snap_h == h)
+        return VK_SUCCESS;
+
+    destroy_snapshot_target(r);
+
+    VkDeviceSize size = (VkDeviceSize)w * h * 4;
+    if (create_image(r, w, h, r->swapchain_format,
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                     &r->snap_image, &r->snap_mem) != VK_SUCCESS)
+        goto fail;
+    if (create_image_view(r, r->snap_image, r->swapchain_format, &r->snap_view) != VK_SUCCESS)
+        goto fail;
+    {
+        VkFramebufferCreateInfo fci = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass = r->snap_pass,
+            .attachmentCount = 1, .pAttachments = &r->snap_view,
+            .width = (uint32_t)w, .height = (uint32_t)h, .layers = 1,
+        };
+        if (vkCreateFramebuffer(r->device, &fci, NULL, &r->snap_framebuffer) != VK_SUCCESS)
+            goto fail;
+    }
+    if (create_buffer(r, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                      &r->snap_buffer, &r->snap_buffer_mem) != VK_SUCCESS)
+        goto fail;
+
+    r->snap_buffer_size = size;
+    r->snap_w = w;
+    r->snap_h = h;
+    ALOGD("FSVulkanRenderer: snapshot target %dx%d\n", w, h);
+    return VK_SUCCESS;
+
+fail:
+    destroy_snapshot_target(r);
+    return VK_ERROR_INITIALIZATION_FAILED;
+}
+
+/*
+ * 在本帧的 command buffer 上（主 pass 之后）把当前帧按快照类型重画到离屏图像，
+ * 再 copy 到 host 可见 buffer。真正回读在 finish_snapshot_readback 里做。
+ */
+static void record_snapshot_pass(FSVulkanRenderer *r)
+{
+    int type = r->snapshot_type;
+    int with_sub = 0, use_display_transform = 0;
+    int w, h;
+    float rect[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
+    float uvmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+    switch (type) {
+    case FS_SNAPSHOT_TYPE_SCREEN:
+        w = (int)r->swapchain_extent.width;
+        h = (int)r->swapchain_extent.height;
+        with_sub = 1;
+        use_display_transform = 1;   /* 屏幕上怎么显示就怎么截 */
+        break;
+    case FS_SNAPSHOT_TYPE_EFFECT_SUBTITLE_ORIGIN:
+        /* 原始尺寸 + 带字幕 + 带效果（Android 目前的效果就是旋转） */
+        w = r->video_w; h = r->video_h;
+        with_sub = 1;
+        if (r->last_rot == 90 || r->last_rot == 270) {
+            int t = w; w = h; h = t;
+            if (r->last_rot == 90) { uvmat[0] = 0.0f; uvmat[1] = 1.0f; uvmat[2] = -1.0f; uvmat[3] = 0.0f; }
+            else                   { uvmat[0] = 0.0f; uvmat[1] = -1.0f; uvmat[2] = 1.0f; uvmat[3] = 0.0f; }
+        } else if (r->last_rot == 180) {
+            uvmat[0] = -1.0f; uvmat[1] = 0.0f; uvmat[2] = 0.0f; uvmat[3] = -1.0f;
+        }
+        break;
+    case FS_SNAPSHOT_TYPE_EFFECT_ORIGIN:
+        w = r->video_w; h = r->video_h;
+        with_sub = 1;               /* 原始尺寸 + 字幕，不带效果 */
+        break;
+    default:                        /* ORIGIN: 原始尺寸，字幕和效果都不要 */
+        w = r->video_w; h = r->video_h;
+        break;
+    }
+
+    if (w <= 0 || h <= 0 ||
+        create_snapshot_resources(r, w, h) != VK_SUCCESS) {
+        r->snapshot_type = -1;
+        r->snapshot_ready = -1;
+        return;
+    }
+
+    if (use_display_transform) {
+        memcpy(rect,  r->video_rect,  sizeof(rect));
+        memcpy(uvmat, r->video_uvmat, sizeof(uvmat));
+    }
+
+    VkClearValue clear = { .color = {{0.0f, 0.0f, 0.0f, 1.0f}} };
+    VkRenderPassBeginInfo rpi = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = r->snap_pass,
+        .framebuffer = r->snap_framebuffer,
+        .renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}},
+        .clearValueCount = 1,
+        .pClearValues = &clear,
+    };
+    vkCmdBeginRenderPass(r->command_buffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp = { 0, 0, (float)w, (float)h, 0.0f, 1.0f };
+    VkRect2D sc = { {0, 0}, {(uint32_t)w, (uint32_t)h} };
+    vkCmdSetViewport(r->command_buffer, 0, 1, &vp);
+    vkCmdSetScissor(r->command_buffer, 0, 1, &sc);
+
+    float pc[8];
+    memcpy(pc,     rect,  sizeof(rect));
+    memcpy(pc + 4, uvmat, sizeof(uvmat));
+
+    VkDeviceSize off = 0;
+
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->last_pipeline);
+    vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            r->last_layout, 0, 1, &r->last_desc_set, 0, NULL);
+    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &off);
+    vkCmdPushConstants(r->command_buffer, r->last_layout, VK_SHADER_STAGE_VERTEX_BIT,
+                       0, sizeof(pc), pc);
+    vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+
+    if (with_sub && r->sub_overlay && r->sub_pipeline && !r->sub_desc_pending) {
+        FSVulkanSubTexture *tex = r->sub_overlay->getTexture(r->sub_overlay);
+        if (tex && tex->view) {
+            vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->sub_pipeline);
+            vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    r->sub_pipeline_layout, 0, 1, &r->sub_desc_set, 0, NULL);
+            vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->sub_quad_buffer, &off);
+            vkCmdPushConstants(r->command_buffer, r->sub_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT,
+                               0, sizeof(pc), pc);
+            vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+        }
+    }
+
+    vkCmdEndRenderPass(r->command_buffer);
+
+    VkBufferImageCopy copy = {
+        .imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .imageOffset = { 0, 0, 0 },
+        .imageExtent = { (uint32_t)w, (uint32_t)h, 1 },
+    };
+    vkCmdCopyImageToBuffer(r->command_buffer, r->snap_image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           r->snap_buffer, 1, &copy);
+
+    VkBufferMemoryBarrier bb = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = r->snap_buffer,
+        .offset = 0,
+        .size = VK_WHOLE_SIZE,
+    };
+    vkCmdPipelineBarrier(r->command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 1, &bb, 0, NULL);
+
+    r->snap_recorded = 1;
+}
+
+/* 回读成 RGBA8888（BGRA 的 swapchain 顺手换一下字节序），交给 take_snapshot 的调用方 */
+static void finish_snapshot_readback(FSVulkanRenderer *r)
+{
+    r->snap_recorded = 0;
+
+    /* 一次性操作：等 GPU 做完，省得再管 fence */
+    vkDeviceWaitIdle(r->device);
+
+    int w = r->snap_w, h = r->snap_h;
+    void *data = NULL;
+    uint8_t *out = NULL;
+    if (vkMapMemory(r->device, r->snap_buffer_mem, 0, r->snap_buffer_size, 0, &data) == VK_SUCCESS) {
+        out = malloc((size_t)w * h * 4);
+        if (out) {
+            int swap_rb = (r->swapchain_format == VK_FORMAT_B8G8R8A8_UNORM ||
+                           r->swapchain_format == VK_FORMAT_B8G8R8A8_SRGB);
+            const uint8_t *src = data;
+            for (int y = 0; y < h; y++) {
+                uint8_t *dst = out + (size_t)y * w * 4;
+                memcpy(dst, src + (size_t)y * w * 4, (size_t)w * 4);
+                for (int x = 0; x < w; x++) {
+                    if (swap_rb) {
+                        uint8_t t = dst[x * 4];
+                        dst[x * 4] = dst[x * 4 + 2];
+                        dst[x * 4 + 2] = t;
+                    }
+                    dst[x * 4 + 3] = 0xFF;   /* swapchain 的 alpha 不可靠 */
+                }
+            }
+        }
+        vkUnmapMemory(r->device, r->snap_buffer_mem);
+    }
+
+    free(r->snapshot_pixels);
+    r->snapshot_pixels = out;
+    r->snapshot_w = w;
+    r->snapshot_h = h;
+    r->snapshot_type = -1;
+    r->snapshot_ready = out ? 1 : -1;
+}
+
+int fs_vulkan_renderer_take_snapshot(FSVulkanRenderer *r, int type,
+                                     int *out_w, int *out_h, void **out_pixels)
+{
+    if (!r || !out_w || !out_h || !out_pixels)
+        return -1;
+    *out_pixels = NULL;
+    if (!r->surface_ready || r->last_pipeline == VK_NULL_HANDLE)
+        return -1;
+    if (type < FS_SNAPSHOT_TYPE_ORIGIN || type > FS_SNAPSHOT_TYPE_EFFECT_SUBTITLE_ORIGIN)
+        return -1;
+
+    free(r->snapshot_pixels);
+    r->snapshot_pixels = NULL;
+    r->snapshot_ready = 0;
+    r->snapshot_type = type;      /* 等渲染线程下一帧处理 */
+
+    int waited = 0;
+    while (r->snapshot_ready == 0 && waited < 5000) {   /* 最多 5s */
+        usleep(2000);
+        waited += 2;
+    }
+
+    if (r->snapshot_ready != 1 || !r->snapshot_pixels) {
+        r->snapshot_type = -1;
+        return -1;
+    }
+
+    *out_w = r->snapshot_w;
+    *out_h = r->snapshot_h;
+    *out_pixels = r->snapshot_pixels;   /* 所有权交给调用方 */
+    r->snapshot_pixels = NULL;
+    return 0;
+}
+
 static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
                             VkPipelineLayout layout, VkDescriptorSet desc_set,
                             VkImage pre_image)
@@ -1413,6 +1739,22 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     };
     vkCmdBeginRenderPass(r->command_buffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
 
+    /* 视口改成动态状态了（快照要画到别的分辨率的离屏图上），主 pass 自己显式设一次 */
+    {
+        VkViewport vp = { 0, 0, (float)r->swapchain_extent.width,
+                                (float)r->swapchain_extent.height, 0.0f, 1.0f };
+        VkRect2D sc = { {0, 0}, r->swapchain_extent };
+        vkCmdSetViewport(r->command_buffer, 0, 1, &vp);
+        vkCmdSetScissor(r->command_buffer, 0, 1, &sc);
+    }
+
+    /* 记住这一帧用的管线，快照要把同样的内容再画一次 */
+    if (pipeline != VK_NULL_HANDLE) {
+        r->last_pipeline = pipeline;
+        r->last_layout   = layout;
+        r->last_desc_set = desc_set;
+    }
+
     /* 视频与字幕共用同一套变换：rect + uvmat（缩放/letterbox/旋转） */
     float pc[8];
     memcpy(pc,     r->video_rect,  sizeof(r->video_rect));
@@ -1447,6 +1789,11 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     }
 
     vkCmdEndRenderPass(r->command_buffer);
+
+    /* 有快照请求：在主 pass 之后、同一个 command buffer 里把当前帧再画到离屏图像并回读 */
+    if (r->snapshot_type >= 0 && r->last_pipeline != VK_NULL_HANDLE)
+        record_snapshot_pass(r);
+
     vkEndCommandBuffer(r->command_buffer);
 
     VkSubmitInfo si = {
@@ -1470,6 +1817,9 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         .pImageIndices = &image_index,
     };
     vkQueuePresentKHR(r->present_queue, &pi);
+
+    if (r->snap_recorded)
+        finish_snapshot_readback(r);
 
     return 0;
 }
@@ -1795,6 +2145,9 @@ static void compute_video_transform(FSVulkanRenderer *r, int frame_w, int frame_
     int drawable_h = (int)r->swapchain_extent.height;
 
     int rot = ((rotate_degrees % 360) + 360) % 360;
+    r->video_w = frame_w;
+    r->video_h = frame_h;
+    r->last_rot = (rot % 90 == 0) ? rot : 0;
     if (rot % 90 != 0) {
         /* 非 90 的整数倍暂不支持，按不旋转处理 */
         goto store;
@@ -1905,6 +2258,8 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
 
         destroy_mc_resources(r);
         destroy_sub_resources(r);   /* 依赖 render_pass，必须在其之前销毁 */
+        destroy_snapshot_target(r);
+        if (r->snap_pass) { vkDestroyRenderPass(r->device, r->snap_pass, NULL); r->snap_pass = VK_NULL_HANDLE; }
 
         if (r->sws_ctx) sws_freeContext(r->sws_ctx);
         if (r->converted_frame) av_frame_free(&r->converted_frame);

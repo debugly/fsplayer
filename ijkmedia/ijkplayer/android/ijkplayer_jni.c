@@ -1319,6 +1319,40 @@ LABEL_RETURN:
     return retval;
 }
 
+/*
+ * 取当前画面的快照。返回 RGBA8888 像素（宽*高*4，行紧凑），失败返回 null；
+ * outSize 回填 {width, height}，格式见 ijksdl/android/vulkan/fs_vulkan_renderer.h 的 FSSnapshotType。
+ */
+static jbyteArray
+IjkMediaPlayer_takeSnapshot(JNIEnv *env, jobject thiz, jint type, jintArray out_size)
+{
+    jbyteArray retval = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: takeSnapshot: null mp", LABEL_RETURN);
+
+    int w = 0, h = 0;
+    void *pixels = NULL;
+    if (ijkmp_android_take_snapshot(mp, (int) type, &w, &h, &pixels) == 0
+            && pixels && w > 0 && h > 0) {
+        jsize size = (jsize) w * h * 4;
+        retval = (*env)->NewByteArray(env, size);
+        if (retval) {
+            (*env)->SetByteArrayRegion(env, retval, 0, size, (const jbyte *) pixels);
+            if (out_size) {
+                jint dims[2];
+                dims[0] = (jint) w;
+                dims[1] = (jint) h;
+                (*env)->SetIntArrayRegion(env, out_size, 0, 2, dims);
+            }
+        }
+    }
+    free(pixels);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
 /* type: 1 audio, 2 video, 3 subtitle */
 static jint
 IjkMediaPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
@@ -1628,6 +1662,7 @@ static JNINativeMethod g_methods[] = {
     { "enableAccurateSeek",       "(Z)V",                     (void *) IjkMediaPlayer_enableAccurateSeek },
     { "getPlayableDuration",      "()J",                      (void *) IjkMediaPlayer_getPlayableDuration },
     { "getFrameCacheRemaining",   "(I)I",                     (void *) IjkMediaPlayer_getFrameCacheRemaining },
+    { "takeSnapshot",             "(I[I)[B",                  (void *) IjkMediaPlayer_takeSnapshot },
     { "setDeinterlace",           "(I)V",                     (void *) IjkMediaPlayer_setDeinterlace },
     { "getDeinterlace",           "()I",                      (void *) IjkMediaPlayer_getDeinterlace },
     { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },

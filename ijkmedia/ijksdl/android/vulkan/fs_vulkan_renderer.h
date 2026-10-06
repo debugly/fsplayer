@@ -44,6 +44,29 @@ typedef enum {
     FS_SCALING_MODE_FILL = 2,
 } FSScalingMode;
 
+/*
+ * 快照类型，数值和语义对齐 iOS 的 FSSnapshotType（FSVideoRenderingProtocol.h）：
+ *   ORIGIN                  原始视频尺寸，不带字幕、不带效果
+ *   SCREEN                  屏幕上所见（含缩放/letterbox/旋转/字幕）
+ *   EFFECT_ORIGIN           原始尺寸，带字幕，不带效果
+ *   EFFECT_SUBTITLE_ORIGIN  原始尺寸，带字幕和效果（Android 目前只有旋转算效果）
+ * Android 没有 HDR/色彩效果，EFFECT_* 与 ORIGIN 的差别只在旋转和字幕。
+ */
+typedef enum {
+    FS_SNAPSHOT_TYPE_ORIGIN = 0,
+    FS_SNAPSHOT_TYPE_SCREEN = 1,
+    FS_SNAPSHOT_TYPE_EFFECT_ORIGIN = 2,
+    FS_SNAPSHOT_TYPE_EFFECT_SUBTITLE_ORIGIN = 3,
+} FSSnapshotType;
+
+/*
+ * 取一张快照（在渲染线程上把当前帧再画一次到离屏图像再回读）。
+ * 调用方在别的线程上阻塞等待，最多等几秒；成功时 *out_pixels 是 malloc 出来的
+ * RGBA8888（宽*高*4，行紧凑），由调用方 free。
+ */
+int fs_vulkan_renderer_take_snapshot(FSVulkanRenderer *r, int type,
+                                     int *out_w, int *out_h, void **out_pixels);
+
 /* 设置缩放模式；下一帧生效（可在播放中随时切换）。 */
 void fs_vulkan_renderer_set_scaling_mode(FSVulkanRenderer *r, int mode);
 int fs_vulkan_renderer_get_scaling_mode(FSVulkanRenderer *r);

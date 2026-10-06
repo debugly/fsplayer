@@ -79,6 +79,27 @@ void ijkmp_android_set_surface_l(JNIEnv *env, IjkMediaPlayer *mp, jobject androi
     ffpipeline_set_surface(env, mp->ffplayer->pipeline, android_surface);
 }
 
+int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
+                                int *out_w, int *out_h, void **out_pixels)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return -1;
+
+    /*
+     * 静止时视频线程没有新帧可画，先请求一次强制刷新让它把当前帧重新显示一遍
+     * （和 refreshPicture 用的是同一个开关）。
+     *
+     * 限制：MediaCodec 零拷贝通路下，上一帧的 AImage 在显示后已经还给 ImageReader，
+     * 暂停时重画会 acquire 失败（日志 "acquire latest image failed"），此时快照返回 -1。
+     * 要做到 iOS 那样暂停也能截，需要在渲染器里留住最后一帧（拷贝成自己的 image，
+     * 或者把 AImage 的持有权延到下一帧），见 TODO。
+     */
+    ffp_refresh_picture(mp->ffplayer);
+
+    return SDL_VoutAndroid_TakeSnapshot(mp->ffplayer->vout, type,
+                                        out_w, out_h, out_pixels);
+}
+
 void ijkmp_android_set_surface(JNIEnv *env, IjkMediaPlayer *mp, jobject android_surface)
 {
     if (!mp)

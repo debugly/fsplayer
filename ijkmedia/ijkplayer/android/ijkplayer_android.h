@@ -42,4 +42,13 @@ void ijkmp_android_set_volume(JNIEnv *env, IjkMediaPlayer *mp, float left, float
 int  ijkmp_android_get_audio_session_id(JNIEnv *env, IjkMediaPlayer *mp);
 void ijkmp_android_set_mediacodec_select_callback(IjkMediaPlayer *mp, bool (*callback)(void *opaque, ijkmp_mediacodecinfo_context *mcc), void *opaque);
 
+/*
+ * 取一张当前画面的快照（type 见 ijksdl/android/vulkan/fs_vulkan_renderer.h 的
+ * FSSnapshotType，对齐 iOS）。会先让视频线程把当前帧重画一次。
+ * 成功返回 0，*out_pixels 是 malloc 出来的 RGBA8888，调用方 free。
+ * 限制：MediaCodec 零拷贝通路下暂停时取不到最后一帧，会返回 -1（见 .c 里的说明）。
+ */
+int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
+                                int *out_w, int *out_h, void **out_pixels);
+
 #endif

@@ -72,4 +72,13 @@ SDL_GPU *SDL_VoutAndroid_GetGPU(SDL_Vout *vout);
  */
 void SDL_VoutAndroid_SetScalingMode(SDL_Vout *vout, int mode);
 
+/*
+ * 取一张快照：在渲染线程上把当前帧重画到离屏图像再回读。
+ * type 见 vulkan/fs_vulkan_renderer.h 的 FSSnapshotType（对齐 iOS 的 FSSnapshotType）。
+ * 成功返回 0，*out_pixels 是 malloc 出来的 RGBA8888（宽*高*4，行紧凑），调用方 free。
+ * 会阻塞等待渲染线程，最长约 5 秒。
+ */
+int SDL_VoutAndroid_TakeSnapshot(SDL_Vout *vout, int type,
+                                 int *out_w, int *out_h, void **out_pixels);
+
 #endif

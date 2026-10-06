@@ -23,6 +23,7 @@ import android.annotation.TargetApi;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.graphics.Rect;
 import android.media.MediaCodecInfo;
@@ -38,6 +39,8 @@ import android.os.ParcelFileDescriptor;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.text.TextUtils;
+
+import java.nio.ByteBuffer;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -146,6 +149,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FS_SCALING_MODE_ASPECT_FIT  = 0;   // 等比缩放，完整显示（默认）
     public static final int FS_SCALING_MODE_ASPECT_FILL = 1;   // 等比缩放，铺满显示区
     public static final int FS_SCALING_MODE_FILL        = 2;   // 非等比拉伸，铺满显示区
+
+    // 快照类型，语义对齐 iOS 的 FSSnapshotType
+    public static final int FS_SNAPSHOT_TYPE_ORIGIN                 = 0; // 原始尺寸，无字幕无效果
+    public static final int FS_SNAPSHOT_TYPE_SCREEN                 = 1; // 屏幕上所见（含缩放/letterbox/旋转/字幕）
+    public static final int FS_SNAPSHOT_TYPE_EFFECT_ORIGIN          = 2; // 原始尺寸 + 字幕
+    public static final int FS_SNAPSHOT_TYPE_EFFECT_SUBTITLE_ORIGIN = 3; // 原始尺寸 + 字幕 + 效果（旋转）
     //----------------------------------------
 
     @AccessedByNative
@@ -973,6 +982,31 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return (int)_getPropertyLong(FFP_PROP_INT64_VIDEO_SCALING_MODE, FS_SCALING_MODE_ASPECT_FIT);
     }
 
+    /**
+     * 截取当前画面（等同 {@link #FS_SNAPSHOT_TYPE_SCREEN}）。
+     * 失败（还没开始渲染、渲染器不可用等）返回 null。
+     * 注意：不要在 UI 线程调用，它会阻塞等渲染线程（正常情况下几十毫秒）。
+     * 限制：MediaCodec 零拷贝通路下暂停时取不到最后一帧，会返回 null。
+     */
+    public Bitmap getSnapshot() {
+        return getSnapshot(FS_SNAPSHOT_TYPE_SCREEN);
+    }
+
+    /**
+     * 截取当前画面，type 取 FS_SNAPSHOT_TYPE_*，语义对齐 iOS 的 FSSnapshotType。
+     * 会阻塞等渲染线程把当前帧画出来，最长几秒；失败返回 null。
+     */
+    public Bitmap getSnapshot(int type) {
+        int[] size = new int[2];
+        byte[] pixels = takeSnapshot(type, size);
+        if (pixels == null || size[0] <= 0 || size[1] <= 0) {
+            return null;
+        }
+        Bitmap bitmap = Bitmap.createBitmap(size[0], size[1], Bitmap.Config.ARGB_8888);
+        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(pixels));
+        return bitmap;
+    }
+
     private static class EventHandler extends Handler {
         private final WeakReference<IjkMediaPlayer> mWeakPlayer;
 
@@ -1366,6 +1400,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     /** Redraw the current frame, e.g. after the surface changed. */
     public native void refreshPicture();
+
+    /** 返回 RGBA8888 像素（宽*高*4），outSize 回填 {width, height}；失败返回 null。 */
+    private native byte[] takeSnapshot(int type, int[] outSize);
 
     /** Reload the current video stream, used after switching the decoder. */
     public native int reloadVideoStream();
