@@ -22,9 +22,9 @@
  */
 
 /*
- * Shared HEIC tile-grid accumulation logic used by both the software
- * (ijksdl_vout_overlay_ffmpeg.m) and VideoToolbox hardware
- * (ijksdl_vout_overlay_ffmpeg_hw.m) overlays.
+ * Shared HEIC tile-grid accumulation logic used by the overlay
+ * (ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.c) for software and VideoToolbox
+ * hardware frames alike.
  *
  * A tile-grid HEIC image is decoded as a sequence of tile AVFrames, each
  * carrying FSTileGridMetadata via frame->opaque_ref. This accumulator gathers

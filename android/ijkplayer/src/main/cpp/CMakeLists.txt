@@ -43,10 +43,9 @@ file(GLOB_RECURSE SOURCE_SDL ${ijkmedia}/ijksdl/*.c ${ijkmedia}/ijksdl/*.cpp)
 file(GLOB_RECURSE SOURCE_IJKPLAYER ${ijkmedia}/ijkplayer/*.c ${ijkmedia}/ijkplayer/*.cpp)
 file(GLOB_RECURSE SOURCE_SOUNDTOUCH ${ijkmedia}/ijksoundtouch/*.c)
 
-# 排除苹果平台专属（.c 的 heic 等）与 libyuv 依赖、已废弃的 overlay 实现
+# 排除苹果平台专属（.c 的 heic 等）与 libyuv 依赖
 list(FILTER SOURCE_SDL EXCLUDE REGEX "/apple/")
 list(FILTER SOURCE_SDL EXCLUDE REGEX "/abi_all/")
-list(FILTER SOURCE_SDL EXCLUDE REGEX "vout_overlay_ffmpeg")
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "/apple/")
 # 排除依赖 ffmpeg 内部头 http.h（安卓预编译 ffmpeg 未导出）的 HLS/segment
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijkhls")

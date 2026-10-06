@@ -5,10 +5,10 @@
  * Copyright (c) 2013 Bilibili
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
  * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
-* 
+ *
  * This file is part of FSPlayer.
  *
- * ijkPlayer is free software; you can redistribute it and/or
+ * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
@@ -19,137 +19,90 @@
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with ijkPlayer; if not, write to the Free Software
+ * License along with FSPlayer; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+/*
+ * The one and only SDL_VoutOverlay implementation, shared by every platform.
+ *
+ * The renderers consume the Frame's AVFrame directly (see the comment on the
+ * Frame forward declaration in ijksdl_vout.h), so the overlay no longer owns
+ * pixels: it carries the lock and, on Apple, the tile-grid bookkeeping. The
+ * platform specific parts are the VideoToolbox pixel buffer that arrives in
+ * data[3] and the HEIC tile accumulator, both kept out of the other builds.
  */
 
 #include "ijksdl_vout_overlay_ffmpeg.h"
 
-#include <stdbool.h>
-#include <assert.h>
-#include "../ijksdl_stdinc.h"
-#include "../ijksdl_misc.h"
-#include "../ijksdl_mutex.h"
 #include "../ijksdl_vout_internal.h"
-#include "../ijksdl_video.h"
-#include "ijksdl_inc_ffmpeg.h"
-#include "ijksdl_image_convert.h"
+#include "../ijksdl_log.h"
+
+#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#include "../../ijkplayer/ff_heic_tile.h"
+#include "../apple/ijk_heic_tile_overlay.h"
+#endif
 
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
-
-    AVFrame *managed_frame;
-    AVBufferRef *frame_buffer;
-    int planes;
-
-    AVFrame *linked_frame;
-
-    Uint16 pitches[AV_NUM_DATA_POINTERS];
-    Uint8 *pixels[AV_NUM_DATA_POINTERS];
-
-    /* 1.1.1 起 overlay 的旧公共成员（format/w/h/ff_format）下沉到 opaque */
-    Uint32 format;
-    int w;
-    int h;
-    enum AVPixelFormat ff_format;
-
-    int no_neon_warned;
-
-    struct SwsContext *img_convert_ctx;
-    int sws_flags;
+#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+    FSTileAccumulator tile_acc;   // HEIC tile grid accumulation state
+#endif
 };
 
-/* Always assume a linesize alignment of 1 here */
-// TODO: 9 alignment to speed up memcpy when display
-static AVFrame *opaque_setup_frame(SDL_VoutOverlay_Opaque* opaque, enum AVPixelFormat format, int width, int height)
+#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+static int func_is_tile_pending(SDL_VoutOverlay *overlay)
 {
-    AVFrame *managed_frame = av_frame_alloc();
-    if (!managed_frame) {
-        return NULL;
-    }
-
-    AVFrame *linked_frame = av_frame_alloc();
-    if (!linked_frame) {
-        av_frame_free(&managed_frame);
-        return NULL;
-    }
-
-    /*-
-     * Lazily allocate frame buffer in opaque_obtain_managed_frame_buffer
-     *
-     * For refererenced frame management, we use buffer allocated by decoder
-     *
-    int frame_bytes = avpicture_get_size(format, width, height);
-    AVBufferRef *frame_buffer_ref = av_buffer_alloc(frame_bytes);
-    if (!frame_buffer_ref)
-        return NULL;
-    opaque->frame_buffer  = frame_buffer_ref;
-     */
-
-    managed_frame->format = format;
-    managed_frame->width  = width;
-    managed_frame->height = height;
-    av_image_fill_arrays(managed_frame->data, managed_frame->linesize ,NULL,
-                         format, width, height, 1);
-    opaque->managed_frame = managed_frame;
-    opaque->linked_frame  = linked_frame;
-    return managed_frame;
+    if (!overlay) return 0;
+    return fs_tile_acc_is_pending(&overlay->opaque->tile_acc);
 }
 
-static AVFrame *opaque_obtain_managed_frame_buffer(SDL_VoutOverlay_Opaque* opaque)
+static int func_get_tile_count(SDL_VoutOverlay *overlay)
 {
-    if (opaque->frame_buffer != NULL)
-        return opaque->managed_frame;
-
-    AVFrame *managed_frame = opaque->managed_frame;
-    int frame_bytes = av_image_get_buffer_size(managed_frame->format, managed_frame->width, managed_frame->height, 1);
-    AVBufferRef *frame_buffer_ref = av_buffer_alloc(frame_bytes);
-    if (!frame_buffer_ref)
-        return NULL;
-
-    av_image_fill_arrays(managed_frame->data, managed_frame->linesize,
-                         frame_buffer_ref->data, managed_frame->format, managed_frame->width, managed_frame->height, 1);
-    opaque->frame_buffer  = frame_buffer_ref;
-    return opaque->managed_frame;
+    if (!overlay) return 0;
+    return fs_tile_acc_count(&overlay->opaque->tile_acc);
 }
+
+static int func_get_tile_avframes(SDL_VoutOverlay *overlay,
+                                  AVFrame **out_frames,
+                                  int *out_x, int *out_y,
+                                  int *out_w, int *out_h,
+                                  int max_count)
+{
+    if (!overlay) return 0;
+    return fs_tile_acc_get_avframes(&overlay->opaque->tile_acc,
+                                    out_frames, out_x, out_y, out_w, out_h, max_count);
+}
+
+static void func_get_tile_canvas(SDL_VoutOverlay *overlay,
+                                 int *out_w, int *out_h)
+{
+    if (!overlay) return;
+    fs_tile_acc_get_canvas(&overlay->opaque->tile_acc, out_w, out_h);
+}
+
+#endif
+
+static SDL_Class g_vout_overlay_ffmpeg_class = {
+    .name = "FSVoutOverlay",
+};
 
 static void func_free_l(SDL_VoutOverlay *overlay)
 {
-    ALOGE("SDL_Overlay(ffmpeg): overlay_free_l(%p)\n", overlay);
+    ALOGD("SDL_Overlay(ffmpeg): overlay_free_l(%p)\n", overlay);
     if (!overlay)
         return;
 
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     if (!opaque)
         return;
-
-    sws_freeContext(opaque->img_convert_ctx);
-
-    if (opaque->managed_frame)
-        av_frame_free(&opaque->managed_frame);
-
-    if (opaque->linked_frame) {
-        av_frame_unref(opaque->linked_frame);
-        av_frame_free(&opaque->linked_frame);
-    }
-
-    if (opaque->frame_buffer)
-        av_buffer_unref(&opaque->frame_buffer);
-
+#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+    fs_tile_acc_free(&opaque->tile_acc);
+#endif
     if (opaque->mutex)
         SDL_DestroyMutex(opaque->mutex);
 
     SDL_VoutOverlay_FreeInternal(overlay);
-}
-
-static void overlay_fill(SDL_VoutOverlay_Opaque *opaque, AVFrame *frame, int planes)
-{
-    opaque->planes = planes;
-
-    for (int i = 0; i < AV_NUM_DATA_POINTERS; ++i) {
-        opaque->pixels[i] = frame->data[i];
-        opaque->pitches[i] = frame->linesize[i];
-    }
 }
 
 static int func_lock(SDL_VoutOverlay *overlay)
@@ -166,285 +119,63 @@ static int func_unlock(SDL_VoutOverlay *overlay)
 
 static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
 {
-    assert(overlay);
-    SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
-    AVFrame swscale_dst_pic = { { 0 } };
+    if (!overlay || !frame)
+        return -100;
 
-    av_frame_unref(opaque->linked_frame);
-
-    int need_swap_uv = 0;
-    int use_linked_frame = 0;
-    
-    
-    enum AVPixelFormat dst_format = AV_PIX_FMT_NONE;
-    switch (opaque->format) {
-        case SDL_FCC_YV12:
-            need_swap_uv = 1;
-            // no break;
-        case SDL_FCC_I420:
-            if (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUVJ420P) {
-                // ALOGE("direct draw frame");
-                use_linked_frame = 1;
-                dst_format = frame->format;
-            } else {
-                // ALOGE("copy draw frame");
-                dst_format = AV_PIX_FMT_YUV420P;
-            }
-            break;
-        case SDL_FCC_I444P10LE:
-            if (frame->format == AV_PIX_FMT_YUV444P10LE) {
-                // ALOGE("direct draw frame");
-                use_linked_frame = 1;
-                dst_format = frame->format;
-            } else {
-                // ALOGE("copy draw frame");
-                dst_format = AV_PIX_FMT_YUV444P10LE;
-            }
-            break;
-        default:
-            dst_format = opaque->ff_format;
-    }
-
-
-    // setup frame
-    if (use_linked_frame) {
-        // linked frame
-        av_frame_ref(opaque->linked_frame, frame);
-
-        overlay_fill(opaque, opaque->linked_frame, opaque->planes);
-
-        if (need_swap_uv)
-            FFSWAP(Uint8*, opaque->pixels[1], opaque->pixels[2]);
-    } else {
-        // managed frame
-        AVFrame* managed_frame = opaque_obtain_managed_frame_buffer(opaque);
-        if (!managed_frame) {
-            ALOGE("OOM in opaque_obtain_managed_frame_buffer");
+#if defined(__APPLE__)
+    /* For VideoToolbox frames the CVPixelBuffer lives in data[3]; guard against
+       frames that arrive with the right format but an empty buffer slot. */
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pixel_buffer = (CVPixelBufferRef)frame->data[3];
+        if (!pixel_buffer) {
+            ALOGE("func_fill_avframe_to_cvpixelbuffer: VTB frame with NULL pixel_buffer\n");
             return -1;
         }
-
-        overlay_fill(opaque, opaque->managed_frame, opaque->planes);
-
-        // setup frame managed
-        for (int i = 0; i < opaque->planes; ++i) {
-            swscale_dst_pic.data[i] = opaque->pixels[i];
-            swscale_dst_pic.linesize[i] = opaque->pitches[i];
-        }
-
-        if (need_swap_uv)
-            FFSWAP(Uint8*, swscale_dst_pic.data[1], swscale_dst_pic.data[2]);
     }
+#endif
 
-
-    // swscale / direct draw
-    if (use_linked_frame) {
-        // do nothing
-    } else if (ijk_image_convert(frame->width, frame->height,
-                                 dst_format, swscale_dst_pic.data, swscale_dst_pic.linesize,
-                                 frame->format, (const uint8_t**) frame->data, frame->linesize)) {
-        opaque->img_convert_ctx = sws_getCachedContext(opaque->img_convert_ctx,
-                                                       frame->width, frame->height, frame->format, frame->width, frame->height,
-                                                       dst_format, opaque->sws_flags, NULL, NULL, NULL);
-        if (opaque->img_convert_ctx == NULL) {
-            ALOGE("sws_getCachedContext failed");
-            return -1;
-        }
-
-        sws_scale(opaque->img_convert_ctx, (const uint8_t**) frame->data, frame->linesize,
-                  0, frame->height, swscale_dst_pic.data, swscale_dst_pic.linesize);
-
-        if (!opaque->no_neon_warned) {
-            opaque->no_neon_warned = 1;
-            ALOGE("non-neon image convert %s -> %s", av_get_pix_fmt_name(frame->format), av_get_pix_fmt_name(dst_format));
-        }
+#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+    /* ---------- HEIC tile grid branch ----------
+       Shared accumulator: 1 means the frame was consumed as a tile, <0 is a
+       hard error and 0 falls back to the single frame path. */
+    int tr = fs_tile_acc_fill(overlay, &overlay->opaque->tile_acc, frame);
+    if (tr != 0) {
+        return tr < 0 ? tr : 0;
     }
-    
-    // TODO: 9 draw black if overlay is larger than screen
+#endif
     return 0;
 }
 
-static SDL_Class g_vout_overlay_ffmpeg_class = {
-    .name = "FFmpegVoutOverlay",
-};
-
-#ifndef __clang_analyzer__
-SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int frame_format, SDL_Vout *display)
+SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int src_format, SDL_Vout *display)
 {
-    Uint32 overlay_format = display->overlay_format;
-    switch (overlay_format) {
-        case SDL_FCC__GLES2: {
-            switch (frame_format) {
-                case AV_PIX_FMT_YUV444P10LE:
-                    overlay_format = SDL_FCC_I444P10LE;
-                    break;
-                case AV_PIX_FMT_YUV420P:
-                case AV_PIX_FMT_YUVJ420P:
-                default:
-#if defined(__ANDROID__)
-                    overlay_format = SDL_FCC_YV12;
-#else
-                    overlay_format = SDL_FCC_I420;
-#endif
-                    break;
-            }
-            break;
-        }
-    }
-
-    SDLTRACE("SDL_VoutFFmpeg_CreateOverlay(w=%d, h=%d, fmt=%.4s(0x%x, dp=%p)\n",
-        width, height, (const char*) &overlay_format, overlay_format, display);
-
-    SDL_VoutOverlay *overlay = SDL_VoutOverlay_CreateInternal(sizeof(SDL_VoutOverlay_Opaque));
-    if (!overlay) {
-        ALOGE("overlay allocation failed");
+    enum AVPixelFormat const format = src_format;
+    if (format == AV_PIX_FMT_NONE) {
         return NULL;
     }
 
+    SDL_VoutOverlay *overlay = SDL_VoutOverlay_CreateInternal(sizeof(SDL_VoutOverlay_Opaque));
+    if (!overlay) {
+        ALOGE("VoutFFmpeg allocation failed");
+        return NULL;
+    }
+
+    const AVPixFmtDescriptor *pd = av_pix_fmt_desc_get(format);
+    ALOGD("Create FFmpeg Overlay(w=%d, h=%d, fmt=%s, dp=%p)\n",
+          width, height, pd ? pd->name : "hw/opaque", display);
+
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     opaque->mutex         = SDL_CreateMutex();
-    opaque->sws_flags     = SWS_BILINEAR;
-
     overlay->opaque_class = &g_vout_overlay_ffmpeg_class;
-    opaque->format        = overlay_format;
-    opaque->pitches[0]    = 0;
-    opaque->pixels[0]     = NULL;
-    opaque->w             = width;
-    opaque->h             = height;
     overlay->free_l             = func_free_l;
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
     overlay->func_fill_frame    = func_fill_frame;
-
-    enum AVPixelFormat ff_format = AV_PIX_FMT_NONE;
-    int buf_width = width;
-    int buf_height = height;
-    switch (overlay_format) {
-        case SDL_FCC_I420:
-        case SDL_FCC_YV12: {
-            ff_format = AV_PIX_FMT_YUV420P;
-            // FIXME: need runtime config
-    #if defined(__ANDROID__)
-            // 16 bytes align pitch for arm-neon image-convert
-            buf_width = IJKALIGN(width, 16); // 1 bytes per pixel for Y-plane
-    #elif defined(__APPLE__)
-            // 2^n align for width
-            buf_width = width;
-            if (width > 0)
-                buf_width = 1 << (sizeof(int) * 8 - __builtin_clz(width));
-    #else
-            buf_width = IJKALIGN(width, 16); // unknown platform
-    #endif
-            opaque->planes = 3;
-            break;
-        }
-        case SDL_FCC_I444P10LE: {
-            ff_format = AV_PIX_FMT_YUV444P10LE;
-            // FIXME: need runtime config
-    #if defined(__ANDROID__)
-            // 16 bytes align pitch for arm-neon image-convert
-            buf_width = IJKALIGN(width, 16); // 1 bytes per pixel for Y-plane
-    #elif defined(__APPLE__)
-            // 2^n align for width
-            buf_width = width;
-            if (width > 0)
-                buf_width = 1 << (sizeof(int) * 8 - __builtin_clz(width));
-    #else
-            buf_width = IJKALIGN(width, 16); // unknown platform
-    #endif
-            opaque->planes = 3;
-            break;
-        }
-        case SDL_FCC_NV12: {
-            ff_format = AV_PIX_FMT_NV12;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 2;
-            break;
-        }
-        case SDL_FCC_RGB565: {
-            ff_format = AV_PIX_FMT_RGB565;
-            buf_width = IJKALIGN(width, 8); // 2 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_BGR565: {
-            ff_format = AV_PIX_FMT_BGR565;
-            buf_width = IJKALIGN(width, 8); // 2 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_RGB24: {
-            ff_format = AV_PIX_FMT_RGB24;
-    #if defined(__ANDROID__)
-            // 16 bytes align pitch for arm-neon image-convert
-            buf_width = IJKALIGN(width, 16); // 1 bytes per pixel for Y-plane
-    #elif defined(__APPLE__)
-            buf_width = width;
-    #else
-            buf_width = IJKALIGN(width, 16); // unknown platform
-    #endif
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_BGR24: {
-            ff_format = AV_PIX_FMT_BGR24;
-            buf_width = IJKALIGN(width, 3); // 3 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_RGBA: {
-            ff_format = AV_PIX_FMT_RGBA;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_RGB0: {
-            ff_format = AV_PIX_FMT_RGB0;//AV_PIX_FMT_0BGR32;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_BGRA: {
-            ff_format = AV_PIX_FMT_BGRA;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_BGR0: {
-            ff_format = AV_PIX_FMT_BGR0;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_ARGB: {
-            ff_format = AV_PIX_FMT_ARGB;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        case SDL_FCC_0RGB: {
-            ff_format = AV_PIX_FMT_0RGB;
-            buf_width = IJKALIGN(width, 4); // 4 bytes per pixel
-            opaque->planes = 1;
-            break;
-        }
-        default:
-            ALOGE("SDL_VoutFFmpeg_CreateOverlay(...): unknown format %.4s(0x%x)\n", (char*)&overlay_format, overlay_format);
-            goto fail;
-    }
-    
-    //record ff_format
-    opaque->ff_format = ff_format;
-    opaque->managed_frame = opaque_setup_frame(opaque, ff_format, buf_width, buf_height);
-    if (!opaque->managed_frame) {
-        ALOGE("overlay->opaque->frame allocation failed\n");
-        goto fail;
-    }
-    overlay_fill(opaque, opaque->managed_frame, opaque->planes);
+#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+    overlay->func_is_tile_pending = func_is_tile_pending;
+    overlay->func_get_tile_count  = func_get_tile_count;
+    overlay->func_get_tile_avframes = func_get_tile_avframes;
+    overlay->func_get_tile_canvas = func_get_tile_canvas;
+#endif
 
     return overlay;
-
-fail:
-    func_free_l(overlay);
-    return NULL;
 }
-#endif//__clang_analyzer__

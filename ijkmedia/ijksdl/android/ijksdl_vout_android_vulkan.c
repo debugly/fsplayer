@@ -28,6 +28,7 @@
 #include <android/native_window_jni.h>
 
 #include "ijksdl/ijksdl_vout_internal.h"
+#include "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h"
 #include "ijkplayer/ff_ffplay_def.h"
 #include "vulkan/fs_vulkan_renderer.h"
 
@@ -36,43 +37,10 @@ struct SDL_Vout_Opaque {
     ANativeWindow *native_window;
 };
 
-static void vout_overlay_free_l(SDL_VoutOverlay *overlay)
-{
-    SDL_VoutOverlay_FreeInternal(overlay);
-}
-
-/* 空壳 overlay 的 no-op 回调：display 直接消费 Frame->frame，不经过 overlay 的 pixels */
-static int overlay_noop_lock(SDL_VoutOverlay *overlay)
-{
-    (void)overlay;
-    return 0;
-}
-
-static int overlay_noop_unlock(SDL_VoutOverlay *overlay)
-{
-    (void)overlay;
-    return 0;
-}
-
-static int overlay_noop_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
-{
-    (void)overlay;
-    (void)frame;
-    return 0;
-}
-
+/* display 直接消费 Frame->frame，overlay 只提供锁和生命周期 */
 static SDL_VoutOverlay *vout_create_overlay(int width, int height, int src_format, SDL_Vout *vout)
 {
-    (void)width; (void)height; (void)src_format; (void)vout;
-    /* 最小可播放：display 路径直接消费 Frame->frame，overlay 仅作为 vp->bmp 的非空标记 */
-    SDL_VoutOverlay *overlay = SDL_VoutOverlay_CreateInternal(0);
-    if (overlay) {
-        overlay->free_l = vout_overlay_free_l;
-        overlay->lock = overlay_noop_lock;
-        overlay->unlock = overlay_noop_unlock;
-        overlay->func_fill_frame = overlay_noop_fill_frame;
-    }
-    return overlay;
+    return SDL_VoutFFmpeg_CreateOverlay(width, height, src_format, vout);
 }
 
 static void vout_free_l(SDL_Vout *vout)

@@ -2,7 +2,7 @@
  * ff_heic_tile.h
  *****************************************************************************
  * HEIC tile grid metadata shared between ff_ffplay (packet/frame layer) and
- * the overlay implementations (ijksdl_vout_overlay_ffmpeg.m, etc.).
+ * the overlay implementation (ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.c).
  *
  * A pointer to this struct is attached to AVPacket::opaque_ref (and, with
  * AV_CODEC_FLAG_COPY_OPAQUE, propagated to AVFrame::opaque_ref) so that the
