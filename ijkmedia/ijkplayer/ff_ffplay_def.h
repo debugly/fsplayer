@@ -727,6 +727,13 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->opensles                       = 0; // option
     ffp->soundtouch_enable              = 0; // option
 
+    /*
+     * 字幕偏好必须有初值：ffp_apply_subtitle_preference 会把它推给字幕组件，
+     * 全 0 的偏好会把 libass 的字体缩放设成 0（字号 0 -> 一张图都渲染不出来）。
+     * 这里和 ff_subtitle 内部默认值保持一致。
+     */
+    ffp->sp = fs_subtitle_default_preference();
+
     ffp->iformat_name                   = NULL; // option
 
     ffp->no_time_adjust                 = 0; // option
