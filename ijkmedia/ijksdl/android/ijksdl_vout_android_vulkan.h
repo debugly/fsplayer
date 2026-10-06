@@ -65,4 +65,11 @@ jobject SDL_VoutAndroid_GetMediaCodecSurface(JNIEnv *env, SDL_Vout *vout);
  */
 SDL_GPU *SDL_VoutAndroid_GetGPU(SDL_Vout *vout);
 
+/*
+ * 设置画面缩放模式：0 等比完整显示（默认）1 等比铺满 2 非等比拉伸，
+ * 取值见 vulkan/fs_vulkan_renderer.h 的 FSScalingMode（对齐 iOS 的 FSScalingMode）。
+ * 播放中随时可调用，下一帧生效。
+ */
+void SDL_VoutAndroid_SetScalingMode(SDL_Vout *vout, int mode);
+
 #endif

@@ -614,6 +614,8 @@ typedef struct FFPlayer {
     ijk_audio_samples_callback audio_samples_callback;
     
     FSSubtitlePreference sp;
+
+    int video_scaling_mode;   // 画面缩放模式，见 FFP_PROP_INT64_VIDEO_SCALING_MODE
     
     //icy update
     int64_t icy_update_period;//ms
@@ -733,6 +735,8 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
      * 这里和 ff_subtitle 内部默认值保持一致。
      */
     ffp->sp = fs_subtitle_default_preference();
+
+    ffp->video_scaling_mode             = 0; // option: 等比完整显示
 
     ffp->iformat_name                   = NULL; // option
 

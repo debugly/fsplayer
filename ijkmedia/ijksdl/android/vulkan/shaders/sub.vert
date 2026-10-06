@@ -10,12 +10,14 @@ layout(location = 1) in vec2 aUV;
 layout(location = 0) out vec2 vUV;
 
 layout(push_constant) uniform PushConstant {
-    vec4 rect;   // x0, y0, x1, y1 (NDC)
+    vec4 rect;    // x0, y0, x1, y1 (NDC)
+    vec4 uvmat;   // 2x2，列主序；uv' = uvmat * (uv - 0.5) + 0.5
 } pc;
 
 void main()
 {
     vec2 p = mix(pc.rect.xy, pc.rect.zw, aPos);
     gl_Position = vec4(p, 0.0, 1.0);
-    vUV = aUV;
+    mat2 m = mat2(pc.uvmat.x, pc.uvmat.y, pc.uvmat.z, pc.uvmat.w);
+    vUV = m * (aUV - vec2(0.5)) + vec2(0.5);
 }

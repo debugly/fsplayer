@@ -140,6 +140,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FFP_PROP_INT64_TCP_SPEED                        = 20200;
     public static final int FFP_PROP_INT64_LATEST_SEEK_LOAD_DURATION        = 20300;
     public static final int FFP_PROP_INT64_IMMEDIATE_RECONNECT              = 20211;
+    public static final int FFP_PROP_INT64_VIDEO_SCALING_MODE               = 20023;
+
+    // 画面缩放模式，语义对齐 iOS 的 FSScalingMode
+    public static final int FS_SCALING_MODE_ASPECT_FIT  = 0;   // 等比缩放，完整显示（默认）
+    public static final int FS_SCALING_MODE_ASPECT_FILL = 1;   // 等比缩放，铺满显示区
+    public static final int FS_SCALING_MODE_FILL        = 2;   // 非等比拉伸，铺满显示区
     //----------------------------------------
 
     @AccessedByNative
@@ -954,6 +960,17 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     public void setCacheShare(int share) {
         _setPropertyLong(FFP_PROP_INT64_SHARE_CACHE_DATA, (long)share);
+    }
+
+    /**
+     * 设置画面缩放模式（FS_SCALING_MODE_*）。播放中随时可调用，下一帧生效。
+     */
+    public void setScalingMode(int mode) {
+        _setPropertyLong(FFP_PROP_INT64_VIDEO_SCALING_MODE, (long)mode);
+    }
+
+    public int getScalingMode() {
+        return (int)_getPropertyLong(FFP_PROP_INT64_VIDEO_SCALING_MODE, FS_SCALING_MODE_ASPECT_FIT);
     }
 
     private static class EventHandler extends Handler {

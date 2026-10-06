@@ -54,6 +54,9 @@ IjkMediaPlayer *ijkmp_android_create(int(*msg_loop)(void*))
         ALOGE("video rendering not provide gpu context,subtile feature will be disabled");
     }
 
+    /* 缩放模式（等比完整显示/铺满/拉伸），之后可通过 setPropertyInt64 改 */
+    SDL_VoutAndroid_SetScalingMode(mp->ffplayer->vout, mp->ffplayer->video_scaling_mode);
+
     mp->ffplayer->pipeline = ffpipeline_create_from_android(mp->ffplayer);
     if (!mp->ffplayer->pipeline)
         goto fail;

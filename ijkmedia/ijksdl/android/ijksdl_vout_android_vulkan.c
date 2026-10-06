@@ -174,6 +174,14 @@ int SDL_VoutAndroid_IsMediaCodecSupported(SDL_Vout *vout)
     return fs_vulkan_renderer_is_mediacodec_supported(vout->opaque->renderer);
 }
 
+void SDL_VoutAndroid_SetScalingMode(SDL_Vout *vout, int mode)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_scaling_mode(vout->opaque->renderer, mode);
+}
+
 jobject SDL_VoutAndroid_GetMediaCodecSurface(JNIEnv *env, SDL_Vout *vout)
 {
     if (!vout || !vout->opaque)

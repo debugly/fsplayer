@@ -77,6 +77,7 @@
 #include <stdatomic.h>
 #if defined(__ANDROID__)
 #include "ijksoundtouch/ijksoundtouch_wrap.h"
+#include "ijksdl/android/ijksdl_vout_android_vulkan.h"
 #elif defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
@@ -5941,6 +5942,10 @@ int64_t ffp_get_property_int64(FFPlayer *ffp, int id, int64_t default_value)
             }
         case FFP_PROP_INT64_AUDIO_DECODER:
             return FFP_PROPV_DECODER_AVCODEC;
+        case FFP_PROP_INT64_VIDEO_SCALING_MODE:
+            if (!ffp)
+                return default_value;
+            return ffp->video_scaling_mode;
 
         case FFP_PROP_INT64_VIDEO_CACHED_DURATION:
             if (!ffp)
@@ -6047,6 +6052,17 @@ void ffp_set_property_int64(FFPlayer *ffp, int id, int64_t value)
         case FFP_PROP_INT64_CHANNEL_CONFIG:
             if(ffp){
                 ffp->channel_config = (int)value;
+            }
+            break;
+        case FFP_PROP_INT64_VIDEO_SCALING_MODE:
+            if (ffp) {
+                ffp->video_scaling_mode = (int)value;
+#if defined(__ANDROID__)
+                /* 渲染器持有缩放模式，播放中改也能下一帧生效 */
+                if (ffp->vout) {
+                    SDL_VoutAndroid_SetScalingMode(ffp->vout, (int)value);
+                }
+#endif
             }
             break;
         default:

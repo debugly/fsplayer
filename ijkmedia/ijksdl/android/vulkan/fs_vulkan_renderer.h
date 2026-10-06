@@ -33,6 +33,22 @@ struct SDL_TextureOverlay;
 struct FSVulkanContext;
 
 /*
+ * 缩放模式，取值和语义对齐 iOS 的 FSScalingMode（FSVideoRenderingProtocol.h）：
+ *   AspectFit  等比缩放，完整显示画面（默认，可能有黑边）
+ *   AspectFill 等比缩放，铺满显示区（可能裁掉一部分画面）
+ *   Fill       非等比拉伸，正好铺满显示区
+ */
+typedef enum {
+    FS_SCALING_MODE_ASPECT_FIT = 0,
+    FS_SCALING_MODE_ASPECT_FILL = 1,
+    FS_SCALING_MODE_FILL = 2,
+} FSScalingMode;
+
+/* 设置缩放模式；下一帧生效（可在播放中随时切换）。 */
+void fs_vulkan_renderer_set_scaling_mode(FSVulkanRenderer *r, int mode);
+int fs_vulkan_renderer_get_scaling_mode(FSVulkanRenderer *r);
+
+/*
  * 创建 Vulkan 渲染器（只创建 instance/device，不创建 swapchain）。
  * surface 稍后通过 fs_vulkan_renderer_set_surface 传入。
  */

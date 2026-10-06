@@ -175,6 +175,14 @@ struct FSVulkanRenderer {
     VkBuffer              sub_quad_buffer;
     VkDeviceMemory        sub_quad_mem;
     int                   sub_desc_pending;   /* overlay 变了，描述符待重写 */
+
+    /*
+     * 缩放/旋转/letterbox：视频和字幕共用同一套 NDC 变换，
+     * 字幕才会跟着视频一起缩放、旋转、留黑边（见 compute_video_transform）。
+     */
+    int   scaling_mode;             /* FSScalingMode */
+    float video_rect[4];            /* x0, y0, x1, y1（NDC） */
+    float video_uvmat[4];           /* 2x2 列主序，uv' = M * (uv - 0.5) + 0.5 */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -662,9 +670,16 @@ static VkResult build_graphics_pipeline(FSVulkanRenderer *r, const unsigned char
 
 static VkResult create_pipeline(FSVulkanRenderer *r)
 {
+    /* push constant: rect(4) + uvmat(4)，顶点着色器用它做缩放/letterbox/旋转 */
+    VkPushConstantRange pcr = {
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(float) * 8,
+    };
     VkPipelineLayoutCreateInfo pli = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1, .pSetLayouts = &r->descriptor_layout,
+        .pushConstantRangeCount = 1, .pPushConstantRanges = &pcr,
     };
     if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->pipeline_layout) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -1072,7 +1087,7 @@ static int create_sub_resources(FSVulkanRenderer *r)
         VkPushConstantRange pcr = {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
-            .size = sizeof(float) * 4,
+            .size = sizeof(float) * 8,   /* rect + uvmat，和视频用同一套变换 */
         };
         VkPipelineLayoutCreateInfo pli = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1258,6 +1273,12 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     }
 
     r->converted_frame = av_frame_alloc();
+
+    r->scaling_mode = FS_SCALING_MODE_ASPECT_FIT;
+    r->video_rect[0] = -1.0f; r->video_rect[1] = -1.0f;
+    r->video_rect[2] =  1.0f; r->video_rect[3] =  1.0f;
+    r->video_uvmat[0] = 1.0f; r->video_uvmat[1] = 0.0f;
+    r->video_uvmat[2] = 0.0f; r->video_uvmat[3] = 1.0f;
     return r;
 
 fail:
@@ -1392,6 +1413,11 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     };
     vkCmdBeginRenderPass(r->command_buffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
 
+    /* 视频与字幕共用同一套变换：rect + uvmat（缩放/letterbox/旋转） */
+    float pc[8];
+    memcpy(pc,     r->video_rect,  sizeof(r->video_rect));
+    memcpy(pc + 4, r->video_uvmat, sizeof(r->video_uvmat));
+
     /* pipeline 为空 = 只有字幕（例如音频轨在放、视频帧已被清掉） */
     if (pipeline != VK_NULL_HANDLE) {
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -1399,10 +1425,12 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
                                 layout, 0, 1, &desc_set, 0, NULL);
         VkDeviceSize offsets = 0;
         vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &offsets);
+        vkCmdPushConstants(r->command_buffer, layout, VK_SHADER_STAGE_VERTEX_BIT,
+                           0, sizeof(pc), pc);
         vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
     }
 
-    /* 视频之上叠字幕（预乘 alpha，覆盖整个显示区域） */
+    /* 视频之上叠字幕（预乘 alpha，跟随视频的缩放/letterbox/旋转） */
     if (r->sub_overlay && r->sub_pipeline && !r->sub_desc_pending) {
         FSVulkanSubTexture *tex = r->sub_overlay->getTexture(r->sub_overlay);
         if (tex && tex->view) {
@@ -1412,9 +1440,8 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
                                     r->sub_pipeline_layout, 0, 1, &r->sub_desc_set, 0, NULL);
             VkDeviceSize sub_offset = 0;
             vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->sub_quad_buffer, &sub_offset);
-            float sub_rect[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
             vkCmdPushConstants(r->command_buffer, r->sub_pipeline_layout,
-                               VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(sub_rect), sub_rect);
+                               VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), pc);
             vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
         }
     }
@@ -1750,13 +1777,92 @@ static int display_mc_frame(FSVulkanRenderer *r, const AVFrame *frame)
     return ret;
 }
 
+/*
+ * 由显示尺寸/SAR/旋转/缩放模式算出画面的目标 NDC 矩形与 UV 变换。
+ * 语义对齐 iOS 的 FSMetalView -computeNormalizedVerticesRatio:drawableSize:：
+ * SAR 先并进宽度，旋转 90/270 时宽高互换（等价于 iOS 那边换 drawable 宽高），
+ * 再按缩放模式等比 or 拉伸到显示区。
+ * 结果同时给视频和字幕用，字幕才不会和画面脱节。
+ */
+static void compute_video_transform(FSVulkanRenderer *r, int frame_w, int frame_h,
+                                    int disp_w, int disp_h,
+                                    int rotate_degrees, int sar_num, int sar_den)
+{
+    float rect[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+    float uvmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };   /* 单位阵 */
+
+    int drawable_w = (int)r->swapchain_extent.width;
+    int drawable_h = (int)r->swapchain_extent.height;
+
+    int rot = ((rotate_degrees % 360) + 360) % 360;
+    if (rot % 90 != 0) {
+        /* 非 90 的整数倍暂不支持，按不旋转处理 */
+        goto store;
+    }
+
+    switch (rot) {   /* 旋转画面内容（转 UV，不转几何） */
+    case 90:  uvmat[0] =  0.0f; uvmat[1] = 1.0f; uvmat[2] = -1.0f; uvmat[3] =  0.0f; break;
+    case 180: uvmat[0] = -1.0f; uvmat[1] = 0.0f; uvmat[2] =  0.0f; uvmat[3] = -1.0f; break;
+    case 270: uvmat[0] =  0.0f; uvmat[1] = -1.0f; uvmat[2] = 1.0f; uvmat[3] =  0.0f; break;
+    default: break;
+    }
+
+    int fw = disp_w > 0 ? disp_w : frame_w;
+    int fh = disp_h > 0 ? disp_h : frame_h;
+    if (fw <= 0 || fh <= 0 || drawable_w <= 0 || drawable_h <= 0)
+        goto store;
+
+    if (sar_num > 0 && sar_den > 0)   /* 保持视频自己的像素宽高比 */
+        fw = (int)(1.0f * sar_num / sar_den * fw + 0.5f);
+
+    if (rot == 90 || rot == 270) {
+        int t = fw; fw = fh; fh = t;
+    }
+
+    if (r->scaling_mode != FS_SCALING_MODE_FILL) {
+        float wr = 1.0f * drawable_w / fw;
+        float hr = 1.0f * drawable_h / fh;
+        float ratio;
+        if (r->scaling_mode == FS_SCALING_MODE_ASPECT_FILL)
+            ratio = wr > hr ? wr : hr;
+        else
+            ratio = wr < hr ? wr : hr;
+        float nw = fw * ratio / drawable_w;
+        float nh = fh * ratio / drawable_h;
+        rect[0] = -nw; rect[1] = -nh; rect[2] = nw; rect[3] = nh;
+    }
+    /* FS_SCALING_MODE_FILL：非等比拉伸，就用整块显示区 */
+
+store:
+    memcpy(r->video_rect, rect, sizeof(rect));
+    memcpy(r->video_uvmat, uvmat, sizeof(uvmat));
+}
+
+void fs_vulkan_renderer_set_scaling_mode(FSVulkanRenderer *r, int mode)
+{
+    if (!r)
+        return;
+    if (mode != FS_SCALING_MODE_ASPECT_FIT &&
+        mode != FS_SCALING_MODE_ASPECT_FILL &&
+        mode != FS_SCALING_MODE_FILL)
+        return;
+    r->scaling_mode = mode;   /* 下一帧 compute_video_transform 生效 */
+}
+
+int fs_vulkan_renderer_get_scaling_mode(FSVulkanRenderer *r)
+{
+    return r ? r->scaling_mode : FS_SCALING_MODE_ASPECT_FIT;
+}
+
 int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
                                int disp_w, int disp_h,
                                int rotate_degrees, int sar_num, int sar_den)
 {
-    (void)disp_w; (void)disp_h; (void)rotate_degrees; (void)sar_num; (void)sar_den;
     if (!r || !r->surface_ready || !frame)
         return -1;
+
+    compute_video_transform(r, frame->width, frame->height, disp_w, disp_h,
+                            rotate_degrees, sar_num, sar_den);
 
     /* MediaCodec 硬解：零拷贝外部显存通路 */
     if (frame->format == AV_PIX_FMT_MEDIACODEC)

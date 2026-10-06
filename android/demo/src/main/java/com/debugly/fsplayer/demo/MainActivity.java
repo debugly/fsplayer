@@ -18,6 +18,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
     // 可用 intent extra "url" 覆盖（本地文件或网络地址）
     // 可用 intent extra "subtitle" 挂一个外挂字幕（SRT/ASS）
+    // 可用 intent extra "scaleMode" 指定缩放模式 0 等比完整显示(默认) 1 等比铺满 2 拉伸
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -34,11 +35,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mPlayer = new IjkMediaPlayer();
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
         mPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
+        // 画面缩放模式（和 iOS 的 player.scalingMode 对齐）
+        int scaleMode = getIntent() != null
+                ? getIntent().getIntExtra("scaleMode", IjkMediaPlayer.FS_SCALING_MODE_ASPECT_FIT)
+                : IjkMediaPlayer.FS_SCALING_MODE_ASPECT_FIT;
+        mPlayer.setScalingMode(scaleMode);
         mPlayer.setOnPreparedListener(new IMediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(IMediaPlayer mp) {
                 mp.start();
                 // 外挂字幕要在流打开之后挂（native 侧需要 is 已经建立）
+                Toast.makeText(MainActivity.this,
+                        "scaleMode=" + mPlayer.getScalingMode(), Toast.LENGTH_SHORT).show();
                 if (mSubtitlePath != null && !mSubtitlePath.isEmpty()) {
                     boolean ok = mPlayer.loadThenActiveSubtitle(mSubtitlePath);
                     Toast.makeText(MainActivity.this,
