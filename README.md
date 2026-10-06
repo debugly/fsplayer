@@ -16,7 +16,7 @@ FSPlayer keeps the same architecture you know, and moves the stack forward:
 |                                      | ijkplayer                                     | FSPlayer                                          |
 | ------------------------------------ | --------------------------------------------- | ------------------------------------------------- |
 | **Maintenance**                      | Stalled — last release 2017, last commit 2021 | Active — updated monthly                          |
-| **FFmpeg**                           | 3.4 (2017)                                    | **8.1.2**                                         |
+| **FFmpeg**                           | 4.0                                    | **8.1.2**                                         |
 | **Platforms**                        | Android, iOS                                  | Android, iOS, macOS, tvOS,                        |
 | **Video output**                     | OpenGL ES 2.0                                 | **Metal** (iOS/macOS/tvOS) · **Vulkan** (Android) |
 | **4K / HDR / HDR10+ / Dolby Vision** | ✗                                             | **✓**                                             |
