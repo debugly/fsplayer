@@ -24,6 +24,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private int mSnapshotDelayMs = 4000;
     private String mBackgroundPath;
     private int mBlurIterations = IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
+    private float mBrightness;
+    private float mSaturation;
+    private float mContrast;
+    private int mBgColor;
     private float mBlurSigma = IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
@@ -36,6 +40,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     // 可用 intent extra "pauseAfterMs" 指定起播后多少毫秒暂停（用来验证暂停时也能截屏）
     // 可用 intent extra "background" 指定一张图（设备路径），用它的高斯模糊填充黑边
     // 可用 intent extra "blurIterations" / "blurSigma"（float）调模糊参数（默认 3 / 30）
+    // 可用 intent extra "brightness" / "saturation" / "contrast"（float）调色彩（默认 1.0 / 1.0 / 1.0）
+    // 可用 intent extra "bgColor"（int，0xRRGGBB 的十进制）设黑边背景色（默认黑）
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -58,10 +64,24 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mBlurSigma = getIntent() != null
                 ? getIntent().getFloatExtra("blurSigma", IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA)
                 : IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA;
+        mBrightness = getIntent() != null
+                ? getIntent().getFloatExtra("brightness", IjkMediaPlayer.FS_COLOR_DEFAULT)
+                : IjkMediaPlayer.FS_COLOR_DEFAULT;
+        mSaturation = getIntent() != null
+                ? getIntent().getFloatExtra("saturation", IjkMediaPlayer.FS_COLOR_DEFAULT)
+                : IjkMediaPlayer.FS_COLOR_DEFAULT;
+        mContrast = getIntent() != null
+                ? getIntent().getFloatExtra("contrast", IjkMediaPlayer.FS_COLOR_DEFAULT)
+                : IjkMediaPlayer.FS_COLOR_DEFAULT;
+        mBgColor = getIntent() != null ? getIntent().getIntExtra("bgColor", 0) : 0;
 
         mPlayer = new IjkMediaPlayer();
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
-        mPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
+        // 可用 intent extra "mediacodec" 传 0 强制走软解（排查硬解通路用）
+        int useMediaCodec = getIntent() != null ? getIntent().getIntExtra("mediacodec", 1) : 1;
+        if (useMediaCodec != 0) {
+            mPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
+        }
         // 画面缩放模式（和 iOS 的 player.scalingMode 对齐）
         int scaleMode = getIntent() != null
                 ? getIntent().getIntExtra("scaleMode", IjkMediaPlayer.FS_SCALING_MODE_ASPECT_FIT)
@@ -92,6 +112,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                                 + " iterations=" + mPlayer.getBackgroundBlurIterations()
                                 + " sigma=" + mPlayer.getBackgroundBlurSigma());
                     }
+                }
+                mPlayer.setBackgroundColor(mBgColor);
+                mPlayer.setColorPreference(mBrightness, mSaturation, mContrast);
+                if (mBgColor != 0 || mBrightness != 1.0f || mSaturation != 1.0f || mContrast != 1.0f) {
+                    toast("color b=" + mPlayer.getColorBrightness()
+                            + " s=" + mPlayer.getColorSaturation()
+                            + " c=" + mPlayer.getColorContrast()
+                            + " bg=" + Integer.toHexString(mPlayer.getBackgroundColor()));
                 }
                 if (pauseAfterMs >= 0) {
                     new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {

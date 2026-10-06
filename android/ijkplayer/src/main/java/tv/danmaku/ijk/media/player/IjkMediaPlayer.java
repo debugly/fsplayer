@@ -156,6 +156,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FS_BACKGROUND_BLUR_ITERATIONS = 3;
     public static final float FS_BACKGROUND_BLUR_SIGMA = 30.0f;
 
+    /** 色彩调整的默认值（亮度/饱和度/对比度），1.0 表示原样输出，对齐 iOS 的 colorPreference */
+    public static final float FS_COLOR_DEFAULT = 1.0f;
+
     // 快照类型，语义对齐 iOS 的 FSSnapshotType
     public static final int FS_SNAPSHOT_TYPE_ORIGIN                 = 0; // 原始尺寸，无字幕无效果
     public static final int FS_SNAPSHOT_TYPE_SCREEN                 = 1; // 屏幕上所见（含缩放/letterbox/旋转/字幕）
@@ -186,6 +189,13 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private int mBackgroundHeight;
     private int mBackgroundBlurIterations = FS_BACKGROUND_BLUR_ITERATIONS;
     private float mBackgroundBlurSigma = FS_BACKGROUND_BLUR_SIGMA;
+
+    private float mColorBrightness = FS_COLOR_DEFAULT;
+    private float mColorSaturation = FS_COLOR_DEFAULT;
+    private float mColorContrast = FS_COLOR_DEFAULT;
+    private int mBackgroundColorR = 0;
+    private int mBackgroundColorG = 0;
+    private int mBackgroundColorB = 0;
     private EventHandler mEventHandler;
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
@@ -1070,8 +1080,67 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return mBackgroundBlurSigma;
     }
 
+    /**
+     * 色彩调整：亮度和对比度、饱和度的默认值都是 1.0（1.0 = 原样）。
+     * 语义对齐 iOS 的 colorPreference（FSColorConvertPreference），
+     * 公式也照 iOS 的 rgb_adjust：先按 0.5 为中心拉对比度，再加亮度偏移，最后按亮度权重拉饱和度。
+     * 只影响视频画面，不影响字幕。可以在 setSurface 之前调用（内部会在 surface 就绪后重试）。
+     *
+     * @param brightness 亮度，UI 常用范围 0.5~1.5，1.0 为原样
+     * @param saturation 饱和度，1.0 为原样，0 为灰度
+     * @param contrast   对比度，1.0 为原样
+     */
+    public void setColorPreference(float brightness, float saturation, float contrast) {
+        mColorBrightness = brightness;
+        mColorSaturation = saturation;
+        mColorContrast = contrast;
+        setColorAdjust(mColorBrightness, mColorSaturation, mColorContrast);
+    }
+
+    public float getColorBrightness() {
+        return mColorBrightness;
+    }
+
+    public float getColorSaturation() {
+        return mColorSaturation;
+    }
+
+    public float getColorContrast() {
+        return mColorContrast;
+    }
+
+    /**
+     * 无视频区域（黑边）的背景色，0~255，默认黑色。语义对齐 iOS 的 -setBackgroundColor:g:b:。
+     * 设了模糊背景图时黑边由背景图填满，看不到这个颜色。
+     */
+    public void setBackgroundColor(int red, int green, int blue) {
+        mBackgroundColorR = clampByte(red);
+        mBackgroundColorG = clampByte(green);
+        mBackgroundColorB = clampByte(blue);
+        native_setBackgroundColor(mBackgroundColorR, mBackgroundColorG, mBackgroundColorB);
+    }
+
+    /** 同上，方便直接传 0xRRGGBB / ARGB 颜色（alpha 忽略）。 */
+    public void setBackgroundColor(int color) {
+        setBackgroundColor((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+    }
+
+    /** 返回 0xFFRRGGBB。 */
+    public int getBackgroundColor() {
+        return 0xFF000000
+                | (mBackgroundColorR << 16)
+                | (mBackgroundColorG << 8)
+                | mBackgroundColorB;
+    }
+
+    private static int clampByte(int value) {
+        return value < 0 ? 0 : (value > 255 ? 255 : value);
+    }
+
     /** surface 就绪后要重新下发一次（renderer 是随 surface 建的） */
     private void applyBackgroundSettings() {
+        setColorAdjust(mColorBrightness, mColorSaturation, mColorContrast);
+        setBackgroundColor(mBackgroundColorR, mBackgroundColorG, mBackgroundColorB);
         if (mBackgroundPixels != null) {
             setBackgroundImage(mBackgroundPixels, mBackgroundWidth, mBackgroundHeight);
         }
@@ -1081,6 +1150,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private native void setBackgroundImage(byte[] rgba, int width, int height);
 
     private native void setBackgroundBlur(int iterations, float sigma);
+
+    private native void setColorAdjust(float brightness, float saturation, float contrast);
+
+    /* public 的 setBackgroundColor(int,int,int) 和这个 native 声明签名相同，所以 native 换个名字 */
+    private native void native_setBackgroundColor(int red, int green, int blue);
 
     /**
      * 截取当前画面（等同 {@link #FS_SNAPSHOT_TYPE_SCREEN}）。

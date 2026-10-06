@@ -1392,6 +1392,35 @@ LABEL_RETURN:
     ijkmp_dec_ref_p(&mp);
 }
 
+/*
+ * 色彩调整：亮度/饱和度/对比度，默认都是 1.0。对齐 iOS 的 colorPreference。
+ * 渲染器还没建好（还没 setSurface）时会失败，Java 侧会在设置 surface 后重试。
+ */
+static void
+IjkMediaPlayer_setColorAdjust(JNIEnv *env, jobject thiz, jfloat brightness, jfloat saturation, jfloat contrast)
+{
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setColorAdjust: null mp", LABEL_RETURN);
+
+    ijkmp_android_set_color_adjust(mp, brightness, saturation, contrast);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+/* 无视频区域（黑边）的背景色，0~255。对齐 iOS 的 -setBackgroundColor:g:b:。 */
+static void
+IjkMediaPlayer_setBackgroundColor(JNIEnv *env, jobject thiz, jint red, jint green, jint blue)
+{
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setBackgroundColor: null mp", LABEL_RETURN);
+
+    ijkmp_android_set_background_color(mp, red, green, blue);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
 /* type: 1 audio, 2 video, 3 subtitle */
 static jint
 IjkMediaPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
@@ -1703,7 +1732,9 @@ static JNINativeMethod g_methods[] = {
     { "getFrameCacheRemaining",   "(I)I",                     (void *) IjkMediaPlayer_getFrameCacheRemaining },
     { "takeSnapshot",             "(I[I)[B",                  (void *) IjkMediaPlayer_takeSnapshot },
     { "setBackgroundImage",       "([BII)V",                   (void *) IjkMediaPlayer_setBackgroundImage },
-    { "setBackgroundBlur",        "(IF)V",                     (void *) IjkMediaPlayer_setBackgroundBlur },
+    { "setBackgroundBlur",         "(IF)V",                    (void *) IjkMediaPlayer_setBackgroundBlur },
+    { "setColorAdjust",            "(FFF)V",                   (void *) IjkMediaPlayer_setColorAdjust },
+    { "native_setBackgroundColor", "(III)V",                   (void *) IjkMediaPlayer_setBackgroundColor },
     { "setDeinterlace",           "(I)V",                     (void *) IjkMediaPlayer_setDeinterlace },
     { "getDeinterlace",           "()I",                      (void *) IjkMediaPlayer_getDeinterlace },
     { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },

@@ -229,6 +229,13 @@ struct FSVulkanRenderer {
     int             bg_ready;          /* 模糊结果可用 */
     int             bg_result_slot;    /* 结果在哪个槽 */
 
+    /* ---- 色彩调整（亮度/饱和度/对比度，对齐 iOS 的 colorPreference）---- */
+    volatile float color_brightness;
+    volatile float color_saturation;
+    volatile float color_contrast;
+    volatile int   color_adjust_on;    /* 三者都是 1.0 时为 0，走原样输出 */
+    float          bg_color[3];        /* 无视频区域的背景色（iOS 的 setBackgroundColor）*/
+
     /* ---- 快照 ---- */
     volatile int   snapshot_type;      /* -1 = 没有请求 */
     volatile int   snapshot_ready;     /* 0 等待 / 1 完成 / -1 失败 */
@@ -738,16 +745,25 @@ static VkResult build_graphics_pipeline(FSVulkanRenderer *r, const unsigned char
 
 static VkResult create_pipeline(FSVulkanRenderer *r)
 {
-    /* push constant: rect(4) + uvmat(4)，顶点着色器用它做缩放/letterbox/旋转 */
-    VkPushConstantRange pcr = {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = sizeof(float) * 8,
+    /* push constant：顶点侧 rect(4) + uvmat(4) 做缩放/letterbox/旋转；
+       片元侧再接一段色彩调整（brightness, saturation, contrast, on），
+       两段范围不能重叠，所以后者从 offset 32 开始。 */
+    VkPushConstantRange pcr[2] = {
+        {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(float) * 8,
+        },
+        {
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .offset = sizeof(float) * 8,
+            .size = sizeof(float) * 4,
+        },
     };
     VkPipelineLayoutCreateInfo pli = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1, .pSetLayouts = &r->descriptor_layout,
-        .pushConstantRangeCount = 1, .pPushConstantRanges = &pcr,
+        .pushConstantRangeCount = 2, .pPushConstantRanges = pcr,
     };
     if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->pipeline_layout) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -1352,6 +1368,11 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     pthread_mutex_init(&r->bg_mutex, NULL);
     r->bg_iterations = 3;      /* 和 iOS 的默认值一致 */
     r->bg_sigma = 30.0f;
+    r->color_brightness = 1.0f;
+    r->color_saturation = 1.0f;
+    r->color_contrast   = 1.0f;
+    r->color_adjust_on  = 0;   /* 默认不变，走原样输出 */
+    r->bg_color[0] = r->bg_color[1] = r->bg_color[2] = 0.0f;   /* 默认黑底，和 iOS 一致 */
     r->bg_result_slot = -1;
     r->scaling_mode = FS_SCALING_MODE_ASPECT_FIT;
     r->video_rect[0] = -1.0f; r->video_rect[1] = -1.0f;
@@ -1587,7 +1608,8 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
         memcpy(uvmat, r->video_uvmat, sizeof(uvmat));
     }
 
-    VkClearValue clear = { .color = {{0.0f, 0.0f, 0.0f, 1.0f}} };
+    /* 快照的清屏色和屏幕一样用背景色，这样 SCREEN 快照所见即所得 */
+    VkClearValue clear = { .color = {{r->bg_color[0], r->bg_color[1], r->bg_color[2], 1.0f}} };
     VkRenderPassBeginInfo rpi = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = r->snap_pass,
@@ -1606,6 +1628,9 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
     float pc[8];
     memcpy(pc,     rect,  sizeof(rect));
     memcpy(pc + 4, uvmat, sizeof(uvmat));
+    /* 快照和屏幕用的是同一条管线，色彩参数也得重新 push（否则读到未定义值） */
+    float color_pc[4] = { r->color_brightness, r->color_saturation,
+                          r->color_contrast, r->color_adjust_on ? 1.0f : 0.0f };
 
     VkDeviceSize off = 0;
 
@@ -1619,6 +1644,8 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
     vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &off);
     vkCmdPushConstants(r->command_buffer, r->last_layout, VK_SHADER_STAGE_VERTEX_BIT,
                        0, sizeof(pc), pc);
+    vkCmdPushConstants(r->command_buffer, r->last_layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                       sizeof(pc), sizeof(color_pc), color_pc);
     vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
 
     if (with_sub && r->sub_overlay && r->sub_pipeline && !r->sub_desc_pending) {
@@ -2296,6 +2323,39 @@ void fs_vulkan_renderer_set_background_blur(FSVulkanRenderer *r, int iterations,
     pthread_mutex_unlock(&r->bg_mutex);
 }
 
+/*
+ * 色彩调整，语义对齐 iOS 的 FSColorConvertPreference（colorPreference）：
+ * 三者默认都是 1.0，全为 1.0 时走原样输出（和 iOS 的 applyAdjust 判断一致）。
+ * 公式照抄 iOS 的 rgb_adjust，在 yuv.frag / external.frag 里执行，软解硬解都生效，
+ * 字幕不受影响（iOS 的字幕片元也没有做 rgb_adjust）。
+ */
+void fs_vulkan_renderer_set_color_adjust(FSVulkanRenderer *r,
+                                         float brightness, float saturation, float contrast)
+{
+    if (!r)
+        return;
+
+    r->color_brightness = brightness;
+    r->color_saturation = saturation;
+    r->color_contrast   = contrast;
+    r->color_adjust_on  = (brightness != 1.0f || saturation != 1.0f || contrast != 1.0f);
+}
+
+/* 无视频区域（黑边）的背景色，对齐 iOS 的 -setBackgroundColor:g:b:（0~255） */
+void fs_vulkan_renderer_set_background_color(FSVulkanRenderer *r, int red, int green, int blue)
+{
+    if (!r)
+        return;
+
+    if (red   < 0)   red   = 0;   if (red   > 255) red   = 255;
+    if (green < 0)   green = 0;   if (green > 255) green = 255;
+    if (blue  < 0)   blue  = 0;   if (blue  > 255) blue  = 255;
+
+    r->bg_color[0] = red   / 255.0f;
+    r->bg_color[1] = green / 255.0f;
+    r->bg_color[2] = blue  / 255.0f;
+}
+
 int fs_vulkan_renderer_take_snapshot(FSVulkanRenderer *r, int type,
                                      int *out_w, int *out_h, void **out_pixels)
 {
@@ -2374,7 +2434,8 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
                              0, 0, NULL, 0, NULL, 1, &ib);
     }
 
-    VkClearValue clear = { .color = {{0.0f, 0.0f, 0.0f, 1.0f}} };
+    /* 无视频区域（黑边）的颜色：iOS 那边是 -setBackgroundColor:g:b: 设的 clearColor */
+    VkClearValue clear = { .color = {{r->bg_color[0], r->bg_color[1], r->bg_color[2], 1.0f}} };
     VkRenderPassBeginInfo rpi = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = r->render_pass,
@@ -2413,6 +2474,10 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     memcpy(pc,     r->video_rect,  sizeof(r->video_rect));
     memcpy(pc + 4, r->video_uvmat, sizeof(r->video_uvmat));
 
+    /* 片元侧的色彩调整（亮度/饱和度/对比度/开关），和 iOS 的 rgb_adjust 同参 */
+    float color_pc[4] = { r->color_brightness, r->color_saturation,
+                          r->color_contrast, r->color_adjust_on ? 1.0f : 0.0f };
+
     /* pipeline 为空 = 只有字幕（例如音频轨在放、视频帧已被清掉） */
     if (pipeline != VK_NULL_HANDLE) {
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -2422,6 +2487,8 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &offsets);
         vkCmdPushConstants(r->command_buffer, layout, VK_SHADER_STAGE_VERTEX_BIT,
                            0, sizeof(pc), pc);
+        vkCmdPushConstants(r->command_buffer, layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                           sizeof(pc), sizeof(color_pc), color_pc);
         vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
     }
 
@@ -2590,9 +2657,25 @@ static VkResult create_mc_pipeline(FSVulkanRenderer *r,
     if (vkAllocateDescriptorSets(r->device, &dai, &r->mc_desc_set) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
 
+    /* 硬解通路用的是同一个 yuv.vert（要 rect/uvmat 做缩放/旋转/letterbox），
+       所以布局里必须有顶点段；片元段给 external.frag 的色彩调整用。
+       这两段以前漏了 —— 顶点着色器读不到的 push constant 是未定义值。 */
+    VkPushConstantRange mcpcr[2] = {
+        {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(float) * 8,
+        },
+        {
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .offset = sizeof(float) * 8,
+            .size = sizeof(float) * 4,
+        },
+    };
     VkPipelineLayoutCreateInfo pli = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1, .pSetLayouts = &r->mc_desc_layout,
+        .pushConstantRangeCount = 2, .pPushConstantRanges = mcpcr,
     };
     if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->mc_pipeline_layout) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;

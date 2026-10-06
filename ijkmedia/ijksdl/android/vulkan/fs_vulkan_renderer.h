@@ -74,6 +74,16 @@ void fs_vulkan_renderer_set_background_image(FSVulkanRenderer *r,
 void fs_vulkan_renderer_set_background_blur(FSVulkanRenderer *r, int iterations, float sigma);
 
 /*
+ * 色彩调整（亮度/饱和度/对比度），语义对齐 iOS 的 colorPreference：默认都是 1.0，
+ * 三者都是 1.0 时原样输出。只作用于视频画面，不影响字幕（和 iOS 一致）。
+ */
+void fs_vulkan_renderer_set_color_adjust(FSVulkanRenderer *r,
+                                         float brightness, float saturation, float contrast);
+
+/* 无视频区域（黑边）的背景色，0~255，默认黑。对齐 iOS 的 -setBackgroundColor:g:b:。 */
+void fs_vulkan_renderer_set_background_color(FSVulkanRenderer *r, int red, int green, int blue);
+
+/*
  * 取一张快照（在渲染线程上把当前帧再画一次到离屏图像再回读）。
  * 调用方在别的线程上阻塞等待，最多等几秒；成功时 *out_pixels 是 malloc 出来的
  * RGBA8888（宽*高*4，行紧凑），由调用方 free。

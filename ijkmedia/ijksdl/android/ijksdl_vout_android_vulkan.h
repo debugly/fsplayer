@@ -81,6 +81,14 @@ void SDL_VoutAndroid_SetBackgroundImage(SDL_Vout *vout, const void *pixels, int 
 void SDL_VoutAndroid_SetBackgroundBlur(SDL_Vout *vout, int iterations, float sigma);
 
 /*
+ * 色彩调整（亮度/饱和度/对比度），对齐 iOS 的 colorPreference，默认都是 1.0；
+ * 只作用于视频画面，不影响字幕。
+ */
+void SDL_VoutAndroid_SetColorAdjust(SDL_Vout *vout, float brightness, float saturation, float contrast);
+/* 无视频区域（黑边）的背景色，0~255，默认黑。对齐 iOS 的 -setBackgroundColor:g:b:。 */
+void SDL_VoutAndroid_SetBackgroundColor(SDL_Vout *vout, int red, int green, int blue);
+
+/*
  * 取一张快照：在渲染线程上把当前帧重画到离屏图像再回读。
  * type 见 vulkan/fs_vulkan_renderer.h 的 FSSnapshotType（对齐 iOS 的 FSSnapshotType）。
  * 成功返回 0，*out_pixels 是 malloc 出来的 RGBA8888（宽*高*4，行紧凑），调用方 free。

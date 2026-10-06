@@ -404,6 +404,22 @@ void SDL_VoutAndroid_SetBackgroundBlur(SDL_Vout *vout, int iterations, float sig
     fs_vulkan_renderer_set_background_blur(vout->opaque->renderer, iterations, sigma);
 }
 
+void SDL_VoutAndroid_SetColorAdjust(SDL_Vout *vout, float brightness, float saturation, float contrast)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_color_adjust(vout->opaque->renderer, brightness, saturation, contrast);
+}
+
+void SDL_VoutAndroid_SetBackgroundColor(SDL_Vout *vout, int red, int green, int blue)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_background_color(vout->opaque->renderer, red, green, blue);
+}
+
 int SDL_VoutAndroid_TakeSnapshot(SDL_Vout *vout, int type,
                                  int *out_w, int *out_h, void **out_pixels)
 {

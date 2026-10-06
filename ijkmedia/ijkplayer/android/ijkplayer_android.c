@@ -97,6 +97,24 @@ int ijkmp_android_set_background_blur(IjkMediaPlayer *mp, int iterations, float 
     return 0;
 }
 
+int ijkmp_android_set_color_adjust(IjkMediaPlayer *mp, float brightness, float saturation, float contrast)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return -1;
+
+    SDL_VoutAndroid_SetColorAdjust(mp->ffplayer->vout, brightness, saturation, contrast);
+    return 0;
+}
+
+int ijkmp_android_set_background_color(IjkMediaPlayer *mp, int red, int green, int blue)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return -1;
+
+    SDL_VoutAndroid_SetBackgroundColor(mp->ffplayer->vout, red, green, blue);
+    return 0;
+}
+
 int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
                                 int *out_w, int *out_h, void **out_pixels)
 {

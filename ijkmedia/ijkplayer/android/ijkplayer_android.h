@@ -58,4 +58,8 @@ int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
 int ijkmp_android_set_background_image(IjkMediaPlayer *mp, const void *pixels, int width, int height);
 int ijkmp_android_set_background_blur(IjkMediaPlayer *mp, int iterations, float sigma);
 
+/* 色彩调整（亮度/饱和度/对比度，默认 1.0）与黑边背景色（0~255，默认黑）。 */
+int ijkmp_android_set_color_adjust(IjkMediaPlayer *mp, float brightness, float saturation, float contrast);
+int ijkmp_android_set_background_color(IjkMediaPlayer *mp, int red, int green, int blue);
+
 #endif
