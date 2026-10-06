@@ -1084,6 +1084,26 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
+    /**
+     * Called from the native audio thread. Only reached while an
+     * OnAudioSamplesListener is installed, and it must stay allocation free:
+     * the player is looked up through the same weak reference as the events.
+     */
+    @CalledByNative
+    private static void postAudioSamplesEventFromNative(Object weakThiz, short[] samples,
+            int sampleRate, int channels) {
+        if (weakThiz == null)
+            return;
+
+        @SuppressWarnings("rawtypes")
+        IjkMediaPlayer mp = (IjkMediaPlayer) ((WeakReference) weakThiz).get();
+        if (mp == null || mp.mOnAudioSamplesListener == null) {
+            return;
+        }
+
+        mp.mOnAudioSamplesListener.onAudioSamples(samples, sampleRate, channels);
+    }
+
     /*
      * ControlMessage
      */
@@ -1282,4 +1302,99 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static native void native_profileBegin(String libName);
     public static native void native_profileEnd();
     public static native void native_setLogLevel(int level);
+
+    // ------------------------------------------------------------------
+    // The APIs below are already implemented in the native player, they were
+    // only reachable from the iOS wrapper (FSMediaPlayback) until now.
+    // ------------------------------------------------------------------
+
+    /** Add an external subtitle file and activate it right away. */
+    public native boolean loadThenActiveSubtitle(String path);
+
+    /** Add an external subtitle file without activating it; 0 means succ, 1 means already added. */
+    public native int addOnlyExternalSubtitle(String path);
+
+    /** Add several external subtitle files at once; returns how many were added. */
+    public native int addOnlyExternalSubtitles(String[] paths);
+
+    /** Apply a subtitle style, pass null to restore the defaults. */
+    public native void setSubtitlePreference(FSSubtitlePreference preference);
+
+    /** Subtitle display delay in seconds. */
+    public native void setSubtitleExtraDelay(float delay);
+    public native float getSubtitleExtraDelay();
+
+    /** Audio display delay in seconds, for a/v sync fine tuning. */
+    public native void setAudioExtraDelay(float delay);
+    public native float getAudioExtraDelay();
+
+    /** Decode exactly one more frame, meant to be used while paused. */
+    public native void stepToNextFrame();
+
+    /** Toggle accurate seek. */
+    public native void enableAccurateSeek(boolean open);
+
+    /** How much of the source has been buffered, in ms. */
+    public native long getPlayableDuration();
+
+    /** Remaining frames in the queue, see FRAME_CACHE_TYPE_*. */
+    public native int getFrameCacheRemaining(int type);
+
+    public static final int FRAME_CACHE_TYPE_AUDIO = 1;
+    public static final int FRAME_CACHE_TYPE_VIDEO = 2;
+    public static final int FRAME_CACHE_TYPE_SUBTITLE = 3;
+
+    public native void setDeinterlace(int deinterlace);
+    public native int getDeinterlace();
+
+    /** Redraw the current frame, e.g. after the surface changed. */
+    public native void refreshPicture();
+
+    /** Reload the current video stream, used after switching the decoder. */
+    public native int reloadVideoStream();
+
+    /** Comma separated list of the file extensions the demuxers handle. */
+    public native String getIFormatExtensions();
+
+    /** Start/stop recording without re-encoding (stream copy). */
+    public native int startFastRecord(String path);
+    public native int stopFastRecord();
+
+    /** Start/stop recording with re-encoding. */
+    public native int startExactRecord(String path);
+    public native int stopExactRecord();
+
+    public static native int native_getLogLevel();
+    public static native void native_setLogReport(int useReport);
+
+    /**
+     * Observe the decoded audio samples, e.g. to draw a waveform or a level
+     * meter. Each callback receives a freshly allocated array, so it can be
+     * kept if needed.
+     */
+    public interface OnAudioSamplesListener {
+        /**
+         * @param samples    PCM s16 samples, null means the buffer was flushed
+         * @param sampleRate samples per second
+         * @param channels   number of interleaved channels
+         */
+        void onAudioSamples(short[] samples, int sampleRate, int channels);
+    }
+
+    private OnAudioSamplesListener mOnAudioSamplesListener;
+
+    /**
+     * Set (or clear, with null) the audio samples listener. The listener is
+     * called from the audio thread.
+     */
+    public void setOnAudioSamplesListener(OnAudioSamplesListener listener) {
+        mOnAudioSamplesListener = listener;
+        _setAudioSamplesObserver(listener != null);
+    }
+
+    public OnAudioSamplesListener getOnAudioSamplesListener() {
+        return mOnAudioSamplesListener;
+    }
+
+    private native void _setAudioSamplesObserver(boolean enable);
 }

@@ -1065,6 +1065,507 @@ IjkMediaPlayer_setFrameAtTime(JNIEnv *env, jobject thiz, jstring path, jlong sta
 
 
 // ----------------------------------------------------------------------------
+// APIs ported from the iOS wrapper (FSMediaPlayback): they were already
+// implemented in ijkplayer.h but had no JNI/Java front end on Android.
+// ----------------------------------------------------------------------------
+
+static void
+IjkMediaPlayer_setAudioExtraDelay(JNIEnv *env, jobject thiz, jfloat delay)
+{
+    MPTRACE("%s(%f)\n", __func__, (double) delay);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setAudioExtraDelay: null mp", LABEL_RETURN);
+
+    ijkmp_set_audio_extra_delay(mp, delay);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static jfloat
+IjkMediaPlayer_getAudioExtraDelay(JNIEnv *env, jobject thiz)
+{
+    jfloat retval = 0;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: getAudioExtraDelay: null mp", LABEL_RETURN);
+
+    retval = ijkmp_get_audio_extra_delay(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static void
+IjkMediaPlayer_setSubtitleExtraDelay(JNIEnv *env, jobject thiz, jfloat delay)
+{
+    MPTRACE("%s(%f)\n", __func__, (double) delay);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setSubtitleExtraDelay: null mp", LABEL_RETURN);
+
+    ijkmp_set_subtitle_extra_delay(mp, delay);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static jfloat
+IjkMediaPlayer_getSubtitleExtraDelay(JNIEnv *env, jobject thiz)
+{
+    jfloat retval = 0;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: getSubtitleExtraDelay: null mp", LABEL_RETURN);
+
+    retval = ijkmp_get_subtitle_extra_delay(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+/* add an external subtitle file and activate it right away */
+static jboolean
+IjkMediaPlayer_loadThenActiveSubtitle(JNIEnv *env, jobject thiz, jstring path)
+{
+    jboolean retval = JNI_FALSE;
+    const char *c_path = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: loadThenActiveSubtitle: null mp", LABEL_RETURN);
+    JNI_CHECK_GOTO(path, env, "java/lang/IllegalArgumentException", "mpjni: loadThenActiveSubtitle: null path", LABEL_RETURN);
+
+    c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    JNI_CHECK_GOTO(c_path, env, "java/lang/OutOfMemoryError", "mpjni: loadThenActiveSubtitle: path.string oom", LABEL_RETURN);
+
+    retval = (ijkmp_add_active_external_subtitle(mp, c_path) == 0) ? JNI_TRUE : JNI_FALSE;
+    (*env)->ReleaseStringUTFChars(env, path, c_path);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+/* add an external subtitle file but do not activate it; 0 means succ, 1 means already added */
+static jint
+IjkMediaPlayer_addOnlyExternalSubtitle(JNIEnv *env, jobject thiz, jstring path)
+{
+    jint retval = -1;
+    const char *c_path = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: addOnlyExternalSubtitle: null mp", LABEL_RETURN);
+    JNI_CHECK_GOTO(path, env, "java/lang/IllegalArgumentException", "mpjni: addOnlyExternalSubtitle: null path", LABEL_RETURN);
+
+    c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    JNI_CHECK_GOTO(c_path, env, "java/lang/OutOfMemoryError", "mpjni: addOnlyExternalSubtitle: path.string oom", LABEL_RETURN);
+
+    retval = ijkmp_addOnly_external_subtitle(mp, c_path);
+    (*env)->ReleaseStringUTFChars(env, path, c_path);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+/* add several external subtitle files at once; returns how many were added */
+static jint
+IjkMediaPlayer_addOnlyExternalSubtitles(JNIEnv *env, jobject thiz, jobjectArray paths)
+{
+    jint retval = -1;
+    jsize count = 0;
+    jsize i = 0;
+    const char **file_names = NULL;
+    jstring *j_paths = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: addOnlyExternalSubtitles: null mp", LABEL_RETURN);
+    JNI_CHECK_GOTO(paths, env, "java/lang/IllegalArgumentException", "mpjni: addOnlyExternalSubtitles: null paths", LABEL_RETURN);
+
+    count = (*env)->GetArrayLength(env, paths);
+    if (count <= 0)
+        goto LABEL_RETURN;
+
+    file_names = (const char **) calloc((size_t) count, sizeof(char *));
+    j_paths = (jstring *) calloc((size_t) count, sizeof(jstring));
+    JNI_CHECK_GOTO(file_names && j_paths, env, "java/lang/OutOfMemoryError", "mpjni: addOnlyExternalSubtitles: oom", LABEL_RETURN);
+
+    for (i = 0; i < count; ++i) {
+        j_paths[i] = (jstring) (*env)->GetObjectArrayElement(env, paths, i);
+        if (j_paths[i]) {
+            file_names[i] = (*env)->GetStringUTFChars(env, j_paths[i], NULL);
+        }
+    }
+
+    retval = ijkmp_addOnly_external_subtitles(mp, file_names, (int) count);
+
+    for (i = 0; i < count; ++i) {
+        if (j_paths[i]) {
+            if (file_names[i])
+                (*env)->ReleaseStringUTFChars(env, j_paths[i], file_names[i]);
+            (*env)->DeleteLocalRef(env, j_paths[i]);
+        }
+    }
+
+LABEL_RETURN:
+    free(file_names);
+    free(j_paths);
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+/* copy a java FSSubtitlePreference into the native struct; fields are read by
+ * name, so the java class has to keep exactly these field names. */
+static void
+IjkMediaPlayer_setSubtitlePreference(JNIEnv *env, jobject thiz, jobject sp)
+{
+    FSSubtitlePreference pref = fs_subtitle_default_preference();
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setSubtitlePreference: null mp", LABEL_RETURN);
+
+    if (sp) {
+        jclass cls = (*env)->GetObjectClass(env, sp);
+        jfieldID f_scale            = cls ? (*env)->GetFieldID(env, cls, "Scale", "F") : NULL;
+        jfieldID f_bottom_margin    = cls ? (*env)->GetFieldID(env, cls, "BottomMargin", "F") : NULL;
+        jfieldID f_force_override   = cls ? (*env)->GetFieldID(env, cls, "ForceOverride", "I") : NULL;
+        jfieldID f_font_name        = cls ? (*env)->GetFieldID(env, cls, "FontName", "Ljava/lang/String;") : NULL;
+        jfieldID f_primary_colour   = cls ? (*env)->GetFieldID(env, cls, "PrimaryColour", "I") : NULL;
+        jfieldID f_secondary_colour = cls ? (*env)->GetFieldID(env, cls, "SecondaryColour", "I") : NULL;
+        jfieldID f_back_colour      = cls ? (*env)->GetFieldID(env, cls, "BackColour", "I") : NULL;
+        jfieldID f_outline_colour   = cls ? (*env)->GetFieldID(env, cls, "OutlineColour", "I") : NULL;
+        jfieldID f_outline          = cls ? (*env)->GetFieldID(env, cls, "Outline", "F") : NULL;
+        jfieldID f_fonts_dir        = cls ? (*env)->GetFieldID(env, cls, "FontsDir", "Ljava/lang/String;") : NULL;
+
+        if (!f_scale || !f_bottom_margin || !f_force_override || !f_font_name ||
+            !f_primary_colour || !f_secondary_colour || !f_back_colour ||
+            !f_outline_colour || !f_outline || !f_fonts_dir) {
+            ALOGE("setSubtitlePreference: FSSubtitlePreference fields not found\n");
+            if (cls)
+                (*env)->DeleteLocalRef(env, cls);
+            goto LABEL_RETURN;
+        }
+
+        pref.Scale           = (*env)->GetFloatField(env, sp, f_scale);
+        pref.BottomMargin    = (*env)->GetFloatField(env, sp, f_bottom_margin);
+        pref.ForceOverride   = (*env)->GetIntField(env, sp, f_force_override);
+        pref.PrimaryColour   = (uint32_t) (*env)->GetIntField(env, sp, f_primary_colour);
+        pref.SecondaryColour = (uint32_t) (*env)->GetIntField(env, sp, f_secondary_colour);
+        pref.BackColour      = (uint32_t) (*env)->GetIntField(env, sp, f_back_colour);
+        pref.OutlineColour   = (uint32_t) (*env)->GetIntField(env, sp, f_outline_colour);
+        pref.Outline         = (*env)->GetFloatField(env, sp, f_outline);
+
+        jstring j_font_name = (jstring) (*env)->GetObjectField(env, sp, f_font_name);
+        if (j_font_name) {
+            const char *c_font_name = (*env)->GetStringUTFChars(env, j_font_name, NULL);
+            if (c_font_name) {
+                snprintf(pref.FontName, sizeof(pref.FontName), "%s", c_font_name);
+                (*env)->ReleaseStringUTFChars(env, j_font_name, c_font_name);
+            }
+            (*env)->DeleteLocalRef(env, j_font_name);
+        }
+
+        jstring j_fonts_dir = (jstring) (*env)->GetObjectField(env, sp, f_fonts_dir);
+        if (j_fonts_dir) {
+            const char *c_fonts_dir = (*env)->GetStringUTFChars(env, j_fonts_dir, NULL);
+            if (c_fonts_dir) {
+                snprintf(pref.FontsDir, sizeof(pref.FontsDir), "%s", c_fonts_dir);
+                (*env)->ReleaseStringUTFChars(env, j_fonts_dir, c_fonts_dir);
+            }
+            (*env)->DeleteLocalRef(env, j_fonts_dir);
+        }
+
+        (*env)->DeleteLocalRef(env, cls);
+    }
+
+    ijkmp_set_subtitle_preference(mp, &pref);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static void
+IjkMediaPlayer_stepToNextFrame(JNIEnv *env, jobject thiz)
+{
+    MPTRACE("%s\n", __func__);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: stepToNextFrame: null mp", LABEL_RETURN);
+
+    ijkmp_step_to_next_frame(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static void
+IjkMediaPlayer_enableAccurateSeek(JNIEnv *env, jobject thiz, jboolean open)
+{
+    MPTRACE("%s(%d)\n", __func__, (int) open);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: enableAccurateSeek: null mp", LABEL_RETURN);
+
+    ijkmp_set_enable_accurate_seek(mp, open ? 1 : 0);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static jlong
+IjkMediaPlayer_getPlayableDuration(JNIEnv *env, jobject thiz)
+{
+    jlong retval = 0;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: getPlayableDuration: null mp", LABEL_RETURN);
+
+    retval = ijkmp_get_playable_duration(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+/* type: 1 audio, 2 video, 3 subtitle */
+static jint
+IjkMediaPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
+{
+    jint retval = 0;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: getFrameCacheRemaining: null mp", LABEL_RETURN);
+
+    retval = ijkmp_get_frame_cache_remaining(mp, type);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static void
+IjkMediaPlayer_setDeinterlace(JNIEnv *env, jobject thiz, jint deinterlace)
+{
+    MPTRACE("%s(%d)\n", __func__, (int) deinterlace);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setDeinterlace: null mp", LABEL_RETURN);
+
+    ijkmp_set_deinterlace(mp, deinterlace);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static jint
+IjkMediaPlayer_getDeinterlace(JNIEnv *env, jobject thiz)
+{
+    jint retval = 0;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: getDeinterlace: null mp", LABEL_RETURN);
+
+    retval = ijkmp_get_deinterlace(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+/* ask the vout to redraw the current frame, e.g. after the surface changed */
+static void
+IjkMediaPlayer_refreshPicture(JNIEnv *env, jobject thiz)
+{
+    MPTRACE("%s\n", __func__);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: refreshPicture: null mp", LABEL_RETURN);
+
+    ijkmp_refresh_picture(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static jint
+IjkMediaPlayer_reloadVideoStream(JNIEnv *env, jobject thiz)
+{
+    jint retval = 0;
+    MPTRACE("%s\n", __func__);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: reloadVideoStream: null mp", LABEL_RETURN);
+
+    retval = ijkmp_reload_video_stream(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jstring
+IjkMediaPlayer_getIFormatExtensions(JNIEnv *env, jobject thiz)
+{
+    jstring retval = NULL;
+    const char *extensions = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: getIFormatExtensions: null mp", LABEL_RETURN);
+
+    extensions = ijkmp_get_iformat_extensions(mp);
+    if (extensions)
+        retval = (*env)->NewStringUTF(env, extensions);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jint
+IjkMediaPlayer_startFastRecord(JNIEnv *env, jobject thiz, jstring path)
+{
+    jint retval = -1;
+    const char *c_path = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: startFastRecord: null mp", LABEL_RETURN);
+    JNI_CHECK_GOTO(path, env, "java/lang/IllegalArgumentException", "mpjni: startFastRecord: null path", LABEL_RETURN);
+
+    c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    JNI_CHECK_GOTO(c_path, env, "java/lang/OutOfMemoryError", "mpjni: startFastRecord: path.string oom", LABEL_RETURN);
+
+    retval = ijkmp_start_fast_record(mp, c_path);
+    (*env)->ReleaseStringUTFChars(env, path, c_path);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jint
+IjkMediaPlayer_stopFastRecord(JNIEnv *env, jobject thiz)
+{
+    jint retval = -1;
+    MPTRACE("%s\n", __func__);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: stopFastRecord: null mp", LABEL_RETURN);
+
+    retval = ijkmp_stop_fast_record(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jint
+IjkMediaPlayer_startExactRecord(JNIEnv *env, jobject thiz, jstring path)
+{
+    jint retval = -1;
+    const char *c_path = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: startExactRecord: null mp", LABEL_RETURN);
+    JNI_CHECK_GOTO(path, env, "java/lang/IllegalArgumentException", "mpjni: startExactRecord: null path", LABEL_RETURN);
+
+    c_path = (*env)->GetStringUTFChars(env, path, NULL);
+    JNI_CHECK_GOTO(c_path, env, "java/lang/OutOfMemoryError", "mpjni: startExactRecord: path.string oom", LABEL_RETURN);
+
+    retval = ijkmp_start_exact_record(mp, c_path);
+    (*env)->ReleaseStringUTFChars(env, path, c_path);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jint
+IjkMediaPlayer_stopExactRecord(JNIEnv *env, jobject thiz)
+{
+    jint retval = -1;
+    MPTRACE("%s\n", __func__);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: stopExactRecord: null mp", LABEL_RETURN);
+
+    retval = ijkmp_stop_exact_record(mp);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jint
+IjkMediaPlayer_native_getLogLevel(JNIEnv *env, jclass clazz)
+{
+    (void) env; (void) clazz;
+    return ijkmp_global_get_log_level();
+}
+
+static void
+IjkMediaPlayer_native_setLogReport(JNIEnv *env, jclass clazz, jint useReport)
+{
+    (void) env; (void) clazz;
+    MPTRACE("%s(%d)\n", __func__, (int) useReport);
+    ijkmp_global_set_log_report(useReport);
+}
+
+/* ---------------------------------------------------------------------------
+ * audio samples observer
+ *
+ * The callback runs on the audio thread, so the env has to be attached. It is
+ * invoked from the decode loop, and the short[] handed to java is only valid
+ * while the callback runs: copy it if you want to keep it.
+ * ------------------------------------------------------------------------ */
+
+static jmethodID g_post_audio_samples_mid = NULL;
+
+static int
+audio_samples_callback(void *opaque, int16_t *samples, int sampleSize, int sampleRate, int channels)
+{
+    JNIEnv *env = NULL;
+    jshortArray j_samples = NULL;
+
+    if (!opaque)
+        return 0;
+
+    if (SDL_JNI_SetupThreadEnv(&env) != 0 || !env) {
+        ALOGE("audio_samples_callback: SetupThreadEnv failed\n");
+        return -1;
+    }
+
+    if (!g_post_audio_samples_mid) {
+        g_post_audio_samples_mid = (*env)->GetStaticMethodID(env, g_clazz.clazz,
+            "postAudioSamplesEventFromNative", "(Ljava/lang/Object;[SII)V");
+        if (J4A_ExceptionCheck__catchAll(env) || !g_post_audio_samples_mid) {
+            ALOGE("audio_samples_callback: postAudioSamplesEventFromNative not found\n");
+            g_post_audio_samples_mid = NULL;
+            return -1;
+        }
+    }
+
+    if (samples && sampleSize > 0) {
+        /* the native sampleSize is a byte count (see update_sample_display in
+         * ff_ffplay.c, where windowSize is compared against the buffer size in
+         * bytes), so the number of int16 samples in the window is half of it */
+        jsize sample_count = (jsize) (sampleSize / sizeof(int16_t));
+
+        if (sample_count > 0) {
+            j_samples = (*env)->NewShortArray(env, sample_count);
+            if (!j_samples || J4A_ExceptionCheck__catchAll(env)) {
+                ALOGE("audio_samples_callback: NewShortArray failed\n");
+                return -1;
+            }
+            (*env)->SetShortArrayRegion(env, j_samples, 0, sample_count, (const jshort *) samples);
+        }
+    }
+
+    (*env)->CallStaticVoidMethod(env, g_clazz.clazz, g_post_audio_samples_mid,
+                                 (jobject) opaque, j_samples, (jint) sampleRate, (jint) channels);
+    J4A_ExceptionCheck__catchAll(env);
+
+    if (j_samples)
+        (*env)->DeleteLocalRef(env, j_samples);
+
+    return 0;
+}
+
+static void
+IjkMediaPlayer_setAudioSamplesObserver(JNIEnv *env, jobject thiz, jboolean enable)
+{
+    MPTRACE("%s(%d)\n", __func__, (int) enable);
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setAudioSamplesObserver: null mp", LABEL_RETURN);
+
+    ijkmp_set_audio_sample_observer(mp, enable ? audio_samples_callback : NULL);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+// ----------------------------------------------------------------------------
 
 static JNINativeMethod g_methods[] = {
     {
@@ -1113,6 +1614,32 @@ static JNINativeMethod g_methods[] = {
 
     { "native_setLogLevel",     "(I)V",                     (void *) IjkMediaPlayer_native_setLogLevel },
     { "_setFrameAtTime",        "(Ljava/lang/String;JJII)V", (void *) IjkMediaPlayer_setFrameAtTime },
+
+    /* ported from the iOS wrapper */
+    { "setAudioExtraDelay",       "(F)V",                     (void *) IjkMediaPlayer_setAudioExtraDelay },
+    { "getAudioExtraDelay",       "()F",                      (void *) IjkMediaPlayer_getAudioExtraDelay },
+    { "setSubtitleExtraDelay",    "(F)V",                     (void *) IjkMediaPlayer_setSubtitleExtraDelay },
+    { "getSubtitleExtraDelay",    "()F",                      (void *) IjkMediaPlayer_getSubtitleExtraDelay },
+    { "loadThenActiveSubtitle",   "(Ljava/lang/String;)Z",    (void *) IjkMediaPlayer_loadThenActiveSubtitle },
+    { "addOnlyExternalSubtitle",  "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_addOnlyExternalSubtitle },
+    { "addOnlyExternalSubtitles", "([Ljava/lang/String;)I",   (void *) IjkMediaPlayer_addOnlyExternalSubtitles },
+    { "setSubtitlePreference",    "(Ltv/danmaku/ijk/media/player/FSSubtitlePreference;)V", (void *) IjkMediaPlayer_setSubtitlePreference },
+    { "stepToNextFrame",          "()V",                      (void *) IjkMediaPlayer_stepToNextFrame },
+    { "enableAccurateSeek",       "(Z)V",                     (void *) IjkMediaPlayer_enableAccurateSeek },
+    { "getPlayableDuration",      "()J",                      (void *) IjkMediaPlayer_getPlayableDuration },
+    { "getFrameCacheRemaining",   "(I)I",                     (void *) IjkMediaPlayer_getFrameCacheRemaining },
+    { "setDeinterlace",           "(I)V",                     (void *) IjkMediaPlayer_setDeinterlace },
+    { "getDeinterlace",           "()I",                      (void *) IjkMediaPlayer_getDeinterlace },
+    { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },
+    { "reloadVideoStream",        "()I",                      (void *) IjkMediaPlayer_reloadVideoStream },
+    { "getIFormatExtensions",     "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getIFormatExtensions },
+    { "startFastRecord",          "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_startFastRecord },
+    { "stopFastRecord",           "()I",                      (void *) IjkMediaPlayer_stopFastRecord },
+    { "startExactRecord",         "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_startExactRecord },
+    { "stopExactRecord",          "()I",                      (void *) IjkMediaPlayer_stopExactRecord },
+    { "_setAudioSamplesObserver", "(Z)V",                     (void *) IjkMediaPlayer_setAudioSamplesObserver },
+    { "native_getLogLevel",       "()I",                      (void *) IjkMediaPlayer_native_getLogLevel },
+    { "native_setLogReport",      "(I)V",                     (void *) IjkMediaPlayer_native_setLogReport },
 };
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
