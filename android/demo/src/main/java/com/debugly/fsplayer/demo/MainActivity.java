@@ -22,6 +22,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private String mSubtitlePath;
     private int mSnapshotType = -1;
     private int mSnapshotDelayMs = 4000;
+    private String mBackgroundPath;
+    private int mBlurIterations = IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
+    private float mBlurSigma = IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
     // 可用 intent extra "url" 覆盖（本地文件或网络地址）
@@ -31,6 +34,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     //   0 原始尺寸 1 屏幕所见(默认) 2 原始尺寸+字幕 3 原始尺寸+字幕+效果
     // 可用 intent extra "snapshotDelayMs" 改截屏延时（默认 4000）
     // 可用 intent extra "pauseAfterMs" 指定起播后多少毫秒暂停（用来验证暂停时也能截屏）
+    // 可用 intent extra "background" 指定一张图（设备路径），用它的高斯模糊填充黑边
+    // 可用 intent extra "blurIterations" / "blurSigma"（float）调模糊参数（默认 3 / 30）
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -46,6 +51,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mSnapshotType = getIntent() != null ? getIntent().getIntExtra("snapshotType", -1) : -1;
         mSnapshotDelayMs = getIntent() != null ? getIntent().getIntExtra("snapshotDelayMs", 4000) : 4000;
         int pauseAfterMs = getIntent() != null ? getIntent().getIntExtra("pauseAfterMs", -1) : -1;
+        mBackgroundPath = getIntent() != null ? getIntent().getStringExtra("background") : null;
+        mBlurIterations = getIntent() != null
+                ? getIntent().getIntExtra("blurIterations", IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS)
+                : IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
+        mBlurSigma = getIntent() != null
+                ? getIntent().getFloatExtra("blurSigma", IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA)
+                : IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA;
 
         mPlayer = new IjkMediaPlayer();
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
@@ -67,6 +79,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     Toast.makeText(MainActivity.this,
                             "loadThenActiveSubtitle(" + mSubtitlePath + ") = " + ok,
                             Toast.LENGTH_LONG).show();
+                }
+                if (mBackgroundPath != null && !mBackgroundPath.isEmpty()) {
+                    Bitmap bg = android.graphics.BitmapFactory.decodeFile(mBackgroundPath);
+                    if (bg == null) {
+                        toast("背景图解码失败: " + mBackgroundPath);
+                    } else {
+                        mPlayer.setBackgroundBlurIterations(mBlurIterations);
+                        mPlayer.setBackgroundBlurSigma(mBlurSigma);
+                        mPlayer.setBackgroundImage(bg);
+                        toast("背景 " + bg.getWidth() + "x" + bg.getHeight()
+                                + " iterations=" + mPlayer.getBackgroundBlurIterations()
+                                + " sigma=" + mPlayer.getBackgroundBlurSigma());
+                    }
                 }
                 if (pauseAfterMs >= 0) {
                     new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {

@@ -186,6 +186,22 @@ void SDL_VoutAndroid_SetScalingMode(SDL_Vout *vout, int mode)
  * 注意：这里不拿 vout 的锁。快照要等渲染线程把下一帧画出来，而渲染线程显示时
  * 也要拿这把锁，持锁等待就死锁了；renderer 指针本身在 vout 生命周期内是稳定的。
  */
+void SDL_VoutAndroid_SetBackgroundImage(SDL_Vout *vout, const void *pixels, int width, int height)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_background_image(vout->opaque->renderer, pixels, width, height);
+}
+
+void SDL_VoutAndroid_SetBackgroundBlur(SDL_Vout *vout, int iterations, float sigma)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_background_blur(vout->opaque->renderer, iterations, sigma);
+}
+
 int SDL_VoutAndroid_TakeSnapshot(SDL_Vout *vout, int type,
                                  int *out_w, int *out_h, void **out_pixels)
 {

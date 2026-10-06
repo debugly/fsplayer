@@ -150,6 +150,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FS_SCALING_MODE_ASPECT_FILL = 1;   // 等比缩放，铺满显示区
     public static final int FS_SCALING_MODE_FILL        = 2;   // 非等比拉伸，铺满显示区
 
+    // 背景图降采样后的最长边，和 iOS FSMetalBlurFilter 保持一致
+    public static final int FS_BACKGROUND_MAX_SIDE = 400;
+    // 高斯模糊默认参数，和 iOS 的 backgroundBlurIterations/backgroundBlurSigma 一致
+    public static final int FS_BACKGROUND_BLUR_ITERATIONS = 3;
+    public static final float FS_BACKGROUND_BLUR_SIGMA = 30.0f;
+
     // 快照类型，语义对齐 iOS 的 FSSnapshotType
     public static final int FS_SNAPSHOT_TYPE_ORIGIN                 = 0; // 原始尺寸，无字幕无效果
     public static final int FS_SNAPSHOT_TYPE_SCREEN                 = 1; // 屏幕上所见（含缩放/letterbox/旋转/字幕）
@@ -172,6 +178,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private int mListenerContext;
 
     private SurfaceHolder mSurfaceHolder;
+
+    /** 高斯模糊背景（对齐 iOS 的 backgroundImage/backgroundBlurIterations/backgroundBlurSigma） */
+    private Bitmap mBackgroundImage;
+    private byte[] mBackgroundPixels;      // 降采样后的 RGBA8888
+    private int mBackgroundWidth;
+    private int mBackgroundHeight;
+    private int mBackgroundBlurIterations = FS_BACKGROUND_BLUR_ITERATIONS;
+    private float mBackgroundBlurSigma = FS_BACKGROUND_BLUR_SIGMA;
     private EventHandler mEventHandler;
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
@@ -293,6 +307,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
         _setVideoSurface(surface);
         updateSurfaceScreenOn();
+        applyBackgroundSettings();
     }
 
     /**
@@ -323,6 +338,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         mSurfaceHolder = null;
         _setVideoSurface(surface);
         updateSurfaceScreenOn();
+        applyBackgroundSettings();
     }
 
     /**
@@ -981,6 +997,90 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public int getScalingMode() {
         return (int)_getPropertyLong(FFP_PROP_INT64_VIDEO_SCALING_MODE, FS_SCALING_MODE_ASPECT_FIT);
     }
+
+    /**
+     * 设置高斯模糊背景图：无视频的区域（AspectFit 的黑边）会用这张图的高斯模糊填充，
+     * 替代默认纯色背景。传 null 清除。语义对齐 iOS 的 backgroundImage。
+     * 可以在 setSurface 之前调用（内部会在 surface 就绪后重试）。
+     */
+    public void setBackgroundImage(Bitmap bitmap) {
+        mBackgroundImage = bitmap;
+        if (bitmap == null) {
+            mBackgroundPixels = null;
+            mBackgroundWidth = mBackgroundHeight = 0;
+            setBackgroundImage(null, 0, 0);
+            return;
+        }
+        // 背景不需要高分辨率：先降采样（和 iOS FSMetalBlurFilter 一样，最长边 400），
+        // 再交给 native 上传；后续换模糊参数不需要重新上传。
+        Bitmap src = bitmap.getConfig() == Bitmap.Config.ARGB_8888
+                ? bitmap : bitmap.copy(Bitmap.Config.ARGB_8888, false);
+        if (src == null) {
+            mBackgroundPixels = null;
+            setBackgroundImage(null, 0, 0);
+            return;
+        }
+        int maxSide = Math.max(src.getWidth(), src.getHeight());
+        Bitmap scaled = maxSide > FS_BACKGROUND_MAX_SIDE
+                ? Bitmap.createScaledBitmap(src,
+                        Math.max(1, src.getWidth() * FS_BACKGROUND_MAX_SIDE / maxSide),
+                        Math.max(1, src.getHeight() * FS_BACKGROUND_MAX_SIDE / maxSide), true)
+                : src;
+        int w = scaled.getWidth();
+        int h = scaled.getHeight();
+        mBackgroundPixels = new byte[w * h * 4];
+        // ARGB_8888 在内存里就是 RGBA 字节序，和 native 期望的一致
+        scaled.copyPixelsToBuffer(ByteBuffer.wrap(mBackgroundPixels));
+        mBackgroundWidth = w;
+        mBackgroundHeight = h;
+        setBackgroundImage(mBackgroundPixels, w, h);
+    }
+
+    public Bitmap getBackgroundImage() {
+        return mBackgroundImage;
+    }
+
+    /**
+     * 生成模糊背景时的高斯迭代次数，默认 3，至少 1。和 iOS 的 backgroundBlurIterations 一致。
+     */
+    public void setBackgroundBlurIterations(int iterations) {
+        if (iterations < 1) {
+            iterations = 1;
+        }
+        mBackgroundBlurIterations = iterations;
+        setBackgroundBlur(mBackgroundBlurIterations, mBackgroundBlurSigma);
+    }
+
+    public int getBackgroundBlurIterations() {
+        return mBackgroundBlurIterations;
+    }
+
+    /**
+     * 单次高斯模糊的 sigma，默认 30，值越大越模糊。和 iOS 的 backgroundBlurSigma 一致。
+     */
+    public void setBackgroundBlurSigma(float sigma) {
+        if (sigma <= 0) {
+            sigma = FS_BACKGROUND_BLUR_SIGMA;
+        }
+        mBackgroundBlurSigma = sigma;
+        setBackgroundBlur(mBackgroundBlurIterations, mBackgroundBlurSigma);
+    }
+
+    public float getBackgroundBlurSigma() {
+        return mBackgroundBlurSigma;
+    }
+
+    /** surface 就绪后要重新下发一次（renderer 是随 surface 建的） */
+    private void applyBackgroundSettings() {
+        if (mBackgroundPixels != null) {
+            setBackgroundImage(mBackgroundPixels, mBackgroundWidth, mBackgroundHeight);
+        }
+        setBackgroundBlur(mBackgroundBlurIterations, mBackgroundBlurSigma);
+    }
+
+    private native void setBackgroundImage(byte[] rgba, int width, int height);
+
+    private native void setBackgroundBlur(int iterations, float sigma);
 
     /**
      * 截取当前画面（等同 {@link #FS_SNAPSHOT_TYPE_SCREEN}）。

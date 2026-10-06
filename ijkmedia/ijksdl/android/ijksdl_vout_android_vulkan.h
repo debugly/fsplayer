@@ -73,6 +73,14 @@ SDL_GPU *SDL_VoutAndroid_GetGPU(SDL_Vout *vout);
 void SDL_VoutAndroid_SetScalingMode(SDL_Vout *vout, int mode);
 
 /*
+ * 设置高斯模糊背景（语义对齐 iOS 的 backgroundImage/backgroundBlurIterations/
+ * backgroundBlurSigma）。pixels 是 RGBA8888，需已降采样到最长边 400；传 NULL 清除。
+ * 播放中随时可调用，下一帧生效。
+ */
+void SDL_VoutAndroid_SetBackgroundImage(SDL_Vout *vout, const void *pixels, int width, int height);
+void SDL_VoutAndroid_SetBackgroundBlur(SDL_Vout *vout, int iterations, float sigma);
+
+/*
  * 取一张快照：在渲染线程上把当前帧重画到离屏图像再回读。
  * type 见 vulkan/fs_vulkan_renderer.h 的 FSSnapshotType（对齐 iOS 的 FSSnapshotType）。
  * 成功返回 0，*out_pixels 是 malloc 出来的 RGBA8888（宽*高*4，行紧凑），调用方 free。

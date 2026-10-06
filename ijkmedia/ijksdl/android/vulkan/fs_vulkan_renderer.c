@@ -23,6 +23,7 @@
 
 #include "fs_vulkan_renderer.h"
 
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -48,6 +49,8 @@
 #include "shaders/external.frag.spv.h"
 #include "shaders/sub.vert.spv.h"
 #include "shaders/sub.frag.spv.h"
+#include "shaders/blur.vert.spv.h"
+#include "shaders/blur.frag.spv.h"
 
 #include "ijksdl/ijksdl_gpu.h"
 #include "fs_vulkan_internal.h"
@@ -191,6 +194,40 @@ struct FSVulkanRenderer {
     VkPipeline       last_pipeline;
     VkPipelineLayout last_layout;
     VkDescriptorSet  last_desc_set;
+
+    /* ---- 高斯模糊背景（对齐 iOS backgroundImage/BlurIterations/BlurSigma） ---- */
+    pthread_mutex_t bg_mutex;          /* 保护下面三个“挂起请求”字段 */
+    void           *bg_pending_pixels; /* 待上传的 RGBA8888（App 线程给，渲染线程取） */
+    int             bg_pending_w, bg_pending_h;
+    int             bg_pending_clear;  /* 1 = 要清掉背景 */
+    int             bg_pending_params; /* 参数变了，要重跑模糊 */
+    volatile int    bg_iterations;
+    volatile float  bg_sigma;
+    int             bg_w, bg_h;        /* 工作分辨率（最长边 <= 400，和 iOS 一致） */
+    #define FS_BG_SLOT_SRC  0          /* 原始图 */
+    #define FS_BG_SLOT_A    1          /* ping */
+    #define FS_BG_SLOT_B    2          /* pong */
+    VkImage         bg_img[3];
+    VkDeviceMemory  bg_mem[3];
+    VkImageView     bg_view[3];
+    VkFramebuffer   bg_fb[2];          /* ping/pong 各自的 framebuffer */
+    int             bg_layout[3];      /* 每个槽当前的 layout */
+    VkDescriptorSet bg_desc_set[3];
+    VkDescriptorSetLayout bg_desc_layout;
+    VkDescriptorPool bg_desc_pool;
+    VkSampler       bg_sampler;
+    VkRenderPass    bg_pass;
+    VkPipeline      bg_blur_pipeline;
+    VkPipelineLayout bg_blur_layout;
+    VkPipeline      bg_draw_pipeline;  /* 铺满整个显示区的合成 */
+    VkPipelineLayout bg_draw_layout;
+    VkBuffer        bg_staging;
+    VkDeviceMemory  bg_staging_mem;
+    VkDeviceSize    bg_staging_size;
+    VkBuffer        bg_quad_buffer;    /* 自己的 0..1 全屏四边形，不依赖字幕那套 */
+    VkDeviceMemory  bg_quad_mem;
+    int             bg_ready;          /* 模糊结果可用 */
+    int             bg_result_slot;    /* 结果在哪个槽 */
 
     /* ---- 快照 ---- */
     volatile int   snapshot_type;      /* -1 = 没有请求 */
@@ -1312,6 +1349,10 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     r->converted_frame = av_frame_alloc();
 
     r->snapshot_type = -1;
+    pthread_mutex_init(&r->bg_mutex, NULL);
+    r->bg_iterations = 3;      /* 和 iOS 的默认值一致 */
+    r->bg_sigma = 30.0f;
+    r->bg_result_slot = -1;
     r->scaling_mode = FS_SCALING_MODE_ASPECT_FIT;
     r->video_rect[0] = -1.0f; r->video_rect[1] = -1.0f;
     r->video_rect[2] =  1.0f; r->video_rect[3] =  1.0f;
@@ -1399,6 +1440,10 @@ static int ensure_yuv420p(FSVulkanRenderer *r, const AVFrame *frame,
     return 0;
 }
 
+
+/* 背景模糊 + 合成（实现在文件后面，主 pass / 快照 pass 都要用） */
+static void background_prepare(FSVulkanRenderer *r);
+static void draw_background(FSVulkanRenderer *r);
 
 /* ------------------------------------------------------------------------- */
 /* 快照：把当前帧离屏重画一次并回读成 RGBA                                        */
@@ -1564,6 +1609,10 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
 
     VkDeviceSize off = 0;
 
+    /* 屏幕所见类型要连模糊背景一起截（iOS 的 _snapshotScreen 也是这样） */
+    if (use_display_transform && r->bg_ready && r->scaling_mode == FS_SCALING_MODE_ASPECT_FIT)
+        draw_background(r);
+
     vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->last_pipeline);
     vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             r->last_layout, 0, 1, &r->last_desc_set, 0, NULL);
@@ -1653,6 +1702,600 @@ static void finish_snapshot_readback(FSVulkanRenderer *r)
     r->snapshot_ready = out ? 1 : -1;
 }
 
+
+
+/* 全屏四边形管线（背景模糊用）：blur.vert 直接把 0..1 的顶点映射到 NDC，
+   不透明混合，视口是动态状态（两个 pass 的分辨率不同）。 */
+static VkResult create_full_screen_pipeline(FSVulkanRenderer *r, VkRenderPass render_pass,
+                                            VkShaderModule vert, VkShaderModule frag,
+                                            VkPipelineLayout layout, VkPipeline *out_pipeline)
+{
+    VkPipelineShaderStageCreateInfo stages[2] = {
+        { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+          .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = vert, .pName = "main" },
+        { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+          .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = frag, .pName = "main" },
+    };
+
+    VkVertexInputBindingDescription binding = {
+        .binding = 0, .stride = sizeof(FSQuadVertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    };
+    VkVertexInputAttributeDescription attrs[2] = {
+        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = offsetof(FSQuadVertex, pos) },
+        { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = offsetof(FSQuadVertex, uv) },
+    };
+    VkPipelineVertexInputStateCreateInfo vis = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1, .pVertexBindingDescriptions = &binding,
+        .vertexAttributeDescriptionCount = 2, .pVertexAttributeDescriptions = attrs,
+    };
+    VkPipelineInputAssemblyStateCreateInfo ias = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    };
+    VkViewport viewport = { 0, 0, 1.0f, 1.0f, 0.0f, 1.0f };
+    VkRect2D scissor = { {0, 0}, {1, 1} };
+    VkPipelineViewportStateCreateInfo vps = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1, .pViewports = &viewport,
+        .scissorCount = 1, .pScissors = &scissor,
+    };
+    VkDynamicState dyn_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo ds = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = 2, .pDynamicStates = dyn_states,
+    };
+    VkPipelineRasterizationStateCreateInfo rs = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .polygonMode = VK_POLYGON_MODE_FILL, .cullMode = VK_CULL_MODE_NONE, .lineWidth = 1.0f,
+    };
+    VkPipelineMultisampleStateCreateInfo ms = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    };
+    VkPipelineColorBlendAttachmentState blend_att = {
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    };
+    VkPipelineColorBlendStateCreateInfo cbs = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .attachmentCount = 1, .pAttachments = &blend_att,
+    };
+    VkGraphicsPipelineCreateInfo gpi = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = 2, .pStages = stages,
+        .pVertexInputState = &vis,
+        .pInputAssemblyState = &ias,
+        .pViewportState = &vps,
+        .pDynamicState = &ds,
+        .pRasterizationState = &rs,
+        .pMultisampleState = &ms,
+        .pColorBlendState = &cbs,
+        .layout = layout,
+        .renderPass = render_pass,
+        .subpass = 0,
+    };
+    return vkCreateGraphicsPipelines(r->device, VK_NULL_HANDLE, 1, &gpi, NULL, out_pipeline);
+}
+
+/* ------------------------------------------------------------------------- */
+/* 高斯模糊背景                                                                 */
+/*                                                                             */
+/* 语义对齐 iOS（FSMetalView + FSMetalBlurFilter）：                             */
+/*   backgroundImage        用户给的图，降采样到最长边 400 后上传（Java 侧缩）     */
+/*   backgroundBlurIterations 默认 3，每轮做一次 σ 高斯（方差可加 = iOS 的语义）  */
+/*   backgroundBlurSigma    默认 30，单位是工作分辨率下的纹素                     */
+/* 结果铺满整个显示区、画在视频下面，只在 AspectFit（会留黑边）时画。              */
+/* ------------------------------------------------------------------------- */
+
+#define FS_BG_MAX_SIDE 400
+
+typedef struct {
+    float step[2];        /* 采样步长（含方向），单位纹理坐标 */
+    int   taps;
+    float pad;
+    float weights[16];
+} FSBlurPush;
+
+static void destroy_background_resources(FSVulkanRenderer *r)
+{
+    if (!r->device)
+        return;
+
+    for (int i = 0; i < 2; i++) {
+        if (r->bg_fb[i]) { vkDestroyFramebuffer(r->device, r->bg_fb[i], NULL); r->bg_fb[i] = VK_NULL_HANDLE; }
+    }
+    for (int i = 0; i < 3; i++) {
+        if (r->bg_view[i]) { vkDestroyImageView(r->device, r->bg_view[i], NULL); r->bg_view[i] = VK_NULL_HANDLE; }
+        if (r->bg_img[i])  { vkDestroyImage(r->device, r->bg_img[i], NULL);     r->bg_img[i] = VK_NULL_HANDLE; }
+        if (r->bg_mem[i])  { vkFreeMemory(r->device, r->bg_mem[i], NULL);       r->bg_mem[i] = VK_NULL_HANDLE; }
+        r->bg_desc_set[i] = VK_NULL_HANDLE;
+        r->bg_layout[i] = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    if (r->bg_staging)     { vkDestroyBuffer(r->device, r->bg_staging, NULL);  r->bg_staging = VK_NULL_HANDLE; }
+    if (r->bg_staging_mem) { vkFreeMemory(r->device, r->bg_staging_mem, NULL); r->bg_staging_mem = VK_NULL_HANDLE; }
+    r->bg_staging_size = 0;
+    r->bg_w = r->bg_h = 0;
+    r->bg_ready = 0;
+    r->bg_result_slot = -1;
+}
+
+/* 模糊 pass 的 render pass：附件格式随意（不对外），结束时转成可采样 */
+static VkResult create_bg_pass(FSVulkanRenderer *r)
+{
+    VkAttachmentDescription att = {
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+    VkAttachmentReference ref = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+    VkSubpassDescription sub = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1, .pColorAttachments = &ref,
+    };
+    VkRenderPassCreateInfo rpci = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1, .pAttachments = &att,
+        .subpassCount = 1, .pSubpasses = &sub,
+    };
+    if (vkCreateRenderPass(r->device, &rpci, NULL, &r->bg_pass) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    /* 采样器：线性 + clamp，对齐 MPSImageGaussianBlur 的 edgeMode Clamp */
+    VkSamplerCreateInfo sci = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = VK_FILTER_LINEAR, .minFilter = VK_FILTER_LINEAR,
+        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .maxLod = 0.0f,
+    };
+    if (vkCreateSampler(r->device, &sci, NULL, &r->bg_sampler) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    {
+        VkDescriptorSetLayoutBinding b = {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        };
+        VkDescriptorSetLayoutCreateInfo dli = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1, .pBindings = &b,
+        };
+        if (vkCreateDescriptorSetLayout(r->device, &dli, NULL, &r->bg_desc_layout) != VK_SUCCESS)
+            return VK_ERROR_INITIALIZATION_FAILED;
+
+        VkDescriptorPoolSize ps = {
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 8,
+        };
+        VkDescriptorPoolCreateInfo pci = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets = 8,
+            .poolSizeCount = 1, .pPoolSizes = &ps,
+        };
+        if (vkCreateDescriptorPool(r->device, &pci, NULL, &r->bg_desc_pool) != VK_SUCCESS)
+            return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    /* 模糊管线：blur.vert + blur.frag，片元侧一段 push constant（步长 + 权重） */
+    {
+        VkShaderModule vs = create_shader_module(r, blur_vert_spv, blur_vert_spv_len);
+        VkShaderModule fs = create_shader_module(r, blur_frag_spv, blur_frag_spv_len);
+        if (!vs || !fs)
+            return VK_ERROR_INITIALIZATION_FAILED;
+
+        VkPushConstantRange pcr = {
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .offset = 0,
+            .size = sizeof(FSBlurPush),
+        };
+        VkPipelineLayoutCreateInfo pli = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1, .pSetLayouts = &r->bg_desc_layout,
+            .pushConstantRangeCount = 1, .pPushConstantRanges = &pcr,
+        };
+        VkResult res = vkCreatePipelineLayout(r->device, &pli, NULL, &r->bg_blur_layout);
+        if (res != VK_SUCCESS) {
+            vkDestroyShaderModule(r->device, vs, NULL);
+            vkDestroyShaderModule(r->device, fs, NULL);
+            return res;
+        }
+        res = create_full_screen_pipeline(r, r->bg_pass, vs, fs, r->bg_blur_layout,
+                                          &r->bg_blur_pipeline);
+        vkDestroyShaderModule(r->device, vs, NULL);
+        vkDestroyShaderModule(r->device, fs, NULL);
+        if (res != VK_SUCCESS)
+            return res;
+    }
+
+    /* 合成管线：blur.vert + sub.frag（就是采样一张纹理铺满），画进主 render pass */
+    {
+        VkShaderModule vs = create_shader_module(r, blur_vert_spv, blur_vert_spv_len);
+        VkShaderModule fs = create_shader_module(r, sub_frag_spv, sub_frag_spv_len);
+        if (!vs || !fs)
+            return VK_ERROR_INITIALIZATION_FAILED;
+
+        VkPipelineLayoutCreateInfo pli = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1, .pSetLayouts = &r->bg_desc_layout,
+        };
+        VkResult res = vkCreatePipelineLayout(r->device, &pli, NULL, &r->bg_draw_layout);
+        if (res != VK_SUCCESS) {
+            vkDestroyShaderModule(r->device, vs, NULL);
+            vkDestroyShaderModule(r->device, fs, NULL);
+            return res;
+        }
+        res = create_full_screen_pipeline(r, r->render_pass, vs, fs, r->bg_draw_layout,
+                                          &r->bg_draw_pipeline);
+        vkDestroyShaderModule(r->device, vs, NULL);
+        vkDestroyShaderModule(r->device, fs, NULL);
+        if (res != VK_SUCCESS)
+            return res;
+    }
+
+    /* 自己的全屏四边形（0..1），blur.vert 直接映射到 NDC */
+    {
+        VkDeviceSize size = sizeof(kSubQuadVertices);
+        if (create_buffer(r, size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                          &r->bg_quad_buffer, &r->bg_quad_mem) != VK_SUCCESS)
+            return VK_ERROR_INITIALIZATION_FAILED;
+        void *data = NULL;
+        vkMapMemory(r->device, r->bg_quad_mem, 0, size, 0, &data);
+        memcpy(data, kSubQuadVertices, size);
+        vkUnmapMemory(r->device, r->bg_quad_mem);
+    }
+
+    return VK_SUCCESS;
+}
+
+static VkResult create_background_target(FSVulkanRenderer *r, int w, int h)
+{
+    if (!r->bg_pass && create_bg_pass(r) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    destroy_background_resources(r);
+    vkResetDescriptorPool(r->device, r->bg_desc_pool, 0);
+
+    r->bg_w = w;
+    r->bg_h = h;
+
+    for (int i = 0; i < 3; i++) {
+        if (create_image(r, w, h, VK_FORMAT_R8G8B8A8_UNORM,
+                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                             VK_IMAGE_USAGE_SAMPLED_BIT,
+                         &r->bg_img[i], &r->bg_mem[i]) != VK_SUCCESS)
+            goto fail;
+        if (create_image_view(r, r->bg_img[i], VK_FORMAT_R8G8B8A8_UNORM, &r->bg_view[i]) != VK_SUCCESS)
+            goto fail;
+        r->bg_layout[i] = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    for (int i = 0; i < 2; i++) {
+        VkImageView view = r->bg_view[FS_BG_SLOT_A + i];
+        VkFramebufferCreateInfo fci = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass = r->bg_pass,
+            .attachmentCount = 1, .pAttachments = &view,
+            .width = (uint32_t)w, .height = (uint32_t)h, .layers = 1,
+        };
+        if (vkCreateFramebuffer(r->device, &fci, NULL, &r->bg_fb[i]) != VK_SUCCESS)
+            goto fail;
+    }
+
+    VkDeviceSize size = (VkDeviceSize)w * h * 4;
+    if (create_buffer(r, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                      &r->bg_staging, &r->bg_staging_mem) != VK_SUCCESS)
+        goto fail;
+    r->bg_staging_size = size;
+
+    {
+        VkDescriptorSetLayout layouts[3] = { r->bg_desc_layout, r->bg_desc_layout, r->bg_desc_layout };
+        VkDescriptorSetAllocateInfo dai = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = r->bg_desc_pool,
+            .descriptorSetCount = 3,
+            .pSetLayouts = layouts,
+        };
+        if (vkAllocateDescriptorSets(r->device, &dai, r->bg_desc_set) != VK_SUCCESS)
+            goto fail;
+    }
+    for (int i = 0; i < 3; i++) {
+        VkDescriptorImageInfo ii = {
+            .sampler = r->bg_sampler,
+            .imageView = r->bg_view[i],
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkWriteDescriptorSet wr = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = r->bg_desc_set[i],
+            .dstBinding = 1,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &ii,
+        };
+        vkUpdateDescriptorSets(r->device, 1, &wr, 0, NULL);
+    }
+
+    ALOGD("FSVulkanRenderer: background target %dx%d\n", w, h);
+    return VK_SUCCESS;
+
+fail:
+    destroy_background_resources(r);
+    return VK_ERROR_INITIALIZATION_FAILED;
+}
+
+static void upload_background_source(FSVulkanRenderer *r, const void *pixels)
+{
+    void *data = NULL;
+    if (vkMapMemory(r->device, r->bg_staging_mem, 0, r->bg_staging_size, 0, &data) != VK_SUCCESS)
+        return;
+    memcpy(data, pixels, (size_t)r->bg_w * r->bg_h * 4);
+    vkUnmapMemory(r->device, r->bg_staging_mem);
+
+    int src = FS_BG_SLOT_SRC;
+    VkImageMemoryBarrier b = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = r->bg_layout[src],
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = r->bg_img[src],
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+        .srcAccessMask = (r->bg_layout[src] == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                             ? VK_ACCESS_SHADER_READ_BIT : 0,
+        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+    };
+    vkCmdPipelineBarrier(r->command_buffer,
+                         (r->bg_layout[src] == VK_IMAGE_LAYOUT_UNDEFINED)
+                             ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &b);
+
+    VkBufferImageCopy region = {
+        .imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .imageOffset = { 0, 0, 0 },
+        .imageExtent = { (uint32_t)r->bg_w, (uint32_t)r->bg_h, 1 },
+    };
+    vkCmdCopyBufferToImage(r->command_buffer, r->bg_staging, r->bg_img[src],
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    b.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(r->command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &b);
+    r->bg_layout[src] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+}
+
+/* 一次一维高斯：读 read_slot，写 write_slot */
+static void background_blur_pass(FSVulkanRenderer *r, int read_slot, int write_slot,
+                                 float dx, float dy, float stride,
+                                 const float *weights, int taps)
+{
+    VkImageLayout old = r->bg_layout[write_slot];
+    VkImageMemoryBarrier b = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = old,
+        .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = r->bg_img[write_slot],
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+        .srcAccessMask = (old == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                             ? VK_ACCESS_SHADER_READ_BIT : 0,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    };
+    vkCmdPipelineBarrier(r->command_buffer,
+                         (old == VK_IMAGE_LAYOUT_UNDEFINED) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                                                            : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &b);
+
+    VkClearValue clear = { .color = {{0.0f, 0.0f, 0.0f, 1.0f}} };
+    VkFramebuffer fb = r->bg_fb[write_slot == FS_BG_SLOT_A ? 0 : 1];
+    VkRenderPassBeginInfo rpi = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = r->bg_pass,
+        .framebuffer = fb,
+        .renderArea = {{0, 0}, {(uint32_t)r->bg_w, (uint32_t)r->bg_h}},
+        .clearValueCount = 1,
+        .pClearValues = &clear,
+    };
+    vkCmdBeginRenderPass(r->command_buffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp = { 0, 0, (float)r->bg_w, (float)r->bg_h, 0.0f, 1.0f };
+    VkRect2D sc = { {0, 0}, {(uint32_t)r->bg_w, (uint32_t)r->bg_h} };
+    vkCmdSetViewport(r->command_buffer, 0, 1, &vp);
+    vkCmdSetScissor(r->command_buffer, 0, 1, &sc);
+
+    FSBlurPush pc;
+    memset(&pc, 0, sizeof(pc));
+    pc.step[0] = dx * stride / (float)r->bg_w;
+    pc.step[1] = dy * stride / (float)r->bg_h;
+    pc.taps = taps;
+    for (int i = 0; i < taps && i < 16; i++)
+        pc.weights[i] = weights[i];
+
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->bg_blur_pipeline);
+    vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            r->bg_blur_layout, 0, 1, &r->bg_desc_set[read_slot], 0, NULL);
+    VkDeviceSize off = 0;
+    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->bg_quad_buffer, &off);
+    vkCmdPushConstants(r->command_buffer, r->bg_blur_layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(pc), &pc);
+    vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+
+    vkCmdEndRenderPass(r->command_buffer);
+    r->bg_layout[write_slot] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+}
+
+/* 权重取在真实偏移 i*stride 上，着色器里再归一化；stride 最多摊到 σ/3（覆盖 ±5σ） */
+static void compute_blur_weights(float sigma, float *stride_out, float *weights, int *taps)
+{
+    if (sigma <= 0.0f)
+        sigma = 30.0f;
+    float stride = sigma / 3.0f;
+    if (stride < 1.0f) stride = 1.0f;
+    if (stride > 16.0f) stride = 16.0f;
+
+    for (int i = 0; i < 16; i++) {
+        float d = (float)i * stride;
+        weights[i] = expf(-(d * d) / (2.0f * sigma * sigma));
+    }
+    weights[0] = 1.0f;
+    *stride_out = stride;
+    *taps = 16;
+}
+
+static void run_background_blur(FSVulkanRenderer *r)
+{
+    float weights[16];
+    float stride = 1.0f;
+    int taps = 16;
+    compute_blur_weights(r->bg_sigma, &stride, weights, &taps);
+
+    int iters = r->bg_iterations;
+    if (iters < 1) iters = 1;
+    if (iters > 16) iters = 16;
+
+    int read = FS_BG_SLOT_SRC;
+    int write = FS_BG_SLOT_A;
+
+    for (int i = 0; i < iters; i++) {
+        background_blur_pass(r, read, write, 1.0f, 0.0f, stride, weights, taps);
+        int tmp = (write == FS_BG_SLOT_A) ? FS_BG_SLOT_B : FS_BG_SLOT_A;
+        background_blur_pass(r, write, tmp, 0.0f, 1.0f, stride, weights, taps);
+        read = tmp;
+        write = (tmp == FS_BG_SLOT_A) ? FS_BG_SLOT_B : FS_BG_SLOT_A;
+    }
+    r->bg_result_slot = read;
+
+    /* 结果马上要在主 pass 里当纹理采样 */
+    VkImageMemoryBarrier b = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = r->bg_img[read],
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+    };
+    vkCmdPipelineBarrier(r->command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &b);
+}
+
+/* 渲染线程：把 App 线程挂起的背景请求落地（每帧开头调一次） */
+static void background_prepare(FSVulkanRenderer *r)
+{
+    void *pixels = NULL;
+    int w = 0, h = 0, clear = 0, reparam = 0;
+
+    pthread_mutex_lock(&r->bg_mutex);
+    pixels = r->bg_pending_pixels;
+    w = r->bg_pending_w;
+    h = r->bg_pending_h;
+    clear = r->bg_pending_clear;
+    reparam = r->bg_pending_params;
+    r->bg_pending_pixels = NULL;
+    r->bg_pending_w = r->bg_pending_h = 0;
+    r->bg_pending_clear = 0;
+    r->bg_pending_params = 0;
+    pthread_mutex_unlock(&r->bg_mutex);
+
+    if (!pixels && !clear && !reparam)
+        return;
+
+    if (clear) {
+        destroy_background_resources(r);
+        free(pixels);
+        return;
+    }
+
+    if (pixels && (w != r->bg_w || h != r->bg_h)) {
+        if (create_background_target(r, w, h) != VK_SUCCESS) {
+            free(pixels);
+            return;
+        }
+    }
+    if (!r->bg_w)
+        return;
+
+    if (pixels)
+        upload_background_source(r, pixels);
+    free(pixels);
+
+    run_background_blur(r);
+    r->bg_ready = 1;
+}
+
+/* 铺满整个显示区，画在视频下面（只在 AspectFit 或没有视频帧时用） */
+static void draw_background(FSVulkanRenderer *r)
+{
+    if (!r->bg_ready || !r->bg_draw_pipeline || r->bg_result_slot < 0)
+        return;
+
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->bg_draw_pipeline);
+    vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            r->bg_draw_layout, 0, 1, &r->bg_desc_set[r->bg_result_slot], 0, NULL);
+    VkDeviceSize off = 0;
+    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->bg_quad_buffer, &off);
+    vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
+}
+
+
+void fs_vulkan_renderer_set_background_image(FSVulkanRenderer *r,
+                                             const void *pixels, int width, int height)
+{
+    if (!r)
+        return;
+
+    void *copy = NULL;
+    if (pixels && width > 0 && height > 0) {
+        size_t size = (size_t)width * height * 4;
+        copy = malloc(size);
+        if (!copy)
+            return;
+        memcpy(copy, pixels, size);
+    }
+
+    pthread_mutex_lock(&r->bg_mutex);
+    free(r->bg_pending_pixels);
+    r->bg_pending_pixels = copy;
+    r->bg_pending_w = copy ? width : 0;
+    r->bg_pending_h = copy ? height : 0;
+    r->bg_pending_clear = copy ? 0 : 1;   /* 传 NULL 就是清掉背景 */
+    pthread_mutex_unlock(&r->bg_mutex);
+}
+
+void fs_vulkan_renderer_set_background_blur(FSVulkanRenderer *r, int iterations, float sigma)
+{
+    if (!r)
+        return;
+    if (iterations < 1) iterations = 1;
+    if (sigma <= 0.0f) sigma = 30.0f;
+
+    pthread_mutex_lock(&r->bg_mutex);
+    if (r->bg_iterations != iterations || r->bg_sigma != sigma) {
+        r->bg_iterations = iterations;
+        r->bg_sigma = sigma;
+        if (r->bg_w > 0)
+            r->bg_pending_params = 1;     /* 让渲染线程用原图重跑一遍 */
+    }
+    pthread_mutex_unlock(&r->bg_mutex);
+}
+
 int fs_vulkan_renderer_take_snapshot(FSVulkanRenderer *r, int type,
                                      int *out_w, int *out_h, void **out_pixels)
 {
@@ -1709,6 +2352,9 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
     vkBeginCommandBuffer(r->command_buffer, &bi);
 
+    /* 背景图/模糊参数变了就在这里上传并重跑高斯（要在主 pass 之前） */
+    background_prepare(r);
+
     /* 外部显存导入的 image 首次使用时需要转成可采样布局 */
     if (pre_image) {
         VkImageMemoryBarrier ib = {
@@ -1747,6 +2393,13 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         vkCmdSetViewport(r->command_buffer, 0, 1, &vp);
         vkCmdSetScissor(r->command_buffer, 0, 1, &sc);
     }
+
+    /*
+     * 先铺高斯模糊背景：只有 AspectFit 会留黑边才需要；没有视频帧时也用它替掉纯色背景
+     * （和 iOS FSMetalView 的判断一致）。
+     */
+    if (r->bg_ready && (pipeline == VK_NULL_HANDLE || r->scaling_mode == FS_SCALING_MODE_ASPECT_FIT))
+        draw_background(r);
 
     /* 记住这一帧用的管线，快照要把同样的内容再画一次 */
     if (pipeline != VK_NULL_HANDLE) {
@@ -2259,6 +2912,20 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
         destroy_mc_resources(r);
         destroy_sub_resources(r);   /* 依赖 render_pass，必须在其之前销毁 */
         destroy_snapshot_target(r);
+        destroy_background_resources(r);
+        if (r->bg_blur_pipeline)   vkDestroyPipeline(r->device, r->bg_blur_pipeline, NULL);
+        if (r->bg_blur_layout)     vkDestroyPipelineLayout(r->device, r->bg_blur_layout, NULL);
+        if (r->bg_draw_pipeline)   vkDestroyPipeline(r->device, r->bg_draw_pipeline, NULL);
+        if (r->bg_draw_layout)     vkDestroyPipelineLayout(r->device, r->bg_draw_layout, NULL);
+        if (r->bg_quad_buffer)     vkDestroyBuffer(r->device, r->bg_quad_buffer, NULL);
+        if (r->bg_quad_mem)        vkFreeMemory(r->device, r->bg_quad_mem, NULL);
+        if (r->bg_desc_pool)       vkDestroyDescriptorPool(r->device, r->bg_desc_pool, NULL);
+        if (r->bg_desc_layout)     vkDestroyDescriptorSetLayout(r->device, r->bg_desc_layout, NULL);
+        if (r->bg_sampler)         vkDestroySampler(r->device, r->bg_sampler, NULL);
+        if (r->bg_pass)            vkDestroyRenderPass(r->device, r->bg_pass, NULL);
+        pthread_mutex_destroy(&r->bg_mutex);
+        free(r->bg_pending_pixels);
+        r->bg_pending_pixels = NULL;
         if (r->snap_pass) { vkDestroyRenderPass(r->device, r->snap_pass, NULL); r->snap_pass = VK_NULL_HANDLE; }
 
         if (r->sws_ctx) sws_freeContext(r->sws_ctx);

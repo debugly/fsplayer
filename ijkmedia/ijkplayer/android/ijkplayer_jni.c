@@ -1353,6 +1353,45 @@ LABEL_RETURN:
     return retval;
 }
 
+/*
+ * 高斯模糊背景：rgba 是 RGBA8888（调用方负责降采样到最长边 400），传 null 清除背景。
+ * 渲染器还没建好（还没 setSurface）时会失败，Java 侧会在设置 surface 后重试。
+ */
+static void
+IjkMediaPlayer_setBackgroundImage(JNIEnv *env, jobject thiz, jbyteArray rgba, jint width, jint height)
+{
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setBackgroundImage: null mp", LABEL_RETURN);
+
+    void *pixels = NULL;
+    if (rgba && width > 0 && height > 0) {
+        jsize need = (jsize) width * height * 4;
+        if (need > 0 && (*env)->GetArrayLength(env, rgba) >= need) {
+            pixels = malloc(need);
+            if (pixels) {
+                (*env)->GetByteArrayRegion(env, rgba, 0, need, (jbyte *) pixels);
+            }
+        }
+    }
+    ijkmp_android_set_background_image(mp, pixels, width, height);
+    free(pixels);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static void
+IjkMediaPlayer_setBackgroundBlur(JNIEnv *env, jobject thiz, jint iterations, jfloat sigma)
+{
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setBackgroundBlur: null mp", LABEL_RETURN);
+
+    ijkmp_android_set_background_blur(mp, iterations, sigma);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
 /* type: 1 audio, 2 video, 3 subtitle */
 static jint
 IjkMediaPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
@@ -1663,6 +1702,8 @@ static JNINativeMethod g_methods[] = {
     { "getPlayableDuration",      "()J",                      (void *) IjkMediaPlayer_getPlayableDuration },
     { "getFrameCacheRemaining",   "(I)I",                     (void *) IjkMediaPlayer_getFrameCacheRemaining },
     { "takeSnapshot",             "(I[I)[B",                  (void *) IjkMediaPlayer_takeSnapshot },
+    { "setBackgroundImage",       "([BII)V",                   (void *) IjkMediaPlayer_setBackgroundImage },
+    { "setBackgroundBlur",        "(IF)V",                     (void *) IjkMediaPlayer_setBackgroundBlur },
     { "setDeinterlace",           "(I)V",                     (void *) IjkMediaPlayer_setDeinterlace },
     { "getDeinterlace",           "()I",                      (void *) IjkMediaPlayer_getDeinterlace },
     { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },

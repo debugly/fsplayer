@@ -79,6 +79,24 @@ void ijkmp_android_set_surface_l(JNIEnv *env, IjkMediaPlayer *mp, jobject androi
     ffpipeline_set_surface(env, mp->ffplayer->pipeline, android_surface);
 }
 
+int ijkmp_android_set_background_image(IjkMediaPlayer *mp, const void *pixels, int width, int height)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return -1;
+
+    SDL_VoutAndroid_SetBackgroundImage(mp->ffplayer->vout, pixels, width, height);
+    return 0;
+}
+
+int ijkmp_android_set_background_blur(IjkMediaPlayer *mp, int iterations, float sigma)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return -1;
+
+    SDL_VoutAndroid_SetBackgroundBlur(mp->ffplayer->vout, iterations, sigma);
+    return 0;
+}
+
 int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
                                 int *out_w, int *out_h, void **out_pixels)
 {

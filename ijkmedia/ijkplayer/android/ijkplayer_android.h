@@ -51,4 +51,11 @@ void ijkmp_android_set_mediacodec_select_callback(IjkMediaPlayer *mp, bool (*cal
 int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
                                 int *out_w, int *out_h, void **out_pixels);
 
+/*
+ * 高斯模糊背景（对齐 iOS）。pixels 是 RGBA8888，调用方负责降采样到最长边 400；
+ * 传 NULL 清除背景。渲染器还没建好（还没 setSurface）时返回 -1，调用方应稍后重试。
+ */
+int ijkmp_android_set_background_image(IjkMediaPlayer *mp, const void *pixels, int width, int height);
+int ijkmp_android_set_background_blur(IjkMediaPlayer *mp, int iterations, float sigma);
+
 #endif

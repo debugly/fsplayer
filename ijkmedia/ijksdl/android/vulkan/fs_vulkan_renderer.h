@@ -60,6 +60,20 @@ typedef enum {
 } FSSnapshotType;
 
 /*
+ * 高斯模糊背景（语义对齐 iOS 的 backgroundImage / backgroundBlurIterations /
+ * backgroundBlurSigma）。
+ *
+ * pixels 是 RGBA8888（宽*高*4，行紧凑），调用方应已按 iOS 的做法把图降采样到
+ * 最长边 400（Java 侧用 Bitmap.createScaledBitmap）。传 NULL 清除背景。
+ * 上传和模糊都在渲染线程上按需做一次，不是每帧都跑。
+ */
+void fs_vulkan_renderer_set_background_image(FSVulkanRenderer *r,
+                                             const void *pixels, int width, int height);
+
+/* iterations 默认 3（至少 1）；sigma 默认 30（<=0 时回到 30），单位是工作分辨率的纹素。 */
+void fs_vulkan_renderer_set_background_blur(FSVulkanRenderer *r, int iterations, float sigma);
+
+/*
  * 取一张快照（在渲染线程上把当前帧再画一次到离屏图像再回读）。
  * 调用方在别的线程上阻塞等待，最多等几秒；成功时 *out_pixels 是 malloc 出来的
  * RGBA8888（宽*高*4，行紧凑），由调用方 free。
