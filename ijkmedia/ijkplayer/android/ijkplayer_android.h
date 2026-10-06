@@ -62,4 +62,9 @@ int ijkmp_android_set_background_blur(IjkMediaPlayer *mp, int iterations, float 
 int ijkmp_android_set_color_adjust(IjkMediaPlayer *mp, float brightness, float saturation, float contrast);
 int ijkmp_android_set_background_color(IjkMediaPlayer *mp, int red, int green, int blue);
 
+/* HDR：allow 对应 iOS 的 allowHDRDirectDisplay；后两个是查询。 */
+int ijkmp_android_set_allow_hdr_direct_display(IjkMediaPlayer *mp, int allow);
+int ijkmp_android_is_direct_display_hdr_supported(IjkMediaPlayer *mp);
+int ijkmp_android_is_hdr_content(IjkMediaPlayer *mp);
+
 #endif

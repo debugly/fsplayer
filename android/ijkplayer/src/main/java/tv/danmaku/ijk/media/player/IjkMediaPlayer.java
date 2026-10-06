@@ -193,6 +193,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private float mColorBrightness = FS_COLOR_DEFAULT;
     private float mColorSaturation = FS_COLOR_DEFAULT;
     private float mColorContrast = FS_COLOR_DEFAULT;
+    private boolean mAllowHDRDirectDisplay = true;   /* iOS 的默认值是 YES */
     private int mBackgroundColorR = 0;
     private int mBackgroundColorG = 0;
     private int mBackgroundColorB = 0;
@@ -1137,8 +1138,37 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return value < 0 ? 0 : (value > 255 ? 255 : value);
     }
 
+    /**
+     * 是否允许 HDR 直显，对应 iOS 的 allowHDRDirectDisplay（默认 YES）。
+     * 只有「内容是 HDR（BT.2020）且屏能直出」时才不做色调映射；
+     * 当前交换链是 8bit UNORM，所以实际上总是走 iOS 的 hdr2sdr 色调映射。
+     */
+    public void setAllowHDRDirectDisplay(boolean allow) {
+        mAllowHDRDirectDisplay = allow;
+        native_setAllowHDRDirectDisplay(allow);
+    }
+
+    public boolean isAllowHDRDirectDisplay() {
+        return mAllowHDRDirectDisplay;
+    }
+
+    /**
+     * 是否正在直显 HDR，对应 iOS 的 directDisplayHDRSupportted。
+     * 注意：安卓这边交换链是 8bit UNORM，直出 HDR 需要 10bit/浮点交换链 +
+     * ANativeWindow 的 HDR data space，目前恒为 false（即总是色调映射到 SDR）。
+     */
+    public boolean isDirectDisplayHDRSupported() {
+        return native_isDirectDisplayHDRSupported();
+    }
+
+    /** 当前帧是不是 HDR 内容（BT.2020），判定规则和 iOS 的 isHDRContent 一致。 */
+    public boolean isHDRContent() {
+        return native_isHDRContent();
+    }
+
     /** surface 就绪后要重新下发一次（renderer 是随 surface 建的） */
     private void applyBackgroundSettings() {
+        native_setAllowHDRDirectDisplay(mAllowHDRDirectDisplay);
         setColorAdjust(mColorBrightness, mColorSaturation, mColorContrast);
         setBackgroundColor(mBackgroundColorR, mBackgroundColorG, mBackgroundColorB);
         if (mBackgroundPixels != null) {
@@ -1155,6 +1185,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     /* public 的 setBackgroundColor(int,int,int) 和这个 native 声明签名相同，所以 native 换个名字 */
     private native void native_setBackgroundColor(int red, int green, int blue);
+
+    private native void native_setAllowHDRDirectDisplay(boolean allow);
+
+    private native boolean native_isDirectDisplayHDRSupported();
+
+    private native boolean native_isHDRContent();
 
     /**
      * 截取当前画面（等同 {@link #FS_SNAPSHOT_TYPE_SCREEN}）。

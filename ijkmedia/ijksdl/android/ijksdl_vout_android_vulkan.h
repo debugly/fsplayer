@@ -89,6 +89,16 @@ void SDL_VoutAndroid_SetColorAdjust(SDL_Vout *vout, float brightness, float satu
 void SDL_VoutAndroid_SetBackgroundColor(SDL_Vout *vout, int red, int green, int blue);
 
 /*
+ * HDR：allow 对应 iOS 的 allowHDRDirectDisplay（默认允许）；
+ * 屏不支持直出（当前 8bit UNORM 交换链）时一律按 iOS 的 hdr2sdr 做色调映射。
+ */
+void SDL_VoutAndroid_SetAllowHDRDirectDisplay(SDL_Vout *vout, int allow);
+/* 是否正在直显 HDR（iOS 的 directDisplayHDRSupportted） */
+int  SDL_VoutAndroid_IsDirectDisplayHDRSupported(SDL_Vout *vout);
+/* 当前帧是不是 HDR 内容（BT.2020，和 iOS 的 isHDRContent 同规则） */
+int  SDL_VoutAndroid_IsHDRContent(SDL_Vout *vout);
+
+/*
  * 取一张快照：在渲染线程上把当前帧重画到离屏图像再回读。
  * type 见 vulkan/fs_vulkan_renderer.h 的 FSSnapshotType（对齐 iOS 的 FSSnapshotType）。
  * 成功返回 0，*out_pixels 是 malloc 出来的 RGBA8888（宽*高*4，行紧凑），调用方 free。

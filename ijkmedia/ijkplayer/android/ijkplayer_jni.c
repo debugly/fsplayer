@@ -1421,6 +1421,47 @@ LABEL_RETURN:
     ijkmp_dec_ref_p(&mp);
 }
 
+/* HDR 直显开关，对齐 iOS 的 allowHDRDirectDisplay */
+static void
+IjkMediaPlayer_native_setAllowHDRDirectDisplay(JNIEnv *env, jobject thiz, jboolean allow)
+{
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setAllowHDRDirectDisplay: null mp", LABEL_RETURN);
+
+    ijkmp_android_set_allow_hdr_direct_display(mp, allow ? 1 : 0);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
+static jboolean
+IjkMediaPlayer_native_isDirectDisplayHDRSupported(JNIEnv *env, jobject thiz)
+{
+    jboolean retval = JNI_FALSE;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: isDirectDisplayHDRSupported: null mp", LABEL_RETURN);
+
+    retval = ijkmp_android_is_direct_display_hdr_supported(mp) ? JNI_TRUE : JNI_FALSE;
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
+static jboolean
+IjkMediaPlayer_native_isHDRContent(JNIEnv *env, jobject thiz)
+{
+    jboolean retval = JNI_FALSE;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: isHDRContent: null mp", LABEL_RETURN);
+
+    retval = ijkmp_android_is_hdr_content(mp) ? JNI_TRUE : JNI_FALSE;
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+    return retval;
+}
+
 /* type: 1 audio, 2 video, 3 subtitle */
 static jint
 IjkMediaPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
@@ -1735,6 +1776,9 @@ static JNINativeMethod g_methods[] = {
     { "setBackgroundBlur",         "(IF)V",                    (void *) IjkMediaPlayer_setBackgroundBlur },
     { "setColorAdjust",            "(FFF)V",                   (void *) IjkMediaPlayer_setColorAdjust },
     { "native_setBackgroundColor", "(III)V",                   (void *) IjkMediaPlayer_setBackgroundColor },
+    { "native_setAllowHDRDirectDisplay", "(Z)V",               (void *) IjkMediaPlayer_native_setAllowHDRDirectDisplay },
+    { "native_isDirectDisplayHDRSupported", "()Z",             (void *) IjkMediaPlayer_native_isDirectDisplayHDRSupported },
+    { "native_isHDRContent",       "()Z",                      (void *) IjkMediaPlayer_native_isHDRContent },
     { "setDeinterlace",           "(I)V",                     (void *) IjkMediaPlayer_setDeinterlace },
     { "getDeinterlace",           "()I",                      (void *) IjkMediaPlayer_getDeinterlace },
     { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },

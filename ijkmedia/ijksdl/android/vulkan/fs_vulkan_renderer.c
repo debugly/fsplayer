@@ -236,6 +236,15 @@ struct FSVulkanRenderer {
     volatile int   color_adjust_on;    /* 三者都是 1.0 时为 0，走原样输出 */
     float          bg_color[3];        /* 无视频区域的背景色（iOS 的 setBackgroundColor）*/
 
+    /* ---- HDR / 10bit（对齐 iOS 的 FSMetalPipelineMeta + hdr2sdr）---- */
+    int tex10bit;            /* 视频纹理是 R16_UNORM（10bit 输入）还是 R8_UNORM */
+    int hdr_content;         /* 当前帧是 BT.2020（iOS 判定 HDR 的唯一依据）*/
+    int hdr_transfer;        /* 0 线性 / 1 PQ / 2 HLG，和 iOS FSColorTransferFunc 一致 */
+    int hdr_full_range;      /* 帧的 color_range 是 full */
+    int hdr_display;         /* 直显 HDR（= 内容 HDR && 允许 && 屏支持）*/
+    int allow_hdr_display;   /* iOS 的 allowHDRDirectDisplay，默认允许 */
+    int display_hdr_support; /* 当前 swapchain 能否直接输出 HDR（8bit UNORM 时为 0）*/
+
     /* ---- 快照 ---- */
     volatile int   snapshot_type;      /* -1 = 没有请求 */
     volatile int   snapshot_ready;     /* 0 等待 / 1 完成 / -1 失败 */
@@ -757,7 +766,7 @@ static VkResult create_pipeline(FSVulkanRenderer *r)
         {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset = sizeof(float) * 8,
-            .size = sizeof(float) * 4,
+            .size = sizeof(float) * 8,   /* 色彩调整 + HDR 参数 */
         },
     };
     VkPipelineLayoutCreateInfo pli = {
@@ -888,9 +897,9 @@ static VkResult create_command_and_sync(FSVulkanRenderer *r)
 /* 纹理上传                                                                   */
 /* ------------------------------------------------------------------------- */
 
-static VkResult ensure_yuv_textures(FSVulkanRenderer *r, int w, int h)
+static VkResult ensure_yuv_textures(FSVulkanRenderer *r, int w, int h, int is10bit)
 {
-    if (r->tex_w == w && r->tex_h == h && r->y_image != VK_NULL_HANDLE)
+    if (r->tex_w == w && r->tex_h == h && r->tex10bit == is10bit && r->y_image != VK_NULL_HANDLE)
         return VK_SUCCESS;
 
     /* 释放旧纹理 */
@@ -909,19 +918,22 @@ static VkResult ensure_yuv_textures(FSVulkanRenderer *r, int w, int h)
 
     r->tex_w = w;
     r->tex_h = h;
+    r->tex10bit = is10bit;
 
+    /* 10bit（HDR/10bit SDR）用 R16_UNORM，采样值仍然是 [0,1] 归一的码值 */
+    VkFormat plane_fmt = is10bit ? VK_FORMAT_R16_UNORM : VK_FORMAT_R8_UNORM;
     VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    if (create_image(r, w, h, VK_FORMAT_R8_UNORM, usage, &r->y_image, &r->y_mem) != VK_SUCCESS)
+    if (create_image(r, w, h, plane_fmt, usage, &r->y_image, &r->y_mem) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
-    if (create_image(r, (w + 1) / 2, (h + 1) / 2, VK_FORMAT_R8_UNORM, usage, &r->u_image, &r->u_mem) != VK_SUCCESS)
+    if (create_image(r, (w + 1) / 2, (h + 1) / 2, plane_fmt, usage, &r->u_image, &r->u_mem) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
-    if (create_image(r, (w + 1) / 2, (h + 1) / 2, VK_FORMAT_R8_UNORM, usage, &r->v_image, &r->v_mem) != VK_SUCCESS)
+    if (create_image(r, (w + 1) / 2, (h + 1) / 2, plane_fmt, usage, &r->v_image, &r->v_mem) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
 
-    create_image_view(r, r->y_image, VK_FORMAT_R8_UNORM, &r->y_view);
-    create_image_view(r, r->u_image, VK_FORMAT_R8_UNORM, &r->u_view);
-    create_image_view(r, r->v_image, VK_FORMAT_R8_UNORM, &r->v_view);
+    create_image_view(r, r->y_image, plane_fmt, &r->y_view);
+    create_image_view(r, r->u_image, plane_fmt, &r->u_view);
+    create_image_view(r, r->v_image, plane_fmt, &r->v_view);
 
     /* 更新 descriptor set */
     VkDescriptorImageInfo img_infos[3] = {
@@ -945,11 +957,14 @@ static VkResult ensure_yuv_textures(FSVulkanRenderer *r, int w, int h)
     return VK_SUCCESS;
 }
 
-/* 把 YUV420P 上传到三个纹理 */
+/*
+ * 把 YUV420P（bpp=1，8bit）或 YUV420P10LE（bpp=2，10bit）上传到三个平面纹理。
+ * 注意 VkBufferImageCopy.bufferRowLength 的单位是**纹素**，所以 10bit 要除以 2。
+ */
 static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stride,
                                const uint8_t *u, int u_stride,
                                const uint8_t *v, int v_stride,
-                               int w, int h)
+                               int w, int h, int bpp)
 {
     VkDeviceSize y_size = (VkDeviceSize)y_stride * h;
     VkDeviceSize u_size = (VkDeviceSize)u_stride * ((h + 1) / 2);
@@ -971,12 +986,14 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
     void *data;
     vkMapMemory(r->device, r->staging_mem, 0, total, 0, &data);
     uint8_t *dst = (uint8_t *)data;
+    const size_t y_row = (size_t)w * bpp;
+    const size_t c_row = (size_t)((w + 1) / 2) * bpp;
     for (int row = 0; row < h; row++)
-        memcpy(dst + (VkDeviceSize)row * y_stride, y + (VkDeviceSize)row * y_stride, (size_t)w);
+        memcpy(dst + (VkDeviceSize)row * y_stride, y + (VkDeviceSize)row * y_stride, y_row);
     for (int row = 0; row < (h + 1) / 2; row++)
-        memcpy(dst + y_size + (VkDeviceSize)row * u_stride, u + (VkDeviceSize)row * u_stride, (size_t)((w + 1) / 2));
+        memcpy(dst + y_size + (VkDeviceSize)row * u_stride, u + (VkDeviceSize)row * u_stride, c_row);
     for (int row = 0; row < (h + 1) / 2; row++)
-        memcpy(dst + y_size + u_size + (VkDeviceSize)row * v_stride, v + (VkDeviceSize)row * v_stride, (size_t)((w + 1) / 2));
+        memcpy(dst + y_size + u_size + (VkDeviceSize)row * v_stride, v + (VkDeviceSize)row * v_stride, c_row);
     vkUnmapMemory(r->device, r->staging_mem);
 
     /* 记录 copy 命令 */
@@ -988,7 +1005,7 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
     VkImageSubresourceLayers sub_y = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1 };
     VkBufferImageCopy copy_y = {
         .bufferOffset = 0,
-        .bufferRowLength = (uint32_t)y_stride,
+        .bufferRowLength = (uint32_t)(y_stride / bpp),
         .bufferImageHeight = 0,
         .imageSubresource = sub_y,
         .imageOffset = {0, 0, 0},
@@ -998,7 +1015,7 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
     VkImageSubresourceLayers sub_u = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1 };
     VkBufferImageCopy copy_u = {
         .bufferOffset = y_size,
-        .bufferRowLength = (uint32_t)u_stride,
+        .bufferRowLength = (uint32_t)(u_stride / bpp),
         .bufferImageHeight = 0,
         .imageSubresource = sub_u,
         .imageOffset = {0, 0, 0},
@@ -1008,7 +1025,7 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
     VkImageSubresourceLayers sub_v = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1 };
     VkBufferImageCopy copy_v = {
         .bufferOffset = y_size + u_size,
-        .bufferRowLength = (uint32_t)v_stride,
+        .bufferRowLength = (uint32_t)(v_stride / bpp),
         .bufferImageHeight = 0,
         .imageSubresource = sub_v,
         .imageOffset = {0, 0, 0},
@@ -1373,6 +1390,13 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     r->color_contrast   = 1.0f;
     r->color_adjust_on  = 0;   /* 默认不变，走原样输出 */
     r->bg_color[0] = r->bg_color[1] = r->bg_color[2] = 0.0f;   /* 默认黑底，和 iOS 一致 */
+    r->tex10bit  = 0;
+    r->hdr_content = 0;
+    r->hdr_transfer = 0;
+    r->hdr_full_range = 0;
+    r->hdr_display = 0;
+    r->allow_hdr_display = 1;   /* iOS 的默认值是 YES */
+    r->display_hdr_support = 0; /* swapchain 是 8bit UNORM，直接输出 HDR 需要 10bit/浮点交换链 */
     r->bg_result_slot = -1;
     r->scaling_mode = FS_SCALING_MODE_ASPECT_FIT;
     r->video_rect[0] = -1.0f; r->video_rect[1] = -1.0f;
@@ -1423,19 +1447,27 @@ static int ensure_yuv420p(FSVulkanRenderer *r, const AVFrame *frame,
                           const uint8_t **y, int *y_stride,
                           const uint8_t **u, int *u_stride,
                           const uint8_t **v, int *v_stride,
-                          int *w, int *h)
+                          int *w, int *h, int *is10bit)
 {
     *w = frame->width;
     *h = frame->height;
+    *is10bit = 0;
 
-    if (frame->format == AV_PIX_FMT_YUV420P) {
+    if (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUV420P10LE) {
+        *is10bit = (frame->format == AV_PIX_FMT_YUV420P10LE) ? 1 : 0;
         *y = frame->data[0]; *y_stride = frame->linesize[0];
         *u = frame->data[1]; *u_stride = frame->linesize[1];
         *v = frame->data[2]; *v_stride = frame->linesize[2];
         return 0;
     }
 
-    int buf_size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, *w, *h, 1);
+    /* 其它格式转平面：10bit 源（HDR 常见 p010）转 YUV420P10LE，别掉到 8bit 丢精度 */
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+    int src10 = (desc && desc->comp[0].depth > 8) ? 1 : 0;
+    *is10bit = src10;
+    enum AVPixelFormat dst_fmt = src10 ? AV_PIX_FMT_YUV420P10LE : AV_PIX_FMT_YUV420P;
+
+    int buf_size = av_image_get_buffer_size(dst_fmt, *w, *h, 1);
     if (r->converted_buffer_size < buf_size) {
         av_free(r->converted_buffer);
         r->converted_buffer = av_malloc(buf_size);
@@ -1445,10 +1477,10 @@ static int ensure_yuv420p(FSVulkanRenderer *r, const AVFrame *frame,
     }
 
     av_image_fill_arrays(r->converted_frame->data, r->converted_frame->linesize,
-                         r->converted_buffer, AV_PIX_FMT_YUV420P, *w, *h, 1);
+                         r->converted_buffer, dst_fmt, *w, *h, 1);
 
     r->sws_ctx = sws_getCachedContext(r->sws_ctx, *w, *h, frame->format,
-                                      *w, *h, AV_PIX_FMT_YUV420P,
+                                      *w, *h, dst_fmt,
                                       SWS_BILINEAR, NULL, NULL, NULL);
     if (!r->sws_ctx)
         return -1;
@@ -1629,8 +1661,13 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
     memcpy(pc,     rect,  sizeof(rect));
     memcpy(pc + 4, uvmat, sizeof(uvmat));
     /* 快照和屏幕用的是同一条管线，色彩参数也得重新 push（否则读到未定义值） */
-    float color_pc[4] = { r->color_brightness, r->color_saturation,
-                          r->color_contrast, r->color_adjust_on ? 1.0f : 0.0f };
+    /* 片元侧：色彩调整 + HDR 参数（hdrContent, hdrDisplay, transferFunc, bits）*/
+    float color_pc[8] = { r->color_brightness, r->color_saturation,
+                          r->color_contrast, r->color_adjust_on ? 1.0f : 0.0f,
+                          r->hdr_content ? 1.0f : 0.0f,
+                          r->hdr_display ? 1.0f : 0.0f,
+                          (float)r->hdr_transfer,
+                          (float)((r->tex10bit ? 1 : 0) | (r->hdr_full_range ? 2 : 0)) };
 
     VkDeviceSize off = 0;
 
@@ -2341,6 +2378,31 @@ void fs_vulkan_renderer_set_color_adjust(FSVulkanRenderer *r,
     r->color_adjust_on  = (brightness != 1.0f || saturation != 1.0f || contrast != 1.0f);
 }
 
+/*
+ * 是否允许 HDR 直显，对齐 iOS 的 allowHDRDirectDisplay（默认 YES）。
+ * 只有「内容 HDR && 允许直显 && 屏能直出」时才不做色调映射；当前 8bit UNORM 交换链
+ * 永远走色调映射（相当于 iOS 上屏不支持 EDR 的情形）。
+ */
+void fs_vulkan_renderer_set_allow_hdr_display(FSVulkanRenderer *r, int allow)
+{
+    if (!r)
+        return;
+    r->allow_hdr_display = allow ? 1 : 0;
+    r->hdr_display = (r->hdr_content && r->allow_hdr_display && r->display_hdr_support) ? 1 : 0;
+}
+
+/* 当前帧是不是 HDR 内容（BT.2020），对齐 iOS 的 isHDRContent */
+int fs_vulkan_renderer_is_hdr_content(FSVulkanRenderer *r)
+{
+    return r ? r->hdr_content : 0;
+}
+
+/* 是否正在直显 HDR，对齐 iOS 的 directDisplayHDRSupportted（内容 HDR + 允许 + 屏能直出） */
+int fs_vulkan_renderer_is_hdr_display_active(FSVulkanRenderer *r)
+{
+    return r ? r->hdr_display : 0;
+}
+
 /* 无视频区域（黑边）的背景色，对齐 iOS 的 -setBackgroundColor:g:b:（0~255） */
 void fs_vulkan_renderer_set_background_color(FSVulkanRenderer *r, int red, int green, int blue)
 {
@@ -2475,8 +2537,13 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     memcpy(pc + 4, r->video_uvmat, sizeof(r->video_uvmat));
 
     /* 片元侧的色彩调整（亮度/饱和度/对比度/开关），和 iOS 的 rgb_adjust 同参 */
-    float color_pc[4] = { r->color_brightness, r->color_saturation,
-                          r->color_contrast, r->color_adjust_on ? 1.0f : 0.0f };
+    /* 片元侧：色彩调整 + HDR 参数（hdrContent, hdrDisplay, transferFunc, bits）*/
+    float color_pc[8] = { r->color_brightness, r->color_saturation,
+                          r->color_contrast, r->color_adjust_on ? 1.0f : 0.0f,
+                          r->hdr_content ? 1.0f : 0.0f,
+                          r->hdr_display ? 1.0f : 0.0f,
+                          (float)r->hdr_transfer,
+                          (float)((r->tex10bit ? 1 : 0) | (r->hdr_full_range ? 2 : 0)) };
 
     /* pipeline 为空 = 只有字幕（例如音频轨在放、视频帧已被清掉） */
     if (pipeline != VK_NULL_HANDLE) {
@@ -2669,7 +2736,7 @@ static VkResult create_mc_pipeline(FSVulkanRenderer *r,
         {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset = sizeof(float) * 8,
-            .size = sizeof(float) * 4,
+            .size = sizeof(float) * 8,   /* 色彩调整 + HDR 参数 */
         },
     };
     VkPipelineLayoutCreateInfo pli = {
@@ -2957,15 +3024,32 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
     if (frame->format == AV_PIX_FMT_MEDIACODEC)
         return display_mc_frame(r, frame);
 
+    /*
+     * HDR 判定对齐 iOS FSMetalPipelineMeta：YCbCr 矩阵是 BT.2020 就算 HDR，
+     * 传输函数取 PQ / HLG / 线性，色域范围取帧的 color_range。
+     * 屏能直出（display_hdr_support）且允许时才不做色调映射。
+     */
+    r->hdr_content = (frame->colorspace == AVCOL_SPC_BT2020_NCL ||
+                      frame->colorspace == AVCOL_SPC_BT2020_CL) ? 1 : 0;
+    r->hdr_full_range = (frame->color_range == AVCOL_RANGE_JPEG) ? 1 : 0;
+    if (frame->color_trc == AVCOL_TRC_SMPTE2084) {
+        r->hdr_transfer = 1;                 /* PQ */
+    } else if (frame->color_trc == AVCOL_TRC_ARIB_STD_B67) {
+        r->hdr_transfer = 2;                 /* HLG */
+    } else {
+        r->hdr_transfer = 0;                 /* 线性 */
+    }
+    r->hdr_display = (r->hdr_content && r->allow_hdr_display && r->display_hdr_support) ? 1 : 0;
+
     const uint8_t *y, *u, *v;
-    int y_stride, u_stride, v_stride, w, h;
-    if (ensure_yuv420p(r, frame, &y, &y_stride, &u, &u_stride, &v, &v_stride, &w, &h) != 0)
+    int y_stride, u_stride, v_stride, w, h, is10bit = 0;
+    if (ensure_yuv420p(r, frame, &y, &y_stride, &u, &u_stride, &v, &v_stride, &w, &h, &is10bit) != 0)
         return -1;
 
-    if (ensure_yuv_textures(r, w, h) != VK_SUCCESS)
+    if (ensure_yuv_textures(r, w, h, is10bit) != VK_SUCCESS)
         return -1;
 
-    if (upload_yuv420p(r, y, y_stride, u, u_stride, v, v_stride, w, h) != VK_SUCCESS)
+    if (upload_yuv420p(r, y, y_stride, u, u_stride, v, v_stride, w, h, is10bit ? 2 : 1) != VK_SUCCESS)
         return -1;
 
     return draw_and_present(r, r->pipeline, r->pipeline_layout, r->descriptor_set,

@@ -420,6 +420,30 @@ void SDL_VoutAndroid_SetBackgroundColor(SDL_Vout *vout, int red, int green, int 
     fs_vulkan_renderer_set_background_color(vout->opaque->renderer, red, green, blue);
 }
 
+void SDL_VoutAndroid_SetAllowHDRDirectDisplay(SDL_Vout *vout, int allow)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_allow_hdr_display(vout->opaque->renderer, allow);
+}
+
+int SDL_VoutAndroid_IsDirectDisplayHDRSupported(SDL_Vout *vout)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return 0;
+
+    return fs_vulkan_renderer_is_hdr_display_active(vout->opaque->renderer);
+}
+
+int SDL_VoutAndroid_IsHDRContent(SDL_Vout *vout)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return 0;
+
+    return fs_vulkan_renderer_is_hdr_content(vout->opaque->renderer);
+}
+
 int SDL_VoutAndroid_TakeSnapshot(SDL_Vout *vout, int type,
                                  int *out_w, int *out_h, void **out_pixels)
 {

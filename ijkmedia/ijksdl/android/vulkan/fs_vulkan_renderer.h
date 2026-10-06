@@ -84,6 +84,15 @@ void fs_vulkan_renderer_set_color_adjust(FSVulkanRenderer *r,
 void fs_vulkan_renderer_set_background_color(FSVulkanRenderer *r, int red, int green, int blue);
 
 /*
+ * HDR：内容是 BT.2020 即视为 HDR（和 iOS 一致），transfer 取 PQ/HLG/线性，
+ * 屏不支持直显时按 iOS 的 hdr2sdr 做色调映射（peak_luminance = 50）。
+ * allow 对应 iOS 的 allowHDRDirectDisplay，默认 1。
+ */
+void fs_vulkan_renderer_set_allow_hdr_display(FSVulkanRenderer *r, int allow);
+int  fs_vulkan_renderer_is_hdr_content(FSVulkanRenderer *r);
+int  fs_vulkan_renderer_is_hdr_display_active(FSVulkanRenderer *r);
+
+/*
  * 取一张快照（在渲染线程上把当前帧再画一次到离屏图像再回读）。
  * 调用方在别的线程上阻塞等待，最多等几秒；成功时 *out_pixels 是 malloc 出来的
  * RGBA8888（宽*高*4，行紧凑），由调用方 free。

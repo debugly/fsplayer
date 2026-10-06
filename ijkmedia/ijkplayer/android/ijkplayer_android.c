@@ -115,6 +115,31 @@ int ijkmp_android_set_background_color(IjkMediaPlayer *mp, int red, int green, i
     return 0;
 }
 
+int ijkmp_android_set_allow_hdr_direct_display(IjkMediaPlayer *mp, int allow)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return -1;
+
+    SDL_VoutAndroid_SetAllowHDRDirectDisplay(mp->ffplayer->vout, allow);
+    return 0;
+}
+
+int ijkmp_android_is_direct_display_hdr_supported(IjkMediaPlayer *mp)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return 0;
+
+    return SDL_VoutAndroid_IsDirectDisplayHDRSupported(mp->ffplayer->vout);
+}
+
+int ijkmp_android_is_hdr_content(IjkMediaPlayer *mp)
+{
+    if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
+        return 0;
+
+    return SDL_VoutAndroid_IsHDRContent(mp->ffplayer->vout);
+}
+
 int ijkmp_android_take_snapshot(IjkMediaPlayer *mp, int type,
                                 int *out_w, int *out_h, void **out_pixels)
 {

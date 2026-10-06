@@ -42,6 +42,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     // 可用 intent extra "blurIterations" / "blurSigma"（float）调模糊参数（默认 3 / 30）
     // 可用 intent extra "brightness" / "saturation" / "contrast"（float）调色彩（默认 1.0 / 1.0 / 1.0）
     // 可用 intent extra "bgColor"（int，0xRRGGBB 的十进制）设黑边背景色（默认黑）
+    // 可用 intent extra "allowHDRDirect"（0/1）设 HDR 直显开关（默认 1，对齐 iOS）
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -115,6 +116,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 }
                 mPlayer.setBackgroundColor(mBgColor);
                 mPlayer.setColorPreference(mBrightness, mSaturation, mContrast);
+                if (getIntent() != null && getIntent().hasExtra("allowHDRDirect")) {
+                    mPlayer.setAllowHDRDirectDisplay(getIntent().getIntExtra("allowHDRDirect", 1) != 0);
+                }
+                toast("hdrContent=" + mPlayer.isHDRContent()
+                        + " directHDR=" + mPlayer.isDirectDisplayHDRSupported()
+                        + " allow=" + mPlayer.isAllowHDRDirectDisplay());
                 if (mBgColor != 0 || mBrightness != 1.0f || mSaturation != 1.0f || mContrast != 1.0f) {
                     toast("color b=" + mPlayer.getColorBrightness()
                             + " s=" + mPlayer.getColorSaturation()
