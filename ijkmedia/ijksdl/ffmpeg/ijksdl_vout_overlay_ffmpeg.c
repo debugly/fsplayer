@@ -38,19 +38,19 @@
 #include "../ijksdl_vout_internal.h"
 #include "../ijksdl_log.h"
 
-#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#if IS_TILEGRID_HEIC_ENABLED
 #include "../../ijkplayer/ff_heic_tile.h"
-#include "../apple/ijk_heic_tile_overlay.h"
+#include "ijk_heic_tile_overlay.h"
 #endif
 
 struct SDL_VoutOverlay_Opaque {
     SDL_mutex *mutex;
-#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#if IS_TILEGRID_HEIC_ENABLED
     FSTileAccumulator tile_acc;   // HEIC tile grid accumulation state
 #endif
 };
 
-#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#if IS_TILEGRID_HEIC_ENABLED
 static int func_is_tile_pending(SDL_VoutOverlay *overlay)
 {
     if (!overlay) return 0;
@@ -96,7 +96,7 @@ static void func_free_l(SDL_VoutOverlay *overlay)
     SDL_VoutOverlay_Opaque *opaque = overlay->opaque;
     if (!opaque)
         return;
-#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#if IS_TILEGRID_HEIC_ENABLED
     fs_tile_acc_free(&opaque->tile_acc);
 #endif
     if (opaque->mutex)
@@ -134,7 +134,7 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     }
 #endif
 
-#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#if IS_TILEGRID_HEIC_ENABLED
     /* ---------- HEIC tile grid branch ----------
        Shared accumulator: 1 means the frame was consumed as a tile, <0 is a
        hard error and 0 falls back to the single frame path. */
@@ -170,7 +170,7 @@ SDL_VoutOverlay *SDL_VoutFFmpeg_CreateOverlay(int width, int height, int src_for
     overlay->lock               = func_lock;
     overlay->unlock             = func_unlock;
     overlay->func_fill_frame    = func_fill_frame;
-#if IS_TILEGRID_HEIC_ENABLED && defined(__APPLE__)
+#if IS_TILEGRID_HEIC_ENABLED
     overlay->func_is_tile_pending = func_is_tile_pending;
     overlay->func_get_tile_count  = func_get_tile_count;
     overlay->func_get_tile_avframes = func_get_tile_avframes;

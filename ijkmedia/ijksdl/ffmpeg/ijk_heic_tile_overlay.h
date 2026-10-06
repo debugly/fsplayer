@@ -24,7 +24,8 @@
 /*
  * Shared HEIC tile-grid accumulation logic used by the overlay
  * (ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.c) for software and VideoToolbox
- * hardware frames alike.
+ * hardware frames alike, on every platform (the renderer side differs: Metal
+ * composites tiles on Apple, the Android Vulkan vout composites on the CPU).
  *
  * A tile-grid HEIC image is decoded as a sequence of tile AVFrames, each
  * carrying FSTileGridMetadata via frame->opaque_ref. This accumulator gathers
@@ -35,8 +36,8 @@
  * sites; this header/impl is only compiled meaningfully under FFmpeg 7.
  */
 
-#ifndef IJKSDL__APPLE__IJK_HEIC_TILE_OVERLAY_H
-#define IJKSDL__APPLE__IJK_HEIC_TILE_OVERLAY_H
+#ifndef IJKSDL__IJK_HEIC_TILE_OVERLAY_H
+#define IJKSDL__IJK_HEIC_TILE_OVERLAY_H
 
 #include "ijksdl_vout.h"
 #include "ijksdl_inc_ffmpeg.h"
@@ -89,4 +90,4 @@ int fs_tile_acc_get_avframes(const FSTileAccumulator *acc,
                              int *out_w, int *out_h,
                              int max_count);
 
-#endif /* IJKSDL__APPLE__IJK_HEIC_TILE_OVERLAY_H */
+#endif /* IJKSDL__IJK_HEIC_TILE_OVERLAY_H */

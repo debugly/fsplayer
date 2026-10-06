@@ -4621,6 +4621,8 @@ static int read_thread(void *arg)
                                 meta->nb_tiles   = (int)grid->nb_tiles;
                                 meta->canvas_w   = grid->coded_width;
                                 meta->canvas_h   = grid->coded_height;
+                                meta->roi_x      = grid->horizontal_offset;
+                                meta->roi_y      = grid->vertical_offset;
                                 meta->w          = grid->width;
                                 meta->h          = grid->height;
                                 meta->tile_x     = tile_x;

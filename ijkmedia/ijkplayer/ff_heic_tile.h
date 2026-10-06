@@ -18,6 +18,8 @@ typedef struct FSTileGridMetadata {
     int nb_tiles;       // total tile count of this group
     int canvas_w;       // full canvas width  (grid->coded_width) contain padding
     int canvas_h;       // full canvas height (grid->coded_height) contain padding
+    int roi_x;          // 展示区域左上角在 canvas 内的 x（grid->horizontal_offset）
+    int roi_y;          // 展示区域左上角在 canvas 内的 y（grid->vertical_offset）
     int w;              // display width  (grid->width)
     int h;              // display height (grid->height)
     int tile_x;         // tile's top-left x on canvas
