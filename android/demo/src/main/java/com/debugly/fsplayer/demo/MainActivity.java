@@ -15,6 +15,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private SurfaceView mSurfaceView;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
+    // 可用 intent extra "url" 覆盖（本地文件或网络地址）
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -27,6 +28,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         setContentView(mSurfaceView);
 
         mPlayer = new IjkMediaPlayer();
+        // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
+        mPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
         mPlayer.setOnPreparedListener(new IMediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(IMediaPlayer mp) {
@@ -46,8 +49,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         try {
+            String url = getIntent() != null ? getIntent().getStringExtra("url") : null;
+            if (url == null || url.isEmpty())
+                url = TEST_URL;
             mPlayer.setSurface(holder.getSurface());
-            mPlayer.setDataSource(TEST_URL);
+            mPlayer.setDataSource(url);
             mPlayer.prepareAsync();
         } catch (Exception e) {
             Toast.makeText(this, "setDataSource 失败: " + e.getMessage(), Toast.LENGTH_LONG).show();

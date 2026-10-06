@@ -31,13 +31,28 @@
 /*
  * 安卓 Vulkan 视频渲染器（全新实现，替代 OpenGL ES / ANativeWindow 方案）。
  *
- * 渲染路径：FFmpeg 软解出的 YUV AVFrame -> 上传到 Vulkan 纹理 ->
+ * 软解路径：FFmpeg 软解出的 YUV AVFrame -> 上传到 Vulkan 纹理 ->
  * YUV->RGB 转换管线 -> swapchain 呈现到 Android Surface。
+ *
+ * 硬解零拷贝路径：MediaCodec -> AImageReader(gralloc) -> VkImage 外部显存 ->
+ * 采样器上的 YCbCr 转换 -> swapchain 呈现。
  */
 
 SDL_Vout *SDL_VoutAndroid_CreateForVulkan(void);
 
 /* 由上层 (ijkmp_android_set_surface) 调用，把 Java Surface 传给渲染器。 */
 void SDL_VoutAndroid_SetAndroidSurface(JNIEnv *env, SDL_Vout *vout, jobject android_surface);
+
+/*
+ * 硬解零拷贝通路是否可用（Vulkan 1.1 + AImageReader + 外部显存扩展）。
+ * 不可用时上层应保持软解。
+ */
+int SDL_VoutAndroid_IsMediaCodecSupported(SDL_Vout *vout);
+
+/*
+ * 返回 AImageReader 的输出 Surface，供 MediaCodec 作为解码输出目标。
+ * 返回 NewLocalRef，调用方负责 DeleteLocalRef；不支持时返回 NULL。
+ */
+jobject SDL_VoutAndroid_GetMediaCodecSurface(JNIEnv *env, SDL_Vout *vout);
 
 #endif

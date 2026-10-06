@@ -47,6 +47,7 @@
 #include "libavutil/samplefmt.h"
 #include "libavutil/time.h"
 #include "libavformat/avformat.h"
+#include "libavcodec/bsf.h"
 #include "libswscale/swscale.h"
 #include "libavutil/opt.h"
 //#include "libavcodec/avfft.h"
@@ -241,6 +242,11 @@ typedef struct Decoder {
     int packet_pending;
     int bfsc_ret;
     uint8_t *bfsc_data;
+
+    /* 见 decoder_bsf_init：补齐解码器要求的码流封装（MP4 的 AVCC -> Annex-B） */
+    AVBSFContext *bsf;
+    int bsf_insert_aud;
+
 
     SDL_cond *empty_queue_cond;
     int64_t start_pts;
@@ -802,6 +808,8 @@ inline static void ffp_remove_msg(FFPlayer *ffp, int what) {
 
 int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond);
 int decoder_start(Decoder *d, int (*fn)(void *), void *arg, const char *name);
+int decoder_bsf_init(Decoder *d, AVCodecContext *avctx, AVStream *st);
+int decoder_extradata_annexb(AVCodecContext *avctx, AVStream *st);
 void decoder_destroy(Decoder *d);
 void decoder_abort(Decoder *d, FrameQueue *fq);
 

@@ -28,18 +28,35 @@
 
 #define VK_USE_PLATFORM_ANDROID_KHR 1
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_android.h>
 #include <android/native_window.h>
+#include <android/hardware_buffer.h>
 
 #include "libavutil/pixfmt.h"
 #include "libavutil/pixdesc.h"
 #include "libavutil/imgutils.h"
+#include "libavcodec/mediacodec.h"
 #include "libswscale/swscale.h"
 
 #include "ijksdl/ijksdl_log.h"
+#include "ijksdl/android/ijksdl_android_image_reader.h"
 
 /* 预编译的 SPIR-V 字节码 */
 #include "shaders/yuv.vert.spv.h"
 #include "shaders/yuv.frag.spv.h"
+#include "shaders/external.frag.spv.h"
+
+/*
+ * VK_ANDROID_external_memory_android_hardware_buffer 相关入口在 Vulkan 1.1 才
+ * 由 loader 导出，为避免在老 loader 上加载失败，统一用 vkGetDeviceProcAddr 取。
+ */
+typedef VkResult (VKAPI_PTR *PFN_vkGetAndroidHardwareBufferPropertiesANDROID_t)(
+    VkDevice, const AHardwareBuffer *, VkAndroidHardwareBufferPropertiesANDROID *);
+typedef VkResult (VKAPI_PTR *PFN_vkCreateSamplerYcbcrConversion_t)(
+    VkDevice, const VkSamplerYcbcrConversionCreateInfo *, const VkAllocationCallbacks *,
+    VkSamplerYcbcrConversion *);
+typedef void (VKAPI_PTR *PFN_vkDestroySamplerYcbcrConversion_t)(
+    VkDevice, VkSamplerYcbcrConversion, const VkAllocationCallbacks *);
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
@@ -118,6 +135,29 @@ struct FSVulkanRenderer {
 
     ANativeWindow *window;
     int surface_ready;
+
+    /* ---- MediaCodec 零拷贝通路（VK_ANDROID_external_memory_android_hardware_buffer）---- */
+    int instance_11;                        /* instance 是否为 Vulkan 1.1 */
+    int mc_supported;                       /* 设备是否支持硬解零拷贝 */
+    SDL_AndroidImageReader *mc_reader;      /* 硬解输出目标的硬件 buffer 队列 */
+    PFN_vkGetAndroidHardwareBufferPropertiesANDROID_t mcGetAHBProps;
+    PFN_vkCreateSamplerYcbcrConversion_t   mcCreateYcbcr;
+    PFN_vkDestroySamplerYcbcrConversion_t  mcDestroyYcbcr;
+
+    VkSamplerYcbcrConversion mc_conversion;
+    VkSampler                mc_sampler;
+    VkDescriptorSetLayout    mc_desc_layout;
+    VkDescriptorPool         mc_desc_pool;
+    VkDescriptorSet          mc_desc_set;
+    VkPipelineLayout         mc_pipeline_layout;
+    VkPipeline               mc_pipeline;
+
+    VkImage        mc_image;                /* 每次 acquire 的硬件 buffer 导入 */
+    VkDeviceMemory mc_mem;
+    VkImageView    mc_view;
+    int            mc_w;
+    int            mc_h;
+    uint64_t       mc_external_format;
 };
 
 /* ------------------------------------------------------------------------- */
@@ -180,7 +220,7 @@ static VkResult create_instance(FSVulkanRenderer *r)
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName = "fsplayer",
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = VK_API_VERSION_1_0,
+        .apiVersion = VK_API_VERSION_1_1,
     };
 
     const char *extensions[] = {
@@ -194,7 +234,45 @@ static VkResult create_instance(FSVulkanRenderer *r)
         .enabledExtensionCount = 2,
         .ppEnabledExtensionNames = extensions,
     };
-    return vkCreateInstance(&ci, NULL, &r->instance);
+
+    VkResult res = vkCreateInstance(&ci, NULL, &r->instance);
+    if (res == VK_SUCCESS) {
+        r->instance_11 = 1;
+        return res;
+    }
+
+    /* 老 loader（Vulkan 1.0）不支持 1.1：退回 1.0，硬解零拷贝通路随后自动关闭。 */
+    app.apiVersion = VK_API_VERSION_1_0;
+    r->instance_11 = 0;
+    res = vkCreateInstance(&ci, NULL, &r->instance);
+    if (res != VK_SUCCESS)
+        return res;
+    ALOGW("FSVulkanRenderer: Vulkan 1.1 instance unavailable, using 1.0\n");
+    return res;
+}
+
+/* 设备是否导出指定扩展 */
+static int device_has_extension(VkPhysicalDevice pd, const char *name)
+{
+    uint32_t count = 0;
+    if (vkEnumerateDeviceExtensionProperties(pd, NULL, &count, NULL) != VK_SUCCESS || !count)
+        return 0;
+
+    VkExtensionProperties *exts = (VkExtensionProperties *) calloc(count, sizeof(*exts));
+    if (!exts)
+        return 0;
+
+    int found = 0;
+    if (vkEnumerateDeviceExtensionProperties(pd, NULL, &count, exts) == VK_SUCCESS) {
+        for (uint32_t i = 0; i < count; i++) {
+            if (strcmp(exts[i].extensionName, name) == 0) {
+                found = 1;
+                break;
+            }
+        }
+    }
+    free(exts);
+    return found;
 }
 
 static VkResult create_device(FSVulkanRenderer *r)
@@ -243,15 +321,35 @@ static VkResult create_device(FSVulkanRenderer *r)
         .pQueuePriorities = &priority,
     };
 
-    const char *extensions[] = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    /*
+     * 探测 MediaCodec 零拷贝能力：
+     * 需要 Vulkan 1.1（VkSamplerYcbcrConversion）＋外部显存扩展。
+     * 不满足则走软解上传通路。
+     */
+    VkPhysicalDeviceProperties pd_props;
+    vkGetPhysicalDeviceProperties(r->physical_device, &pd_props);
+    int has_ahb = device_has_extension(r->physical_device,
+                                       VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME);
+    int mc_ok = r->instance_11 && has_ahb &&
+                (pd_props.apiVersion >= VK_API_VERSION_1_1);
+
+    const char *extensions[2];
+    uint32_t ext_count = 0;
+    extensions[ext_count++] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    if (mc_ok)
+        extensions[ext_count++] = VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME;
+
+    VkPhysicalDeviceSamplerYcbcrConversionFeatures ycbcr_feat = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES,
+        .samplerYcbcrConversion = VK_TRUE,
     };
 
     VkDeviceCreateInfo dci = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = mc_ok ? (void *) &ycbcr_feat : NULL,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &qci,
-        .enabledExtensionCount = 1,
+        .enabledExtensionCount = ext_count,
         .ppEnabledExtensionNames = extensions,
     };
 
@@ -260,6 +358,24 @@ static VkResult create_device(FSVulkanRenderer *r)
 
     vkGetDeviceQueue(r->device, chosen_family, 0, &r->graphics_queue);
     r->present_queue = r->graphics_queue;
+
+    if (mc_ok) {
+        r->mcGetAHBProps = (PFN_vkGetAndroidHardwareBufferPropertiesANDROID_t)(void *)
+            vkGetDeviceProcAddr(r->device, "vkGetAndroidHardwareBufferPropertiesANDROID");
+        r->mcCreateYcbcr = (PFN_vkCreateSamplerYcbcrConversion_t)(void *)
+            vkGetDeviceProcAddr(r->device, "vkCreateSamplerYcbcrConversion");
+        r->mcDestroyYcbcr = (PFN_vkDestroySamplerYcbcrConversion_t)(void *)
+            vkGetDeviceProcAddr(r->device, "vkDestroySamplerYcbcrConversion");
+
+        r->mc_supported = r->mcGetAHBProps && r->mcCreateYcbcr && r->mcDestroyYcbcr;
+    }
+    if (!r->mc_supported)
+        ALOGW("FSVulkanRenderer: MediaCodec zero-copy path unavailable "
+              "(vulkan11=%d ahb=%d api=0x%x)\n",
+              r->instance_11, has_ahb, (unsigned) pd_props.apiVersion);
+    else
+        ALOGI("FSVulkanRenderer: MediaCodec zero-copy path available\n");
+
     return VK_SUCCESS;
 }
 
@@ -440,12 +556,17 @@ static VkShaderModule create_shader_module(FSVulkanRenderer *r, const unsigned c
     return mod;
 }
 
-static VkResult create_pipeline(FSVulkanRenderer *r)
+static VkResult build_graphics_pipeline(FSVulkanRenderer *r, const unsigned char *frag_spv,
+                                        unsigned int frag_spv_len, VkPipelineLayout layout,
+                                        VkPipeline *out_pipeline)
 {
     VkShaderModule vert = create_shader_module(r, yuv_vert_spv, yuv_vert_spv_len);
-    VkShaderModule frag = create_shader_module(r, yuv_frag_spv, yuv_frag_spv_len);
-    if (!vert || !frag)
+    VkShaderModule frag = create_shader_module(r, frag_spv, frag_spv_len);
+    if (!vert || !frag) {
+        if (vert) vkDestroyShaderModule(r->device, vert, NULL);
+        if (frag) vkDestroyShaderModule(r->device, frag, NULL);
         return VK_ERROR_INITIALIZATION_FAILED;
+    }
 
     VkPipelineShaderStageCreateInfo stages[2] = {
         { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -502,13 +623,6 @@ static VkResult create_pipeline(FSVulkanRenderer *r)
         .attachmentCount = 1, .pAttachments = &blend_att,
     };
 
-    VkPipelineLayoutCreateInfo pli = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1, .pSetLayouts = &r->descriptor_layout,
-    };
-    if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->pipeline_layout) != VK_SUCCESS)
-        return VK_ERROR_INITIALIZATION_FAILED;
-
     VkGraphicsPipelineCreateInfo gpi = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = 2, .pStages = stages,
@@ -518,15 +632,28 @@ static VkResult create_pipeline(FSVulkanRenderer *r)
         .pRasterizationState = &rs,
         .pMultisampleState = &ms,
         .pColorBlendState = &cbs,
-        .layout = r->pipeline_layout,
+        .layout = layout,
         .renderPass = r->render_pass,
         .subpass = 0,
     };
-    VkResult res = vkCreateGraphicsPipelines(r->device, VK_NULL_HANDLE, 1, &gpi, NULL, &r->pipeline);
+    VkResult res = vkCreateGraphicsPipelines(r->device, VK_NULL_HANDLE, 1, &gpi, NULL, out_pipeline);
 
     vkDestroyShaderModule(r->device, vert, NULL);
     vkDestroyShaderModule(r->device, frag, NULL);
     return res;
+}
+
+static VkResult create_pipeline(FSVulkanRenderer *r)
+{
+    VkPipelineLayoutCreateInfo pli = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1, .pSetLayouts = &r->descriptor_layout,
+    };
+    if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->pipeline_layout) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    return build_graphics_pipeline(r, yuv_frag_spv, yuv_frag_spv_len,
+                                   r->pipeline_layout, &r->pipeline);
 }
 
 static VkResult create_descriptor_and_textures(FSVulkanRenderer *r)
@@ -838,6 +965,18 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     if (create_command_and_sync(r) != VK_SUCCESS)
         goto fail;
 
+    /*
+     * 硬解零拷贝需要先把 MediaCodec 的输出目标（AImageReader）准备好，
+     * 解码器配置时要用它导出的 Surface。
+     */
+    if (r->mc_supported) {
+        r->mc_reader = SDL_AndroidImageReader_create(3);
+        if (!r->mc_reader) {
+            ALOGW("FSVulkanRenderer: AImageReader unavailable, disabling hw zero-copy\n");
+            r->mc_supported = 0;
+        }
+    }
+
     r->converted_frame = av_frame_alloc();
     return r;
 
@@ -917,25 +1056,10 @@ static int ensure_yuv420p(FSVulkanRenderer *r, const AVFrame *frame,
     return 0;
 }
 
-int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
-                               int disp_w, int disp_h,
-                               int rotate_degrees, int sar_num, int sar_den)
+static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
+                            VkPipelineLayout layout, VkDescriptorSet desc_set,
+                            VkImage pre_image)
 {
-    (void)disp_w; (void)disp_h; (void)rotate_degrees; (void)sar_num; (void)sar_den;
-    if (!r || !r->surface_ready || !frame)
-        return -1;
-
-    const uint8_t *y, *u, *v;
-    int y_stride, u_stride, v_stride, w, h;
-    if (ensure_yuv420p(r, frame, &y, &y_stride, &u, &u_stride, &v, &v_stride, &w, &h) != 0)
-        return -1;
-
-    if (ensure_yuv_textures(r, w, h) != VK_SUCCESS)
-        return -1;
-
-    if (upload_yuv420p(r, y, y_stride, u, u_stride, v, v_stride, w, h) != VK_SUCCESS)
-        return -1;
-
     /* acquire swapchain image */
     uint32_t image_index = 0;
     VkResult res = vkAcquireNextImageKHR(r->device, r->swapchain, UINT64_MAX,
@@ -948,6 +1072,25 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
     vkBeginCommandBuffer(r->command_buffer, &bi);
 
+    /* 外部显存导入的 image 首次使用时需要转成可采样布局 */
+    if (pre_image) {
+        VkImageMemoryBarrier ib = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = pre_image,
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        };
+        vkCmdPipelineBarrier(r->command_buffer,
+                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             0, 0, NULL, 0, NULL, 1, &ib);
+    }
+
     VkClearValue clear = { .color = {{0.0f, 0.0f, 0.0f, 1.0f}} };
     VkRenderPassBeginInfo rpi = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -958,9 +1101,9 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
         .pClearValues = &clear,
     };
     vkCmdBeginRenderPass(r->command_buffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipeline);
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            r->pipeline_layout, 0, 1, &r->descriptor_set, 0, NULL);
+                            layout, 0, 1, &desc_set, 0, NULL);
     VkDeviceSize offsets = 0;
     vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, &offsets);
     vkCmdDraw(r->command_buffer, 6, 1, 0, 0);
@@ -992,6 +1135,336 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
     return 0;
 }
 
+/* ------------------------------------------------------------------------- */
+/* MediaCodec 零拷贝：AHardwareBuffer -> VkImage（外部显存导入）               */
+/* ------------------------------------------------------------------------- */
+
+static void destroy_mc_image(FSVulkanRenderer *r)
+{
+    if (!r->device)
+        return;
+    if (r->mc_view)  { vkDestroyImageView(r->device, r->mc_view, NULL); r->mc_view  = VK_NULL_HANDLE; }
+    if (r->mc_image) { vkDestroyImage(r->device, r->mc_image, NULL);    r->mc_image = VK_NULL_HANDLE; }
+    if (r->mc_mem)   { vkFreeMemory(r->device, r->mc_mem, NULL);        r->mc_mem   = VK_NULL_HANDLE; }
+    r->mc_w = r->mc_h = 0;
+}
+
+static void destroy_mc_resources(FSVulkanRenderer *r)
+{
+    if (!r->device)
+        return;
+
+    destroy_mc_image(r);
+
+    if (r->mc_pipeline)        { vkDestroyPipeline(r->device, r->mc_pipeline, NULL);               r->mc_pipeline = VK_NULL_HANDLE; }
+    if (r->mc_pipeline_layout) { vkDestroyPipelineLayout(r->device, r->mc_pipeline_layout, NULL);  r->mc_pipeline_layout = VK_NULL_HANDLE; }
+    if (r->mc_desc_pool)       { vkDestroyDescriptorPool(r->device, r->mc_desc_pool, NULL);        r->mc_desc_pool = VK_NULL_HANDLE; }
+    if (r->mc_desc_layout)     { vkDestroyDescriptorSetLayout(r->device, r->mc_desc_layout, NULL); r->mc_desc_layout = VK_NULL_HANDLE; }
+    if (r->mc_sampler)         { vkDestroySampler(r->device, r->mc_sampler, NULL);                 r->mc_sampler = VK_NULL_HANDLE; }
+    if (r->mc_conversion && r->mcDestroyYcbcr) {
+        r->mcDestroyYcbcr(r->device, r->mc_conversion, NULL);
+        r->mc_conversion = VK_NULL_HANDLE;
+    }
+    r->mc_desc_set = VK_NULL_HANDLE;
+    r->mc_external_format = 0;
+}
+
+/*
+ * 依据 AHardwareBuffer 的实际格式建立 YCbCr 转换 / 采样器 / descriptor /
+ * 渲染管线。转换以不可变采样器绑定在 descriptor set layout 上，因此外部格式
+ * 变化时必须整体重建（实际上一路视频只会发生一次）。
+ */
+static VkResult create_mc_pipeline(FSVulkanRenderer *r,
+                                   const VkAndroidHardwareBufferFormatPropertiesANDROID *fmt)
+{
+    destroy_mc_resources(r);
+
+    VkExternalFormatANDROID ext_fmt = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID,
+        .externalFormat = fmt->externalFormat,
+    };
+    VkSamplerYcbcrConversionCreateInfo cci = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO,
+        .pNext = &ext_fmt,
+        .format = VK_FORMAT_UNDEFINED,
+        .ycbcrModel = fmt->suggestedYcbcrModel,
+        .ycbcrRange = fmt->suggestedYcbcrRange,
+        .xChromaOffset = fmt->suggestedXChromaOffset,
+        .yChromaOffset = fmt->suggestedYChromaOffset,
+        .chromaFilter = VK_FILTER_LINEAR,
+    };
+    if (r->mcCreateYcbcr(r->device, &cci, NULL, &r->mc_conversion) != VK_SUCCESS) {
+        ALOGE("FSVulkanRenderer: vkCreateSamplerYcbcrConversion failed\n");
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    VkSamplerYcbcrConversionInfo conv_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO,
+        .conversion = r->mc_conversion,
+    };
+    VkSamplerCreateInfo si = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext = &conv_info,
+        .magFilter = VK_FILTER_LINEAR,
+        .minFilter = VK_FILTER_LINEAR,
+        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .maxLod = 1.0f,
+    };
+    if (vkCreateSampler(r->device, &si, NULL, &r->mc_sampler) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    VkDescriptorSetLayoutBinding b = {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .pImmutableSamplers = &r->mc_sampler,
+    };
+    VkDescriptorSetLayoutCreateInfo dli = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1, .pBindings = &b,
+    };
+    if (vkCreateDescriptorSetLayout(r->device, &dli, NULL, &r->mc_desc_layout) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    VkDescriptorPoolSize ps = {
+        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1,
+    };
+    VkDescriptorPoolCreateInfo dpi = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = 1, .poolSizeCount = 1, .pPoolSizes = &ps,
+    };
+    if (vkCreateDescriptorPool(r->device, &dpi, NULL, &r->mc_desc_pool) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    VkDescriptorSetAllocateInfo dai = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = r->mc_desc_pool,
+        .descriptorSetCount = 1, .pSetLayouts = &r->mc_desc_layout,
+    };
+    if (vkAllocateDescriptorSets(r->device, &dai, &r->mc_desc_set) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    VkPipelineLayoutCreateInfo pli = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1, .pSetLayouts = &r->mc_desc_layout,
+    };
+    if (vkCreatePipelineLayout(r->device, &pli, NULL, &r->mc_pipeline_layout) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    if (build_graphics_pipeline(r, external_frag_spv, external_frag_spv_len,
+                                r->mc_pipeline_layout, &r->mc_pipeline) != VK_SUCCESS)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    r->mc_external_format = fmt->externalFormat;
+    ALOGI("FSVulkanRenderer: mc pipeline ready externalFormat=0x%llx model=%d range=%d\n",
+          (unsigned long long) fmt->externalFormat, (int) fmt->suggestedYcbcrModel,
+          (int) fmt->suggestedYcbcrRange);
+    return VK_SUCCESS;
+}
+
+/* 把一帧 AHardwareBuffer 导入为外部格式 VkImage，并绑定到 descriptor。 */
+static int import_hardware_buffer(FSVulkanRenderer *r, AHardwareBuffer *ahb,
+                                  const VkAndroidHardwareBufferPropertiesANDROID *props,
+                                  int w, int h)
+{
+    destroy_mc_image(r);
+
+    VkExternalFormatANDROID ext_fmt = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID,
+        .externalFormat = r->mc_external_format,
+    };
+    VkImageCreateInfo ici = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = &ext_fmt,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_UNDEFINED,
+        .extent = { (uint32_t) w, (uint32_t) h, 1 },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+    if (vkCreateImage(r->device, &ici, NULL, &r->mc_image) != VK_SUCCESS) {
+        ALOGE("FSVulkanRenderer: vkCreateImage external failed\n");
+        return -1;
+    }
+
+    /* AHB 每个分配都是独立内存，导入时用 dedicated 内存 */
+    VkMemoryDedicatedAllocateInfo dedicated = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .image = r->mc_image,
+    };
+    VkImportAndroidHardwareBufferInfoANDROID import = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID,
+        .pNext = &dedicated,
+        .buffer = ahb,
+    };
+
+    uint32_t mem_type = find_memory_type(r->physical_device, props->memoryTypeBits,
+                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (mem_type == UINT32_MAX) {
+        /* 某些设备导入内存不在 DEVICE_LOCAL 类型，退化为取第一个可用位 */
+        for (uint32_t i = 0; i < 32; i++) {
+            if (props->memoryTypeBits & (1u << i)) { mem_type = i; break; }
+        }
+    }
+    if (mem_type == UINT32_MAX) {
+        destroy_mc_image(r);
+        return -1;
+    }
+
+    VkMemoryAllocateInfo mai = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &import,
+        .allocationSize = props->allocationSize,
+        .memoryTypeIndex = mem_type,
+    };
+    if (vkAllocateMemory(r->device, &mai, NULL, &r->mc_mem) != VK_SUCCESS) {
+        ALOGE("FSVulkanRenderer: vkAllocateMemory import AHB failed\n");
+        destroy_mc_image(r);
+        return -1;
+    }
+    if (vkBindImageMemory(r->device, r->mc_image, r->mc_mem, 0) != VK_SUCCESS) {
+        destroy_mc_image(r);
+        return -1;
+    }
+
+    VkSamplerYcbcrConversionInfo conv_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO,
+        .conversion = r->mc_conversion,
+    };
+    VkImageViewCreateInfo vci = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = &conv_info,
+        .image = r->mc_image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = VK_FORMAT_UNDEFINED,
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+    };
+    if (vkCreateImageView(r->device, &vci, NULL, &r->mc_view) != VK_SUCCESS) {
+        destroy_mc_image(r);
+        return -1;
+    }
+
+    VkDescriptorImageInfo dii = {
+        .sampler = VK_NULL_HANDLE,      /* layout 里是 immutable sampler，此字段被忽略 */
+        .imageView = r->mc_view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = r->mc_desc_set,
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &dii,
+    };
+    vkUpdateDescriptorSets(r->device, 1, &write, 0, NULL);
+
+    r->mc_w = w;
+    r->mc_h = h;
+    return 0;
+}
+
+/*
+ * 硬解帧显示：MediaCodec -> AImageReader(gralloc) -> VkImage 外部显存 -> 上屏。
+ * 全程不做 CPU 拷贝。
+ */
+static int display_mc_frame(FSVulkanRenderer *r, const AVFrame *frame)
+{
+    if (!r->mc_supported || !r->surface_ready || !r->mc_reader)
+        return -1;
+
+    AVMediaCodecBuffer *buffer = (AVMediaCodecBuffer *) frame->data[3];
+    if (!buffer)
+        return -1;
+
+    /*
+     * 上一帧仍在 GPU 上使用时不能释放/重建它引用的硬件 buffer，
+     * 这里等 GPU 排空再进入下一帧（后续可换成 fence 异步等待）。
+     */
+    vkQueueWaitIdle(r->graphics_queue);
+
+    /* 让 MediaCodec 把这一帧渲染到 AImageReader 的输出 Surface */
+    int err = av_mediacodec_release_buffer(buffer, 1);
+    if (err != 0)
+        ALOGW("FSVulkanRenderer: av_mediacodec_release_buffer err=%d\n", err);
+
+    void *ahb = NULL;
+    int w = 0, h = 0;
+    if (SDL_AndroidImageReader_acquireLatest(r->mc_reader, &ahb, &w, &h, 100) != 0 || !ahb) {
+        ALOGW("FSVulkanRenderer: acquire latest image failed\n");
+        return -1;
+    }
+
+    VkAndroidHardwareBufferFormatPropertiesANDROID fmt_props;
+    memset(&fmt_props, 0, sizeof(fmt_props));
+    fmt_props.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID;
+
+    VkAndroidHardwareBufferPropertiesANDROID props;
+    memset(&props, 0, sizeof(props));
+    props.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
+    props.pNext = &fmt_props;
+
+    if (r->mcGetAHBProps(r->device, (AHardwareBuffer *) ahb, &props) != VK_SUCCESS) {
+        ALOGE("FSVulkanRenderer: vkGetAndroidHardwareBufferPropertiesANDROID failed\n");
+        SDL_AndroidImageReader_releaseImage(r->mc_reader);
+        return -1;
+    }
+
+    if (!r->mc_pipeline || r->mc_external_format != fmt_props.externalFormat) {
+        if (create_mc_pipeline(r, &fmt_props) != VK_SUCCESS) {
+            SDL_AndroidImageReader_releaseImage(r->mc_reader);
+            return -1;
+        }
+    }
+
+    if (import_hardware_buffer(r, (AHardwareBuffer *) ahb, &props, w, h) != 0) {
+        SDL_AndroidImageReader_releaseImage(r->mc_reader);
+        return -1;
+    }
+
+    int ret = draw_and_present(r, r->mc_pipeline, r->mc_pipeline_layout,
+                               r->mc_desc_set, r->mc_image);
+
+    SDL_AndroidImageReader_releaseImage(r->mc_reader);
+    return ret;
+}
+
+int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
+                               int disp_w, int disp_h,
+                               int rotate_degrees, int sar_num, int sar_den)
+{
+    (void)disp_w; (void)disp_h; (void)rotate_degrees; (void)sar_num; (void)sar_den;
+    if (!r || !r->surface_ready || !frame)
+        return -1;
+
+    /* MediaCodec 硬解：零拷贝外部显存通路 */
+    if (frame->format == AV_PIX_FMT_MEDIACODEC)
+        return display_mc_frame(r, frame);
+
+    const uint8_t *y, *u, *v;
+    int y_stride, u_stride, v_stride, w, h;
+    if (ensure_yuv420p(r, frame, &y, &y_stride, &u, &u_stride, &v, &v_stride, &w, &h) != 0)
+        return -1;
+
+    if (ensure_yuv_textures(r, w, h) != VK_SUCCESS)
+        return -1;
+
+    if (upload_yuv420p(r, y, y_stride, u, u_stride, v, v_stride, w, h) != VK_SUCCESS)
+        return -1;
+
+    return draw_and_present(r, r->pipeline, r->pipeline_layout, r->descriptor_set,
+                            VK_NULL_HANDLE);
+}
+
 void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
 {
     if (!r)
@@ -999,6 +1472,8 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
 
     if (r->device) {
         vkDeviceWaitIdle(r->device);
+
+        destroy_mc_resources(r);
 
         if (r->sws_ctx) sws_freeContext(r->sws_ctx);
         if (r->converted_frame) av_frame_free(&r->converted_frame);
@@ -1046,8 +1521,25 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
 
         vkDestroyDevice(r->device, NULL);
     }
+    if (r->mc_reader) {
+        SDL_AndroidImageReader_destroy(r->mc_reader);
+        r->mc_reader = NULL;
+    }
     if (r->instance)
         vkDestroyInstance(r->instance, NULL);
 
     free(r);
+}
+
+int fs_vulkan_renderer_is_mediacodec_supported(FSVulkanRenderer *r)
+{
+    return r && r->mc_supported && r->mc_reader;
+}
+
+jobject fs_vulkan_renderer_get_mediacodec_surface(JNIEnv *env, FSVulkanRenderer *r)
+{
+    if (!env || !r || !r->mc_supported || !r->mc_reader)
+        return NULL;
+
+    return SDL_AndroidImageReader_getSurface(env, r->mc_reader);
 }

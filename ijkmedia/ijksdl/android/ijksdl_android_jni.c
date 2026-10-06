@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 #include <pthread.h>
+#include <libavcodec/jni.h>
 #include "j4a/class/android/os/Build.h"
 #include "ijksdl_inc_internal_android.h"
 
@@ -197,6 +198,11 @@ int SDL_Android_GetApiLevel()
 int JNI_OnLoad_SDL(JavaVM *vm,JNIEnv* env)
 {
     g_jvm = vm;
+    /*
+     * 把 JavaVM 注册给 FFmpeg：mediacodec hwaccel 内部走 FFmpeg 自己的 JNI
+     * （libavcodec/mediacodec_surface.c 等），没有它无法创建/引用 Surface。
+     */
+    av_jni_set_java_vm(vm, NULL);
     return J4A_LoadAll__catchAll_sdl(env);
 }
 

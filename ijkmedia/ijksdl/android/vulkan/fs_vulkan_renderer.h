@@ -24,6 +24,7 @@
 #ifndef IJKSDL_ANDROID_VULKAN__FS_VULKAN_RENDERER_H
 #define IJKSDL_ANDROID_VULKAN__FS_VULKAN_RENDERER_H
 
+#include <jni.h>
 #include "libavutil/frame.h"
 
 typedef struct ANativeWindow ANativeWindow;
@@ -46,6 +47,16 @@ int fs_vulkan_renderer_set_surface(FSVulkanRenderer *r, ANativeWindow *window);
 int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
                                int disp_w, int disp_h,
                                int rotate_degrees, int sar_num, int sar_den);
+
+/*
+ * MediaCodec 硬解零拷贝：
+ * 渲染器内部持有 AImageReader，把它的输出 Surface 交给解码器；
+ * 非 0 表示设备支持该通路（Vulkan 1.1 + VK_ANDROID_external_memory_...）。
+ */
+int fs_vulkan_renderer_is_mediacodec_supported(FSVulkanRenderer *r);
+
+/* 返回 AImageReader 的输出 Surface（NewLocalRef，调用方 DeleteLocalRef）。 */
+jobject fs_vulkan_renderer_get_mediacodec_surface(JNIEnv *env, FSVulkanRenderer *r);
 
 void fs_vulkan_renderer_destroy(FSVulkanRenderer *r);
 

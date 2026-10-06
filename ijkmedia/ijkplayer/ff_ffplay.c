@@ -197,6 +197,54 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  */
+/*
+ * 给一个 Annex-B 包补上 AUD（Access Unit Delimiter）。
+ *
+ * MediaCodec 解码器（至少 TV 模拟器上的 c2.goldfish.h264.decoder）靠 AUD 划分
+ * 访问单元：MP4 里不带 AUD，喂给它 Annex-B 会出现"入队全部成功、输入缓冲也
+ * 全部回收，却一帧输出都没有"；TS 能正常解码只是因为 mpegts 封装自带 AUD。
+ * AUD 是标准 NAL，不需要它的解码器也会忽略，所以无脑补上。
+ *
+ * primary_pic_type 取 0xf0（任意 slice 类型）。
+ */
+static int packet_prepend_aud(AVPacket *pkt)
+{
+    static const uint8_t aud[6] = { 0x00, 0x00, 0x00, 0x01, 0x09, 0xf0 };
+    AVPacket *np;
+    int ret;
+
+    if (!pkt || pkt->size < 4)
+        return 0;
+    /* 已经是 AUD 开头（0x00000001 0x09）就不用补 */
+    if (pkt->data[0] == 0 && pkt->data[1] == 0 && pkt->data[2] == 0 &&
+        pkt->data[3] == 1 && pkt->size > 4 && (pkt->data[4] & 0x1f) == 9)
+        return 0;
+
+    np = av_packet_alloc();
+    if (!np)
+        return AVERROR(ENOMEM);
+
+    ret = av_new_packet(np, pkt->size + (int)sizeof(aud));
+    if (ret < 0) {
+        av_packet_free(&np);
+        return ret;
+    }
+
+    memcpy(np->data, aud, sizeof(aud));
+    memcpy(np->data + sizeof(aud), pkt->data, pkt->size);
+    av_packet_copy_props(np, pkt);
+    np->pts          = pkt->pts;
+    np->dts          = pkt->dts;
+    np->duration     = pkt->duration;
+    np->stream_index = pkt->stream_index;
+    np->flags        = pkt->flags;
+
+    av_packet_unref(pkt);
+    av_packet_move_ref(pkt, np);
+    av_packet_free(&np);
+    return 0;
+}
+
 static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
     
     int status = 0;
@@ -215,7 +263,10 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     case AVMEDIA_TYPE_VIDEO:
                         ret = avcodec_receive_frame(d->avctx, frame);
                         if (ret >= 0) {
-                            int vdec_type = frame->format == AV_PIX_FMT_VIDEOTOOLBOX ? FFP_PROPV_DECODER_AVCODEC_HW : FFP_PROPV_DECODER_AVCODEC;
+                            int vdec_type = (frame->format == AV_PIX_FMT_VIDEOTOOLBOX ||
+                                             frame->format == AV_PIX_FMT_MEDIACODEC)
+                                                ? FFP_PROPV_DECODER_AVCODEC_HW
+                                                : FFP_PROPV_DECODER_AVCODEC;
                             
                             if (ffp->node_vdec->vdec_type == FFP_PROPV_DECODER_UNKNOWN) {
                                 ffp->node_vdec->vdec_type = vdec_type;
@@ -285,6 +336,8 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 if (ret == AVERROR_EOF) {
                     d->finished = d->pkt_serial;
                     avcodec_flush_buffers(d->avctx);
+                    if (d->bsf)
+                        av_bsf_flush(d->bsf);
                     status = 0;
                     goto abort_end;
                 }
@@ -314,6 +367,8 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     
                 if (old_serial != d->pkt_serial) {
                     avcodec_flush_buffers(d->avctx);
+                    if (d->bsf)
+                        av_bsf_flush(d->bsf);
                     d->finished = 0;
                     d->hw_failed_count = 0;
                     d->next_pts = d->start_pts;
@@ -360,6 +415,26 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 fd->pkt_pos = d->pkt->pos;
             }
 #endif
+            if (d->bsf) {
+                int bsf_ret = av_bsf_send_packet(d->bsf, d->pkt);
+                if (bsf_ret < 0) {
+                    av_log(d->avctx, AV_LOG_ERROR, "bsf send_packet failed:%d\n", bsf_ret);
+                    av_packet_unref(d->pkt);
+                    continue;
+                }
+                bsf_ret = av_bsf_receive_packet(d->bsf, d->pkt);
+                if (bsf_ret == AVERROR(EAGAIN))
+                    continue;
+                if (bsf_ret < 0) {
+                    av_log(d->avctx, AV_LOG_ERROR, "bsf receive_packet failed:%d\n", bsf_ret);
+                    av_packet_unref(d->pkt);
+                    continue;
+                }
+                if (d->bsf_insert_aud && packet_prepend_aud(d->pkt) < 0) {
+                    av_packet_unref(d->pkt);
+                    continue;
+                }
+            }
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -1571,8 +1646,10 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     if (!(vp = frame_queue_peek_writable(&is->pictq)))
         return -1;
 
-    //软解时，根据上层指定的 overlay-format 进行格式转换
-    if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
+    //软解时，根据上层指定的 overlay-format 进行格式转换；
+    //硬解帧（VideoToolbox / MediaCodec）保留原始帧，由渲染器直接消费
+    if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX &&
+        src_frame->format != AV_PIX_FMT_MEDIACODEC) {
         const AVFrame *outFrame = NULL;
         if (convert_frame_format(ffp->vout, src_frame, &outFrame)) {
             return -2;
@@ -3192,6 +3269,141 @@ static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) 
 }
 #endif
 
+#if defined(__ANDROID__)
+#include <libavcodec/mediacodec.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_mediacodec.h>
+#include "ijksdl/android/ijksdl_android_jni.h"
+#include "ijksdl/android/ijksdl_vout_android_vulkan.h"
+
+/*
+ * FFmpeg 把 MediaCodec 实现成独立解码器（h264_mediacodec / hevc_mediacodec ...），
+ * 原生解码器（h264 等）的 hw_configs 里并不包含它，所以硬解必须换用这些解码器。
+ */
+static const char *ffp_android_mediacodec_decoder_name(enum AVCodecID id)
+{
+    switch (id) {
+    case AV_CODEC_ID_H264:       return "h264_mediacodec";
+    case AV_CODEC_ID_HEVC:       return "hevc_mediacodec";
+    case AV_CODEC_ID_MPEG2VIDEO: return "mpeg2_mediacodec";
+    case AV_CODEC_ID_MPEG4:      return "mpeg4_mediacodec";
+    default:                     return NULL;
+    }
+}
+
+/* 该 codec 是否被用户打开硬解（对应 ijkplayer 的 mediacodec-* 选项语义）。 */
+static int ffp_android_mediacodec_wanted(FFPlayer *ffp, enum AVCodecID id)
+{
+    if (!ffp || !ffp_android_mediacodec_decoder_name(id))
+        return 0;
+    if (ffp->mediacodec_all_videos)
+        return 1;
+
+    switch (id) {
+    case AV_CODEC_ID_H264:       return ffp->mediacodec_avc;
+    case AV_CODEC_ID_HEVC:       return ffp->mediacodec_hevc;
+    case AV_CODEC_ID_MPEG2VIDEO: return ffp->mediacodec_mpeg2;
+    case AV_CODEC_ID_MPEG4:      return ffp->mediacodec_mpeg4;
+    default:                     return 0;
+    }
+}
+
+/* 硬解时只接受 MediaCodec 输出格式，解码结果留在 GPU 侧。 */
+static enum AVPixelFormat get_hw_format_mediacodec(AVCodecContext *ctx,
+                                                   const enum AVPixelFormat *pix_fmts)
+{
+    (void)ctx;
+    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+        if (*p == AV_PIX_FMT_MEDIACODEC)
+            return *p;
+    }
+    return AV_PIX_FMT_NONE;
+}
+
+/* hw_device_ctx 最后一次 unref 时回收我们持有的 Surface global ref。 */
+static void mediacodec_device_free(AVHWDeviceContext *ctx)
+{
+    AVMediaCodecDeviceContext *hwctx = ctx->hwctx;
+    JNIEnv *env = NULL;
+
+    if (hwctx && hwctx->surface && JNI_OK == SDL_JNI_SetupThreadEnv(&env))
+        (*env)->DeleteGlobalRef(env, hwctx->surface);
+
+    if (hwctx)
+        hwctx->surface = NULL;
+    ctx->user_opaque = NULL;
+}
+
+/*
+ * 给 avctx 挂上 MediaCodec 硬解：
+ * - 解码输出目标是渲染器内部的 AImageReader Surface（零拷贝的源头）
+ * - get_format 选定 AV_PIX_FMT_MEDIACODEC，帧不落 CPU 内存
+ * 返回 0 表示已启用，非 0 表示保持软解。
+ */
+static int ffp_android_mediacodec_init(FFPlayer *ffp, AVCodecContext *avctx, const AVCodec *codec)
+{
+    if (!ffp->vout || !SDL_VoutAndroid_IsMediaCodecSupported(ffp->vout)) {
+        ALOGW("android: mediacodec zero-copy unsupported by vout\n");
+        return -1;
+    }
+
+    enum AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
+    if (type == AV_HWDEVICE_TYPE_NONE)
+        return -1;
+
+    const AVCodecHWConfig *config = NULL;
+    for (int i = 0;; i++) {
+        const AVCodecHWConfig *node = avcodec_get_hw_config(codec, i);
+        if (!node)
+            break;
+        if ((node->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) &&
+            node->device_type == type) {
+            config = node;
+            break;
+        }
+    }
+    if (!config) {
+        ALOGI("android: %s does not support mediacodec\n", codec->name);
+        return -1;
+    }
+
+    JNIEnv *env = NULL;
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env))
+        return -1;
+
+    jobject surface = SDL_VoutAndroid_GetMediaCodecSurface(env, ffp->vout);
+    if (!surface)
+        return -1;
+
+    AVBufferRef *device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
+    if (!device_ref) {
+        (*env)->DeleteLocalRef(env, surface);
+        return -1;
+    }
+
+    AVHWDeviceContext *dev_ctx = (AVHWDeviceContext *) device_ref->data;
+    AVMediaCodecDeviceContext *hwctx = dev_ctx->hwctx;
+    hwctx->surface = (*env)->NewGlobalRef(env, surface);
+    (*env)->DeleteLocalRef(env, surface);
+    if (!hwctx->surface) {
+        av_buffer_unref(&device_ref);
+        return -1;
+    }
+
+    /* FFmpeg 解码时会自行再取一份 global ref；这一份由我们在 device 释放时回收。 */
+    dev_ctx->free = mediacodec_device_free;
+
+    if (av_hwdevice_ctx_init(device_ref) < 0) {
+        av_buffer_unref(&device_ref);
+        return -1;
+    }
+
+    avctx->hw_device_ctx = device_ref;
+    avctx->get_format = get_hw_format_mediacodec;
+    return 0;
+}
+#endif
+
 static int check_stream_specifier(AVFormatContext *s, AVStream *st, const char *spec)
 {
     int ret = avformat_match_stream_specifier(s, st, spec);
@@ -3372,6 +3584,27 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         goto fail;
     }
 
+#if defined(__ANDROID__)
+    /*
+     * MediaCodec 硬解必须换用 FFmpeg 的 *_mediacodec 解码器：
+     * 原生 h264/hevc 等解码器的 hw_configs 里不含 MediaCodec。
+     * 其解码输出目标是渲染器内部的 AImageReader Surface（零拷贝源头）。
+     */
+    if (!forced_codec_name && avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
+        !(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+        ffp_android_mediacodec_wanted(ffp, avctx->codec_id)) {
+        const char *mc_name = ffp_android_mediacodec_decoder_name(avctx->codec_id);
+        const AVCodec *mc_codec = mc_name ? avcodec_find_decoder_by_name(mc_name) : NULL;
+        if (mc_codec) {
+            codec = mc_codec;
+            ALOGI("android: use %s\n", mc_name);
+        } else {
+            ALOGI("android: %s unavailable, fallback to %s\n",
+                  mc_name ? mc_name : "(none)", codec->name);
+        }
+    }
+#endif
+
     avctx->codec_id = codec->id;
     
     if(stream_lowres > codec->max_lowres){
@@ -3418,6 +3651,26 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
                 ALOGI("try use videotoolbox accel\n");
             }
         }
+    }
+#endif
+#if defined(__ANDROID__)
+    /*
+     * MediaCodec 硬解：解码直出 AImageReader 的 Surface，帧不落 CPU，
+     * 渲染器用 Vulkan 外部显存（零拷贝）直接采样。
+     */
+    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
+        !(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+        ffp_android_mediacodec_wanted(ffp, avctx->codec_id)) {
+        if (ffp_android_mediacodec_init(ffp, avctx, codec) == 0)
+            ALOGI("try use mediacodec accel: %s\n", codec->name);
+
+        /*
+         * MP4 里是 AVCC（长度前缀），MediaCodec 只吃 Annex-B：把 extradata
+         * 换成 Annex-B 形式，免得 avcodec_open2 内部那份同名过滤器重复转换。
+         * 真正的码流转换在 decoder_bsf_init() 里自己做。
+         */
+        if (strstr(codec->name, "_mediacodec"))
+            decoder_extradata_annexb(avctx, st);
     }
 #endif
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
@@ -3560,6 +3813,13 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
             if (!ffp->node_vdec)
                 goto fail;
         }
+        /*
+         * MP4 的 AVCC -> MediaCodec 要的 Annex-B 由这里自己挂的过滤器完成
+         * （avcodec_open2 内部那份在 MP4 上不生效，见 decoder_bsf_init）。
+         */
+        if (strstr(codec->name, "_mediacodec"))
+            decoder_bsf_init(&is->viddec, avctx, st);
+
         if ((ret = decoder_start(&is->viddec, video_thread, ffp, "ff_video_dec")) < 0)
             goto out;
 

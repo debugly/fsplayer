@@ -171,3 +171,19 @@ void SDL_VoutAndroid_SetAndroidSurface(JNIEnv *env, SDL_Vout *vout, jobject andr
 
     SDL_UnlockMutex(vout->mutex);
 }
+
+int SDL_VoutAndroid_IsMediaCodecSupported(SDL_Vout *vout)
+{
+    if (!vout || !vout->opaque)
+        return 0;
+
+    return fs_vulkan_renderer_is_mediacodec_supported(vout->opaque->renderer);
+}
+
+jobject SDL_VoutAndroid_GetMediaCodecSurface(JNIEnv *env, SDL_Vout *vout)
+{
+    if (!vout || !vout->opaque)
+        return NULL;
+
+    return fs_vulkan_renderer_get_mediacodec_surface(env, vout->opaque->renderer);
+}
