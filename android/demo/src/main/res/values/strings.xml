@@ -70,4 +70,7 @@
     <string name="VideoView_player_IjkMediaPlayer">Player: IjkMediaPlayer</string>
     <string name="VideoView_player_IjkExoMediaPlayer">Player: IjkExoMediaPlayer</string>
 
+    <string name="hud">HUD</string>
+    <string name="hud_on">HUD: on</string>
+    <string name="hud_off">HUD: off</string>
 </resources>

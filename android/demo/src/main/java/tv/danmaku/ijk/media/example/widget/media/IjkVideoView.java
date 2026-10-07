@@ -36,7 +36,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.MediaController;
-import android.widget.TableLayout;
 import android.widget.TextView;
 
 import java.io.File;
@@ -49,6 +48,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
+import tv.danmaku.ijk.media.player.FSHudView;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkTimedText;
@@ -119,7 +119,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private int mVideoSarNum;
     private int mVideoSarDen;
 
-    private InfoHudViewHolder mHudViewHolder;
+    private FSHudView mHudView;
+    private boolean mShouldShowHudView = false;
 
     private long mPrepareStartTime = 0;
     private long mPrepareEndTime = 0;
@@ -243,8 +244,38 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
     }
 
-    public void setHudView(TableLayout tableLayout) {
-        mHudViewHolder = new InfoHudViewHolder(getContext(), tableLayout);
+    public void setHudView(FSHudView hudView) {
+        mHudView = hudView;
+        if (mHudView != null)
+            mHudView.appendTitle("Vulkan");
+        attachHudView();
+    }
+
+    /** 把统计卡片挂到当前播放器上（对齐 iOS 的 attachHudView） */
+    private void attachHudView() {
+        if (mHudView != null && mMediaPlayer instanceof IjkMediaPlayer)
+            ((IjkMediaPlayer) mMediaPlayer).attachHudView(mHudView);
+        applyHudVisibility();
+    }
+
+    /** 起播前也能设置：播放器还没建好就先记着，建好后再应用 */
+    public void setShouldShowHudView(boolean shouldShow) {
+        mShouldShowHudView = shouldShow;
+        applyHudVisibility();
+    }
+
+    private void applyHudVisibility() {
+        if (mHudView == null || !(mMediaPlayer instanceof IjkMediaPlayer))
+            return;
+        ((IjkMediaPlayer) mMediaPlayer).setShouldShowHudView(mShouldShowHudView);
+    }
+
+    /** "HUD" 菜单项：开关统计卡片（等价 iOS 的 shouldShowHudView） */
+    public boolean toggleHudView() {
+        if (!(mMediaPlayer instanceof IjkMediaPlayer))
+            return false;
+        setShouldShowHudView(!mShouldShowHudView);
+        return mShouldShowHudView;
     }
 
     /**
@@ -297,8 +328,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
             mMediaPlayer.stop();
             mMediaPlayer.release();
             mMediaPlayer = null;
-            if (mHudViewHolder != null)
-                mHudViewHolder.setMediaPlayer(null);
             mCurrentState = STATE_IDLE;
             mTargetState = STATE_IDLE;
             AudioManager am = (AudioManager) mAppContext.getSystemService(Context.AUDIO_SERVICE);
@@ -353,8 +382,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
             mMediaPlayer.setScreenOnWhilePlaying(true);
             mPrepareStartTime = System.currentTimeMillis();
             mMediaPlayer.prepareAsync();
-            if (mHudViewHolder != null)
-                mHudViewHolder.setMediaPlayer(mMediaPlayer);
+            attachHudView();
 
             // REMOVED: mPendingSubtitleTracks
 
@@ -416,7 +444,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     IMediaPlayer.OnPreparedListener mPreparedListener = new IMediaPlayer.OnPreparedListener() {
         public void onPrepared(IMediaPlayer mp) {
             mPrepareEndTime = System.currentTimeMillis();
-            mHudViewHolder.updateLoadCost(mPrepareEndTime - mPrepareStartTime);
             mCurrentState = STATE_PREPARED;
 
             // Get the capabilities of the player for this stream
@@ -598,7 +625,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         @Override
         public void onSeekComplete(IMediaPlayer mp) {
             mSeekEndTime = System.currentTimeMillis();
-            mHudViewHolder.updateSeekCost(mSeekEndTime - mSeekStartTime);
         }
     };
 
@@ -1106,8 +1132,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mEnableBackgroundPlay) {
             MediaPlayerService.intentToStart(getContext());
             mMediaPlayer = MediaPlayerService.getMediaPlayer();
-            if (mHudViewHolder != null)
-                mHudViewHolder.setMediaPlayer(mMediaPlayer);
+            attachHudView();
         }
     }
 

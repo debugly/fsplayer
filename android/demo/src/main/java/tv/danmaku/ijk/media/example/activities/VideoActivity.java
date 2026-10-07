@@ -36,9 +36,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
-import android.widget.TableLayout;
 import android.widget.TextView;
 
+import tv.danmaku.ijk.media.player.FSHudView;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.example.R;
@@ -58,7 +58,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private AndroidMediaController mMediaController;
     private IjkVideoView mVideoView;
     private TextView mToastTextView;
-    private TableLayout mHudView;
+    private FSHudView mHudView;
     private DrawerLayout mDrawerLayout;
     private ViewGroup mRightDrawer;
 
@@ -128,7 +128,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mMediaController.setSupportActionBar(actionBar);
 
         mToastTextView = (TextView) findViewById(R.id.toast_text_view);
-        mHudView = (TableLayout) findViewById(R.id.hud_view);
+        mHudView = (FSHudView) findViewById(R.id.hud_view);
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mRightDrawer = (ViewGroup) findViewById(R.id.right_drawer);
 
@@ -141,6 +141,8 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mVideoView = (IjkVideoView) findViewById(R.id.video_view);
         mVideoView.setMediaController(mMediaController);
         mVideoView.setHudView(mHudView);
+        // 可用 intent extra "hud"（0/1）起播就显示统计卡片，供脚本使用
+        mVideoView.setShouldShowHudView(getIntent().getIntExtra("hud", 0) != 0);
         // prefer mVideoPath
         if (mVideoPath != null)
             mVideoView.setVideoPath(mVideoPath);
@@ -200,6 +202,11 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             int render = mVideoView.toggleRender();
             String renderText = IjkVideoView.getRenderText(this, render);
             mToastTextView.setText(renderText);
+            mMediaController.showOnce(mToastTextView);
+            return true;
+        } else if (id == R.id.action_toggle_hud) {
+            boolean shown = mVideoView.toggleHudView();
+            mToastTextView.setText(shown ? R.string.hud_on : R.string.hud_off);
             mMediaController.showOnce(mToastTextView);
             return true;
         } else if (id == R.id.action_show_info) {

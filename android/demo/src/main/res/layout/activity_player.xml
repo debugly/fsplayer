@@ -29,13 +29,15 @@
             android:textSize="16sp"
             android:visibility="gone" />
 
-        <TableLayout
+        <!-- fsplayer 的统计卡片（对齐 iOS FSHudCardView），由 "HUD" 菜单项开关 -->
+        <tv.danmaku.ijk.media.player.FSHudView
             android:id="@+id/hud_view"
-            android:layout_width="wrap_content"
+            android:layout_width="300dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="right|center_vertical"
-            android:background="@color/ijk_transparent_dark"
-            android:padding="8dp" />
+            android:layout_gravity="top|right"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:visibility="gone" />
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
