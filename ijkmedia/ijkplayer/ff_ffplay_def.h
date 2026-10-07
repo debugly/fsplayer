@@ -616,6 +616,12 @@ typedef struct FFPlayer {
     FSSubtitlePreference sp;
 
     int video_scaling_mode;   // 画面缩放模式，见 FFP_PROP_INT64_VIDEO_SCALING_MODE
+
+    /* 画面手动三轴旋转（度），见 FFP_PROP_FLOAT_VIDEO_*_ROTATE_DEGREES；
+       语义对齐 iOS 的 xRotateDegrees/yRotateDegrees/zRotateDegrees */
+    float x_rotate_degrees;
+    float y_rotate_degrees;
+    float z_rotate_degrees;
     
     //icy update
     int64_t icy_update_period;//ms
@@ -737,6 +743,9 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->sp = fs_subtitle_default_preference();
 
     ffp->video_scaling_mode             = 0; // option: 等比完整显示
+    ffp->x_rotate_degrees               = 0.0f;
+    ffp->y_rotate_degrees               = 0.0f;
+    ffp->z_rotate_degrees               = 0.0f;
 
     ffp->iformat_name                   = NULL; // option
 

@@ -5904,6 +5904,12 @@ float ffp_get_property_float(FFPlayer *ffp, int id, float default_value)
             return ffp ? ffp->pf_playback_volume : default_value;
         case FFP_PROP_FLOAT_DROP_FRAME_RATE:
             return ffp ? ffp->stat.drop_frame_rate : default_value;
+        case FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES:
+            return ffp ? ffp->x_rotate_degrees : default_value;
+        case FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES:
+            return ffp ? ffp->y_rotate_degrees : default_value;
+        case FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES:
+            return ffp ? ffp->z_rotate_degrees : default_value;
         default:
             return default_value;
     }
@@ -5917,6 +5923,28 @@ void ffp_set_property_float(FFPlayer *ffp, int id, float value)
             break;
         case FFP_PROP_FLOAT_PLAYBACK_VOLUME:
             ffp_set_playback_volume(ffp, value);
+            break;
+        case FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES:
+        case FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES:
+        case FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES:
+            if (ffp) {
+                if (id == FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES) {
+                    ffp->x_rotate_degrees = value;
+                } else if (id == FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES) {
+                    ffp->y_rotate_degrees = value;
+                } else {
+                    ffp->z_rotate_degrees = value;
+                }
+#if defined(__ANDROID__)
+                /* 渲染器持有三轴旋转，播放中改也能下一帧生效 */
+                if (ffp->vout) {
+                    SDL_VoutAndroid_SetRotateDegrees(ffp->vout,
+                                                     ffp->x_rotate_degrees,
+                                                     ffp->y_rotate_degrees,
+                                                     ffp->z_rotate_degrees);
+                }
+#endif
+            }
             break;
         default:
             return;

@@ -384,6 +384,14 @@ void SDL_VoutAndroid_SetScalingMode(SDL_Vout *vout, int mode)
     fs_vulkan_renderer_set_scaling_mode(vout->opaque->renderer, mode);
 }
 
+void SDL_VoutAndroid_SetRotateDegrees(SDL_Vout *vout, float x, float y, float z)
+{
+    if (!vout || !vout->opaque || !vout->opaque->renderer)
+        return;
+
+    fs_vulkan_renderer_set_rotate_degrees(vout->opaque->renderer, x, y, z);
+}
+
 /*
  * 注意：这里不拿 vout 的锁。快照要等渲染线程把下一帧画出来，而渲染线程显示时
  * 也要拿这把锁，持锁等待就死锁了；renderer 指针本身在 vout 生命周期内是稳定的。

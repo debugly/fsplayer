@@ -56,6 +56,12 @@ IjkMediaPlayer *ijkmp_android_create(int(*msg_loop)(void*))
 
     /* 缩放模式（等比完整显示/铺满/拉伸），之后可通过 setPropertyInt64 改 */
     SDL_VoutAndroid_SetScalingMode(mp->ffplayer->vout, mp->ffplayer->video_scaling_mode);
+    /* 旋转属性可能是在 vout 存在之前设置的（配置播放器 → setDisplay → prepare 的顺序很常见），
+       这里把存下的值补推一次，否则那次设置会丢。 */
+    SDL_VoutAndroid_SetRotateDegrees(mp->ffplayer->vout,
+                                     mp->ffplayer->x_rotate_degrees,
+                                     mp->ffplayer->y_rotate_degrees,
+                                     mp->ffplayer->z_rotate_degrees);
 
     mp->ffplayer->pipeline = ffpipeline_create_from_android(mp->ffplayer);
     if (!mp->ffplayer->pipeline)

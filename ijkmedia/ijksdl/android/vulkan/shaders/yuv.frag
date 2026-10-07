@@ -14,8 +14,8 @@ layout(binding = 3) uniform sampler2D vTex;
 // 片元侧 push constant，块内偏移必须显式写成绝对偏移：
 // VkPushConstantRange 的 offset 只声明这一段归哪个 stage 用，不写就会从 0 读（读到顶点段的 rect）。
 layout(push_constant) uniform PicturePush {
-    layout(offset = 32) vec4 adjust;   // (brightness, saturation, contrast, on)
-    layout(offset = 48) vec4 hdr;      // (hdrContent, hdrDisplay, transferFunc, bits)
+    layout(offset = 48) vec4 adjust;   // (brightness, saturation, contrast, on)
+    layout(offset = 64) vec4 hdr;      // (hdrContent, hdrDisplay, transferFunc, bits)
                                        // bits: 1 = 10bit 输入，2 = full range（iOS 的 offset 规则）
 } cp;
 

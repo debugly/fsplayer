@@ -105,6 +105,13 @@ void fs_vulkan_renderer_set_scaling_mode(FSVulkanRenderer *r, int mode);
 int fs_vulkan_renderer_get_scaling_mode(FSVulkanRenderer *r);
 
 /*
+ * 设置画面手动三轴旋转（度），语义对齐 iOS 的 xRotateDegrees/yRotateDegrees/
+ * zRotateDegrees：绕画面中心的正交三轴旋转，最终与自动 Z 旋转（元数据）相乘。
+ * 三轴都是 0 时与原行为完全一致。下一帧生效。
+ */
+void fs_vulkan_renderer_set_rotate_degrees(FSVulkanRenderer *r, float x, float y, float z);
+
+/*
  * 创建 Vulkan 渲染器（只创建 instance/device，不创建 swapchain）。
  * surface 稍后通过 fs_vulkan_renderer_set_surface 传入。
  */

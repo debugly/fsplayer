@@ -192,6 +192,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FFP_PROP_FLOAT_AVDELAY                          = 10004;
     public static final int FFP_PROP_FLOAT_VMDIFF                           = 10005;
     public static final int FFP_PROP_FLOAT_DROP_FRAME_COUNT                 = 10008;
+    /** 画面手动三轴旋转（度），语义对齐 iOS 的 xRotateDegrees/yRotateDegrees/zRotateDegrees */
+    public static final int FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES           = 10009;
+    public static final int FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES           = 10010;
+    public static final int FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES           = 10011;
     public static final int FFP_PROP_INT64_VIDEO_SAR_NUM                    = 20021;
     public static final int FFP_PROP_INT64_VIDEO_SAR_DEN                    = 20022;
 
@@ -1284,6 +1288,32 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     public int getScalingMode() {
         return (int)_getPropertyLong(FFP_PROP_INT64_VIDEO_SCALING_MODE, FS_SCALING_MODE_ASPECT_FIT);
+    }
+
+    /**
+     * 设置画面手动三轴旋转（度），语义对齐 iOS 的 xRotateDegrees/yRotateDegrees/zRotateDegrees：
+     * 绕画面中心做正交三轴旋转，最终与自动 Z 旋转（元数据）相乘；三轴都为 0 时与原行为一致。
+     * 播放中随时可调用，下一帧生效。
+     */
+    public void setRotateDegrees(float x, float y, float z) {
+        _setPropertyFloat(FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES, x);
+        _setPropertyFloat(FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES, y);
+        _setPropertyFloat(FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES, z);
+    }
+
+    /** @see #setRotateDegrees(float, float, float) */
+    public float getXRotateDegrees() {
+        return _getPropertyFloat(FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES, 0.0f);
+    }
+
+    /** @see #setRotateDegrees(float, float, float) */
+    public float getYRotateDegrees() {
+        return _getPropertyFloat(FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES, 0.0f);
+    }
+
+    /** @see #setRotateDegrees(float, float, float) */
+    public float getZRotateDegrees() {
+        return _getPropertyFloat(FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES, 0.0f);
     }
 
     /**

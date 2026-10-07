@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 #define VK_USE_PLATFORM_ANDROID_KHR 1
 #include <vulkan/vulkan.h>
@@ -185,8 +186,12 @@ struct FSVulkanRenderer {
      * 字幕才会跟着视频一起缩放、旋转、留黑边（见 compute_video_transform）。
      */
     int   scaling_mode;             /* FSScalingMode */
+    float x_rotate_degrees;         /* 手动 X 轴旋转（度），对齐 iOS xRotateDegrees */
+    float y_rotate_degrees;         /* 手动 Y 轴旋转（度） */
+    float z_rotate_degrees;         /* 手动 Z 轴旋转（度）；最终与自动 Z 旋转相加 */
     float video_rect[4];            /* x0, y0, x1, y1（NDC） */
-    float video_uvmat[4];           /* 2x2 列主序，uv' = M * (uv - 0.5) + 0.5 */
+    float video_uvmat[4];           /* 2x2 列主序，uv' = M * (uv - 0.5) + 0.5（保留兼容） */
+    float video_posmat[4];          /* 2x2 列主序，pos' = M * pos：三轴旋转（含自动 Z） */
 
     /* 上一帧的画面：快照要用同样的管线和参数重画一次 */
     int              video_w, video_h;      /* 解码帧原始尺寸 */
@@ -754,18 +759,18 @@ static VkResult build_graphics_pipeline(FSVulkanRenderer *r, const unsigned char
 
 static VkResult create_pipeline(FSVulkanRenderer *r)
 {
-    /* push constant：顶点侧 rect(4) + uvmat(4) 做缩放/letterbox/旋转；
+    /* push constant：顶点侧 rect(4) + uvmat(4) + posmat(4) 做缩放/letterbox/旋转；
        片元侧再接一段色彩调整（brightness, saturation, contrast, on），
-       两段范围不能重叠，所以后者从 offset 32 开始。 */
+       两段范围不能重叠，所以后者从 offset 48 开始。 */
     VkPushConstantRange pcr[2] = {
         {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
-            .size = sizeof(float) * 8,
+            .size = sizeof(float) * 12,
         },
         {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = sizeof(float) * 8,
+            .offset = sizeof(float) * 12,
             .size = sizeof(float) * 8,   /* 色彩调整 + HDR 参数 */
         },
     };
@@ -1188,7 +1193,7 @@ static int create_sub_resources(FSVulkanRenderer *r)
         VkPushConstantRange pcr = {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
-            .size = sizeof(float) * 8,   /* rect + uvmat，和视频用同一套变换 */
+            .size = sizeof(float) * 12,   /* rect + uvmat + posmat，和视频用同一套变换 */
         };
         VkPipelineLayoutCreateInfo pli = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1399,10 +1404,15 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     r->display_hdr_support = 0; /* swapchain 是 8bit UNORM，直接输出 HDR 需要 10bit/浮点交换链 */
     r->bg_result_slot = -1;
     r->scaling_mode = FS_SCALING_MODE_ASPECT_FIT;
+    r->x_rotate_degrees = 0.0f;
+    r->y_rotate_degrees = 0.0f;
+    r->z_rotate_degrees = 0.0f;
     r->video_rect[0] = -1.0f; r->video_rect[1] = -1.0f;
     r->video_rect[2] =  1.0f; r->video_rect[3] =  1.0f;
     r->video_uvmat[0] = 1.0f; r->video_uvmat[1] = 0.0f;
     r->video_uvmat[2] = 0.0f; r->video_uvmat[3] = 1.0f;
+    r->video_posmat[0] = 1.0f; r->video_posmat[1] = 0.0f;
+    r->video_posmat[2] = 0.0f; r->video_posmat[3] = 1.0f;
     return r;
 
 fail:
@@ -1597,8 +1607,9 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
     int type = r->snapshot_type;
     int with_sub = 0, use_display_transform = 0;
     int w, h;
-    float rect[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
-    float uvmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
+    float rect[4]   = { -1.0f, -1.0f, 1.0f, 1.0f };
+    float uvmat[4]  = { 1.0f, 0.0f, 0.0f, 1.0f };
+    float posmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
     switch (type) {
     case FS_SNAPSHOT_TYPE_SCREEN:
@@ -1608,16 +1619,14 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
         use_display_transform = 1;   /* 屏幕上怎么显示就怎么截 */
         break;
     case FS_SNAPSHOT_TYPE_EFFECT_SUBTITLE_ORIGIN:
-        /* 原始尺寸 + 带字幕 + 带效果（Android 目前的效果就是旋转） */
+        /* 原始尺寸 + 带字幕 + 带效果（Android 目前的效果就是三轴旋转） */
         w = r->video_w; h = r->video_h;
         with_sub = 1;
-        if (r->last_rot == 90 || r->last_rot == 270) {
+        if (((r->last_rot / 90) % 2) == 1) {   /* 90 的奇数倍：交换宽高 */
             int t = w; w = h; h = t;
-            if (r->last_rot == 90) { uvmat[0] = 0.0f; uvmat[1] = 1.0f; uvmat[2] = -1.0f; uvmat[3] = 0.0f; }
-            else                   { uvmat[0] = 0.0f; uvmat[1] = -1.0f; uvmat[2] = 1.0f; uvmat[3] = 0.0f; }
-        } else if (r->last_rot == 180) {
-            uvmat[0] = -1.0f; uvmat[1] = 0.0f; uvmat[2] = 0.0f; uvmat[3] = -1.0f;
         }
+        /* 旋转由位置矩阵执行，与屏幕用同一个三轴旋转 */
+        memcpy(posmat, r->video_posmat, sizeof(posmat));
         break;
     case FS_SNAPSHOT_TYPE_EFFECT_ORIGIN:
         w = r->video_w; h = r->video_h;
@@ -1636,8 +1645,9 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
     }
 
     if (use_display_transform) {
-        memcpy(rect,  r->video_rect,  sizeof(rect));
-        memcpy(uvmat, r->video_uvmat, sizeof(uvmat));
+        memcpy(rect,   r->video_rect,   sizeof(rect));
+        memcpy(uvmat,  r->video_uvmat,  sizeof(uvmat));
+        memcpy(posmat, r->video_posmat, sizeof(posmat));
     }
 
     /* 快照的清屏色和屏幕一样用背景色，这样 SCREEN 快照所见即所得 */
@@ -1657,9 +1667,10 @@ static void record_snapshot_pass(FSVulkanRenderer *r)
     vkCmdSetViewport(r->command_buffer, 0, 1, &vp);
     vkCmdSetScissor(r->command_buffer, 0, 1, &sc);
 
-    float pc[8];
-    memcpy(pc,     rect,  sizeof(rect));
-    memcpy(pc + 4, uvmat, sizeof(uvmat));
+    float pc[12];
+    memcpy(pc,     rect,   sizeof(rect));
+    memcpy(pc + 4, uvmat,  sizeof(uvmat));
+    memcpy(pc + 8, posmat, sizeof(posmat));
     /* 快照和屏幕用的是同一条管线，色彩参数也得重新 push（否则读到未定义值） */
     /* 片元侧：色彩调整 + HDR 参数（hdrContent, hdrDisplay, transferFunc, bits）*/
     float color_pc[8] = { r->color_brightness, r->color_saturation,
@@ -2531,10 +2542,11 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         r->last_desc_set = desc_set;
     }
 
-    /* 视频与字幕共用同一套变换：rect + uvmat（缩放/letterbox/旋转） */
-    float pc[8];
-    memcpy(pc,     r->video_rect,  sizeof(r->video_rect));
-    memcpy(pc + 4, r->video_uvmat, sizeof(r->video_uvmat));
+    /* 视频与字幕共用同一套变换：rect + uvmat + posmat（缩放/letterbox/三轴旋转） */
+    float pc[12];
+    memcpy(pc,     r->video_rect,   sizeof(r->video_rect));
+    memcpy(pc + 4, r->video_uvmat,  sizeof(r->video_uvmat));
+    memcpy(pc + 8, r->video_posmat, sizeof(r->video_posmat));
 
     /* 片元侧的色彩调整（亮度/饱和度/对比度/开关），和 iOS 的 rgb_adjust 同参 */
     /* 片元侧：色彩调整 + HDR 参数（hdrContent, hdrDisplay, transferFunc, bits）*/
@@ -2724,18 +2736,18 @@ static VkResult create_mc_pipeline(FSVulkanRenderer *r,
     if (vkAllocateDescriptorSets(r->device, &dai, &r->mc_desc_set) != VK_SUCCESS)
         return VK_ERROR_INITIALIZATION_FAILED;
 
-    /* 硬解通路用的是同一个 yuv.vert（要 rect/uvmat 做缩放/旋转/letterbox），
+    /* 硬解通路用的是同一个 yuv.vert（要 rect/uvmat/posmat 做缩放/旋转/letterbox），
        所以布局里必须有顶点段；片元段给 external.frag 的色彩调整用。
        这两段以前漏了 —— 顶点着色器读不到的 push constant 是未定义值。 */
     VkPushConstantRange mcpcr[2] = {
         {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
-            .size = sizeof(float) * 8,
+            .size = sizeof(float) * 12,
         },
         {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = sizeof(float) * 8,
+            .offset = sizeof(float) * 12,
             .size = sizeof(float) * 8,   /* 色彩调整 + HDR 参数 */
         },
     };
@@ -2931,67 +2943,115 @@ static int display_mc_frame(FSVulkanRenderer *r, const AVFrame *frame)
 }
 
 /*
- * 由显示尺寸/SAR/旋转/缩放模式算出画面的目标 NDC 矩形与 UV 变换。
- * 语义对齐 iOS 的 FSMetalView -computeNormalizedVerticesRatio:drawableSize:：
- * SAR 先并进宽度，旋转 90/270 时宽高互换（等价于 iOS 那边换 drawable 宽高），
- * 再按缩放模式等比 or 拉伸到显示区。
+ * 由显示尺寸/SAR/旋转/缩放模式算出画面的目标 NDC 矩形与位置矩阵。
+ * 语义对齐 iOS FSMetalView -computeNormalizedVerticesRatio:drawableSize: +
+ * FSMetalRenderer -updateVertexIfNeed 的 quaternion -> viewMatrix：
+ *   1) SAR 先并进宽度；
+ *   2) 总 Z 旋转 = 手动 z（属性）+ 自动 z（元数据）。若它是 90 的奇数倍，交换画布宽高
+ *      （等价 iOS 交换 drawableSize）后再算等比缩放，得到未旋转的目标矩形 rect；
+ *   3) 三轴旋转（含自动 Z）走位置矩阵 posmat：iOS 用的是 quaternion_from_euler(rx,ry,rz)
+ *      生成四元数再 matrix4x4_from_quaternion，然后用自动 Z 旋转左乘；这里取等价的正交
+ *      投影 2x2（Metal 的 Y 向上，Vulkan NDC 的 Y 向下，所以做 F*M*F 的坐标变换），
+ *      对 rect 的四个角做同一个三轴旋转，视觉效果与 iOS 一致。
+ * 三轴都是 0、且自动 Z 为 0 时，posmat = 单位阵、rect 与旧实现完全相同。
  * 结果同时给视频和字幕用，字幕才不会和画面脱节。
  */
 static void compute_video_transform(FSVulkanRenderer *r, int frame_w, int frame_h,
                                     int disp_w, int disp_h,
-                                    int rotate_degrees, int sar_num, int sar_den)
+                                    int auto_z_degrees, int sar_num, int sar_den)
 {
     float rect[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-    float uvmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };   /* 单位阵 */
+    float uvmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };   /* 恒为单位阵：旋转改由 posmat 执行 */
+    float posmat[4] = { 1.0f, 0.0f, 0.0f, 1.0f };  /* 单位阵 */
 
     int drawable_w = (int)r->swapchain_extent.width;
     int drawable_h = (int)r->swapchain_extent.height;
 
-    int rot = ((rotate_degrees % 360) + 360) % 360;
     r->video_w = frame_w;
     r->video_h = frame_h;
-    r->last_rot = (rot % 90 == 0) ? rot : 0;
-    if (rot % 90 != 0) {
-        /* 非 90 的整数倍暂不支持，按不旋转处理 */
-        goto store;
-    }
 
-    switch (rot) {   /* 旋转画面内容（转 UV，不转几何） */
-    case 90:  uvmat[0] =  0.0f; uvmat[1] = 1.0f; uvmat[2] = -1.0f; uvmat[3] =  0.0f; break;
-    case 180: uvmat[0] = -1.0f; uvmat[1] = 0.0f; uvmat[2] =  0.0f; uvmat[3] = -1.0f; break;
-    case 270: uvmat[0] =  0.0f; uvmat[1] = -1.0f; uvmat[2] = 1.0f; uvmat[3] =  0.0f; break;
-    default: break;
-    }
+    /* 总 Z 旋转（度）：手动 + 自动。和 iOS FSMetalView 的 zDegrees 同义 */
+    float total_z = r->z_rotate_degrees + (float)auto_z_degrees;
+    int total_z_deg = (int)total_z;
+    r->last_rot = ((total_z_deg % 360) + 360) % 360;
+    int swap_wh = (((total_z_deg >= 0 ? total_z_deg : -total_z_deg) / 90) % 2) == 1;
 
     int fw = disp_w > 0 ? disp_w : frame_w;
     int fh = disp_h > 0 ? disp_h : frame_h;
-    if (fw <= 0 || fh <= 0 || drawable_w <= 0 || drawable_h <= 0)
-        goto store;
-
     if (sar_num > 0 && sar_den > 0)   /* 保持视频自己的像素宽高比 */
         fw = (int)(1.0f * sar_num / sar_den * fw + 0.5f);
 
-    if (rot == 90 || rot == 270) {
-        int t = fw; fw = fh; fh = t;
+    if (fw > 0 && fh > 0 && drawable_w > 0 && drawable_h > 0) {
+        int dw = drawable_w, dh = drawable_h;
+        if (swap_wh) { int t = dw; dw = dh; dh = t; }   /* 对齐 iOS：交换 drawable 宽高 */
+        if (r->scaling_mode != FS_SCALING_MODE_FILL) {
+            float wr = 1.0f * dw / fw;
+            float hr = 1.0f * dh / fh;
+            float ratio;
+            if (r->scaling_mode == FS_SCALING_MODE_ASPECT_FILL)
+                ratio = wr > hr ? wr : hr;
+            else
+                ratio = wr < hr ? wr : hr;
+            float nw = fw * ratio / dw;
+            float nh = fh * ratio / dh;
+            rect[0] = -nw; rect[1] = -nh; rect[2] = nw; rect[3] = nh;
+        }
+        /* FS_SCALING_MODE_FILL：非等比拉伸，就用整块显示区 */
     }
 
-    if (r->scaling_mode != FS_SCALING_MODE_FILL) {
-        float wr = 1.0f * drawable_w / fw;
-        float hr = 1.0f * drawable_h / fh;
-        float ratio;
-        if (r->scaling_mode == FS_SCALING_MODE_ASPECT_FILL)
-            ratio = wr > hr ? wr : hr;
-        else
-            ratio = wr < hr ? wr : hr;
-        float nw = fw * ratio / drawable_w;
-        float nh = fh * ratio / drawable_h;
-        rect[0] = -nw; rect[1] = -nh; rect[2] = nw; rect[3] = nh;
-    }
-    /* FS_SCALING_MODE_FILL：非等比拉伸，就用整块显示区 */
+    /* 手动三轴旋转（正交投影），与 iOS FSMetalRenderer 的 viewMatrix 等价 */
+    {
+        const float DEG2RAD = (float)M_PI / 180.0f;
+        float rx = r->x_rotate_degrees * DEG2RAD;
+        float ry = r->y_rotate_degrees * DEG2RAD;
+        float rz = r->z_rotate_degrees * DEG2RAD;
 
-store:
+        /* iOS quaternion_from_euler：q = qx*qy*qz 顺序的 XYZ 欧拉角四元数 */
+        float cx = cosf(rx * 0.5f), sx = sinf(rx * 0.5f);
+        float cy = cosf(ry * 0.5f), sy = sinf(ry * 0.5f);
+        float cz = cosf(rz * 0.5f), sz = sinf(rz * 0.5f);
+        float qw = cx * cy * cz + sx * sy * sz;
+        float qx = sx * cy * cz - cx * sy * sz;
+        float qy = cx * sy * cz + sx * cy * sz;
+        float qz = cx * cy * sz - sx * sy * cz;
+
+        /* matrix4x4_from_quaternion 的左上 2x2（Metal，Y 向上）。
+           记 out.x = m00*vx + m10*vy，out.y = m01*vx + m11*vy */
+        float m00 = 1.0f - 2.0f * (qy * qy + qz * qz);
+        float m10 = 2.0f * (qx * qy - qz * qw);
+        float m01 = 2.0f * (qx * qy + qz * qw);
+        float m11 = 1.0f - 2.0f * (qx * qx + qz * qz);
+
+        /* Metal(Y 向上) -> Vulkan NDC(Y 向下)：R' = F * R * F，F = diag(1,-1) */
+        float a00 = m00, a01 = -m10;
+        float a10 = -m01, a11 = m11;
+
+        /* 自动 Z 旋转在 iOS 里左乘（最外层）；同样做坐标变换 */
+        float auto_rad = (float)auto_z_degrees * DEG2RAD;
+        float c = cosf(auto_rad), s = sinf(auto_rad);
+        /* Rz_vk = [[c, s], [-s, c]]；M = Rz_vk * A2 */
+        float M00 = c * a00 + s * a10;
+        float M01 = c * a01 + s * a11;
+        float M10 = -s * a00 + c * a10;
+        float M11 = -s * a01 + c * a11;
+
+        /* shader 里 mat2(x,y,z,w) 是列主序：col0=(x,y)=(M00,M10)，col1=(z,w)=(M01,M11) */
+        posmat[0] = M00; posmat[1] = M10;
+        posmat[2] = M01; posmat[3] = M11;
+    }
+
     memcpy(r->video_rect, rect, sizeof(rect));
     memcpy(r->video_uvmat, uvmat, sizeof(uvmat));
+    memcpy(r->video_posmat, posmat, sizeof(posmat));
+}
+
+void fs_vulkan_renderer_set_rotate_degrees(FSVulkanRenderer *r, float x, float y, float z)
+{
+    if (!r)
+        return;
+    r->x_rotate_degrees = x;
+    r->y_rotate_degrees = y;
+    r->z_rotate_degrees = z;   /* 下一帧 compute_video_transform 生效 */
 }
 
 void fs_vulkan_renderer_set_scaling_mode(FSVulkanRenderer *r, int mode)

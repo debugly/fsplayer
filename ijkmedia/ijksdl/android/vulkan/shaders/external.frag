@@ -8,11 +8,12 @@ precision mediump float;
 layout(binding = 0) uniform sampler2D extTex;
 
 // 色彩调整，和 yuv.frag 完全一致（硬解通路也要能调色）
-// 块内偏移必须显式写成 32：VkPushConstantRange 的 offset 只声明这一段归谁用，
-// 着色器里的成员偏移是 push constant 空间里的绝对偏移，不写就默认 0（会读到顶点段的数据）。
+// 块内偏移必须显式写成绝对偏移（顶点段 rect+uvmat+posmat 占 0..48）：VkPushConstantRange
+// 的 offset 只声明这一段归谁用，着色器里的成员偏移是 push constant 空间里的绝对偏移，
+// 不写就默认 0（会读到顶点段的数据）。
 layout(push_constant) uniform PicturePush {
-    layout(offset = 32) vec4 adjust;   // (brightness, saturation, contrast, on)
-    layout(offset = 48) vec4 hdr;      // (hdrContent, hdrDisplay, transferFunc, bits)
+    layout(offset = 48) vec4 adjust;   // (brightness, saturation, contrast, on)
+    layout(offset = 64) vec4 hdr;      // (hdrContent, hdrDisplay, transferFunc, bits)
 } cp;
 
 #include "hdr_common.glsl"
