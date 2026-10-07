@@ -137,7 +137,8 @@ jobs:
         mkdir -p dist
         cp android/ijkplayer/build/outputs/aar/ijkplayer-release.aar "dist/ijkplayer-${VERSION}.aar"
         cp android/demo/build/outputs/apk/release/demo-release.apk "dist/fsplayer-demo-${VERSION}.apk"
-        cp COPYING.LGPLv3 dist/LICENSE
+        LICENSE_FILE=$(ls COPYING.LGPLv2.1 COPYING.LGPLv3 2>/dev/null | head -1)
+        cp "$LICENSE_FILE" dist/LICENSE
         (cd dist && sha256sum * > SHA256SUMS.txt)
         ls -l dist
 
