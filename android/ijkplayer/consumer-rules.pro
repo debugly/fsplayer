@@ -4,9 +4,9 @@
 # automatically by AGP when the consumer enables minification.
 #
 # Why they are required: libijkplayer.so has Java member *names* baked into it.
-#   * JNI_OnLoad registers 24 methods via RegisterNatives by name+signature
-#     (_prepareAsync, _start, _stop, _release, _setDataSource, seekTo, getDuration,
-#      isPlaying, setVolume, getCurrentPosition, getAudioSessionId, native_init, ...),
+#   * JNI_OnLoad registers the whole native table (60+ methods) via RegisterNatives by
+#     name+signature (_prepareAsync, _start, _stop, _release, _setDataSource, seekTo,
+#     getDuration, isPlaying, setVolume, getIFormatExtensions, startExactRecord, ...),
 #     so the Java names on IjkMediaPlayer must match the table in the .so exactly.
 #   * At runtime the native side calls back into Java with GetStaticMethodID
 #     (postEventFromNative, postAudioSamplesEventFromNative, onNativeInvoke,

@@ -1564,6 +1564,18 @@ LABEL_RETURN:
     return retval;
 }
 
+static jstring
+IjkMediaPlayer_getPlayerVersion(JNIEnv *env, jclass clazz)
+{
+    return (*env)->NewStringUTF(env, ijkmp_version());
+}
+
+static jstring
+IjkMediaPlayer_getFFmpegVersion(JNIEnv *env, jclass clazz)
+{
+    return (*env)->NewStringUTF(env, av_version_info());
+}
+
 static jint
 IjkMediaPlayer_startFastRecord(JNIEnv *env, jobject thiz, jstring path)
 {
@@ -1798,6 +1810,8 @@ static JNINativeMethod g_methods[] = {
     { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },
     { "reloadVideoStream",        "()I",                      (void *) IjkMediaPlayer_reloadVideoStream },
     { "getIFormatExtensions",     "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getIFormatExtensions },
+    { "getPlayerVersion",         "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getPlayerVersion },
+    { "getFFmpegVersion",         "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getFFmpegVersion },
     { "startFastRecord",          "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_startFastRecord },
     { "stopFastRecord",           "()I",                      (void *) IjkMediaPlayer_stopFastRecord },
     { "startExactRecord",         "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_startExactRecord },

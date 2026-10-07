@@ -116,6 +116,17 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FFP_PROP_FLOAT_PLAYBACK_RATE                    = 10003;
     public static final int FFP_PROP_FLOAT_DROP_FRAME_RATE                  = 10007;
 
+    /**
+     * 音频声道选择（对应 iOS 的 FSAudioChannel / setAudioChannel:）。
+     * 取值见 {@link #AUDIO_CHANNEL_STEREO}；只在输出为双声道时生效，
+     * 由共享核心在音频重采样阶段强制只输出其中一个声道。
+     */
+    public static final int FFP_PROP_INT64_CHANNEL_CONFIG                   = 30000;
+
+    public static final int AUDIO_CHANNEL_STEREO = 0;
+    public static final int AUDIO_CHANNEL_RIGHT  = 1;
+    public static final int AUDIO_CHANNEL_LEFT   = 2;
+
     public static final int FFP_PROP_INT64_SELECTED_VIDEO_STREAM            = 20001;
     public static final int FFP_PROP_INT64_SELECTED_AUDIO_STREAM            = 20002;
     public static final int FFP_PROP_INT64_SELECTED_TIMEDTEXT_STREAM        = 20011;
@@ -833,8 +844,29 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         _setPropertyFloat(FFP_PROP_FLOAT_PLAYBACK_RATE, speed);
     }
 
+    /** @deprecated 历史笔误：getter 不该带参数，请用 {@link #getSpeed()}。 */
+    @Deprecated
     public float getSpeed(float speed) {
         return _getPropertyFloat(FFP_PROP_FLOAT_PLAYBACK_RATE, .0f);
+    }
+
+    public float getSpeed() {
+        return _getPropertyFloat(FFP_PROP_FLOAT_PLAYBACK_RATE, .0f);
+    }
+
+    /**
+     * 只输出其中一个声道（例如双音轨语言分左右声道时选语言），
+     * 与 iOS 的 {@code -setAudioChannel:} 行为一致。
+     *
+     * @param channel {@link #AUDIO_CHANNEL_STEREO} / {@link #AUDIO_CHANNEL_LEFT} / {@link #AUDIO_CHANNEL_RIGHT}
+     */
+    public void setAudioChannel(int channel) {
+        _setPropertyLong(FFP_PROP_INT64_CHANNEL_CONFIG, channel);
+    }
+
+    /** @see #setAudioChannel(int) */
+    public int getAudioChannel() {
+        return (int) _getPropertyLong(FFP_PROP_INT64_CHANNEL_CONFIG, AUDIO_CHANNEL_STEREO);
     }
 
     public int getVideoDecoder() {
@@ -1772,6 +1804,25 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     /** Comma separated list of the file extensions the demuxers handle. */
     public native String getIFormatExtensions();
+
+    /**
+     * 与 iOS 的 {@code -getInputFormatExtensions} 对齐：把上面的逗号串拆成数组。
+     *
+     * @return 扩展名数组，取不到时为空数组
+     */
+    public String[] getInputFormatExtensions() {
+        String extensions = getIFormatExtensions();
+        if (extensions == null || extensions.isEmpty()) {
+            return new String[0];
+        }
+        return extensions.split(",");
+    }
+
+    /** 与 iOS 的 {@code +playerVersion} 对齐。 */
+    public static native String getPlayerVersion();
+
+    /** 与 iOS 的 {@code +ffmpegVersion} 对齐（HUD 的 vdec 行由此补上 libavcodec 版本）。 */
+    public static native String getFFmpegVersion();
 
     /** Start/stop recording without re-encoding (stream copy). */
     public native int startFastRecord(String path);
