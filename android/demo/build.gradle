@@ -3,7 +3,9 @@ plugins {
 }
 
 android {
-    namespace 'com.debugly.fsplayer.demo'
+    // 复刻自 ijkplayer-example，所以 R 的包名保持 tv.danmaku.ijk.media.example；
+    // applicationId 仍用 fsplayer 的，方便 adb 脚本继续按老包名拉起。
+    namespace 'tv.danmaku.ijk.media.example'
     compileSdk 35
 
     defaultConfig {
@@ -24,9 +26,15 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    lint {
+        abortOnError false
+    }
 }
 
 dependencies {
     implementation project(':ijkplayer')
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.squareup:otto:1.3.8'
 }

@@ -1365,6 +1365,16 @@ static void ffp_calculate_accurate_seek_drop_diff(FFPlayer *ffp) {
 static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFrame **outFrame) {
     const int src_format = src_frame->format;
     Uint32 overlay_format = vout->overlay_format;
+#if defined(__ANDROID__)
+    // 安卓侧把 RGB 系（老的 ANativeWindow/GLES 通路用的格式）请求归一成"让 Vout 自己选"：
+    // ijkplayer-example 的 IjkVideoView 默认就传 fcc-rv32（它的 "Auto Select"），
+    // 而现在的 Vulkan 渲染器直接消费 YUV/10bit/硬解帧、在着色器里转 RGB，不做 CPU 转换。
+    // 不归一的话会掉进下面 switch 的 default 分支，每帧返回 -1000 被丢掉（整屏黑）。
+    if (SDL_FCC_RV32 == overlay_format || SDL_FCC_RV24 == overlay_format
+        || SDL_FCC_RV16 == overlay_format) {
+        overlay_format = SDL_FCC__GLES2;
+    }
+#endif
     if (SDL_FCC__GLES2 == overlay_format) {
     #if defined(__ANDROID__)
         overlay_format = SDL_FCC_YV12;

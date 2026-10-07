@@ -969,6 +969,10 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
             MPTRACE("FFP_MSG_AFTER_SEEK_FIRST_FRAME: %d\n", msg.arg1);
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_AFTER_SEEK_FIRST_FRAME, msg.arg1);
             break;
+        case FFP_MSG_VIDEO_DECODER_OPEN:
+            MPTRACE("FFP_MSG_VIDEO_DECODER_OPEN: %d\n", msg.arg1);
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_VIDEO_DECODER_OPEN, msg.arg1);
+            break;
         case FFP_MSG_AUDIO_SEEK_RENDERING_START:
             MPTRACE("FFP_MSG_AUDIO_SEEK_RENDERING_START:\n");
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_AUDIO_SEEK_RENDERING_START, msg.arg1);

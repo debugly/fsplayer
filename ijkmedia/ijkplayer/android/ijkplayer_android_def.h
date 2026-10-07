@@ -145,6 +145,8 @@ enum media_info_type {
     MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE = 10100,
     /* 对应 FFP_MSG_AFTER_SEEK_FIRST_FRAME，arg2 为该帧耗时(ms) */
     MEDIA_INFO_AFTER_SEEK_FIRST_FRAME = 10010,
+    /* 对应 FFP_MSG_VIDEO_DECODER_OPEN，值为解码器类型(FFP_PROPV_DECODER_*) */
+    MEDIA_INFO_VIDEO_DECODER_OPEN     = 10011,
 };
 
 typedef struct ijkmp_mediacodecinfo_context
