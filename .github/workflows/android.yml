@@ -30,6 +30,10 @@ jobs:
   build:
     name: build-android-aar-apk
     runs-on: ubuntu-latest
+    # 发布用的凭据（Portal token + GPG）放在这个 environment 里，
+    # job 不声明就读不到 secrets.MAVEN_CENTRAL_*/GPG_*；该 environment 没有保护规则，
+    # 所以 build-only 的运行也不会被卡住。
+    environment: fsplayer-maven
 
     steps:
     - name: Checkout
