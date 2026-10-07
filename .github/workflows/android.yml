@@ -1,4 +1,7 @@
 name: android-aar-apk
+# release 步骤要用 workflow token 建 tag/release，默认 token 权限不一定够
+permissions:
+  contents: write
 
 on:
   workflow_dispatch:
@@ -10,10 +13,9 @@ on:
         required: false
       publish:
         type: choice
-        description: build-only / GitHub release / Maven Central / both
-        default: build-only
+        description: GitHub release (APK on the release page) / Maven Central / both
+        default: release
         options:
-          - build-only
           - release
           - maven-central
           - release+maven-central
@@ -148,8 +150,8 @@ jobs:
         (cd dist && sha256sum * > SHA256SUMS.txt)
         ls -l dist
 
-    # 无论 publish 选什么都把产物挂成 artifact：run 页面底部就能下载，
-    # 不需要创建 tag/release（build-only 模式下用于自测、装机）
+    # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）；
+    # 手机上想直接装包，走 release：APK 会挂到 Release 资产上，浏览器点开就能下。
     - name: Upload artifacts
       if: ${{ env.HAS_ANDROID == '1' }}
       uses: actions/upload-artifact@v4
