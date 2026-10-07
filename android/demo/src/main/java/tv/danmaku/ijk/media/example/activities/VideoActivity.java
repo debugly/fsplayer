@@ -244,7 +244,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             // 新 API 演示：声道选择（对应 iOS 的 setAudioChannel:）
             IjkMediaPlayer mp = getIjkPlayer();
             if (mp == null) {
-                showToast("Audio channel: ijkplayer only");
+                showToast("Audio channel: switch Settings > Player to IJK Media Player");
                 return true;
             }
             int channel = mp.getAudioChannel();
@@ -265,7 +265,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             // 新 API 演示：画面三轴旋转（对应 iOS 的 x/y/zRotateDegrees）
             IjkMediaPlayer mp = getIjkPlayer();
             if (mp == null) {
-                showToast("Rotate: ijkplayer only");
+                showToast("Rotate: switch Settings > Player to IJK Media Player");
                 return true;
             }
             float x = mp.getXRotateDegrees();
