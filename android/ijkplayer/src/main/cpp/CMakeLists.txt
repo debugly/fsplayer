@@ -27,9 +27,24 @@ include_directories(${ijkmedia}/ijksdl)
 include_directories(${ijkmedia}/ijksdl/ffmpeg)
 include_directories(${ijkmedia}/ijkplayer)
 
-# 三方库（FFToolChain 预编译产物，运行 ./FFToolChain/main.sh install -p android 生成）
-set(FFMPEG_DIR ${REPO_ROOT}/FFToolChain/build/product/android/ffmpeg-${ARCH})
+# 三方库（FFToolChain 预编译产物）
+# FFmpeg 有两种落地路径：
+#   1. CI 预编译包解压后（main.sh install -p android -l ffmpeg8）：universal/ffmpeg/ffmpeg-${ARCH}
+#   2. 本地 main.sh compile 直接编译：product/android/ffmpeg-${ARCH}
+# 两者都认，优先用 CI 预编译产物。
 set(UNI_DIR ${REPO_ROOT}/FFToolChain/build/product/android/universal)
+set(FFMPEG_DIR "")
+foreach(cand
+        ${REPO_ROOT}/FFToolChain/build/product/android/universal/ffmpeg/ffmpeg-${ARCH}
+        ${REPO_ROOT}/FFToolChain/build/product/android/ffmpeg-${ARCH})
+    if(EXISTS ${cand}/include/libffmpeg/config.h)
+        set(FFMPEG_DIR ${cand})
+    endif()
+endforeach()
+if(NOT FFMPEG_DIR)
+    message(FATAL_ERROR "FFmpeg 产物缺失，请先运行：./FFToolChain/main.sh install -p android -l ffmpeg8")
+endif()
+message(STATUS "FFmpeg product: ${FFMPEG_DIR}")
 include_directories(${FFMPEG_DIR}/include)
 include_directories(${UNI_DIR}/ass/ass-${ARCH}/include)
 include_directories(${UNI_DIR}/freetype/freetype-${ARCH}/include)
@@ -78,8 +93,8 @@ set(OPUS_LIB      ${UNI_DIR}/opus/opus-${ARCH}/lib/libopus.a)
 set(UAVS3D_LIB    ${UNI_DIR}/uavs3d/uavs3d-${ARCH}/lib/libuavs3d.a)
 set(XML2_LIB      ${UNI_DIR}/xml2/xml2-${ARCH}/lib/libxml2.a)
 set(BLURAY_LIB    ${UNI_DIR}/bluray/bluray-${ARCH}/lib/libbluray.a)
-set(DVDREAD_LIB   ${UNI_DIR}/dvdread/dvdread-${ARCH}/lib/libdvdread.a)
-set(DVDNAV_LIB    ${UNI_DIR}/dvdnav/dvdnav-${ARCH}/lib/libdvdnav.a)
+# 不链 libdvdnav/libdvdread：它们是 GPL，会把 FFmpeg 从 LGPL 拉成 nonfree；
+# 预编译 product 里也不再有它们（ffconfig 的 auto-detect 只在探测到才启用）
 set(SMB2_LIB      ${UNI_DIR}/smb2/smb2-${ARCH}/lib/libsmb2.so)
 set(FONTCONFIG_LIB ${UNI_DIR}/fontconfig/fontconfig-${ARCH}/lib/libfontconfig.a)
 
@@ -100,8 +115,6 @@ target_link_libraries(ijkplayer
     ${UAVS3D_LIB}
     ${XML2_LIB}
     ${BLURAY_LIB}
-    ${DVDREAD_LIB}
-    ${DVDNAV_LIB}
     ${OPENSSL_SSL}
     ${OPENSSL_CRYPTO}
     ${ASS_LIB}
