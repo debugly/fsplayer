@@ -31,10 +31,13 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
@@ -134,6 +137,10 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         mDrawerLayout.setScrimColor(Color.TRANSPARENT);
 
+        // targetSdk 35 起 edge-to-edge 强制生效，系统状态栏会压在顶部内容上：
+        // 把顶部 inset 补给工具栏 / HUD 卡片 / 右侧抽屉，视频画面本身保持全屏（与 iOS 一致）。
+        applyStatusBarInsets(toolbar, mHudView, mRightDrawer);
+
         // init player
         IjkMediaPlayer.loadLibrariesOnce(null);
         IjkMediaPlayer.native_profileBegin("libijkplayer.so");
@@ -175,6 +182,36 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             mVideoView.enterBackground();
         }
         IjkMediaPlayer.native_profileEnd();
+    }
+
+    /**
+     * 顶部内容（工具栏、HUD 卡片、右侧抽屉）额外让出状态栏高度，
+     * 视频画面保持 edge-to-edge。
+     */
+    private void applyStatusBarInsets(final Toolbar toolbar, final View hudView, final View drawer) {
+        final ViewGroup.MarginLayoutParams toolbarLp = (ViewGroup.MarginLayoutParams) toolbar.getLayoutParams();
+        final int toolbarTop = toolbarLp.topMargin;
+        final int drawerTop = drawer.getPaddingTop();
+        final ViewGroup.MarginLayoutParams hudLp = (ViewGroup.MarginLayoutParams) hudView.getLayoutParams();
+        final int hudTop = hudLp.topMargin;
+        ViewCompat.setOnApplyWindowInsetsListener(mDrawerLayout, (v, windowInsets) -> {
+            // targetSdk 35 起窗口才强制 edge-to-edge（内容铺到状态栏下面）；低版本系统自己已经
+            // 让开过一次，这里再补就会多出一条空白，所以只在 35+ 上补 inset。
+            int top = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+                    ? windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).top : 0;
+            if (top <= 0) {
+                return windowInsets;
+            }
+            // 工具栏整体下移状态栏高度：状态栏那一条留给画面，标题/菜单不再压住状态栏图标
+            toolbarLp.topMargin = toolbarTop + top;
+            toolbar.setLayoutParams(toolbarLp);
+            hudLp.topMargin = hudTop + top;
+            hudView.setLayoutParams(hudLp);
+            drawer.setPadding(drawer.getPaddingLeft(), drawerTop + top,
+                    drawer.getPaddingRight(), drawer.getPaddingBottom());
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(mDrawerLayout);
     }
 
     @Override
