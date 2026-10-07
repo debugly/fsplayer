@@ -147,6 +147,8 @@ enum media_info_type {
     MEDIA_INFO_AFTER_SEEK_FIRST_FRAME = 10010,
     /* 对应 FFP_MSG_VIDEO_DECODER_OPEN，值为解码器类型(FFP_PROPV_DECODER_*) */
     MEDIA_INFO_VIDEO_DECODER_OPEN     = 10011,
+    /* 对应 FFP_MSG_PLAYBACK_STATE_CHANGED，arg2 为 MP_STATE_* */
+    MEDIA_INFO_PLAYBACK_STATE_CHANGED = 10012,
 };
 
 typedef struct ijkmp_mediacodecinfo_context

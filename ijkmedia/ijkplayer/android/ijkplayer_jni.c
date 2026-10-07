@@ -960,6 +960,8 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE, msg.arg1);
             break;
         case FFP_MSG_PLAYBACK_STATE_CHANGED:
+            MPTRACE("FFP_MSG_PLAYBACK_STATE_CHANGED: %d\n", msg.arg1);
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_PLAYBACK_STATE_CHANGED, msg.arg1);
             break;
         case FFP_MSG_VIDEO_SEEK_RENDERING_START:
             MPTRACE("FFP_MSG_VIDEO_SEEK_RENDERING_START:\n");

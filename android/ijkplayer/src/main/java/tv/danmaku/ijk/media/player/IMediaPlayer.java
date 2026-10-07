@@ -62,6 +62,8 @@ public interface IMediaPlayer {
     /* fsplayer: FFP_MSG_AFTER_SEEK_FIRST_FRAME，arg2 是该帧耗时(ms) */
     int MEDIA_INFO_AFTER_SEEK_FIRST_FRAME = 10010;
     int MEDIA_INFO_VIDEO_DECODER_OPEN = 10011;
+    /* fsplayer: FFP_MSG_PLAYBACK_STATE_CHANGED，extra 为 MP_STATE_* */
+    int MEDIA_INFO_PLAYBACK_STATE_CHANGED = 10012;
 
     int MEDIA_ERROR_UNKNOWN = 1;
     int MEDIA_ERROR_SERVER_DIED = 100;

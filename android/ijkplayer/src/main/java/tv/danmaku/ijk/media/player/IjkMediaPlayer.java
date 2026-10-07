@@ -127,6 +127,37 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int AUDIO_CHANNEL_RIGHT  = 1;
     public static final int AUDIO_CHANNEL_LEFT   = 2;
 
+    /* ---- 播放状态机（对应 iOS 的 FSPlayerPlaybackSchedule / FSPlayerLoadState）---- */
+
+    /** 核心 mp_state（ijkplayer.h 的 MP_STATE_*），由 FFP_MSG_PLAYBACK_STATE_CHANGED 上报。 */
+    public static final int MP_STATE_IDLE            = 0;
+    public static final int MP_STATE_INITIALIZED     = 1;
+    public static final int MP_STATE_ASYNC_PREPARING = 2;
+    public static final int MP_STATE_PREPARED        = 3;
+    public static final int MP_STATE_STARTED         = 4;
+    public static final int MP_STATE_PAUSED          = 5;
+    public static final int MP_STATE_COMPLETED       = 6;
+    public static final int MP_STATE_STOPPED         = 7;
+    public static final int MP_STATE_ERROR           = 8;
+    public static final int MP_STATE_END             = 9;
+
+    /** 与 iOS FSPlayerPlaybackSchedule 一一对应。 */
+    public static final int PLAYBACK_SCHEDULE_IDLE        = 0;
+    public static final int PLAYBACK_SCHEDULE_INITIALIZED = 1;
+    public static final int PLAYBACK_SCHEDULE_PREPARING   = 2;
+    public static final int PLAYBACK_SCHEDULE_PREPARED    = 3;
+    public static final int PLAYBACK_SCHEDULE_STARTED     = 4;
+    public static final int PLAYBACK_SCHEDULE_PAUSED      = 5;
+    public static final int PLAYBACK_SCHEDULE_COMPLETED   = 6;
+    public static final int PLAYBACK_SCHEDULE_STOPPED     = 7;
+    public static final int PLAYBACK_SCHEDULE_ERROR        = 8;
+
+    /** 与 iOS FSPlayerLoadState 一一对应（位掩码）。 */
+    public static final int LOAD_STATE_UNKNOWN        = 0;
+    public static final int LOAD_STATE_PLAYABLE       = 1 << 0;
+    public static final int LOAD_STATE_PLAYTHROUGH_OK = 1 << 1;
+    public static final int LOAD_STATE_STALLED        = 1 << 2;
+
     public static final int FFP_PROP_INT64_SELECTED_VIDEO_STREAM            = 20001;
     public static final int FFP_PROP_INT64_SELECTED_AUDIO_STREAM            = 20002;
     public static final int FFP_PROP_INT64_SELECTED_TIMEDTEXT_STREAM        = 20011;
@@ -257,6 +288,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private long mFirstFrameLatencyMs;
     private long mLastSeekFrameLatencyMs;
     private boolean mFirstFrameMeasured;
+    private int mPlaybackSchedule = PLAYBACK_SCHEDULE_IDLE;
+    private int mLoadState = LOAD_STATE_UNKNOWN;
+    private OnPlaybackScheduleChangedListener mOnPlaybackScheduleChangedListener;
+    private OnLoadStateChangedListener mOnLoadStateChangedListener;
     private Map<String, String> mHudItems;
 
     /**
@@ -869,6 +904,73 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return (int) _getPropertyLong(FFP_PROP_INT64_CHANNEL_CONFIG, AUDIO_CHANNEL_STEREO);
     }
 
+    /** 对应 iOS 的 FSPlayerPlaybackScheduleDidChange 通知。 */
+    public interface OnPlaybackScheduleChangedListener {
+        void onPlaybackScheduleChanged(IjkMediaPlayer mp, int schedule);
+    }
+
+    /** 对应 iOS 的 FSPlayerLoadStateDidChangeNotification。 */
+    public interface OnLoadStateChangedListener {
+        void onLoadStateChanged(IjkMediaPlayer mp, int loadState);
+    }
+
+    public void setOnPlaybackScheduleChangedListener(OnPlaybackScheduleChangedListener listener) {
+        mOnPlaybackScheduleChangedListener = listener;
+    }
+
+    /** @return {@link #PLAYBACK_SCHEDULE_IDLE} 等，与 iOS playbackSchedule 取值一致 */
+    public int getPlaybackSchedule() {
+        return mPlaybackSchedule;
+    }
+
+    public void setOnLoadStateChangedListener(OnLoadStateChangedListener listener) {
+        mOnLoadStateChangedListener = listener;
+    }
+
+    /** @return {@link #LOAD_STATE_PLAYABLE} 等位掩码，与 iOS loadState 取值一致 */
+    public int getLoadState() {
+        return mLoadState;
+    }
+
+    private static int playbackScheduleFromState(int mpState) {
+        switch (mpState) {
+            case MP_STATE_IDLE:            return PLAYBACK_SCHEDULE_IDLE;
+            case MP_STATE_INITIALIZED:     return PLAYBACK_SCHEDULE_INITIALIZED;
+            case MP_STATE_ASYNC_PREPARING: return PLAYBACK_SCHEDULE_PREPARING;
+            case MP_STATE_PREPARED:        return PLAYBACK_SCHEDULE_PREPARED;
+            case MP_STATE_STARTED:         return PLAYBACK_SCHEDULE_STARTED;
+            case MP_STATE_PAUSED:          return PLAYBACK_SCHEDULE_PAUSED;
+            case MP_STATE_COMPLETED:       return PLAYBACK_SCHEDULE_COMPLETED;
+            case MP_STATE_STOPPED:         return PLAYBACK_SCHEDULE_STOPPED;
+            case MP_STATE_ERROR:           return PLAYBACK_SCHEDULE_ERROR;
+            case MP_STATE_END:             return PLAYBACK_SCHEDULE_STOPPED;
+            default:                       return PLAYBACK_SCHEDULE_IDLE;
+        }
+    }
+
+    private void updatePlaybackSchedule(int mpState) {
+        int schedule = playbackScheduleFromState(mpState);
+        if (schedule == mPlaybackSchedule) {
+            return;
+        }
+        mPlaybackSchedule = schedule;
+        OnPlaybackScheduleChangedListener listener = mOnPlaybackScheduleChangedListener;
+        if (listener != null) {
+            listener.onPlaybackScheduleChanged(this, schedule);
+        }
+    }
+
+    private void updateLoadState(int loadState) {
+        if (loadState == mLoadState) {
+            return;
+        }
+        mLoadState = loadState;
+        OnLoadStateChangedListener listener = mOnLoadStateChangedListener;
+        if (listener != null) {
+            listener.onLoadStateChanged(this, loadState);
+        }
+    }
+
     public int getVideoDecoder() {
         return (int)_getPropertyLong(FFP_PROP_INT64_VIDEO_DECODER, FFP_PROPV_DECODER_UNKNOWN);
     }
@@ -1413,6 +1515,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             case MEDIA_PREPARED:
                 player.mPrepareLatencyMs = SystemClock.elapsedRealtime() - player.mPrepareStartMs;
                 player.startHudTimerIfNeed();
+                // 与 iOS FFP_MSG_PREPARED 分支一致：可播且能顺放
+                player.updateLoadState(LOAD_STATE_PLAYABLE | LOAD_STATE_PLAYTHROUGH_OK);
                 player.notifyOnPrepared();
                 return;
 
@@ -1471,6 +1575,15 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                         break;
                     case MEDIA_INFO_AFTER_SEEK_FIRST_FRAME:
                         player.mLastSeekFrameLatencyMs = msg.arg2;
+                        break;
+                    case MEDIA_INFO_BUFFERING_START:
+                        player.updateLoadState(LOAD_STATE_STALLED);
+                        break;
+                    case MEDIA_INFO_BUFFERING_END:
+                        player.updateLoadState(LOAD_STATE_PLAYABLE | LOAD_STATE_PLAYTHROUGH_OK);
+                        break;
+                    case MEDIA_INFO_PLAYBACK_STATE_CHANGED:
+                        player.updatePlaybackSchedule(msg.arg2);
                         break;
                 }
                 player.notifyOnInfo(msg.arg1, msg.arg2);
