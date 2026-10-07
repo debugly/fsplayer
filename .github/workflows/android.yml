@@ -66,15 +66,21 @@ jobs:
         distribution: temurin
         java-version: '17'
 
-    - name: Set up Android SDK
-      if: ${{ env.HAS_ANDROID == '1' }}
-      uses: android-actions/setup-android@v3
-
-    - name: Install platform / build-tools / NDK
+    # ubuntu-latest 镜像自带 Android SDK（$ANDROID_HOME，含 cmdline-tools），
+    # 不再用 android-actions/setup-android@v3（它在 runner 上会失败）
+    - name: Install Android platform / build-tools / NDK
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        yes | sdkmanager --licenses > /dev/null
+        SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+        test -d "$SDK" || { echo "::error::no Android SDK at $SDK"; exit 1; }
+        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+        echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+        echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+        export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$PATH"
+        sdkmanager --version
+        yes | sdkmanager --licenses > /dev/null || true
         sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+        sdkmanager --list_installed | head -20 || true
 
     - name: Download Pre Compiled Dependencies
       if: ${{ env.HAS_ANDROID == '1' }}
