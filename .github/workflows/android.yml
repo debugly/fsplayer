@@ -8,6 +8,14 @@ on:
         description: publish beta edition
         default: true
         required: false
+      publish:
+        type: choice
+        description: only build (download the artifact), or also publish a GitHub release
+        default: build-only
+        options:
+          - build-only
+          - release
+        required: false
       abis:
         type: choice
         description: ABI list to build (default covers real devices)
@@ -53,7 +61,8 @@ jobs:
     - name: Prepare Normal Version
       if: ${{ env.HAS_ANDROID == '1' && inputs.beta == false }}
       run: |
-        grep -m 1 VERSION_NAME= version.sh | awk -F = '{printf "TAG=%s",$2}' | xargs > constants.env
+        VERSION=$(grep -m 1 VERSION_NAME= version.sh | cut -d= -f2)
+        printf 'VERSION=%s\nTAG=%s\n' "$VERSION" "$VERSION" > constants.env
         cat constants.env
 
     - name: Export Env
@@ -132,8 +141,18 @@ jobs:
         (cd dist && sha256sum * > SHA256SUMS.txt)
         ls -l dist
 
-    - name: Upload Release Asset
+    # 无论 publish 选什么都把产物挂成 artifact：run 页面底部就能下载，
+    # 不需要创建 tag/release（build-only 模式下用于自测、装机）
+    - name: Upload artifacts
       if: ${{ env.HAS_ANDROID == '1' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: fsplayer-android-${{ env.VERSION }}
+        path: dist/
+        retention-days: 30
+
+    - name: Upload Release Asset
+      if: ${{ env.HAS_ANDROID == '1' && inputs.publish == 'release' }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
