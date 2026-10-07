@@ -143,6 +143,8 @@ enum media_info_type {
     MEDIA_INFO_AUDIO_SEEK_RENDERING_START = 10009,
 
     MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE = 10100,
+    /* 对应 FFP_MSG_AFTER_SEEK_FIRST_FRAME，arg2 为该帧耗时(ms) */
+    MEDIA_INFO_AFTER_SEEK_FIRST_FRAME = 10010,
 };
 
 typedef struct ijkmp_mediacodecinfo_context

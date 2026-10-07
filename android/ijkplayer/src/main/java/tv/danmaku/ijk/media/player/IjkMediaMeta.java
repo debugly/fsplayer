@@ -41,6 +41,12 @@ public class IjkMediaMeta {
     public static final String IJKM_KEY_TBR_DEN = "tbr_den";
     public static final String IJKM_KEY_SAR_NUM = "sar_num";
     public static final String IJKM_KEY_SAR_DEN = "sar_den";
+    public static final String IJKM_KEY_COLOR_SPACE = "color_space";
+    public static final String IJKM_KEY_COLOR_RANGE = "color_range";
+    public static final String IJKM_KEY_COLOR_PRIMARIES = "color_primaries";
+    public static final String IJKM_KEY_COLOR_TRANSFER = "color_transfer";
+    public static final String IJKM_KEY_CHROMA_LOCATION = "chroma_location";
+    public static final String IJKM_KEY_DESCRIBE = "describe";
     // stream: audio
     public static final String IJKM_KEY_SAMPLE_RATE = "sample_rate";
     public static final String IJKM_KEY_CHANNEL_LAYOUT = "channel_layout";
@@ -232,6 +238,9 @@ public class IjkMediaMeta {
             streamMeta.mCodecLongName = streamMeta
                     .getString(IJKM_KEY_CODEC_LONG_NAME);
             streamMeta.mBitrate = streamMeta.getInt(IJKM_KEY_BITRATE);
+            streamMeta.mCodecPixelFormat = streamMeta
+                    .getString(IJKM_KEY_CODEC_PIXEL_FORMAT);
+            streamMeta.mDescribe = streamMeta.getString(IJKM_KEY_DESCRIBE);
 
             if (streamMeta.mType.equalsIgnoreCase(IJKM_VAL_TYPE__VIDEO)) {
                 streamMeta.mWidth = streamMeta.getInt(IJKM_KEY_WIDTH);
@@ -242,6 +251,16 @@ public class IjkMediaMeta {
                 streamMeta.mTbrDen = streamMeta.getInt(IJKM_KEY_TBR_DEN);
                 streamMeta.mSarNum = streamMeta.getInt(IJKM_KEY_SAR_NUM);
                 streamMeta.mSarDen = streamMeta.getInt(IJKM_KEY_SAR_DEN);
+                streamMeta.mColorSpace = streamMeta
+                        .getString(IJKM_KEY_COLOR_SPACE);
+                streamMeta.mColorRange = streamMeta
+                        .getString(IJKM_KEY_COLOR_RANGE);
+                streamMeta.mColorPrimaries = streamMeta
+                        .getString(IJKM_KEY_COLOR_PRIMARIES);
+                streamMeta.mColorTransfer = streamMeta
+                        .getString(IJKM_KEY_COLOR_TRANSFER);
+                streamMeta.mChromaLocation = streamMeta
+                        .getString(IJKM_KEY_CHROMA_LOCATION);
 
                 if (videoStreamIndex == index) {
                     meta.mVideoStream = streamMeta;
@@ -274,6 +293,8 @@ public class IjkMediaMeta {
         public String mCodecProfile;
         public String mCodecLongName;
         public long mBitrate;
+        public String mCodecPixelFormat;
+        public String mDescribe;
 
         // video
         public int mWidth;
@@ -284,6 +305,11 @@ public class IjkMediaMeta {
         public int mTbrDen;
         public int mSarNum;
         public int mSarDen;
+        public String mColorSpace;
+        public String mColorRange;
+        public String mColorPrimaries;
+        public String mColorTransfer;
+        public String mChromaLocation;
 
         // audio
         public int mSampleRate;

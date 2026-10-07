@@ -36,11 +36,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
+import android.os.SystemClock;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.text.TextUtils;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -144,6 +147,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FFP_PROP_INT64_LATEST_SEEK_LOAD_DURATION        = 20300;
     public static final int FFP_PROP_INT64_IMMEDIATE_RECONNECT              = 20211;
     public static final int FFP_PROP_INT64_VIDEO_SCALING_MODE               = 20023;
+    public static final int FFP_PROP_FLOAT_AVDELAY                          = 10004;
+    public static final int FFP_PROP_FLOAT_VMDIFF                           = 10005;
+    public static final int FFP_PROP_FLOAT_DROP_FRAME_COUNT                 = 10008;
+    public static final int FFP_PROP_INT64_VIDEO_SAR_NUM                    = 20021;
+    public static final int FFP_PROP_INT64_VIDEO_SAR_DEN                    = 20022;
+
+    /* ff_ffmsg.h 的 FFP_PROPV_DECODER_* 里 Java 侧原先缺的一个 */
+    public static final int FFP_PROPV_DECODER_AVCODEC_HW                    = 4;
 
     // 画面缩放模式，语义对齐 iOS 的 FSScalingMode
     public static final int FS_SCALING_MODE_ASPECT_FIT  = 0;   // 等比缩放，完整显示（默认）
@@ -208,6 +219,34 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private int mVideoSarDen;
 
     private String mDataSource;
+
+    /* HUD 用的计时（对齐 iOS FSPlayer.monitor 的那几个 latency） */
+    /*
+     * HUD 刷新周期。iOS 的 HUD 挂在 playbackTimeNotifiTimer 上刷新（该 interval 默认是 0，
+     * 也就是跟着播放事件刷），安卓这边没有等价的播放时间通知定时器，固定 500ms 一刷。
+     */
+    private static final int HUD_REFRESH_INTERVAL_MS = 500;
+
+    private FSHudView mHudView;
+    private FSHudPresenter mHudPresenter;
+    private boolean mShouldShowHudView;
+    private final Runnable mHudRefresh = new Runnable() {
+        @Override
+        public void run() {
+            if (!mShouldShowHudView || mHudPresenter == null) {
+                return;
+            }
+            mHudPresenter.refresh();
+            mEventHandler.postDelayed(this, HUD_REFRESH_INTERVAL_MS);
+        }
+    };
+
+    private long mPrepareStartMs;
+    private long mPrepareLatencyMs;
+    private long mFirstFrameLatencyMs;
+    private long mLastSeekFrameLatencyMs;
+    private boolean mFirstFrameMeasured;
+    private Map<String, String> mHudItems;
 
     /**
      * Default library loader
@@ -552,6 +591,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void prepareAsync() throws IllegalStateException {
+        mPrepareStartMs = SystemClock.elapsedRealtime();
+        mFirstFrameMeasured = false;
+        mFirstFrameLatencyMs = 0;
         _prepareAsync();
     }
 
@@ -739,6 +781,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     @Override
     public void release() {
         stayAwake(false);
+        stopHudTimer();
         updateSurfaceScreenOn();
         resetListeners();
         _release();
@@ -885,6 +928,106 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     public float getDropFrameRate() {
         return _getPropertyFloat(FFP_PROP_FLOAT_DROP_FRAME_RATE, .0f);
+    }
+
+    public int getDropFrameCount() {
+        return (int) _getPropertyLong(FFP_PROP_FLOAT_DROP_FRAME_COUNT, 0);
+    }
+
+    public float getAVDelay() {
+        return _getPropertyFloat(FFP_PROP_FLOAT_AVDELAY, .0f);
+    }
+
+    public float getVMDiff() {
+        return _getPropertyFloat(FFP_PROP_FLOAT_VMDIFF, .0f);
+    }
+
+    /** HUD 用：直接读 HUD 需要的那些属性（iOS 也是这么读的） */
+    public float getPropertyFloat(int property, float defaultValue) {
+        return _getPropertyFloat(property, defaultValue);
+    }
+
+    public long getPropertyLong(int property, long defaultValue) {
+        return _getPropertyLong(property, defaultValue);
+    }
+
+    public long getPrepareLatency() {
+        return mPrepareLatencyMs;
+    }
+
+    public long getFirstFrameLatency() {
+        return mFirstFrameLatencyMs;
+    }
+
+    public long getLastSeekFrameLatency() {
+        return mLastSeekFrameLatencyMs;
+    }
+
+    /* ---- HUD：对齐 iOS 的 shouldShowHudView / FSHudController ---- */
+
+    /** 绑定一个 HUD 卡片视图（iOS 由 player 自己建，安卓侧视图归 App 管） */
+    public void attachHudView(FSHudView hudView) {
+        mHudView = hudView;
+        mHudPresenter = hudView != null ? new FSHudPresenter(this, hudView) : null;
+        if (hudView != null) {
+            hudView.setHudVisible(mShouldShowHudView);
+        }
+        if (mShouldShowHudView) {
+            startHudTimerIfNeed();
+        }
+    }
+
+    public FSHudView getHudView() {
+        return mHudView;
+    }
+
+    public void setShouldShowHudView(boolean shouldShowHudView) {
+        if (shouldShowHudView == mShouldShowHudView) {
+            return;
+        }
+        mShouldShowHudView = shouldShowHudView;
+        if (mHudView != null) {
+            mHudView.setHudVisible(shouldShowHudView);
+        }
+        if (shouldShowHudView) {
+            startHudTimerIfNeed();
+        } else {
+            stopHudTimer();
+        }
+    }
+
+    public boolean shouldShowHudView() {
+        return mShouldShowHudView;
+    }
+
+    public void setHudValue(String value, String key) {
+        if (mHudView != null) {
+            mHudView.setHudValue(value, key);
+        } else {
+            if (mHudItems == null) {
+                mHudItems = new LinkedHashMap<String, String>();
+            }
+            mHudItems.put(key, value);
+        }
+    }
+
+    public Map<String, String> allHudItem() {
+        if (mHudView != null) {
+            return mHudView.allHudItem();
+        }
+        return mHudItems != null ? mHudItems : new LinkedHashMap<String, String>();
+    }
+
+    private void startHudTimerIfNeed() {
+        if (!mShouldShowHudView || mHudView == null) {
+            return;
+        }
+        mEventHandler.removeCallbacks(mHudRefresh);
+        mEventHandler.post(mHudRefresh);
+    }
+
+    private void stopHudTimer() {
+        mEventHandler.removeCallbacks(mHudRefresh);
     }
 
     @Override
@@ -1236,6 +1379,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
             switch (msg.what) {
             case MEDIA_PREPARED:
+                player.mPrepareLatencyMs = SystemClock.elapsedRealtime() - player.mPrepareStartMs;
+                player.startHudTimerIfNeed();
                 player.notifyOnPrepared();
                 return;
 
@@ -1286,6 +1431,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 switch (msg.arg1) {
                     case MEDIA_INFO_VIDEO_RENDERING_START:
                         DebugLog.i(TAG, "Info: MEDIA_INFO_VIDEO_RENDERING_START\n");
+                        if (!player.mFirstFrameMeasured) {
+                            player.mFirstFrameMeasured = true;
+                            player.mFirstFrameLatencyMs =
+                                    SystemClock.elapsedRealtime() - player.mPrepareStartMs;
+                        }
+                        break;
+                    case MEDIA_INFO_AFTER_SEEK_FIRST_FRAME:
+                        player.mLastSeekFrameLatencyMs = msg.arg2;
                         break;
                 }
                 player.notifyOnInfo(msg.arg1, msg.arg2);

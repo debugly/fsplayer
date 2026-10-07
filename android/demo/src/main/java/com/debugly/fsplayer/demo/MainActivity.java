@@ -5,13 +5,17 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
 
+import tv.danmaku.ijk.media.player.FSHudView;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 
@@ -19,6 +23,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private IjkMediaPlayer mPlayer;
     private SurfaceView mSurfaceView;
+    private FrameLayout mRootLayout;
+    private FSHudView mHudView;
     private String mSubtitlePath;
     private int mSnapshotType = -1;
     private int mSnapshotDelayMs = 4000;
@@ -43,8 +49,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     // 可用 intent extra "brightness" / "saturation" / "contrast"（float）调色彩（默认 1.0 / 1.0 / 1.0）
     // 可用 intent extra "bgColor"（int，0xRRGGBB 的十进制）设黑边背景色（默认黑）
     // 可用 intent extra "allowHDRDirect"（0/1）设 HDR 直显开关（默认 1，对齐 iOS）
+    // 可用 intent extra "hud"（0/1）起播就显示统计 HUD（默认 0，点画面也能开关）
+    // 可用 intent extra "seekAtMs" 指定起播后多少毫秒 seek 到 seekToMs（验证 seek-frame 耗时）
+    // 可用 intent extra "seekToMs"（默认 30000）配合 seekAtMs 使用
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,12 +65,28 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         mSurfaceView = new SurfaceView(this);
         mSurfaceView.getHolder().addCallback(this);
-        setContentView(mSurfaceView);
+
+        // 视频 Surface 上叠一张统计卡片（对应 iOS 的 FSHudCardView）
+        mRootLayout = new FrameLayout(this);
+        mRootLayout.addView(mSurfaceView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        mHudView = new FSHudView(this);
+        mHudView.appendTitle("Vulkan");
+        FrameLayout.LayoutParams hudParams = new FrameLayout.LayoutParams(
+                (int) (300 * getResources().getDisplayMetrics().density),
+                FrameLayout.LayoutParams.WRAP_CONTENT);
+        hudParams.gravity = Gravity.TOP | Gravity.END;
+        hudParams.topMargin = dp(12);
+        hudParams.rightMargin = dp(12);
+        mRootLayout.addView(mHudView, hudParams);
+        setContentView(mRootLayout);
 
         mSubtitlePath = getIntent() != null ? getIntent().getStringExtra("subtitle") : null;
         mSnapshotType = getIntent() != null ? getIntent().getIntExtra("snapshotType", -1) : -1;
         mSnapshotDelayMs = getIntent() != null ? getIntent().getIntExtra("snapshotDelayMs", 4000) : 4000;
         int pauseAfterMs = getIntent() != null ? getIntent().getIntExtra("pauseAfterMs", -1) : -1;
+        int seekAtMs = getIntent() != null ? getIntent().getIntExtra("seekAtMs", -1) : -1;
+        int seekToMs = getIntent() != null ? getIntent().getIntExtra("seekToMs", 30000) : 30000;
         mBackgroundPath = getIntent() != null ? getIntent().getStringExtra("background") : null;
         mBlurIterations = getIntent() != null
                 ? getIntent().getIntExtra("blurIterations", IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS)
@@ -77,6 +106,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mBgColor = getIntent() != null ? getIntent().getIntExtra("bgColor", 0) : 0;
 
         mPlayer = new IjkMediaPlayer();
+        mPlayer.attachHudView(mHudView);
+        mPlayer.setShouldShowHudView(getIntent() != null
+                && getIntent().getIntExtra("hud", 0) != 0);
+        mSurfaceView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mPlayer.setShouldShowHudView(!mPlayer.shouldShowHudView());
+            }
+        });
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
         // 可用 intent extra "mediacodec" 传 0 强制走软解（排查硬解通路用）
         int useMediaCodec = getIntent() != null ? getIntent().getIntExtra("mediacodec", 1) : 1;
@@ -127,6 +165,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             + " s=" + mPlayer.getColorSaturation()
                             + " c=" + mPlayer.getColorContrast()
                             + " bg=" + Integer.toHexString(mPlayer.getBackgroundColor()));
+                }
+                if (seekAtMs >= 0) {
+                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mPlayer.seekTo(seekToMs);
+                        }
+                    }, seekAtMs);
                 }
                 if (pauseAfterMs >= 0) {
                     new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {

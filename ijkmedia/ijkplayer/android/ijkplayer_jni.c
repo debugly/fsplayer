@@ -676,6 +676,12 @@ IjkMediaPlayer_getMediaMeta(JNIEnv *env, jobject thiz)
                     fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_TBR_DEN, NULL );
                     fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_SAR_NUM, NULL );
                     fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_SAR_DEN, NULL );
+                    fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_COLOR_SPACE, NULL );
+                    fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_COLOR_RANGE, NULL );
+                    fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_COLOR_PRIMARIES, NULL );
+                    fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_COLOR_TRANSFER, NULL );
+                    fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_CHROMA_LOCATION, NULL );
+                    fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_DESCRIBE, NULL );
                 } else if (0 == strcmp(type, FSM_VAL_TYPE__AUDIO)) {
                     fillMetaInternal(env, jstream_bundle, streamRawMeta, FSM_KEY_SAMPLE_RATE, NULL );
                 }
@@ -958,6 +964,10 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
         case FFP_MSG_VIDEO_SEEK_RENDERING_START:
             MPTRACE("FFP_MSG_VIDEO_SEEK_RENDERING_START:\n");
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_VIDEO_SEEK_RENDERING_START, msg.arg1);
+            break;
+        case FFP_MSG_AFTER_SEEK_FIRST_FRAME:
+            MPTRACE("FFP_MSG_AFTER_SEEK_FIRST_FRAME: %d\n", msg.arg1);
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_AFTER_SEEK_FIRST_FRAME, msg.arg1);
             break;
         case FFP_MSG_AUDIO_SEEK_RENDERING_START:
             MPTRACE("FFP_MSG_AUDIO_SEEK_RENDERING_START:\n");
