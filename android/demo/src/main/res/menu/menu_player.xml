@@ -27,4 +27,24 @@
         android:id="@+id/action_show_tracks"
         android:title="@string/tracks"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_audio_channel"
+        android:title="@string/audio_channel"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_rotate_x"
+        android:title="@string/rotate_x"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_rotate_y"
+        android:title="@string/rotate_y"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_rotate_z"
+        android:title="@string/rotate_z"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_rotate_reset"
+        android:title="@string/rotate_reset"
+        app:showAsAction="never" />
 </menu>

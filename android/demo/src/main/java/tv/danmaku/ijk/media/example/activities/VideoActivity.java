@@ -41,6 +41,8 @@ import android.widget.TextView;
 
 import tv.danmaku.ijk.media.player.FSHudView;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
+import tv.danmaku.ijk.media.example.services.MediaPlayerService;
+import tv.danmaku.ijk.media.example.widget.media.MediaPlayerCompat;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.example.R;
 import tv.danmaku.ijk.media.example.application.Settings;
@@ -188,6 +190,22 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         IjkMediaPlayer.native_profileEnd();
     }
 
+    /** 拿当前播放器（系统播放器/代理包装时返回 null）。 */
+    private IjkMediaPlayer getIjkPlayer() {
+        return MediaPlayerCompat.getIjkMediaPlayer(MediaPlayerService.getMediaPlayer());
+    }
+
+    /** 复用 demo 的 toast 展示方式。 */
+    private void showToast(int resId) {
+        mToastTextView.setText(resId);
+        mMediaController.showOnce(mToastTextView);
+    }
+
+    private void showToast(String text) {
+        mToastTextView.setText(text);
+        mMediaController.showOnce(mToastTextView);
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_player, menu);
@@ -222,6 +240,49 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             return true;
         } else if (id == R.id.action_show_info) {
             mVideoView.showMediaInfo();
+        } else if (id == R.id.action_audio_channel) {
+            // 新 API 演示：声道选择（对应 iOS 的 setAudioChannel:）
+            IjkMediaPlayer mp = getIjkPlayer();
+            if (mp == null) {
+                showToast("Audio channel: ijkplayer only");
+                return true;
+            }
+            int channel = mp.getAudioChannel();
+            if (channel == IjkMediaPlayer.AUDIO_CHANNEL_STEREO) {
+                channel = IjkMediaPlayer.AUDIO_CHANNEL_LEFT;
+            } else if (channel == IjkMediaPlayer.AUDIO_CHANNEL_LEFT) {
+                channel = IjkMediaPlayer.AUDIO_CHANNEL_RIGHT;
+            } else {
+                channel = IjkMediaPlayer.AUDIO_CHANNEL_STEREO;
+            }
+            mp.setAudioChannel(channel);
+            showToast(channel == IjkMediaPlayer.AUDIO_CHANNEL_STEREO ? R.string.audio_channel_stereo
+                    : channel == IjkMediaPlayer.AUDIO_CHANNEL_LEFT ? R.string.audio_channel_left
+                    : R.string.audio_channel_right);
+            return true;
+        } else if (id == R.id.action_rotate_x || id == R.id.action_rotate_y
+                || id == R.id.action_rotate_z || id == R.id.action_rotate_reset) {
+            // 新 API 演示：画面三轴旋转（对应 iOS 的 x/y/zRotateDegrees）
+            IjkMediaPlayer mp = getIjkPlayer();
+            if (mp == null) {
+                showToast("Rotate: ijkplayer only");
+                return true;
+            }
+            float x = mp.getXRotateDegrees();
+            float y = mp.getYRotateDegrees();
+            float z = mp.getZRotateDegrees();
+            if (id == R.id.action_rotate_x) {
+                x += 15;
+            } else if (id == R.id.action_rotate_y) {
+                y += 15;
+            } else if (id == R.id.action_rotate_z) {
+                z += 15;
+            } else {
+                x = y = z = 0;
+            }
+            mp.setRotateDegrees(x, y, z);
+            showToast(String.format("Rotate X %.0f  Y %.0f  Z %.0f", x, y, z));
+            return true;
         } else if (id == R.id.action_show_tracks) {
             if (mDrawerLayout.isDrawerOpen(mRightDrawer)) {
                 Fragment f = getSupportFragmentManager().findFragmentById(R.id.right_drawer);

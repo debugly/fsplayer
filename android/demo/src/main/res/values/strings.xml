@@ -71,6 +71,14 @@
     <string name="VideoView_player_IjkExoMediaPlayer">Player: IjkExoMediaPlayer</string>
 
     <string name="hud">HUD</string>
+    <string name="audio_channel">Audio channel</string>
+    <string name="audio_channel_stereo">Audio channel: stereo</string>
+    <string name="audio_channel_left">Audio channel: left only</string>
+    <string name="audio_channel_right">Audio channel: right only</string>
+    <string name="rotate_x">Rotate X +15</string>
+    <string name="rotate_y">Rotate Y +15</string>
+    <string name="rotate_z">Rotate Z +15</string>
+    <string name="rotate_reset">Rotate reset</string>
     <string name="hud_on">HUD: on</string>
     <string name="hud_off">HUD: off</string>
 </resources>
