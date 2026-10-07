@@ -145,6 +145,7 @@ struct FSVulkanRenderer {
 
     ANativeWindow *window;
     int surface_ready;
+    int swapchain_dirty;    /* 需要（下一帧安全点）重建 surface/swapchain，例如 surface 尺寸变了或 acquire/present 返回 OUT_OF_DATE/SUBOPTIMAL */
 
     /* ---- MediaCodec 零拷贝通路（VK_ANDROID_external_memory_android_hardware_buffer）---- */
     int instance_11;                        /* instance 是否为 Vulkan 1.1 */
@@ -2471,6 +2472,11 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     uint32_t image_index = 0;
     VkResult res = vkAcquireNextImageKHR(r->device, r->swapchain, UINT64_MAX,
                                          r->image_available, VK_NULL_HANDLE, &image_index);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+        /* surface 过时：标记下一帧安全点重建，绝不能用这次（可能无效的）image_index 画 */
+        r->swapchain_dirty = 1;
+        return -1;
+    }
     if (res != VK_SUCCESS)
         return -1;
 
@@ -2615,7 +2621,11 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         .pSwapchains = &r->swapchain,
         .pImageIndices = &image_index,
     };
-    vkQueuePresentKHR(r->present_queue, &pi);
+    VkResult preset = vkQueuePresentKHR(r->present_queue, &pi);
+    if (preset == VK_ERROR_OUT_OF_DATE_KHR || preset == VK_SUBOPTIMAL_KHR) {
+        /* 显示引擎要求重建交换链：下一帧安全点重建 */
+        r->swapchain_dirty = 1;
+    }
 
     if (r->snap_recorded)
         finish_snapshot_readback(r);
@@ -2878,6 +2888,125 @@ static int import_hardware_buffer(FSVulkanRenderer *r, AHardwareBuffer *ahb,
 }
 
 /*
+ * 销毁 surface/swapchain 及其依赖的 view / framebuffer。
+ * 调用前必须保证没有在飞的帧（见 rebuild_swapchain 里的 vkDeviceWaitIdle）。
+ * surface 也一起销毁：它的尺寸来自 window，重建成新尺寸必须重建。
+ */
+static void destroy_surface_swapchain(FSVulkanRenderer *r)
+{
+    if (!r->device)
+        return;
+
+    /* framebuffer 引用 swapchain view，先销毁 */
+    if (r->framebuffers) {
+        for (uint32_t i = 0; i < r->image_count; i++)
+            if (r->framebuffers[i]) vkDestroyFramebuffer(r->device, r->framebuffers[i], NULL);
+        free(r->framebuffers);
+        r->framebuffers = NULL;
+    }
+    if (r->swapchain_views) {
+        for (uint32_t i = 0; i < r->image_count; i++)
+            if (r->swapchain_views[i]) vkDestroyImageView(r->device, r->swapchain_views[i], NULL);
+        free(r->swapchain_views);
+        r->swapchain_views = NULL;
+    }
+    if (r->swapchain_images) {
+        free(r->swapchain_images);
+        r->swapchain_images = NULL;
+    }
+    if (r->swapchain) {
+        vkDestroySwapchainKHR(r->device, r->swapchain, NULL);
+        r->swapchain = VK_NULL_HANDLE;
+    }
+    if (r->surface) {
+        vkDestroySurfaceKHR(r->instance, r->surface, NULL);
+        r->surface = VK_NULL_HANDLE;
+    }
+    r->image_count = 0;
+}
+
+/* Android surface（window）的当前尺寸是否已经和交换链不再一致 */
+static int swapchain_needs_rebuild(FSVulkanRenderer *r)
+{
+    if (r->swapchain_dirty)
+        return 1;
+    if (!r->window)
+        return 0;
+    int w = ANativeWindow_getWidth(r->window);
+    int h = ANativeWindow_getHeight(r->window);
+    if (w <= 0 || h <= 0)
+        return 0;
+    return (uint32_t)w != r->swapchain_extent.width ||
+           (uint32_t)h != r->swapchain_extent.height;
+}
+
+/*
+ * 在当前帧开始前的安全点重建 surface + swapchain + framebuffers。
+ * render pass / pipeline 只依赖 swapchain 的 format（与尺寸无关，viewport/scissor 是动态状态），
+ * 所以正常情况下只重建上表对象；仅当 surface format 真的变了才连带重建 render pass 与管线。
+ */
+static int rebuild_swapchain(FSVulkanRenderer *r)
+{
+    if (!r->device || !r->window)
+        return -1;
+
+    /* 确保没有在飞的帧：重建前必须 GPU 排空，否则会销毁仍被引用的对象 */
+    vkDeviceWaitIdle(r->device);
+
+    VkFormat old_format = r->swapchain_format;
+
+    destroy_surface_swapchain(r);
+
+    if (create_surface_swapchain(r) != VK_SUCCESS) {
+        ALOGE("FSVulkanRenderer: swapchain recreate failed\n");
+        return -1;
+    }
+
+    if (r->swapchain_format != old_format) {
+        ALOGW("FSVulkanRenderer: surface format changed 0x%x -> 0x%x, rebuilding pass/pipelines\n",
+              (unsigned)old_format, (unsigned)r->swapchain_format);
+        destroy_sub_resources(r);
+        destroy_mc_resources(r);
+        if (r->pipeline)        { vkDestroyPipeline(r->device, r->pipeline, NULL);              r->pipeline = VK_NULL_HANDLE; }
+        if (r->pipeline_layout) { vkDestroyPipelineLayout(r->device, r->pipeline_layout, NULL); r->pipeline_layout = VK_NULL_HANDLE; }
+        if (r->render_pass)     { vkDestroyRenderPass(r->device, r->render_pass, NULL);         r->render_pass = VK_NULL_HANDLE; }
+        if (create_render_pass(r) != VK_SUCCESS ||
+            create_pipeline(r) != VK_SUCCESS) {
+            ALOGE("FSVulkanRenderer: pass/pipeline rebuild failed\n");
+            r->surface_ready = 0;
+            return -1;
+        }
+        if (create_sub_resources(r) != 0)
+            ALOGW("FSVulkanRenderer: subtitle disabled after format change\n");
+    }
+
+    if (create_framebuffers(r) != VK_SUCCESS) {
+        ALOGE("FSVulkanRenderer: framebuffer recreate failed\n");
+        return -1;
+    }
+
+    ALOGI("FSVulkanRenderer: swapchain recreated, %ux%u\n",
+          r->swapchain_extent.width, r->swapchain_extent.height);
+    return 0;
+}
+
+/* 每帧渲染前调用：需要时在安全点重建，保证后面用的 swapchain_extent 是最新的。
+ * 返回 0 表示可继续渲染；-1 表示本帧不要渲染（重建失败，下一帧再试）。 */
+static int fs_vulkan_renderer_sync_surface(FSVulkanRenderer *r)
+{
+    if (!r || !r->surface_ready)
+        return 0;
+    if (!swapchain_needs_rebuild(r))
+        return 0;
+    if (rebuild_swapchain(r) == 0) {
+        r->swapchain_dirty = 0;
+        return 0;
+    }
+    ALOGW("FSVulkanRenderer: swapchain rebuild failed, retry next frame\n");
+    return -1;
+}
+
+/*
  * 硬解帧显示：MediaCodec -> AImageReader(gralloc) -> VkImage 外部显存 -> 上屏。
  * 全程不做 CPU 拷贝。
  */
@@ -3077,6 +3206,10 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
     if (!r || !r->surface_ready || !frame)
         return -1;
 
+    /* surface 可能被 resize：先在建帧变换之前重建，确保后面用的是最新的 drawable 尺寸 */
+    if (fs_vulkan_renderer_sync_surface(r) != 0 || !r->surface_ready)
+        return -1;
+
     compute_video_transform(r, frame->width, frame->height, disp_w, disp_h,
                             rotate_degrees, sar_num, sar_den);
 
@@ -3123,6 +3256,9 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
 int fs_vulkan_renderer_display_sub_overlay(FSVulkanRenderer *r)
 {
     if (!r || !r->surface_ready || !r->sub_overlay)
+        return -1;
+
+    if (fs_vulkan_renderer_sync_surface(r) != 0 || !r->surface_ready)
         return -1;
 
     return draw_and_present(r, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE);
