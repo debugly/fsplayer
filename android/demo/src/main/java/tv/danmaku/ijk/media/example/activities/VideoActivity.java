@@ -33,6 +33,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
@@ -141,6 +142,16 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mVideoView = (IjkVideoView) findViewById(R.id.video_view);
         mVideoView.setMediaController(mMediaController);
         mVideoView.setHudView(mHudView);
+        // HUD 卡片放到工具栏下面（间距 15dp）：按主题的 actionBarSize 取工具栏高度，
+        // 这样工具栏被媒体控制器隐藏时卡片位置也不会跳。
+        TypedValue actionBarSize = new TypedValue();
+        if (getTheme().resolveAttribute(androidx.appcompat.R.attr.actionBarSize, actionBarSize, true)) {
+            int toolbarHeight = TypedValue.complexToDimensionPixelSize(actionBarSize.data,
+                    getResources().getDisplayMetrics());
+            ViewGroup.MarginLayoutParams hudLp = (ViewGroup.MarginLayoutParams) mHudView.getLayoutParams();
+            hudLp.topMargin = toolbarHeight + hudLp.topMargin;
+            mHudView.setLayoutParams(hudLp);
+        }
         // 可用 intent extra "hud"（0/1）起播就显示统计卡片，供脚本使用
         mVideoView.setShouldShowHudView(getIntent().getIntExtra("hud", 0) != 0);
         // prefer mVideoPath
