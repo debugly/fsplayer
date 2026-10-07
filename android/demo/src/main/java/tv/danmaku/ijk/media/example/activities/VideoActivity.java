@@ -271,12 +271,14 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             float x = mp.getXRotateDegrees();
             float y = mp.getYRotateDegrees();
             float z = mp.getZRotateDegrees();
+            // 步进取 90 的整数倍：Z +90 是平面内旋转（会交换宽高，最有意义的一档）；
+            // X/Y 在正好 90 度时是侧视（画面退化成一条线），所以用 180 度翻转。
             if (id == R.id.action_rotate_x) {
-                x += 15;
+                x += 180;
             } else if (id == R.id.action_rotate_y) {
-                y += 15;
+                y += 180;
             } else if (id == R.id.action_rotate_z) {
-                z += 15;
+                z += 90;
             } else {
                 x = y = z = 0;
             }
