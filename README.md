@@ -24,7 +24,7 @@ FSPlayer keeps the same architecture you know, and moves the stack forward:
 | **Blu-ray / ISO / BDMV**             | ✗                                             | **✓** — incl. over network                        |
 | **avfilter / video filters**         | ✗ (explicitly not on plan)                    | **✓** — e.g. software deinterlacing               |
 | **HW-decode hot switch**             | ✗                                             | **✓** — no player restart needed                  |
-| **Distribution**                     | jcenter (dead) / manual                       | **SPM + CocoaPods**                               |
+| **Distribution**                     | jcenter (dead) / manual                       | **SPM + CocoaPods · Maven Central** (Android)     |
 | **License**                          | LGPLv2.1+                                     | LGPLv2.1+                                         |
 
 
@@ -123,6 +123,16 @@ FSPlayer is free and released under [LGPLv2.1+](./COPYING.LGPLv2.1). If it's use
 ```
 pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.1/FSPlayer.spec.json'
 ```
+
+- Android (Gradle, Maven Central):
+
+```groovy
+dependencies {
+    implementation 'io.github.debugly:ijkplayer:1.1.1'
+}
+```
+
+The AAR ships the `arm64-v8a` and `armeabi-v7a` native libraries (`libijkplayer.so` with FFmpeg linked in, plus `libsmb2.so`); `minSdk` is 24.
 
 ### Usage
 

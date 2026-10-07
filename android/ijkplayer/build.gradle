@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.library'
+    id 'com.vanniktech.maven.publish' version '0.37.0'
 }
 
 android {
@@ -46,4 +47,53 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+}
+// ---------------------------------------------------------------------------
+// Maven Central 发布配置（Central Portal，https://central.sonatype.com）
+//
+// 坐标 io.github.debugly:ijkplayer:<version>，版本由 -PversionName 传入（CI 从
+// version.sh 读），本地默认 1.1.1；groupId 可用 -PpublishGroupId 覆盖。
+//
+// 本地自检（不发布）：./gradlew :ijkplayer:publishToMavenLocal
+//   → 看 ~/.m2/repository/io/github/debugly/ijkplayer/<ver>/ 里的 aar、pom、
+//     sources.jar、javadoc.jar 以及各自的 .asc 签名
+//
+// 正式发布（CI 执行）：./gradlew :ijkplayer:publishToMavenCentral
+//   ORG_GRADLE_PROJECT_mavenCentralUsername/_mavenCentralPassword   = Portal user token
+//   ORG_GRADLE_PROJECT_signingInMemoryKey/_signingInMemoryKeyPassword = GPG 私钥
+// ---------------------------------------------------------------------------
+def fsPublishVersion = (findProperty('versionName') ?: '1.1.1').toString()
+def fsPublishGroupId = (findProperty('publishGroupId') ?: 'io.github.debugly').toString()
+
+mavenPublishing {
+    publishToMavenCentral()   // 默认即 Central Portal
+    signAllPublications()     // Maven Central 强制要求 GPG 签名
+
+    coordinates(fsPublishGroupId, 'ijkplayer', fsPublishVersion)
+
+    pom {
+        name = 'FSPlayer Android'
+        description = 'ijkplayer 的现代继任者：Android 音视频播放库（AAR，含 arm64-v8a / armeabi-v7a 原生库）'
+        inceptionYear = '2024'
+        url = 'https://github.com/debugly/fsplayer'
+        licenses {
+            license {
+                name = 'GNU Lesser General Public License v2.1 or later'
+                url = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html'
+                distribution = 'repo'
+            }
+        }
+        developers {
+            developer {
+                id = 'debugly'
+                name = 'qianlongxu'
+                url = 'https://github.com/debugly'
+            }
+        }
+        scm {
+            url = 'https://github.com/debugly/fsplayer'
+            connection = 'scm:git:git://github.com/debugly/fsplayer.git'
+            developerConnection = 'scm:git:ssh://git@github.com/debugly/fsplayer.git'
+        }
+    }
 }
