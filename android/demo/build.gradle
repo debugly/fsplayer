@@ -12,13 +12,30 @@ android {
         applicationId "com.debugly.fsplayer.demo"
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName "1.0"
+        // 发布时由 CI 传 -PversionName=1.1.1 -PversionCode=10101
+        versionCode((project.findProperty("versionCode") ?: 1).toInteger())
+        versionName(project.findProperty("versionName") ?: "1.0")
+    }
+
+    signingConfigs {
+        release {
+            // CI 用 secrets 解码出 keystore 并导出这三个环境变量；本地没有就退回 debug 签名
+            def ks = System.getenv("FS_KEYSTORE_FILE")
+            if (ks != null) {
+                storeFile file(ks)
+                storePassword System.getenv("FS_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("FS_KEY_ALIAS")
+                keyPassword System.getenv("FS_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig System.getenv("FS_KEYSTORE_FILE") != null
+                    ? signingConfigs.release
+                    : signingConfigs.debug
         }
     }
 
