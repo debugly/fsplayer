@@ -4,7 +4,6 @@ ffmpeg-temp/
 android/ffmpeg-*
 android/openssl-*
 ijkmedia/ijkyuv/
-ijkmedia/ijksoundtouch
 ijkprof/android-ndk-profiler/
 
 # built application files
@@ -27,6 +26,14 @@ local.properties
 .idea
 .gradle
 build/
+
+# Android 构建产物
+.cxx/
+build-cmake/
+
+# Android 本地开发符号链接（绝对路径，勿提交）
+android/ijkplayer/src/main/cpp/third-libs
+android/ijkplayer/src/main/cpp/ijkmedia
 
 #macOS
 .DS_Store

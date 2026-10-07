@@ -27,7 +27,7 @@
 #include <assert.h>
 #include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_vout_internal.h"
-#include "ijksdl_vout_overlay_ffmpeg.h"
+#include "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h"
 #include "ijkplayer/ff_subtitle_def.h"
 #import "ijksdl_gpu_metal.h"
 #include "ff_ffplay_def.h"

@@ -53,7 +53,7 @@ static int ijkio_androidio_open(IjkURLContext *h, const char *url, int flags, Ij
     av_strstart(url, "androidio:", &url);
 
     IjkAVDictionaryEntry *t = NULL;
-    t = ijk_av_dict_get(*options, "androidio-inject-callback", NULL, IJK_AV_DICT_IGNORE_SUFFIX);
+    t = ijk_av_dict_get(*options, "androidio-inject-callback", NULL, FS_AV_DICT_IGNORE_SUFFIX);
     if (t) {
         ijkio_androidio = (jobject) (intptr_t) strtoll(t->value, &final, 10);
     } else {

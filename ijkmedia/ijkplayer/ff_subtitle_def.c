@@ -33,7 +33,7 @@ static FFSubtitleBuffer *_ff_subtitle_buffer_alloc(SDL_Rectangle rect, int compo
     }
     
     FFSubtitleBuffer *img = malloc(sizeof(FFSubtitleBuffer));
-    bzero(img, sizeof(FFSubtitleBuffer));
+    memset(img, 0, sizeof(FFSubtitleBuffer));
     img->rect = rect;
     size_t size = rect.h * rect.stride;
     img->data = calloc(1, size);

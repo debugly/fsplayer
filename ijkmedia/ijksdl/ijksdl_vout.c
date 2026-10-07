@@ -97,7 +97,7 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
     _SDL_Image_Converter *convert = vout->image_converter;
     if (NULL == convert) {
         convert = malloc(sizeof(_SDL_Image_Converter));
-        bzero(convert, sizeof(_SDL_Image_Converter));
+        memset(convert, 0, sizeof(_SDL_Image_Converter));
         
         convert->frame = av_frame_alloc();
         

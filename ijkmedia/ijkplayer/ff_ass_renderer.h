@@ -38,7 +38,7 @@ typedef struct FF_ASS_Renderer_Format {
     int (*set_subtitle_header)(FF_ASS_Renderer *s, uint8_t *subtitle_header, int subtitle_header_size);
     void (*set_attach_font)(FF_ASS_Renderer *s, AVStream *st);
     void (*set_video_size)(FF_ASS_Renderer *s, int w, int h);
-    void (*process_chunk)(FF_ASS_Renderer *s, char *ass_line, int64_t start, int64_t duration);
+    void (*process_chunk)(FF_ASS_Renderer *s, char *ass_line, long long start, long long duration);
     void (*flush_events)(FF_ASS_Renderer *s);
     int  (*upload_buffer)(FF_ASS_Renderer *, double time_ms, FFSubtitleBuffer **buffer, int ignore_change);
     int  (*get_PlayResY)(FF_ASS_Renderer *s);

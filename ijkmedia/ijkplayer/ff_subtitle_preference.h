@@ -62,7 +62,7 @@ static inline uint32_t fs_str_to_uint32_color(char *token)
 
 static inline void fs_uint32_color_to_str(uint32_t color, char *buff, int size)
 {
-    bzero(buff, size);
+    memset(buff, 0, size);
     buff[0] = '&';
     buff[1] = 'H';
     

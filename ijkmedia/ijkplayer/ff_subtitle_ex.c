@@ -198,7 +198,7 @@ static int exSub_create(FFExSubtitle **subp, PacketQueue * pktq)
     if (!sub) {
         return -2;
     }
-    bzero(sub, sizeof(FFExSubtitle));
+    memset(sub, 0, sizeof(FFExSubtitle));
     
     sub->pktq = pktq;
     *subp = sub;
