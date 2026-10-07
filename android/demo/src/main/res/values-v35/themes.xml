@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      targetSdk 35 起，Android 15 会强制窗口 edge-to-edge，内容铺到状态栏下面，
+      demo 每个界面的顶部（标题栏、HUD 卡片、列表）都会压住状态栏图标。
+      这里为整个 app 申请退出 edge-to-edge，让系统像以前一样自己让出状态栏和
+      导航栏 —— 也就是 targetSdk 34 时的表现，所有界面一次性生效。
+
+      注意：Android 16(API 36) 已把该属性标记为废弃；将来把 targetSdk 提到 36
+      时需要改成逐视图用 WindowInsets 补 inset（播放页见 git 历史里的
+      applyStatusBarInsets 实现，只对 API 35+ 生效，避免低版本重复让位）。
+    -->
+    <style name="AppTheme" parent="Theme.App.Light.NoActionBar">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+
+    <style name="FullscreenTheme" parent="Theme.App.NoActionBar">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>
