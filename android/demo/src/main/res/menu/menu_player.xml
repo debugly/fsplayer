@@ -28,6 +28,10 @@
         android:title="@string/tracks"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_show_playlist"
+        android:title="@string/playlist"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/action_audio_channel"
         android:title="@string/audio_channel"
         app:showAsAction="never" />

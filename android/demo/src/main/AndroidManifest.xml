@@ -69,6 +69,43 @@
 
                 <data android:mimeType="video/*" />
             </intent-filter>
+
+            <!-- zlist 播放列表：微信「用其他应用打开」时用 ACTION_VIEW + content:// 打开 .zlist，
+                 未知扩展名在微信里通常是 application/octet-stream（或 text/plain）。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="content" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\.zlist" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- fsplayer 自己的测试壳：用 intent extra 驱动各种移植过来的能力（HUD、快照、

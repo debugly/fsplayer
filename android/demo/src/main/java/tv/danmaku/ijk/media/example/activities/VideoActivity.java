@@ -20,10 +20,12 @@ package tv.danmaku.ijk.media.example.activities;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
@@ -39,6 +41,13 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
 import tv.danmaku.ijk.media.player.FSHudView;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.example.services.MediaPlayerService;
@@ -47,12 +56,14 @@ import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.example.R;
 import tv.danmaku.ijk.media.example.application.Settings;
 import tv.danmaku.ijk.media.example.content.RecentMediaStorage;
+import tv.danmaku.ijk.media.example.content.ZlistParser;
+import tv.danmaku.ijk.media.example.fragments.PlaylistFragment;
 import tv.danmaku.ijk.media.example.fragments.TracksFragment;
 import tv.danmaku.ijk.media.example.widget.media.AndroidMediaController;
 import tv.danmaku.ijk.media.example.widget.media.IjkVideoView;
 import tv.danmaku.ijk.media.example.widget.media.MeasureHelper;
 
-public class VideoActivity extends AppCompatActivity implements TracksFragment.ITrackHolder {
+public class VideoActivity extends AppCompatActivity implements TracksFragment.ITrackHolder, PlaylistFragment.IPlaylistHolder {
     private static final String TAG = "VideoActivity";
 
     private String mVideoPath;
@@ -67,6 +78,9 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
     private Settings mSettings;
     private boolean mBackPressed;
+
+    private ArrayList<String> mPlaylist;
+    private int mPlaylistIndex = 0;
 
     public static Intent newIntent(Context context, String videoPath, String videoTitle) {
         Intent intent = new Intent(context, VideoActivity.class);
@@ -117,6 +131,9 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
                 }
             }
         }
+
+        // zlist 播放列表：微信「用其他应用打开」.zlist 时解析，默认播第一条
+        resolveZlist(intent, intentAction);
 
         if (!TextUtils.isEmpty(mVideoPath)) {
             new RecentMediaStorage(this).saveUrlAsync(mVideoPath);
@@ -209,6 +226,11 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_player, menu);
+        if (mPlaylist == null || mPlaylist.isEmpty()) {
+            MenuItem item = menu.findItem(R.id.action_show_playlist);
+            if (item != null)
+                item.setVisible(false);
+        }
         return true;
     }
 
@@ -301,6 +323,24 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
                 transaction.commit();
                 mDrawerLayout.openDrawer(mRightDrawer);
             }
+        } else if (id == R.id.action_show_playlist) {
+            if (mPlaylist == null || mPlaylist.isEmpty())
+                return true;
+            if (mDrawerLayout.isDrawerOpen(mRightDrawer)) {
+                Fragment f = getSupportFragmentManager().findFragmentById(R.id.right_drawer);
+                if (f != null) {
+                    FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+                    transaction.remove(f);
+                    transaction.commit();
+                }
+                mDrawerLayout.closeDrawer(mRightDrawer);
+            } else {
+                Fragment f = PlaylistFragment.newInstance();
+                FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+                transaction.replace(R.id.right_drawer, f);
+                transaction.commit();
+                mDrawerLayout.openDrawer(mRightDrawer);
+            }
         }
 
         return super.onOptionsItemSelected(item);
@@ -330,5 +370,115 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             return -1;
 
         return mVideoView.getSelectedTrack(trackType);
+    }
+
+    // ---------------- zlist 播放列表 ----------------
+
+    /** 从 intent 里识别并解析 .zlist，把第一条地址当作当前播放源。 */
+    private void resolveZlist(Intent intent, String intentAction) {
+        Uri zlistUri = null;
+        if (Intent.ACTION_VIEW.equals(intentAction)) {
+            zlistUri = intent.getData();
+        } else if (Intent.ACTION_SEND.equals(intentAction)) {
+            zlistUri = mVideoUri;
+        }
+        if (zlistUri == null && mVideoPath != null && mVideoPath.toLowerCase().endsWith(".zlist")) {
+            zlistUri = Uri.fromFile(new File(mVideoPath));
+        }
+        if (!isZlistUri(zlistUri, intent.getType()))
+            return;
+
+        mPlaylist = loadPlaylist(zlistUri);
+        if (mPlaylist != null && !mPlaylist.isEmpty()) {
+            mVideoPath = mPlaylist.get(0);
+            mPlaylistIndex = 0;
+        } else {
+            mPlaylist = null;
+        }
+    }
+
+    private boolean isZlistUri(Uri uri, String type) {
+        if (uri == null)
+            return false;
+        String scheme = uri.getScheme();
+        if ("file".equals(scheme)) {
+            String path = uri.getPath();
+            return path != null && path.toLowerCase().endsWith(".zlist");
+        }
+        if ("content".equals(scheme)) {
+            String name = queryDisplayName(uri);
+            if (name != null && name.toLowerCase().endsWith(".zlist"))
+                return true;
+            return "application/octet-stream".equals(type) || "text/plain".equals(type);
+        }
+        return false;
+    }
+
+    private String queryDisplayName(Uri uri) {
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0)
+                    return cursor.getString(idx);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
+        return null;
+    }
+
+    private ArrayList<String> loadPlaylist(Uri uri) {
+        InputStream in = null;
+        try {
+            if ("content".equals(uri.getScheme())) {
+                in = getContentResolver().openInputStream(uri);
+            } else if ("file".equals(uri.getScheme())) {
+                in = new FileInputStream(uri.getPath());
+            } else {
+                return null;
+            }
+            return ZlistParser.parse(in);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load zlist: " + uri, e);
+            return null;
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    private void playUrlAtIndex(int index) {
+        if (mPlaylist == null || index < 0 || index >= mPlaylist.size())
+            return;
+        mPlaylistIndex = index;
+        mVideoView.stopPlayback();
+        mVideoView.setVideoPath(mPlaylist.get(index));
+        mVideoView.start();
+    }
+
+    @Override
+    public List<String> getPlaylist() {
+        return mPlaylist;
+    }
+
+    @Override
+    public int getCurrentPlaylistIndex() {
+        return mPlaylistIndex;
+    }
+
+    @Override
+    public void onPlaylistItemSelected(int index) {
+        playUrlAtIndex(index);
+        if (mDrawerLayout.isDrawerOpen(mRightDrawer)) {
+            mDrawerLayout.closeDrawer(mRightDrawer);
+        }
     }
 }
