@@ -2787,13 +2787,24 @@ static int import_hardware_buffer(FSVulkanRenderer *r, AHardwareBuffer *ahb,
 {
     destroy_mc_image(r);
 
+    /*
+     * 依规约：pNext 里带 VkExternalFormatANDROID 时，必须同时带
+     * VkExternalMemoryImageCreateInfo（handleTypes 含 ANDROID_HARDWARE_BUFFER_BIT_ANDROID），
+     * 否则这个 image 不会被驱动当成「外部显存导入」的 image —— 表现是可以创建、可以绑内存，
+     * 但采样恒读到 0（绿屏），而不是报错。
+     */
     VkExternalFormatANDROID ext_fmt = {
         .sType = VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID,
         .externalFormat = r->mc_external_format,
     };
+    VkExternalMemoryImageCreateInfo ext_mem = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .pNext = &ext_fmt,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+    };
     VkImageCreateInfo ici = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = &ext_fmt,
+        .pNext = &ext_mem,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = VK_FORMAT_UNDEFINED,
         .extent = { (uint32_t) w, (uint32_t) h, 1 },
