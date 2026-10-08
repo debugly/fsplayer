@@ -108,6 +108,14 @@
 
                 <data android:mimeType="text/plain" />
             </intent-filter>
+            <!-- 微信「用其他应用打开」对未知扩展名（.zlist）走 ACTION_SEND，type 常为 */*，
+                 具体 MIME 过滤匹配不到；这里兜底接收任意类型分享，进来后由 resolveZlist 判断是不是 zlist -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="*/*" />
+            </intent-filter>
         </activity>
 
         <!-- fsplayer 自己的测试壳：用 intent extra 驱动各种移植过来的能力（HUD、快照、
