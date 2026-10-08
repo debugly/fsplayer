@@ -2472,13 +2472,22 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
     uint32_t image_index = 0;
     VkResult res = vkAcquireNextImageKHR(r->device, r->swapchain, UINT64_MAX,
                                          r->image_available, VK_NULL_HANDLE, &image_index);
-    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-        /* surface 过时：标记下一帧安全点重建，绝不能用这次（可能无效的）image_index 画 */
+    if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+        /* 交换链确实过时：本次没有拿到可用图像，标记下一帧安全点重建 */
         r->swapchain_dirty = 1;
         return -1;
     }
-    if (res != VK_SUCCESS)
+    if (res == VK_SUBOPTIMAL_KHR) {
+        /*
+         * 注意：SUBOPTIMAL 是「成功码」——图像已经成功 acquire，可以照常画。
+         * 以前把它当失败直接 return -1，会白白丢掉这一帧、并且把已经发出的
+         * image_available 信号量留在 signaled 状态（下一次 acquire 复用同一信号量
+         * 属于未定义行为）。这里正常渲染，只是画完把交换链标记为待重建。
+         */
+        r->swapchain_dirty = 1;
+    } else if (res != VK_SUCCESS) {
         return -1;
+    }
 
     /* 字幕纹理换了 -> 重写描述符；先等上一帧画完，避免描述符被在飞的命令缓冲引用 */
     if (r->sub_desc_pending && r->sub_desc_set) {
