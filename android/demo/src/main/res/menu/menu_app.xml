@@ -15,4 +15,8 @@
         android:id="@+id/action_settings"
         android:title="@string/settings"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_check_update"
+        android:title="@string/check_update"
+        app:showAsAction="never" />
 </menu>

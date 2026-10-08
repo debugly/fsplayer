@@ -82,4 +82,15 @@
     <string name="rotate_reset">Rotate reset</string>
     <string name="hud_on">HUD: on</string>
     <string name="hud_off">HUD: off</string>
+
+    <string name="check_update">Check update</string>
+    <string name="update_checking">Checking for update…</string>
+    <string name="update_check_failed">Update check failed</string>
+    <string name="update_none">You are up to date</string>
+    <string name="update_found">Update available</string>
+    <string name="update_available">New version %1$s (current %2$s)</string>
+    <string name="update_download">Download</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_download_failed">Download failed</string>
+    <string name="update_allow_unknown">Allow installing from this source, then try again</string>
 </resources>
