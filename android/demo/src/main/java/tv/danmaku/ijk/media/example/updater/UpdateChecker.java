@@ -28,7 +28,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * 检查更新：查 GitHub Releases，找最新一个带 demo APK（fsplayer-demo-*.apk）的 release，
+ * 检查更新：查 GitHub Releases，找最新一个带 Aura APK（Aura-android-*.apk）的 release，
  * 从 APK 文件名解析版本号，比当前版本新才返回。
  *
  * 下载对象是 release 资产里的 APK（browser_download_url），不是 workflow artifact 的 zip——
@@ -38,7 +38,7 @@ public class UpdateChecker {
 
     public static final String RELEASES_URL =
             "https://api.github.com/repos/debugly/fsplayer/releases?per_page=50";
-    private static final String APK_PREFIX = "fsplayer-demo-";
+    private static final String APK_PREFIX = "Aura-android-";
     private static final String APK_SUFFIX = ".apk";
 
     /** 一次更新查询的结果；没有新版本时返回 null。 */
