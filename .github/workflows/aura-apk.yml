@@ -1,0 +1,125 @@
+name: aura-apk
+# 给 demo APK 单独发一个 Aura 品牌 release：tag 和 APK 文件名都叫 Aura-android-<version>。
+# 版本号读 demo 模块 build.gradle 的 defaultConfig（= APK 的 versionName），不读 version.sh，
+# 所以 Aura 的版本独立于 fsplayer 库的版本（version.sh 只影响 AAR / Maven Central）。
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      abis:
+        type: choice
+        description: ABI list to build (default covers real devices)
+        default: arm64-v8a,armeabi-v7a
+        options:
+          - arm64-v8a,armeabi-v7a
+          - arm64-v8a,armeabi-v7a,x86,x86_64
+        required: false
+
+jobs:
+  build:
+    name: build-aura-apk
+    runs-on: ubuntu-latest
+    # 复用 fsplayer-maven environment 里的 keystore secret（正式签名）；该 environment
+    # 没有保护规则，不会卡住运行。没配 keystore 就退回 debug 签名。
+    environment: fsplayer-maven
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+          submodules: recursive
+
+    # 这个 workflow 只在含 android/ 的分支上有效；被 cherry-pick 到其它分支时静默跳过
+    - name: Check android project present
+      run: |
+        if [[ -d android ]]; then
+          echo "HAS_ANDROID=1" >> "$GITHUB_ENV"
+        else
+          echo "HAS_ANDROID=0" >> "$GITHUB_ENV"
+          echo "::notice::android/ is not present on ${GITHUB_REF_NAME}, nothing to build"
+        fi
+
+    - name: Set up JDK 17
+      if: ${{ env.HAS_ANDROID == '1' }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    # ubuntu-latest 镜像自带 Android SDK（$ANDROID_HOME，含 cmdline-tools）
+    - name: Install Android platform / build-tools / NDK
+      if: ${{ env.HAS_ANDROID == '1' }}
+      run: |
+        SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+        test -d "$SDK" || { echo "::error::no Android SDK at $SDK"; exit 1; }
+        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+        echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+        echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+        export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$PATH"
+        sdkmanager --version
+        yes | sdkmanager --licenses > /dev/null || true
+        sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+        sdkmanager --list_installed | head -20 || true
+
+    - name: Download Pre Compiled Dependencies
+      if: ${{ env.HAS_ANDROID == '1' }}
+      run: |
+        ./FFToolChain/main.sh install -p android -l 'openssl3 opus bluray dav1d uavs3d smb2 soundtouch xml2 freetype fribidi harfbuzz unibreak fontconfig ass ffmpeg8'
+
+    - name: Decode release keystore
+      if: ${{ env.HAS_ANDROID == '1' }}
+      env:
+        KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      run: |
+        if [[ -z "$KEYSTORE_B64" ]]; then
+          echo "::notice::ANDROID_KEYSTORE_BASE64 is not set, the APK will be signed with the debug key"
+          exit 0
+        fi
+        echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+        {
+          echo "FS_KEYSTORE_FILE=$RUNNER_TEMP/release.jks"
+          echo "FS_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+          echo "FS_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}"
+          echo "FS_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}"
+        } >> "$GITHUB_ENV"
+
+    - name: Build APK
+      if: ${{ env.HAS_ANDROID == '1' }}
+      run: |
+        chmod +x android/gradlew
+        cd android
+        ./gradlew :demo:assembleRelease \
+          -PabiFilters="${{ inputs.abis }}" \
+          --no-daemon --stacktrace
+
+    # 版本号不硬编码、不读 version.sh，而是从编出来的 APK 里读 defaultConfig 的 versionName
+    - name: Read version from APK
+      if: ${{ env.HAS_ANDROID == '1' }}
+      run: |
+        APK=android/demo/build/outputs/apk/release/demo-release.apk
+        VERSION=$("$ANDROID_HOME"/build-tools/35.0.0/aapt dump badging "$APK" | grep -oE "versionName='[^']+'" | cut -d"'" -f2)
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "TAG=Aura-android-$VERSION" >> "$GITHUB_ENV"
+        echo "version=$VERSION  tag=Aura-android-$VERSION"
+
+    - name: Collect artifacts
+      if: ${{ env.HAS_ANDROID == '1' }}
+      run: |
+        mkdir -p dist
+        cp android/demo/build/outputs/apk/release/demo-release.apk "dist/Aura-android-${VERSION}.apk"
+        ls -l dist
+
+    - name: Upload Release Asset
+      if: ${{ env.HAS_ANDROID == '1' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "Aura Android ${VERSION}" \
+          --notes "Aura demo APK.
+
+        - Aura-android-${VERSION}.apk (applicationId com.debugly.fsplayer.demo)
+        - ABIs: ${{ inputs.abis }}
+        - license: LGPL (see repo LICENSE)" \
+          "dist/Aura-android-${VERSION}.apk"
