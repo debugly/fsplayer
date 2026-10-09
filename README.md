@@ -132,7 +132,7 @@ dependencies {
 }
 ```
 
-The AAR ships the `arm64-v8a` and `armeabi-v7a` native libraries (`libijkplayer.so` with FFmpeg linked in, plus `libsmb2.so`); `minSdk` is 24.
+The AAR ships the `arm64-v8a` and `armeabi-v7a` native libraries (`libfsplayer.so` with FFmpeg linked in, plus `libsmb2.so`); `minSdk` is 24.
 
 ### Usage
 

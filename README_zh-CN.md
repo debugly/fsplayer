@@ -140,7 +140,7 @@ dependencies {
 }
 ```
 
-AAR 内含 `arm64-v8a`、`armeabi-v7a` 两个 ABI 的原生库（`libijkplayer.so` 已静态链接 FFmpeg，另有 `libsmb2.so`），`minSdk` 为 24；FFmpeg 等三方组件的许可与 NOTICE 随 AAR 一起分发（`META-INF/fsplayer/`）。
+AAR 内含 `arm64-v8a`、`armeabi-v7a` 两个 ABI 的原生库（`libfsplayer.so` 已静态链接 FFmpeg，另有 `libsmb2.so`），`minSdk` 为 24；FFmpeg 等三方组件的许可与 NOTICE 随 AAR 一起分发（`META-INF/fsplayer/`）。
 
 ### 调用
 
