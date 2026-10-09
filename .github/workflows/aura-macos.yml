@@ -50,10 +50,13 @@ jobs:
       if: ${{ env.HAS_MACOS == '1' }}
       run: brew install tree xcodegen
 
+    # 只装 macOS demo 实际用到的两个包，和 apple.yml 的 macOS 一致：
+    # FSPlayer.framework 把 FFmpeg 静态链进去了（otool 只剩 asan），
+    # 别照抄 aura-apk.yml 那份安卓长列表 —— 里面的 fontconfig 没有 macOS 预编译包，会 404。
     - name: Download Pre Compiled Dependencies
       if: ${{ env.HAS_MACOS == '1' }}
       run: |
-        ./FFToolChain/main.sh install -p macos -l 'openssl3 opus bluray dav1d uavs3d smb2 soundtouch xml2 freetype fribidi harfbuzz unibreak fontconfig ass ffmpeg8'
+        ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg8'
 
     # AuraPlayer 通过 workspace 里的 FSPlayer.xcodeproj 交叉引用直接依赖 FSPlayer.framework，
     # xcodebuild 会一并把它编出来，不需要先跑 build-framework.sh。
