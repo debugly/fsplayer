@@ -1,0 +1,125 @@
+name: aura-macos
+# 给 macOS 的 Aura demo 单独发一个 release：tag 和 zip 文件名都叫 Aura-macos-<version>。
+# 和 aura-apk.yml 同构，但版本号读 macOS demo target 的 MARKETING_VERSION（= .app 里的
+# CFBundleShortVersionString），不读 version.sh —— Aura demo 的版本独立于 FSPlayer 库的版本。
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      archs:
+        type: choice
+        description: Architectures to build (universal by default)
+        default: arm64,x86_64
+        options:
+          - arm64,x86_64
+          - arm64
+          - x86_64
+        required: false
+      publish:
+        type: boolean
+        description: Create the GitHub release (unchecked = build only, no tag)
+        default: true
+        required: false
+
+jobs:
+  build:
+    name: build-aura-macos
+    runs-on: macos-15
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: recursive
+        # 拉完整历史 + tag，供 changelog 生成「上一个 Aura-macos tag..HEAD」的差异
+        fetch-depth: 0
+        fetch-tags: true
+
+    # 这个 workflow 只在含 examples/macos 的分支上有效；被 cherry-pick 到其它分支时静默跳过
+    - name: Check macOS project present
+      run: |
+        if [[ -d examples/macos/AuraPlayer.xcodeproj ]]; then
+          echo "HAS_MACOS=1" >> "$GITHUB_ENV"
+        else
+          echo "HAS_MACOS=0" >> "$GITHUB_ENV"
+          echo "::notice::examples/macos/AuraPlayer.xcodeproj is not present on ${GITHUB_REF_NAME}, nothing to build"
+        fi
+
+    - name: Install tools
+      if: ${{ env.HAS_MACOS == '1' }}
+      run: brew install tree xcodegen
+
+    - name: Download Pre Compiled Dependencies
+      if: ${{ env.HAS_MACOS == '1' }}
+      run: |
+        ./FFToolChain/main.sh install -p macos -l 'openssl3 opus bluray dav1d uavs3d smb2 soundtouch xml2 freetype fribidi harfbuzz unibreak fontconfig ass ffmpeg8'
+
+    # AuraPlayer 通过 workspace 里的 FSPlayer.xcodeproj 交叉引用直接依赖 FSPlayer.framework，
+    # xcodebuild 会一并把它编出来，不需要先跑 build-framework.sh。
+    #
+    # 无证书构建：CI 上没有开发者证书，Aura demo 的 Release 配置用的是
+    # Apple Development + Automatic 签名，直接编会卡在签名，所以显式关掉签名。
+    - name: Build AuraPlayer.app
+      if: ${{ env.HAS_MACOS == '1' }}
+      env:
+        ARCHS: ${{ inputs.archs }}
+      run: |
+        xcodebuild -workspace examples/macos/AuraPlayer.xcworkspace \
+          -scheme AuraPlayer \
+          -configuration Release \
+          -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+          ARCHS="$ARCHS" ONLY_ACTIVE_ARCH=NO \
+          CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+          build
+
+    # 版本号不硬编码，而是从编出来的 .app 里读 MARKETING_VERSION
+    - name: Read version from app
+      if: ${{ env.HAS_MACOS == '1' }}
+      run: |
+        APP="$RUNNER_TEMP/DerivedData/Build/Products/Release/AuraPlayer.app"
+        test -d "$APP" || { echo "::error::$APP not found"; exit 1; }
+        VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "TAG=Aura-macos-$VERSION" >> "$GITHUB_ENV"
+        echo "version=$VERSION  tag=Aura-macos-$VERSION"
+
+    # 从上一个 Aura-macos tag 到当前 HEAD 的提交生成 changelog，写进 release notes
+    - name: Generate changelog
+      if: ${{ env.HAS_MACOS == '1' }}
+      run: |
+        PREV_TAG=$(git tag --list 'Aura-macos-*' --sort=-creatordate | head -1)
+        {
+          echo "Aura demo app for macOS."
+          echo ""
+          echo "- Aura-macos-${VERSION}.zip (bundle id cn.debugly.AuraPlayer, app sandbox + hardened runtime)"
+          echo "- Architectures: ${{ inputs.archs }}"
+          echo "- Minimum macOS: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$RUNNER_TEMP/DerivedData/Build/Products/Release/AuraPlayer.app/Contents/Info.plist" 2>/dev/null || echo 'see Info.plist')"
+          echo "- license: LGPL-2.1-or-later (see repo LICENSE)"
+          echo ""
+          if [[ -n "$PREV_TAG" ]]; then
+            echo "## Changes since ${PREV_TAG}"
+            echo ""
+            git log --pretty=format:'- %s' "${PREV_TAG}..HEAD"
+            echo ""
+          fi
+        } > "$RUNNER_TEMP/release-notes.md"
+        echo "PREV_TAG=${PREV_TAG:-none}" >> "$GITHUB_ENV"
+        echo "changelog written (${PREV_TAG:-no previous tag}..HEAD)"
+
+    - name: Collect artifacts
+      if: ${{ env.HAS_MACOS == '1' }}
+      run: |
+        APP="$RUNNER_TEMP/DerivedData/Build/Products/Release/AuraPlayer.app"
+        mkdir -p dist
+        ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Aura-macos-${VERSION}.zip"
+        ls -lh dist
+
+    - name: Upload Release Asset
+      if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "Aura macOS ${VERSION}" \
+          --notes-file "$RUNNER_TEMP/release-notes.md" \
+          "dist/Aura-macos-${VERSION}.zip"
