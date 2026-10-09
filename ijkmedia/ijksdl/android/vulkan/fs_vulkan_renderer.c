@@ -1002,6 +1002,16 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
         memcpy(dst + y_size + u_size + (VkDeviceSize)row * v_stride, v + (VkDeviceSize)row * v_stride, c_row);
     vkUnmapMemory(r->device, r->staging_mem);
 
+    /*
+     * 主渲染循环（draw_and_present）也复用同一个 command buffer，且用它提交。
+     * 这里先等上一帧 draw 完成、把 fence 和 command buffer 都复位，否则对仍在
+     * pending 的 command buffer begin/reset 是未定义行为 —— GPU 忙、draw 未完成时
+     * 尤其容易触发，表现为黑屏或新老帧交替闪烁。
+     */
+    vkWaitForFences(r->device, 1, &r->fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(r->device, 1, &r->fence);
+    vkResetCommandBuffer(r->command_buffer, 0);
+
     /* 记录 copy 命令 */
     VkCommandBufferBeginInfo bi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
@@ -1047,6 +1057,9 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+            /* 后面的 vkCmdCopyBufferToImage 要写入，必须声明 TRANSFER_WRITE，
+               否则 copy→采样之间没有 memory dependency，Mali 会报 barrier 错误、采样到垃圾 */
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         };
     }
     barriers[0].image = r->y_image;
@@ -1065,6 +1078,8 @@ static VkResult upload_yuv420p(FSVulkanRenderer *r, const uint8_t *y, int y_stri
     for (int i = 0; i < 3; i++) {
         barriers[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         barriers[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barriers[i].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barriers[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     }
     vkCmdPipelineBarrier(r->command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 3, barriers);
@@ -2620,7 +2635,7 @@ static int draw_and_present(FSVulkanRenderer *r, VkPipeline pipeline,
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &r->render_finished,
     };
-    vkQueueSubmit(r->graphics_queue, 1, &si, VK_NULL_HANDLE);
+    vkQueueSubmit(r->graphics_queue, 1, &si, r->fence);
 
     VkPresentInfoKHR pi = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
