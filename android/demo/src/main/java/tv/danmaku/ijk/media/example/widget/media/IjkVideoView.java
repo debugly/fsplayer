@@ -257,6 +257,21 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mHudView != null && mMediaPlayer instanceof IjkMediaPlayer)
             ((IjkMediaPlayer) mMediaPlayer).attachHudView(mHudView);
         applyHudVisibility();
+        updateHudPlayerType();
+    }
+
+    /**
+     * HUD 首行标出当前后端。
+     *
+     * 原来首行只有渲染器（Vulkan），看不出播放器是谁——而 HUD 恰恰是用来对比
+     * 不同播放器表现的，看不出后端就失去了意义。播放器类型作为一行固定值单独写，
+     * 放在 "v-renderer" 之前。
+     */
+    private void updateHudPlayerType() {
+        if (mHudView == null)
+            return;
+        String type = getPlayerText(getContext(), mSettings.getPlayer());
+        mHudView.setHudValue(type, "player");
     }
 
     /** 起播前也能设置：播放器还没建好就先记着，建好后再应用 */
@@ -269,6 +284,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mHudView == null || !(mMediaPlayer instanceof IjkMediaPlayer))
             return;
         ((IjkMediaPlayer) mMediaPlayer).setShouldShowHudView(mShouldShowHudView);
+    }
+
+    /** HUD 统计卡片只有 ijkplayer 驱动，非 ijk 后端没有这张卡片可显示。 */
+    public boolean canToggleHudView() {
+        return mMediaPlayer instanceof IjkMediaPlayer;
     }
 
     /** "HUD" 菜单项：开关统计卡片（等价 iOS 的 shouldShowHudView） */

@@ -368,6 +368,10 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         MenuItem renderItem = menu.findItem(R.id.action_toggle_render);
         if (renderItem != null)
             renderItem.setVisible(mVideoView != null && mVideoView.canToggleRender());
+        // HUD 统计卡片由 ijkplayer 驱动，换成别的后端就没有这张卡片可显示。
+        MenuItem hudItem = menu.findItem(R.id.action_toggle_hud);
+        if (hudItem != null)
+            hudItem.setVisible(mVideoView != null && mVideoView.canToggleHudView());
         return true;
     }
 
