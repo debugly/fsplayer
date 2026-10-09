@@ -4,6 +4,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- 文件浏览页要读外部存储的视频。targetSdk 33+ 要用 READ_MEDIA_*，
+         更早的 API 才用 READ_EXTERNAL_STORAGE；两个都要声明，否则
+         requestPermissions 会被静默丢弃。 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- 检查更新后安装 APK（Android 8+ 需要） -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 

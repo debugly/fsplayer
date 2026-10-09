@@ -56,6 +56,7 @@ import tv.danmaku.ijk.media.example.updater.UpdateChecker;
 public class AppActivity extends AppCompatActivity {
     private static final String TAG = "AppActivity";
     private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
+    private static final int MY_PERMISSIONS_REQUEST_READ_MEDIA = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,23 +66,53 @@ public class AppActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                // TODO: show explanation
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+        requestStoragePermissions();
+    }
+
+    /**
+     * 读取外部存储里的视频。
+     *
+     * targetSdk 33 起 READ_EXTERNAL_STORAGE 不再授予任何东西，读媒体必须用
+     * READ_MEDIA_VIDEO / READ_MEDIA_AUDIO；再往上（API 34+）音频拆成
+     * READ_MEDIA_AUDIO，视觉则统一由 READ_MEDIA_VIDEO 覆盖。
+     *
+     * 而且这两个权限都必须在 manifest 里声明——声明之前调 requestPermissions
+     * 会被系统静默丢弃：不弹窗、无回调，但系统仍会拉起一个空的
+     * GrantPermissionsActivity 叠在我们的转场上，那层空转场会把 activity
+     * 切换动画压缩掉，表现为「进 Files 有时淡入、有时直切」。
+     */
+    private void requestStoragePermissions() {
+        String[] wanted;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            wanted = new String[]{
+                    "android.permission.READ_MEDIA_VIDEO",
+                    "android.permission.READ_MEDIA_IMAGES",
+            };
+        } else {
+            wanted = new String[]{Manifest.permission.READ_EXTERNAL_STORAGE};
+        }
+
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (String permission : wanted) {
+            if (ContextCompat.checkSelfPermission(this, permission)
+                    != PackageManager.PERMISSION_GRANTED) {
+                missing.add(permission);
             }
         }
+        if (missing.isEmpty())
+            return;
+
+        ActivityCompat.requestPermissions(this,
+                missing.toArray(new String[0]),
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        ? MY_PERMISSIONS_REQUEST_READ_MEDIA
+                        : MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_READ_MEDIA:
             case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // permission was granted, yay! Do the task you need to do.
