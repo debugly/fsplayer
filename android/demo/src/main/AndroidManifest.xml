@@ -127,7 +127,7 @@
         <!-- fsplayer 自己的测试壳：用 intent extra 驱动各种移植过来的能力（HUD、快照、
              色彩、缩放、外挂字幕……），跟上面复刻的 example 界面并存，不是 launcher。 -->
         <activity
-            android:name="com.debugly.fsplayer.demo.MainActivity"
+            android:name="com.debugly.aura.MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />

@@ -117,7 +117,7 @@ jobs:
         {
           echo "Aura demo APK."
           echo ""
-          echo "- Aura-android-${VERSION}.apk (applicationId com.debugly.fsplayer.demo)"
+          echo "- Aura-android-${VERSION}.apk (applicationId com.debugly.aura)"
           echo "- ABIs: ${{ inputs.abis }}"
           echo "- license: LGPL-2.1-or-later (see repo LICENSE)"
           echo ""

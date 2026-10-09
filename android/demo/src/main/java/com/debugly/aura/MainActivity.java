@@ -1,4 +1,4 @@
-package com.debugly.fsplayer.demo;
+package com.debugly.aura;
 
 import android.app.Activity;
 import android.graphics.Bitmap;

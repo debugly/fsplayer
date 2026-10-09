@@ -11,7 +11,9 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.debugly.fsplayer.demo"
+        // Aura 的正式包名。历史上用过 com.debugly.fsplayer.demo，改名后旧包
+        // 无法覆盖升级（会被当成另一个 app 并存），需要手动卸载。
+        applicationId "com.debugly.aura"
         minSdk 24
         targetSdk 35
         // Aura 演示包版本：默认 0.1.5 / 105，aura-apk workflow 直接读这里（不再读 version.sh）；

@@ -169,7 +169,7 @@ jobs:
           --notes "Android AAR + demo APK.
 
         - ijkplayer-${VERSION}.aar: the library (namespace com.debugly.ijkplayer), FFmpeg statically linked into libijkplayer.so, libsmb2.so shipped alongside
-        - fsplayer-demo-${VERSION}.apk: the demo app (applicationId com.debugly.fsplayer.demo)
+        - fsplayer-demo-${VERSION}.apk: the demo app (applicationId com.debugly.aura)
         - ABIs: ${{ inputs.abis }}
         - FFmpeg product: ffmpeg8, LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
         - license: LGPL-2.1-or-later (see LICENSE); third-party components keep their own licenses (FFmpeg LGPL-2.1+, libsmb2 LGPL-2.1 as a separate .so, libass/FreeType/friBidi/HarfBuzz/OpenSSL/opus/dav1d/uavs3d/libbluray)" \
