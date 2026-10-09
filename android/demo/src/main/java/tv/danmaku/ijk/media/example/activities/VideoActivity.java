@@ -20,6 +20,7 @@ package tv.danmaku.ijk.media.example.activities;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
@@ -27,8 +28,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -102,6 +107,14 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 横屏时进沉浸式全屏：隐藏状态栏和导航栏，画面顶到四条边。
+        // 不这样做的话系统按 insets 把窗口内缩，1272 高的屏里状态栏+导航栏要占
+        // 141+56=197px（15.5%），横屏看视频时这两条栏纯属浪费。
+        // 竖屏不隐藏，保持和列表页一致的行为。
+        getWindow().setDecorFitsSystemWindows(false);
+        applyImmersive();
+
         setContentView(R.layout.activity_player);
 
         mSettings = new Settings(this);
@@ -200,6 +213,58 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mBackPressed = true;
 
         super.onBackPressed();
+    }
+
+    /**
+     * Activity 声明了 configChanges="orientation|screenSize"，所以旋转不会重建 Activity，
+     * 这里必须自己把新尺寸告诉播放器视图：没有这次 requestLayout，按旧宽高算出来的
+     * MeasureHelper 结果会继续生效，画面就会停在旧比例上被拉伸。
+     */
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 横竖屏切换要重新决定要不要沉浸式
+        applyImmersive();
+        if (mVideoView != null) {
+            mVideoView.requestLayout();
+            // 旋转期间 MediaController 也得重新贴底，否则进度条位置会停在旧方向
+            mVideoView.invalidate();
+        }
+    }
+
+    /**
+     * 只在横屏时隐藏系统栏。
+     *
+     * 坑：setDecorFitsSystemWindows(false) 是全局开关，一开竖屏的内容也会顶进状态栏，
+     * 工具栏上半截直接被盖住。所以竖屏必须把它设回 true，让系统重新做 insets 内缩。
+     *
+     * immersive 状态会在用户划一下（临时显示状态栏）后被系统清掉，
+     * 所以 onConfigurationChanged / onResume 都要重新贴一次。
+     */
+    private void applyImmersive() {
+        int orientation = getResources().getConfiguration().orientation;
+        boolean landscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
+
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (landscape) {
+            getWindow().setDecorFitsSystemWindows(false);
+            controller.hide(WindowInsetsCompat.Type.systemBars());
+            controller.setSystemBarsBehavior(
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        } else {
+            // 转回竖屏：把窗口交还给 insets 处理，否则工具栏会被状态栏切掉一截
+            getWindow().setDecorFitsSystemWindows(true);
+            controller.show(WindowInsetsCompat.Type.systemBars());
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 用户从屏幕边缘划一下会临时唤出系统栏，把 immersive 状态清掉，
+        // 回到前台时要重新贴上，否则横屏时会莫名其妙多出两条栏。
+        applyImmersive();
     }
 
     @Override

@@ -984,8 +984,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mSettings.getEnableNoView())
             mAllRenders.add(RENDER_NONE);
 
+        // 没开任何渲染器时默认用 TextureView：只有它实现了 setVideoRotation()，
+        // SurfaceView 的旋转实现是空的（只打一行 log 就丢掉），横屏后画面不会跟着转，
+        // 而是停在解码器给的原始朝向被拉成竖条。
         if (mAllRenders.isEmpty())
-            mAllRenders.add(RENDER_SURFACE_VIEW);
+            mAllRenders.add(RENDER_TEXTURE_VIEW);
         mCurrentRender = mAllRenders.get(mCurrentRenderIndex);
         setRender(mCurrentRender);
     }
