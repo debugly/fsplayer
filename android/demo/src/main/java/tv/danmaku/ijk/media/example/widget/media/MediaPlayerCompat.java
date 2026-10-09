@@ -21,8 +21,25 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.MediaPlayerProxy;
 import tv.danmaku.ijk.media.player.TextureMediaPlayer;
+import tv.danmaku.ijk.media.example.player.Media3MediaPlayer;
+import tv.danmaku.ijk.media.example.player.Media3TrackInfo;
 
 public class MediaPlayerCompat {
+
+    /** 取出当前实例（可能是 TextureMediaPlayer 代理）背后的 Media3 播放器。 */
+    public static Media3MediaPlayer getMedia3MediaPlayer(IMediaPlayer mp) {
+        if (mp == null) {
+            return null;
+        }
+        if (mp instanceof Media3MediaPlayer) {
+            return (Media3MediaPlayer) mp;
+        }
+        if (mp instanceof MediaPlayerProxy
+                && ((MediaPlayerProxy) mp).getInternalMediaPlayer() instanceof Media3MediaPlayer) {
+            return (Media3MediaPlayer) ((MediaPlayerProxy) mp).getInternalMediaPlayer();
+        }
+        return null;
+    }
     public static String getName(IMediaPlayer mp) {
         if (mp == null) {
             return "null";
@@ -55,22 +72,42 @@ public class MediaPlayerCompat {
 
     public static void selectTrack(IMediaPlayer mp, int stream) {
         IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer == null)
+        if (ijkMediaPlayer != null) {
+            ijkMediaPlayer.selectTrack(stream);
             return;
-        ijkMediaPlayer.selectTrack(stream);
+        }
+        Media3MediaPlayer media3 = getMedia3MediaPlayer(mp);
+        if (media3 != null)
+            media3.selectTrack(stream);
     }
 
     public static void deselectTrack(IMediaPlayer mp, int stream) {
         IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer == null)
+        if (ijkMediaPlayer != null) {
+            ijkMediaPlayer.deselectTrack(stream);
             return;
-        ijkMediaPlayer.deselectTrack(stream);
+        }
+        Media3MediaPlayer media3 = getMedia3MediaPlayer(mp);
+        if (media3 != null)
+            media3.deselectTrack(stream);
     }
 
     public static int getSelectedTrack(IMediaPlayer mp, int trackType) {
         IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer == null)
+        if (ijkMediaPlayer != null)
+            return ijkMediaPlayer.getSelectedTrack(trackType);
+
+        // Media3 没有「按 type 返回流下标」这回事：选中与否由
+        // TrackSelectionOverride / 自适应选择决定，下标取当前选中组的下标。
+        Media3MediaPlayer media3 = getMedia3MediaPlayer(mp);
+        if (media3 == null)
             return -1;
-        return ijkMediaPlayer.getSelectedTrack(trackType);
+        int[] trackTypes = Media3TrackInfo.media3TrackTypeOf(trackType);
+        for (int i = 0; i < trackTypes.length; i++) {
+            int index = media3.getSelectedTrackIndex(trackTypes[i]);
+            if (index >= 0)
+                return index;
+        }
+        return -1;
     }
 }

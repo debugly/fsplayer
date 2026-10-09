@@ -19,6 +19,7 @@ package tv.danmaku.ijk.media.example.player;
 
 import android.content.Context;
 import android.net.Uri;
+import android.text.TextUtils;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
@@ -29,9 +30,12 @@ import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.TrackSelectionOverride;
+import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.exoplayer.ExoPlayer;
 
+import java.util.List;
 import java.util.Map;
 
 import tv.danmaku.ijk.media.player.AbstractMediaPlayer;
@@ -329,6 +333,124 @@ public class Media3MediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public ITrackInfo[] getTrackInfo() {
-        return new ITrackInfo[0];
+        return Media3TrackInfo.fromTracks(mExoPlayer == null ? null : mExoPlayer.getCurrentTracks());
+    }
+
+    /**
+     * 选轨。
+     *
+     * ijk 那边是「按流 id 选」，Media3 没有这个概念——自适应轨道（HLS/DASH 的
+     * 多档码率）要换档得设 TrackSelectionParameters，自适应组内的轨道之间是
+     * 互斥选择，Media3 会自己按带宽挑。这里只处理「同一 type 有多个互斥的非
+     * 自适应组」的情况（比如外挂字幕、多音轨），按 type 强制选中目标那一组。
+     *
+     * index 与 getTrackInfo() 的下标对应。
+     */
+    public void selectTrack(int index) {
+        Tracks tracks = mExoPlayer == null ? null : mExoPlayer.getCurrentTracks();
+        Tracks.Group target = findGroup(tracks, index);
+        if (target == null)
+            return;
+        int trackInGroup = trackIndexInGroup(tracks, index);
+
+        if (target.getType() == C.TRACK_TYPE_TEXT) {
+            // 字幕轨走 TrackSelectionOverride：强制选中目标组的那条轨道，
+            // 同时把同 type 的其它 override 清掉，否则「只能选一个」的
+            // 限制会让 Media3 抛异常。
+            mExoPlayer.setTrackSelectionParameters(
+                    mExoPlayer.getTrackSelectionParameters().buildUpon()
+                            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                            .setOverrideForType(new TrackSelectionOverride(
+                                    target.getMediaTrackGroup(), trackInGroup))
+                            .build());
+        } else {
+            // 音频/视频：设成「只认这一组的语言」，Media3 会在该组里选；
+            // 自适应组仍保持自动（换码率该由 ABR 决定，不该手动钉死）。
+            Format format = target.getTrackFormat(trackInGroup);
+            String language = format != null ? format.language : null;
+            if (TextUtils.isEmpty(language))
+                return;
+            mExoPlayer.setTrackSelectionParameters(
+                    mExoPlayer.getTrackSelectionParameters().buildUpon()
+                            .setPreferredAudioLanguage(language)
+                            .build());
+        }
+    }
+
+    public void deselectTrack(int index) {
+        Tracks tracks = mExoPlayer == null ? null : mExoPlayer.getCurrentTracks();
+        Tracks.Group target = findGroup(tracks, index);
+        // 只有关掉字幕轨有明确语义：清掉 override 就回到自动选择。
+        if (target == null || target.getType() != C.TRACK_TYPE_TEXT)
+            return;
+        mExoPlayer.setTrackSelectionParameters(
+                mExoPlayer.getTrackSelectionParameters().buildUpon()
+                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                        .build());
+    }
+
+    /**
+     * 一个 group 在扁平列表里占几项：自适应组每档一条，非自适应组整体一条。
+     */
+    private static int flatSizeOf(Tracks.Group group) {
+        return (group.isAdaptiveSupported() && group.length > 1) ? group.length : 1;
+    }
+
+    /**
+     * 把 getTrackInfo() 的扁平下标映射回 group。返回 null 表示越界。
+     */
+    private static Tracks.Group findGroup(Tracks tracks, int index) {
+        if (tracks == null || index < 0)
+            return null;
+        int flat = 0;
+        for (Tracks.Group group : tracks.getGroups()) {
+            int size = flatSizeOf(group);
+            if (index < flat + size)
+                return group;
+            flat += size;
+        }
+        return null;
+    }
+
+    /** 扁平下标落在一个自适应组内时的组内下标；非自适应组恒为 0。 */
+    private static int trackIndexInGroup(Tracks tracks, int index) {
+        if (tracks == null || index < 0)
+            return 0;
+        int flat = 0;
+        for (Tracks.Group group : tracks.getGroups()) {
+            int size = flatSizeOf(group);
+            if (index < flat + size)
+                return (size == group.length) ? index - flat : 0;
+            flat += size;
+        }
+        return 0;
+    }
+
+    /** 与扁平下标对应的 TrackGroup id，避免上层再依赖 Media3 类型。 */
+    public String getTrackGroupId(int index) {
+        Tracks tracks = mExoPlayer == null ? null : mExoPlayer.getCurrentTracks();
+        Tracks.Group group = findGroup(tracks, index);
+        return group == null ? null : group.getMediaTrackGroup().id;
+    }
+
+    /** 当前选中的该 media3 类型轨道在 getTrackInfo() 里的下标，没有则 -1。 */
+    public int getSelectedTrackIndex(int media3TrackType) {
+        Tracks tracks = mExoPlayer == null ? null : mExoPlayer.getCurrentTracks();
+        if (tracks == null)
+            return -1;
+        int flat = 0;
+        for (Tracks.Group group : tracks.getGroups()) {
+            boolean hit = group.getType() == media3TrackType && group.isSelected();
+            int size = flatSizeOf(group);
+            if (hit) {
+                for (int i = 0; i < size; i++) {
+                    if (group.isTrackSelected(i))
+                        return flat + i;
+                }
+                return flat;
+            }
+            flat += size;
+        }
+        return -1;
     }
 }
