@@ -21,14 +21,15 @@ on:
 jobs:
   build:
     name: build-aura-apk
-    runs-on: ubuntu-latest
+    # pin ubuntu-24.04：ubuntu-latest 将在 2026-10-19 迁移到 Ubuntu 26，自带 Android SDK 环境可能变化
+    runs-on: ubuntu-24.04
     # 复用 fsplayer-maven environment 里的 keystore secret（正式签名）；该 environment
     # 没有保护规则，不会卡住运行。没配 keystore 就退回 debug 签名。
     environment: fsplayer-maven
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
           submodules: recursive
           # 拉完整历史 + tag，供 changelog 生成「上一个 Aura tag..HEAD」的差异
@@ -47,7 +48,7 @@ jobs:
 
     - name: Set up JDK 17
       if: ${{ env.HAS_ANDROID == '1' }}
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v6
       with:
         distribution: temurin
         java-version: '17'
@@ -118,7 +119,7 @@ jobs:
           echo ""
           echo "- Aura-android-${VERSION}.apk (applicationId com.debugly.fsplayer.demo)"
           echo "- ABIs: ${{ inputs.abis }}"
-          echo "- license: LGPL (see repo LICENSE)"
+          echo "- license: LGPL-2.1-or-later (see repo LICENSE)"
           echo ""
           if [[ -n "$PREV_TAG" ]]; then
             echo "## Changes since ${PREV_TAG}"
