@@ -86,7 +86,7 @@ list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "/apple/")
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijkhls")
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijksegment")
 
-add_library(ijkplayer SHARED ${SOURCE_IJKJ4A} ${SOURCE_SDL} ${SOURCE_IJKPLAYER} ${SOURCE_SOUNDTOUCH})
+add_library(fsplayer SHARED ${SOURCE_IJKJ4A} ${SOURCE_SDL} ${SOURCE_IJKPLAYER} ${SOURCE_SOUNDTOUCH})
 
 # 排查用（二分定位）：./gradlew :demo:assembleDebug -PfsNoVulkan=1
 # 让 SDL_VoutAndroid_CreateForVulkan 直接返回 NULL，用来判断崩溃是否来自 Vulkan 渲染器本身。
@@ -133,7 +133,7 @@ find_library(m-lib m)
 find_library(mediandk-lib mediandk)
 find_library(dl-lib dl)
 
-target_link_libraries(ijkplayer
+target_link_libraries(fsplayer
     "-Wl,--start-group"
     ijkffmpeg-lib
     ${DAV1D_LIB}

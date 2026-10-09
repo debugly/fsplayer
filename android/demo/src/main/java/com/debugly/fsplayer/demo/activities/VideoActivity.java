@@ -212,7 +212,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         // init player
         FSPlayer.loadLibrariesOnce(null);
-        FSPlayer.native_profileBegin("libijkplayer.so");
+        FSPlayer.native_profileBegin("libfsplayer.so");
 
         mVideoView = (FSVideoView) findViewById(R.id.video_view);
         mVideoView.setMediaController(mMediaController);

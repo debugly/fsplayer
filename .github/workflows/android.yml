@@ -168,7 +168,7 @@ jobs:
         gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "👏👏 FSPlayer Android ${TAG}" \
           --notes "Android AAR + demo APK.
 
-        - ijkplayer-${VERSION}.aar: the library (namespace com.debugly.ijkplayer), FFmpeg statically linked into libijkplayer.so, libsmb2.so shipped alongside
+        - ijkplayer-${VERSION}.aar: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
         - fsplayer-demo-${VERSION}.apk: the demo app (applicationId com.debugly.aura)
         - ABIs: ${{ inputs.abis }}
         - FFmpeg product: ffmpeg8, LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree

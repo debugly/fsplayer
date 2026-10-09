@@ -3,11 +3,11 @@
 # These rules ship inside the AAR (consumerProguardFiles) and are applied
 # automatically by AGP when the consumer enables minification.
 #
-# Why they are required: libijkplayer.so has Java member *names* baked into it.
+# Why they are required: libfsplayer.so has Java member *names* baked into it.
 #   * JNI_OnLoad registers the whole native table (60+ methods) via RegisterNatives by
 #     name+signature (_prepareAsync, _start, _stop, _release, _setDataSource, seekTo,
 #     getDuration, isPlaying, setVolume, getIFormatExtensions, startExactRecord, ...),
-#     so the Java names on IjkMediaPlayer must match the table in the .so exactly.
+#     so the Java names on FSPlayer must match the table in the .so exactly.
 #   * At runtime the native side calls back into Java with GetStaticMethodID
 #     (postEventFromNative, postAudioSamplesEventFromNative, onNativeInvoke,
 #     onSelectCodec) and reads FSSubtitlePreference fields with GetFieldID
@@ -20,7 +20,7 @@
 
 # 1. JNI entry point: class name and every member name must survive
 #    (the RegisterNatives table in ijkplayer_jni.c lists these by name).
--keep class com.debugly.fsplayer.player.IjkMediaPlayer { *; }
+-keep class com.debugly.fsplayer.player.FSPlayer { *; }
 
 # 2. Second native entry point (av_base64_encode).
 -keep class com.debugly.fsplayer.player.ffmpeg.FFmpegApi { *; }
@@ -34,7 +34,7 @@
 -keep interface com.debugly.fsplayer.player.misc.IAndroidIO { *; }
 
 # 5. Library loader extension point.
--keep interface com.debugly.fsplayer.player.IjkLibLoader { *; }
+-keep interface com.debugly.fsplayer.player.FSLibLoader { *; }
 
 # 6. Annotation-driven safety net: anything tagged as a native touchpoint stays.
 -keep class com.debugly.fsplayer.player.annotations.** { *; }

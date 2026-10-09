@@ -316,7 +316,7 @@ public final class FSPlayer extends AbstractMediaPlayer {
                 if (libLoader == null)
                     libLoader = sLocalLibLoader;
 
-                libLoader.loadLibrary("ijkplayer");
+                libLoader.loadLibrary("fsplayer");
                 mIsLibLoaded = true;
             }
         }
