@@ -34,6 +34,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 本地 debug 包和 CI 的 release 包 applicationId 相同但签名不同，
+            // 装到同一台手机上会互相覆盖/签名冲突。加 .debug 后缀让两者并存，
+            // 各自独立的 RecentMedia、设置和权限，不用卸载重装。
+            applicationIdSuffix ".debug"
+            // 装包脚本（aura-apk 等）只发布 release，这里只影响本地调试。
+            versionNameSuffix "-debug"
+        }
         release {
             minifyEnabled false
             signingConfig System.getenv("FS_KEYSTORE_FILE") != null
