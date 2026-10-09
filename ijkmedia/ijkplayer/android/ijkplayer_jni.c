@@ -1006,8 +1006,11 @@ static int message_loop(void *arg)
     message_loop_n(env, mp);
 
 LABEL_RETURN:
-    ijkmp_dec_ref_p(&mp);
-
+    /* The message thread does not own a reference: ijkmp_prepare_async_l no
+     * longer inc_refs for it and ijkmp_destroy joins the thread before freeing
+     * mp. A dec_ref here drops the count one too far; after reset() the freed
+     * mp's memory is reused by the new instance, which then gets destroyed
+     * underneath setDataSource (SIGSEGV in msg_queue_start, ffplayer == NULL). */
     MPTRACE("message_loop exit");
     return 0;
 }
