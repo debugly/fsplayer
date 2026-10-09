@@ -1,5 +1,6 @@
 ## tag 1.1.1
 
+- support setting the smb2 protocol timeout via the rw_timeout option, fix #31
 - fix HEIC tile-grid green tint
 - refactor: vout output avframe instead of CVPixelBuffer,SDL_VoutOverlay aggregates the AVFrames of the tile grid pieces
 
