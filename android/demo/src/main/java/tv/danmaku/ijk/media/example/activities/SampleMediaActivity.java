@@ -56,9 +56,14 @@ public class SampleMediaActivity extends AppActivity  {
         if (!show)
             return show;
 
-        MenuItem item = menu.findItem(R.id.action_recent);
-        if (item != null)
-            item.setVisible(false);
+        // 这个页面本身就是 Sample，工具栏再放一个 Sample 入口可以无限点进来，隐藏掉
+        MenuItem sample = menu.findItem(R.id.action_sample);
+        if (sample != null)
+            sample.setVisible(false);
+
+        MenuItem recent = menu.findItem(R.id.action_recent);
+        if (recent != null)
+            recent.setVisible(false);
 
         return true;
     }
