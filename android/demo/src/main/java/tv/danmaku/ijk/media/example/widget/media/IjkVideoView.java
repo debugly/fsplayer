@@ -1115,6 +1115,13 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         return text;
     }
 
+    /** 当前真正在用的播放器实例。菜单里那些需要 IjkMediaPlayer 特有 API
+     *  （声道选择、三轴旋转等）的入口必须走这个，不能走 MediaPlayerService：
+     *  后者的静态字段只有后台播放时才赋值，前台播放一直是 null。 */
+    public IMediaPlayer getMediaPlayer() {
+        return mMediaPlayer;
+    }
+
     public IMediaPlayer createPlayer(int playerType) {
         IMediaPlayer mediaPlayer = null;
 

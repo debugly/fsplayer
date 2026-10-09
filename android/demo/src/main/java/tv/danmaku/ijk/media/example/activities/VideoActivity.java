@@ -288,9 +288,18 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         IjkMediaPlayer.native_profileEnd();
     }
 
-    /** 拿当前播放器（系统播放器/代理包装时返回 null）。 */
+    /**
+     * 拿当前正在使用的 IjkMediaPlayer（系统播放器/代理包装时返回 null）。
+     *
+     * 必须从 mVideoView 取：MediaPlayerService.getMediaPlayer() 的静态字段只有
+     * 后台播放（initBackground/enterBackground）才会被赋值，前台播放一直是 null，
+     * 用它会让声道切换、三轴旋转这些菜单永远提示"请切换播放器"。
+     */
     private IjkMediaPlayer getIjkPlayer() {
-        return MediaPlayerCompat.getIjkMediaPlayer(MediaPlayerService.getMediaPlayer());
+        if (mVideoView == null) {
+            return null;
+        }
+        return MediaPlayerCompat.getIjkMediaPlayer(mVideoView.getMediaPlayer());
     }
 
     /** 复用 demo 的 toast 展示方式。 */
@@ -347,7 +356,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             // 新 API 演示：声道选择（对应 iOS 的 setAudioChannel:）
             IjkMediaPlayer mp = getIjkPlayer();
             if (mp == null) {
-                showToast("Audio channel: switch Settings > Player to IJK Media Player");
+                showToast(R.string.need_ijk_player);
                 return true;
             }
             int channel = mp.getAudioChannel();
@@ -368,7 +377,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             // 新 API 演示：画面三轴旋转（对应 iOS 的 x/y/zRotateDegrees）
             IjkMediaPlayer mp = getIjkPlayer();
             if (mp == null) {
-                showToast("Rotate: switch Settings > Player to IJK Media Player");
+                showToast(R.string.need_ijk_player);
                 return true;
             }
             float x = mp.getXRotateDegrees();

@@ -77,6 +77,9 @@
     <string name="audio_channel_stereo">Audio channel: stereo</string>
     <string name="audio_channel_left">Audio channel: left only</string>
     <string name="audio_channel_right">Audio channel: right only</string>
+    <!-- 需要 IjkMediaPlayer 特有能力、但当前是系统播放器时的提示。设置页里
+         这一项的真实标题是 "Choose Player"（General 分组内），别再写 "Player"。 -->
+    <string name="need_ijk_player">Not supported by the current player. Choose Player &gt; IjkMediaPlayer in Settings &gt; General.</string>
     <string name="rotate_x">Rotate X +180 (flip)</string>
     <string name="rotate_y">Rotate Y +180 (flip)</string>
     <string name="rotate_z">Rotate Z +90</string>
