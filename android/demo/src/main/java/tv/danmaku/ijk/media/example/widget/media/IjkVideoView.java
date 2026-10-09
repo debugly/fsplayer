@@ -48,6 +48,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
+import tv.danmaku.ijk.media.example.player.Media3MediaPlayer;
 import tv.danmaku.ijk.media.player.FSHudView;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
@@ -1116,8 +1117,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
             case Settings.PV_PLAYER__IjkMediaPlayer:
                 text = context.getString(R.string.VideoView_player_IjkMediaPlayer);
                 break;
-            case Settings.PV_PLAYER__IjkExoMediaPlayer:
-                text = context.getString(R.string.VideoView_player_IjkExoMediaPlayer);
+            case Settings.PV_PLAYER__AndroidXMedia3:
+                text = context.getString(R.string.VideoView_player_AndroidXMedia3);
                 break;
             default:
                 text = context.getString(R.string.N_A);
@@ -1137,9 +1138,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         IMediaPlayer mediaPlayer = null;
 
         switch (playerType) {
-            case Settings.PV_PLAYER__IjkExoMediaPlayer: {
-//                IjkExoMediaPlayer IjkExoMediaPlayer = new IjkExoMediaPlayer(mAppContext);
-//                mediaPlayer = IjkExoMediaPlayer;
+            case Settings.PV_PLAYER__AndroidXMedia3: {
+                Media3MediaPlayer m3Player = new Media3MediaPlayer(mAppContext);
+                if (mUri != null)
+                    m3Player.setDataSource(mAppContext, mUri, mHeaders);
+                mediaPlayer = m3Player;
             }
             break;
             case Settings.PV_PLAYER__AndroidMediaPlayer: {
