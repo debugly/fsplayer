@@ -20,29 +20,29 @@
 
 # 1. JNI entry point: class name and every member name must survive
 #    (the RegisterNatives table in ijkplayer_jni.c lists these by name).
--keep class tv.danmaku.ijk.media.player.IjkMediaPlayer { *; }
+-keep class com.debugly.fsplayer.player.IjkMediaPlayer { *; }
 
 # 2. Second native entry point (av_base64_encode).
--keep class tv.danmaku.ijk.media.player.ffmpeg.FFmpegApi { *; }
+-keep class com.debugly.fsplayer.player.ffmpeg.FFmpegApi { *; }
 
 # 3. Subtitle style object: native code reads these fields by name.
--keep class tv.danmaku.ijk.media.player.FSSubtitlePreference { *; }
+-keep class com.debugly.fsplayer.player.FSSubtitlePreference { *; }
 
 # 4. Interfaces implemented by the consumer app but invoked from native code
 #    (the interface class name is looked up with FindClass and must stay).
--keep interface tv.danmaku.ijk.media.player.misc.IMediaDataSource { *; }
--keep interface tv.danmaku.ijk.media.player.misc.IAndroidIO { *; }
+-keep interface com.debugly.fsplayer.player.misc.IMediaDataSource { *; }
+-keep interface com.debugly.fsplayer.player.misc.IAndroidIO { *; }
 
 # 5. Library loader extension point.
--keep interface tv.danmaku.ijk.media.player.IjkLibLoader { *; }
+-keep interface com.debugly.fsplayer.player.IjkLibLoader { *; }
 
 # 6. Annotation-driven safety net: anything tagged as a native touchpoint stays.
--keep class tv.danmaku.ijk.media.player.annotations.** { *; }
+-keep class com.debugly.fsplayer.player.annotations.** { *; }
 -keepclasseswithmembers class * {
-    @tv.danmaku.ijk.media.player.annotations.CalledByNative <methods>;
+    @com.debugly.fsplayer.player.annotations.CalledByNative <methods>;
 }
 -keepclasseswithmembers class * {
-    @tv.danmaku.ijk.media.player.annotations.AccessedByNative <fields>;
+    @com.debugly.fsplayer.player.annotations.AccessedByNative <fields>;
 }
 
 # 7. Belt and braces: keep the names of any native methods, even when the consumer

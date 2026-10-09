@@ -3,9 +3,9 @@ plugins {
 }
 
 android {
-    // 复刻自 ijkplayer-example，所以 R 的包名保持 tv.danmaku.ijk.media.example；
-    // applicationId 仍用 fsplayer 的，方便 adb 脚本继续按老包名拉起。
-    namespace 'tv.danmaku.ijk.media.example'
+    // R 的包名 = Java 源码包名 = com.debugly.fsplayer.demo；
+    // applicationId 仍是 Aura 的 com.debugly.aura，方便 adb 脚本按老包名拉起。
+    namespace 'com.debugly.fsplayer.demo'
     // Media3 1.11.x 要求 compileSdk 36。targetSdk 仍保持 35（不改变运行时行为），
     // compileSdk 只决定能调用哪些 API。
     compileSdk 36

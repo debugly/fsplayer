@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.debugly.ijkplayer'
+    namespace 'com.debugly.fsplayer'
     compileSdk 35
     ndkVersion "27.3.13750724"
 

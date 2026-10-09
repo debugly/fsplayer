@@ -13,11 +13,11 @@
         android:layout_height="match_parent"
         android:background="#0099cc">
 
-        <tv.danmaku.ijk.media.example.widget.media.IjkVideoView
+        <com.debugly.fsplayer.demo.widget.media.IjkVideoView
             android:id="@+id/video_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="center"></tv.danmaku.ijk.media.example.widget.media.IjkVideoView>
+            android:layout_gravity="center"></com.debugly.fsplayer.demo.widget.media.IjkVideoView>
 
         <!-- 上下拖拽切换视频时的预览层：跟手移动，松手过半才落到新地址 -->
         <FrameLayout
@@ -49,7 +49,7 @@
             android:visibility="gone" />
 
         <!-- fsplayer 的统计卡片（对齐 iOS FSHudCardView），由 "HUD" 菜单项开关 -->
-        <tv.danmaku.ijk.media.player.FSHudView
+        <com.debugly.fsplayer.player.FSHudView
             android:id="@+id/hud_view"
             android:layout_width="300dp"
             android:layout_height="wrap_content"
