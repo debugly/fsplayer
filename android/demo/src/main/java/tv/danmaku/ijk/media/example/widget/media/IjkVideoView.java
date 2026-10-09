@@ -826,8 +826,14 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        if (isInPlaybackState() && mMediaController != null) {
-            toggleMediaControlsVisiblity();
+        if (mMediaController != null && mMediaPlayer != null) {
+            if (isInPlaybackState()) {
+                toggleMediaControlsVisiblity();
+            } else if (mCurrentState == STATE_PREPARING) {
+                // 还在起播（首帧未到）时点击：控制条此时是隐藏的（action bar 跟随它），
+                // 但用户需要能看到标题栏/返回键，所以只显示、不做切换。
+                mMediaController.show();
+            }
         }
         return false;
     }
