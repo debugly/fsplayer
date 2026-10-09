@@ -321,6 +321,10 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             if (item != null)
                 item.setVisible(false);
         }
+        // 渲染器只有一种可选时，切换是空操作，直接不露这个入口。
+        MenuItem renderItem = menu.findItem(R.id.action_toggle_render);
+        if (renderItem != null)
+            renderItem.setVisible(mVideoView != null && mVideoView.canToggleRender());
         return true;
     }
 

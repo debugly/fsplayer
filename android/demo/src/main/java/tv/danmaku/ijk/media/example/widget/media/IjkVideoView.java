@@ -1053,6 +1053,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         setRender(mCurrentRender);
     }
 
+    /** 只有一个候选时切换是空操作，菜单入口应当隐藏而不是让用户按了没反应。 */
+    public boolean canToggleRender() {
+        return mAllRenders.size() > 1;
+    }
+
     public int toggleRender() {
         mCurrentRenderIndex++;
         mCurrentRenderIndex %= mAllRenders.size();
