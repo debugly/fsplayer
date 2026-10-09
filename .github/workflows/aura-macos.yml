@@ -82,13 +82,14 @@ jobs:
           universal) ARCH_LIST="arm64 x86_64" ;;
           *)          ARCH_LIST="$ARCHS" ;;
         esac
-        # FSPlayer.yml 里 framework 的 deployment target 还是 10.14，Xcode 16 起不再支持，
-        # 这里按 AuraPlayer 自己的 12.0 覆盖。
+        # ARCH_LIST 给后面的 release notes 用：把 universal 还原成具体架构名。
+        echo "ARCH_LIST=$ARCH_LIST" >> "$GITHUB_ENV"
+        # 不覆盖 MACOSX_DEPLOYMENT_TARGET，让 FSPlayer.yml 里的 10.14 生效。
         xcodebuild -workspace examples/macos/AuraPlayer.xcworkspace \
           -scheme AuraPlayer \
           -configuration Release \
           -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-          ARCHS="$ARCH_LIST" ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET=12.0 \
+          ARCHS="$ARCH_LIST" ONLY_ACTIVE_ARCH=NO \
           CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
           build
 
@@ -112,7 +113,7 @@ jobs:
           echo "Aura demo app for macOS."
           echo ""
           echo "- Aura-macos-${VERSION}.zip (bundle id cn.debugly.AuraPlayer, app sandbox + hardened runtime)"
-          echo "- Architectures: ${{ inputs.archs }}"
+          echo "- Architectures: ${ARCH_LIST// /, }"
           echo "- Minimum macOS: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$RUNNER_TEMP/DerivedData/Build/Products/Release/AuraPlayer.app/Contents/Info.plist" 2>/dev/null || echo 'see Info.plist')"
           echo "- license: LGPL-2.1-or-later (see repo LICENSE)"
           echo ""
