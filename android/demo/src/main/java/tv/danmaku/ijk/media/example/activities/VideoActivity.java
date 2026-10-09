@@ -17,6 +17,9 @@
 
 package tv.danmaku.ijk.media.example.activities;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -47,6 +50,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.TextView;
 
 import java.io.File;
@@ -225,6 +229,8 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         super.onConfigurationChanged(newConfig);
         // 横竖屏切换要重新决定要不要沉浸式
         applyImmersive();
+        // 手势进行到一半被旋转打断的话，播放器会停在非零位移上，直接归位
+        resetSwipeTranslation();
         if (mVideoView != null) {
             mVideoView.requestLayout();
             // 旋转期间 MediaController 也得重新贴底，否则进度条位置会停在旧方向
@@ -269,6 +275,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
     @Override
     protected void onStop() {
+        resetSwipeTranslation();
         super.onStop();
 
         if (mBackPressed || !mVideoView.isBackgroundPlayEnabled()) {
@@ -536,14 +543,17 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         if (mPlaylist == null || index < 0 || index >= mPlaylist.size())
             return;
         if (mVideoView.isPreparing() || mPlaylistSwitching) {
-            // 正在准备 / 正在切换：此时 stopPlayback+setVideoPath 会在主线程阻塞（ANR），
+            // 正在准备 / 正在切换：此时 setVideoPath 会在主线程阻塞（ANR），
             // 而且 native 侧上一次的播放器可能还没完全销毁，反复重建会踩坏堆。忽略这次手势。
             return;
         }
         mPlaylistSwitching = true;
         mPlaylistIndex = index;
-        mVideoView.stopPlayback();
-        mVideoView.setVideoPath(mPlaylist.get(index));
+        // 优先复用当前播放器实例切数据源，避免 openVideo() 里「销毁旧 ffp + 立刻新建」
+        // 挤在同一调用栈导致的 native 崩溃；没有可复用实例时（冷启动）才退回冷启动路径。
+        if (!mVideoView.switchToUrl(mPlaylist.get(index))) {
+            mVideoView.setVideoPath(mPlaylist.get(index));
+        }
         mVideoView.start();
         // native 侧播放器重建完成前不接受下一次切换；onPrepared 里也会清，这里兜个底
         mVideoView.postDelayed(() -> mPlaylistSwitching = false, 1500);
@@ -558,48 +568,59 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         return Color.HSVToColor(hsv);
     }
 
-    /** 有播放列表时的上下拖拽切换视频：上拖预览下一条、下拖预览上一条，松手过半才真正切换。 */
+    /**
+     * 有播放列表时的上下拖拽切换视频：上拖看下一条、下拖看上一条，跟手滑动，
+     * 松手时预览已经露出过半才真正重建播放器加载新地址，头尾不循环。
+     *
+     * 关键点是预览层初始停在屏幕外（上拖时在下方 -height 处，下拖时在上方 +height 处），
+     * 而不是一开始就在原位——那样第一帧就铺满全屏，看起来像"啪"地盖上去，没有滑动的过程。
+     * 位移按阻尼映射到 [-1, 1]，封顶到刚好露出整屏。
+     */
     private void setupPlaylistSwipe() {
         if (mPlaylist == null || mPlaylist.size() <= 1)
             return;
         final float slop = ViewConfiguration.get(this).getScaledTouchSlop();
-        final float previewHeight = Math.max(mVideoView.getHeight(), 1);
-        final int threshold = (int) (previewHeight / 2);
 
         mVideoView.setOnTouchListener(new View.OnTouchListener() {
             private float downX;
             private float downY;
             private boolean tracking;
             private int candidate = -1;
+            /** -1 表示预览在下方向上滑，+1 表示在上方向下滑 */
+            private int direction;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        downX = event.getX();
-                        downY = event.getY();
+                        // 用屏幕坐标：mVideoView 自己在被 setTranslationY 推着走，
+                        // getX()/getY() 是它的本地坐标，会跟着位移变化，手指不动 dy 也会变，
+                        // 形成「移动 → dy 变小 → 退回 → dy 变大」的反馈抖动。
+                        downX = event.getRawX();
+                        downY = event.getRawY();
                         tracking = false;
                         candidate = -1;
                         // 必须消费 DOWN 才能收到后续 MOVE/UP，进而判断滑动
                         return true;
 
                     case MotionEvent.ACTION_MOVE: {
-                        float dy = event.getY() - downY;
-                        float dx = event.getX() - downX;
+                        float dy = event.getRawY() - downY;
+                        float dx = event.getRawX() - downX;
                         // 超过触摸阈值、且垂直方向占优，才把这次手势当作拖拽切换
                         if (!tracking && Math.abs(dy) > slop && Math.abs(dy) > Math.abs(dx)) {
                             tracking = true;
-                            candidate = mPlaylistIndex + (dy < 0 ? 1 : -1);
+                            direction = dy < 0 ? -1 : 1;
+                            candidate = mPlaylistIndex - direction;
                             if (candidate < 0 || candidate >= mPlaylist.size()) {
                                 // 头尾不循环：到边了就直接放弃这次切换
                                 candidate = -1;
                                 tracking = false;
                                 return true;
                             }
-                            showSwipePreview(candidate);
+                            showSwipePreview(candidate, direction);
                         }
                         if (tracking && candidate >= 0)
-                            moveSwipePreview(dy, threshold);
+                            moveSwipe(dy);
                         return true;
                     }
 
@@ -618,13 +639,14 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
                             }
                             return true;
                         }
-                        float dy = event.getY() - downY;
-                        if (Math.abs(dy) > threshold) {
-                            // 露出过半：预览落位，再重建播放器加载新地址
-                            commitSwipePreview();
-                            playUrlAtIndex(candidate);
+                        // 先把 index 存下来：下面立刻会把 candidate 清零，
+                        // 而切视频要等落位动画结束才执行（见 commitSwipePreview）
+                        final int target = candidate;
+                        if (isPreviewPastHalfway()) {
+                            // 露出过半：补齐剩下的距离，落位后重建播放器加载新地址
+                            commitSwipePreview(target);
                         } else {
-                            // 没过半：预览弹回原位，什么都不做
+                            // 没过半：退回起点，什么都不做
                             cancelSwipePreview();
                         }
                         tracking = false;
@@ -637,40 +659,141 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
                 }
             }
 
-            private void showSwipePreview(int index) {
+            /** 预览层在屏幕外的静止位置：上拖时藏在下方，下拖时藏在上方。 */
+            private float parkedTranslation() {
+                int h = mSwipePreview.getHeight();
+                return direction < 0 ? h : -h;
+            }
+
+            private void showSwipePreview(int index, int dir) {
                 mSwipePreview.setBackgroundColor(previewColorFor(index));
                 mSwipePreviewLabel.setText((index + 1) + ". " + PlaylistFragment.displayName(mPlaylist.get(index)));
                 mSwipePreview.setVisibility(View.VISIBLE);
+                // 先摆到拼接起点（当前视频铺满、预览在屏外），第一帧绝不出现色块
+                applyProgress(0f);
             }
 
-            /** 跟手：位移取绝对值封顶到整屏，保证不会拖过头把预览甩出屏幕。 */
-            private void moveSwipePreview(float dy, int threshold) {
-                float offset = Math.max(-1f, Math.min(1f, dy / (float) threshold));
-                mSwipePreview.setTranslationY(offset * threshold);
+            /** 跟手：手指拖了多远换算成 0..1 的拼接进度。 */
+            private void moveSwipe(float dy) {
+                int h = mSwipePreview.getHeight();
+                if (h <= 0)
+                    return;
+                float dragged = direction < 0 ? -dy : dy;
+                applyProgress(Math.max(0f, Math.min(1f, dragged / h)));
             }
+
+            /**
+             * 拼接的核心：两个 view 位移方向相反，任意时刻首尾相接拼成一条连续的长带。
+             *
+             * progress=0：当前视频在原位铺满，预览整个在屏幕外（起始态）
+             * progress=1：当前视频移出屏幕，预览正好铺满（终态）
+             *
+             * 因为视频走的距离和预览走的距离相等，两者在屏幕上「接力」，
+             * 既不会同时可见（不会有色块盖住画面），中间也不会露出缝隙。
+             */
+            private void applyProgress(float progress) {
+                int h = mSwipePreview.getHeight();
+                if (h <= 0)
+                    return;
+                // 预览迎着手势方向进场：屏幕外 → 原位
+                mSwipePreview.setTranslationY(parkedTranslation() + direction * progress * h);
+                // 当前视频顺着手势方向离场：原位 → 屏幕外，与预览反向
+                mVideoView.setTranslationY(direction * progress * h);
+
+                // 视频那一层是独立的合成 surface（TextureView/SurfaceView），
+                // 平移父容器时它不总是跟着重绘，屏幕上会残留上一帧的位置形成重影。
+                // 显式 invalidate 强制它按新位移重绘。
+                mVideoView.invalidate();
+            }
+
+            /** 当前的拼接进度。 */
+            private float progress() {
+                int h = mSwipePreview.getHeight();
+                if (h <= 0)
+                    return 0f;
+                return (mSwipePreview.getTranslationY() - parkedTranslation()) / (direction * h);
+            }
+
+            /** 松手判定：预览露出 15% 就算切换，不用拖过半。 */
+            private boolean isPreviewPastHalfway() {
+                return progress() > SWIPE_COMMIT_THRESHOLD;
+            }
+
+            /** 露到这个比例就判定切换。15% 足够明确，又不用费力拖很远。 */
+            private static final float SWIPE_COMMIT_THRESHOLD = 0.15f;
 
             private void hideSwipePreview() {
                 mSwipePreview.animate().cancel();
-                mSwipePreview.setTranslationY(0);
+                mVideoView.animate().cancel();
+                applyProgress(0f);
                 mSwipePreview.setVisibility(View.GONE);
             }
 
-            private void commitSwipePreview() {
-                mSwipePreview.animate()
-                        .translationY(0)
-                        .setDuration(180)
-                        .withEndAction(() -> mSwipePreview.setVisibility(View.GONE))
-                        .start();
+            /**
+             * 切成功：把剩下的距离补完（预览铺满、当前视频移出），再重建播放器。
+             * 终点 progress=1 时两个 view 都处于「准备交棒」的姿态，接上新画面没有跳变。
+             */
+            private void commitSwipePreview(final int index) {
+                animateProgressTo(1f, 160, () -> {
+                    mSwipePreview.setVisibility(View.GONE);
+                    resetSwipeTranslation();
+                    playUrlAtIndex(index);
+                });
             }
 
+            /** 没切：退回拼接起点，当前视频回到原位。 */
             private void cancelSwipePreview() {
-                mSwipePreview.animate()
-                        .translationY(0)
-                        .setDuration(180)
-                        .withEndAction(() -> mSwipePreview.setVisibility(View.GONE))
-                        .start();
+                animateProgressTo(0f, 180, () -> {
+                    applyProgress(0f);
+                    mSwipePreview.setVisibility(View.GONE);
+                });
+            }
+
+            /**
+             * 补间整个拼接进度：先用系统动画驱动「视频的位移」，
+             * 每一帧再由同一个进度反推出预览的位移，保证两者永远同步、绝不脱节。
+             */
+            private void animateProgressTo(final float target, long duration, final Runnable end) {
+                final float start = progress();
+                if (Math.abs(start - target) < 0.001f) {
+                    applyProgress(target);
+                    end.run();
+                    return;
+                }
+                ValueAnimator animator = ValueAnimator.ofFloat(start, target);
+                animator.setDuration(duration);
+                animator.setInterpolator(new DecelerateInterpolator());
+                animator.addUpdateListener(a -> applyProgress((Float) a.getAnimatedValue()));
+                animator.addListener(new AnimatorListenerAdapter() {
+                    private boolean cancelled;
+
+                    @Override
+                    public void onAnimationCancel(Animator animation) {
+                        cancelled = true;
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (!cancelled)
+                            end.run();
+                    }
+                });
+                animator.start();
             }
         });
+    }
+
+    /** 手势被打断（旋转、切后台）时把画面归位，否则播放器会永远停在偏移的位置。 */
+    private void resetSwipeTranslation() {
+        if (mVideoView != null) {
+            mVideoView.animate().cancel();
+            mVideoView.setTranslationY(0);
+        }
+        if (mSwipePreview != null) {
+            mSwipePreview.animate().cancel();
+            mSwipePreview.setTranslationY(0);
+            mSwipePreview.setVisibility(View.GONE);
+        }
     }
 
     @Override

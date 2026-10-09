@@ -405,6 +405,66 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
     }
 
+    /**
+     * 复用当前播放器切换到另一个视频地址。
+     *
+     * 和 setVideoPath() 的区别是这里不销毁重建：setVideoPath 会走
+     * openVideo() -&gt; release(false) 把 native 实例整个 ffp_destroy 掉，
+     * 紧接着再 new IjkMediaPlayer() 新建。销毁和创建挤在同一个调用栈里，
+     * 旧实例的 Vulkan 渲染线程还没收尾，新实例就去抢设备，
+     * 结果 ijkmp_android_create() 里 SIGSEGV（fault addr 是变化的小整数）。
+     *
+     * 这里走 ijkplayer 设计的正规切换姿势：同一个 IjkMediaPlayer 实例
+     * reset() 之后换数据源，底层是 ffp_reset_internal 复用解封装/解码管线，
+     * Vulkan 上下文原封不动，不存在「旧实例销毁 vs 新实例创建」的交接窗口。
+     *
+     * @return true 表示切换已发起；false 表示当前没有可复用的实例，
+     *         调用方需要退回 setVideoPath() 走冷启动路径。
+     */
+    public boolean switchToUrl(String url) {
+        if (mMediaPlayer == null || TextUtils.isEmpty(url))
+            return false;
+
+        try {
+            // reset 不 release：native 实例留着，Vulkan device / 渲染线程继续用
+            mMediaPlayer.reset();
+
+            Uri uri = Uri.parse(url);
+            mUri = uri;
+            mSeekWhenPrepared = 0;
+
+            String scheme = uri.getScheme();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                    mSettings.getUsingMediaDataSource() &&
+                    (TextUtils.isEmpty(scheme) || scheme.equalsIgnoreCase("file"))) {
+                mMediaPlayer.setDataSource(new FileMediaDataSource(new File(uri.toString())));
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+                mMediaPlayer.setDataSource(mAppContext, uri, mHeaders);
+            } else {
+                mMediaPlayer.setDataSource(uri.toString());
+            }
+
+            // surface 在 reset 之后仍然绑着，这里重新绑一次确保不会丢
+            if (mSurfaceHolder != null)
+                bindSurfaceHolder(mMediaPlayer, mSurfaceHolder);
+            mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            mMediaPlayer.setScreenOnWhilePlaying(true);
+            mPrepareStartTime = System.currentTimeMillis();
+            mCurrentState = STATE_PREPARING;
+            mMediaPlayer.prepareAsync();
+            attachHudView();
+            requestLayout();
+            return true;
+        } catch (IOException | IllegalArgumentException ex) {
+            Log.w(TAG, "Unable to switch to " + url, ex);
+            mCurrentState = STATE_ERROR;
+            mTargetState = STATE_ERROR;
+            if (mErrorListener != null)
+                mErrorListener.onError(mMediaPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+            return false;
+        }
+    }
+
     public void setMediaController(IMediaController controller) {
         if (mMediaController != null) {
             mMediaController.hide();
