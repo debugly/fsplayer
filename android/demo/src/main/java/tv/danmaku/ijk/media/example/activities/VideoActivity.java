@@ -108,6 +108,21 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         context.startActivity(newIntent(context, videoPath, videoTitle));
     }
 
+    /**
+     * 带播放列表进入播放器：把整个列表和当前项的下标一起传过去，
+     * 这样播放页的播放列表（上滑切换、列表抽屉、播完自动下一条）
+     * 就是来源页展示的那份，而不是空列表。
+     */
+    public static void intentTo(Context context, String videoPath, String videoTitle,
+                                ArrayList<String> playlist, int playlistIndex) {
+        Intent intent = newIntent(context, videoPath, videoTitle);
+        if (playlist != null && playlist.size() > 1) {
+            intent.putStringArrayListExtra("videoPlaylist", new ArrayList<>(playlist));
+            intent.putExtra("videoPlaylistIndex", playlistIndex);
+        }
+        context.startActivity(intent);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -157,6 +172,22 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         // zlist 播放列表：微信「用其他应用打开」.zlist 时解析，默认播第一条
         resolveZlist(intent, intentAction);
+
+        // 来源页（示例列表、文件列表等）带过来的播放列表：
+        // 整份列表 + 当前播放项的下标，两者要成对使用。
+        if (mPlaylist == null) {
+            ArrayList<String> carried = intent.getStringArrayListExtra("videoPlaylist");
+            if (carried != null && !carried.isEmpty()) {
+                mPlaylist = carried;
+                mPlaylistIndex = intent.getIntExtra("videoPlaylistIndex", 0);
+                if (mPlaylistIndex < 0 || mPlaylistIndex >= mPlaylist.size())
+                    mPlaylistIndex = 0;
+                if (!TextUtils.isEmpty(mVideoPath))
+                    mPlaylistIndex = mPlaylist.indexOf(mVideoPath);
+                if (mPlaylistIndex < 0)
+                    mPlaylistIndex = 0;
+            }
+        }
 
         if (!TextUtils.isEmpty(mVideoPath)) {
             new RecentMediaStorage(this).saveUrlAsync(mVideoPath);
@@ -209,6 +240,18 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             return;
         }
         setupPlaylistSwipe();
+        mVideoView.setOnCompletionListener(mp -> {
+            // 播完自动接下一条；已经是最后一条就停在原地。
+            if (mPlaylist == null || mPlaylistSwitching)
+                return;
+            int next = mPlaylistIndex + 1;
+            if (next >= mPlaylist.size())
+                return;
+            mVideoView.postDelayed(() -> {
+                if (mPlaylist != null && !mPlaylistSwitching && next < mPlaylist.size())
+                    playUrlAtIndex(next);
+            }, 300);
+        });
         mVideoView.start();
     }
 

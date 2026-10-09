@@ -30,6 +30,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 import tv.danmaku.ijk.media.example.R;
 import tv.danmaku.ijk.media.example.activities.VideoActivity;
 
@@ -64,7 +66,15 @@ public class SampleMediaListFragment extends Fragment {
                 SampleMediaItem item = mAdapter.getItem(position);
                 String name = item.mName;
                 String url = item.mUrl;
-                VideoActivity.intentTo(activity, url, name);
+                // 把整份列表一起带进播放器，播放页就能上下滑切换、
+                // 用列表抽屉查看，也能播完自动接下一条。
+                ArrayList<String> playlist = new ArrayList<>();
+                for (int i = 0; i < mAdapter.getCount(); i++) {
+                    SampleMediaItem it = mAdapter.getItem(i);
+                    if (it != null && it.mUrl != null)
+                        playlist.add(it.mUrl);
+                }
+                VideoActivity.intentTo(activity, url, name, playlist, position);
             }
         });
 
