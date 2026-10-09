@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2016 Zheng Yuan <zhengyuan10503@gmail.com>
+ * Copyright (C) 2013-2014 Bilibili
+ * Copyright (C) 2013-2014 Zhang Rui <bbcallen@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +17,7 @@
 
 package com.debugly.fsplayer.player;
 
-import android.graphics.Rect;
-import java.lang.String;
-
-public final class IjkTimedText {
-
-    private Rect mTextBounds = null;
-    private String mTextChars = null;
-
-    public IjkTimedText(Rect bounds, String text) {
-        mTextBounds = bounds;
-        mTextChars = text;
-    }
-
-    public Rect getBounds() {
-        return mTextBounds;
-    }
-
-    public String getText() {
-        return mTextChars;
-    }
+public interface FSLibLoader {
+    void loadLibrary(String libName) throws UnsatisfiedLinkError,
+            SecurityException;
 }

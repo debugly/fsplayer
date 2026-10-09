@@ -28,9 +28,9 @@
 #include <unistd.h>
 #include "j4a/class/java/util/ArrayList.h"
 #include "j4a/class/android/os/Bundle.h"
-#include "j4a/class/tv/danmaku/ijk/media/player/IjkMediaPlayer.h"
-#include "j4a/class/tv/danmaku/ijk/media/player/misc/IMediaDataSource.h"
-#include "j4a/class/tv/danmaku/ijk/media/player/misc/IAndroidIO.h"
+#include "j4a/class/com/debugly/fsplayer/player/FSPlayer.h"
+#include "j4a/class/com/debugly/fsplayer/player/misc/IMediaDataSource.h"
+#include "j4a/class/com/debugly/fsplayer/player/misc/IAndroidIO.h"
 #include "ijksdl/ijksdl_log.h"
 #include "../ff_ffplay.h"
 #include "ffmpeg_api_jni.h"
@@ -39,9 +39,9 @@
 #include "ijksdl/android/ijksdl_android_jni.h"
 #include "ijkavformat/ijkavformat.h"
 
-#define JNI_MODULE_PACKAGE      "tv/danmaku/ijk/media/player"
-#define JNI_CLASS_IJKPLAYER     "tv/danmaku/ijk/media/player/IjkMediaPlayer"
-#define JNI_IJK_MEDIA_EXCEPTION "tv/danmaku/ijk/media/player/exceptions/IjkMediaException"
+#define JNI_MODULE_PACKAGE      "com/debugly/fsplayer/player"
+#define JNI_CLASS_IJKPLAYER     "com/debugly/fsplayer/player/FSPlayer"
+#define JNI_IJK_MEDIA_EXCEPTION "com/debugly/fsplayer/player/exceptions/FSException"
 
 #define IJK_CHECK_MPRET_GOTO(retval, env, label) \
     JNI_CHECK_GOTO((retval != EIJK_INVALID_STATE), env, "java/lang/IllegalStateException", NULL, label); \
@@ -147,7 +147,7 @@ fail:
 static int message_loop(void *arg);
 
 static void
-IjkMediaPlayer_setDataSourceAndHeaders(
+FSPlayer_setDataSourceAndHeaders(
     JNIEnv *env, jobject thiz, jstring path,
     jobjectArray keys, jobjectArray values)
 {
@@ -172,7 +172,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setDataSourceFd(JNIEnv *env, jobject thiz, jint fd)
+FSPlayer_setDataSourceFd(JNIEnv *env, jobject thiz, jint fd)
 {
     MPTRACE("%s\n", __func__);
     int retval = 0;
@@ -195,7 +195,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setDataSourceCallback(JNIEnv *env, jobject thiz, jobject callback)
+FSPlayer_setDataSourceCallback(JNIEnv *env, jobject thiz, jobject callback)
 {
     MPTRACE("%s\n", __func__);
     int retval = 0;
@@ -220,7 +220,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setAndroidIOCallback(JNIEnv *env, jobject thiz, jobject callback) {
+FSPlayer_setAndroidIOCallback(JNIEnv *env, jobject thiz, jobject callback) {
     MPTRACE("%s\n", __func__);
     int64_t nativeAndroidIO = 0;
 
@@ -238,7 +238,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface)
+FSPlayer_setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -252,7 +252,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_prepareAsync(JNIEnv *env, jobject thiz)
+FSPlayer_prepareAsync(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     int retval = 0;
@@ -267,7 +267,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_start(JNIEnv *env, jobject thiz)
+FSPlayer_start(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -280,7 +280,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_stop(JNIEnv *env, jobject thiz)
+FSPlayer_stop(JNIEnv *env, jobject thiz)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, "java/lang/IllegalStateException", "mpjni: stop: null mp", LABEL_RETURN);
@@ -292,7 +292,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_pause(JNIEnv *env, jobject thiz)
+FSPlayer_pause(JNIEnv *env, jobject thiz)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, "java/lang/IllegalStateException", "mpjni: pause: null mp", LABEL_RETURN);
@@ -304,7 +304,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_seekTo(JNIEnv *env, jobject thiz, jlong msec)
+FSPlayer_seekTo(JNIEnv *env, jobject thiz, jlong msec)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -317,7 +317,7 @@ LABEL_RETURN:
 }
 
 static jboolean
-IjkMediaPlayer_isPlaying(JNIEnv *env, jobject thiz)
+FSPlayer_isPlaying(JNIEnv *env, jobject thiz)
 {
     jboolean retval = JNI_FALSE;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -331,7 +331,7 @@ LABEL_RETURN:
 }
 
 static jlong
-IjkMediaPlayer_getCurrentPosition(JNIEnv *env, jobject thiz)
+FSPlayer_getCurrentPosition(JNIEnv *env, jobject thiz)
 {
     jlong retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -345,7 +345,7 @@ LABEL_RETURN:
 }
 
 static jlong
-IjkMediaPlayer_getDuration(JNIEnv *env, jobject thiz)
+FSPlayer_getDuration(JNIEnv *env, jobject thiz)
 {
     jlong retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -359,7 +359,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_release(JNIEnv *env, jobject thiz)
+FSPlayer_release(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -378,9 +378,9 @@ IjkMediaPlayer_release(JNIEnv *env, jobject thiz)
     ijkmp_dec_ref_p(&mp);
 }
 
-static void IjkMediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this);
+static void FSPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this);
 static void
-IjkMediaPlayer_reset(JNIEnv *env, jobject thiz)
+FSPlayer_reset(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -389,14 +389,14 @@ IjkMediaPlayer_reset(JNIEnv *env, jobject thiz)
 
     jobject weak_thiz = (jobject) ijkmp_set_weak_thiz(mp, NULL );
 
-    IjkMediaPlayer_release(env, thiz);
-    IjkMediaPlayer_native_setup(env, thiz, weak_thiz);
+    FSPlayer_release(env, thiz);
+    FSPlayer_native_setup(env, thiz, weak_thiz);
 
     ijkmp_dec_ref_p(&mp);
 }
 
 static void
-IjkMediaPlayer_setLoopCount(JNIEnv *env, jobject thiz, jint loop_count)
+FSPlayer_setLoopCount(JNIEnv *env, jobject thiz, jint loop_count)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -409,7 +409,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_getLoopCount(JNIEnv *env, jobject thiz)
+FSPlayer_getLoopCount(JNIEnv *env, jobject thiz)
 {
     jint loop_count = 1;
     MPTRACE("%s\n", __func__);
@@ -496,7 +496,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setVolume(JNIEnv *env, jobject thiz, jfloat leftVolume, jfloat rightVolume)
+FSPlayer_setVolume(JNIEnv *env, jobject thiz, jfloat leftVolume, jfloat rightVolume)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -509,7 +509,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_getAudioSessionId(JNIEnv *env, jobject thiz)
+FSPlayer_getAudioSessionId(JNIEnv *env, jobject thiz)
 {
     jint audio_session_id = 0;
     MPTRACE("%s\n", __func__);
@@ -524,7 +524,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setOption(JNIEnv *env, jobject thiz, jint category, jobject name, jobject value)
+FSPlayer_setOption(JNIEnv *env, jobject thiz, jint category, jobject name, jobject value)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -538,7 +538,7 @@ IjkMediaPlayer_setOption(JNIEnv *env, jobject thiz, jint category, jobject name,
 
     c_name = (*env)->GetStringUTFChars(env, name, NULL );
     JNI_CHECK_GOTO(c_name, env, "java/lang/OutOfMemoryError", "mpjni: setOption: name.string oom", LABEL_RETURN);
-    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: IjkMediaPlayer_setOption: null name", LABEL_RETURN);
+    JNI_CHECK_GOTO(mp, env, NULL, "mpjni: FSPlayer_setOption: null name", LABEL_RETURN);
 
     if (value) {
         c_value = (*env)->GetStringUTFChars(env, value, NULL );
@@ -556,7 +556,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setOptionLong(JNIEnv *env, jobject thiz, jint category, jobject name, jlong value)
+FSPlayer_setOptionLong(JNIEnv *env, jobject thiz, jint category, jobject name, jlong value)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -575,7 +575,7 @@ LABEL_RETURN:
 }
 
 static jstring
-IjkMediaPlayer_getColorFormatName(JNIEnv *env, jclass clazz, jint mediaCodecColorFormat)
+FSPlayer_getColorFormatName(JNIEnv *env, jclass clazz, jint mediaCodecColorFormat)
 {
     (void)env; (void)clazz; (void)mediaCodecColorFormat;
     /* 最小可播放（软解，无 MediaCodec）：返回 NULL */
@@ -583,7 +583,7 @@ IjkMediaPlayer_getColorFormatName(JNIEnv *env, jclass clazz, jint mediaCodecColo
 }
 
 static jstring
-IjkMediaPlayer_getVideoCodecInfo(JNIEnv *env, jobject thiz)
+FSPlayer_getVideoCodecInfo(JNIEnv *env, jobject thiz)
 {
     (void)env; (void)thiz;
     /* 最小可播放（软解，无 MediaCodec）：返回 NULL */
@@ -591,7 +591,7 @@ IjkMediaPlayer_getVideoCodecInfo(JNIEnv *env, jobject thiz)
 }
 
 static jstring
-IjkMediaPlayer_getAudioCodecInfo(JNIEnv *env, jobject thiz)
+FSPlayer_getAudioCodecInfo(JNIEnv *env, jobject thiz)
 {
     (void)env; (void)thiz;
     /* 最小可播放（软解，无 MediaCodec）：返回 NULL */
@@ -608,7 +608,7 @@ inline static void fillMetaInternal(JNIEnv *env, jobject jbundle, IjkMediaMeta *
 }
 
 static jobject
-IjkMediaPlayer_getMediaMeta(JNIEnv *env, jobject thiz)
+FSPlayer_getMediaMeta(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     bool is_locked = false;
@@ -711,13 +711,13 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_native_init(JNIEnv *env)
+FSPlayer_native_init(JNIEnv *env)
 {
     MPTRACE("%s\n", __func__);
 }
 
 static void
-IjkMediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
+FSPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = ijkmp_android_create(message_loop);
@@ -734,10 +734,10 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_native_finalize(JNIEnv *env, jobject thiz, jobject name, jobject value)
+FSPlayer_native_finalize(JNIEnv *env, jobject thiz, jobject name, jobject value)
 {
     MPTRACE("%s\n", __func__);
-    IjkMediaPlayer_release(env, thiz);
+    FSPlayer_release(env, thiz);
 }
 
 // NOTE: support to be called from read_thread
@@ -1020,7 +1020,7 @@ void monstartup(const char *libname);
 void moncleanup(void);
 
 static void
-IjkMediaPlayer_native_profileBegin(JNIEnv *env, jclass clazz, jstring libName)
+FSPlayer_native_profileBegin(JNIEnv *env, jclass clazz, jstring libName)
 {
     MPTRACE("%s\n", __func__);
 
@@ -1048,7 +1048,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_native_profileEnd(JNIEnv *env, jclass clazz)
+FSPlayer_native_profileEnd(JNIEnv *env, jclass clazz)
 {
     MPTRACE("%s\n", __func__);
     static int s_moncleanup = 0;
@@ -1064,7 +1064,7 @@ IjkMediaPlayer_native_profileEnd(JNIEnv *env, jclass clazz)
 }
 
 static void
-IjkMediaPlayer_native_setLogLevel(JNIEnv *env, jclass clazz, jint level)
+FSPlayer_native_setLogLevel(JNIEnv *env, jclass clazz, jint level)
 {
     MPTRACE("%s(%d)\n", __func__, level);
     ijkmp_global_set_log_level(level);
@@ -1072,7 +1072,7 @@ IjkMediaPlayer_native_setLogLevel(JNIEnv *env, jclass clazz, jint level)
 }
 
 static void
-IjkMediaPlayer_setFrameAtTime(JNIEnv *env, jobject thiz, jstring path, jlong start_time, jlong end_time, jint num, jint definition) {
+FSPlayer_setFrameAtTime(JNIEnv *env, jobject thiz, jstring path, jlong start_time, jlong end_time, jint num, jint definition) {
     (void)thiz; (void)path; (void)start_time; (void)end_time; (void)num; (void)definition;
     /* 最小可播放：截图功能（ijkmp_set_frame_at_time）在 fsplayer 中已移除，这里 no-op */
     ALOGV("setFrameAtTime: no-op (removed in fsplayer)\n");
@@ -1089,7 +1089,7 @@ IjkMediaPlayer_setFrameAtTime(JNIEnv *env, jobject thiz, jstring path, jlong sta
 // ----------------------------------------------------------------------------
 
 static void
-IjkMediaPlayer_setAudioExtraDelay(JNIEnv *env, jobject thiz, jfloat delay)
+FSPlayer_setAudioExtraDelay(JNIEnv *env, jobject thiz, jfloat delay)
 {
     MPTRACE("%s(%f)\n", __func__, (double) delay);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1102,7 +1102,7 @@ LABEL_RETURN:
 }
 
 static jfloat
-IjkMediaPlayer_getAudioExtraDelay(JNIEnv *env, jobject thiz)
+FSPlayer_getAudioExtraDelay(JNIEnv *env, jobject thiz)
 {
     jfloat retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1116,7 +1116,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setSubtitleExtraDelay(JNIEnv *env, jobject thiz, jfloat delay)
+FSPlayer_setSubtitleExtraDelay(JNIEnv *env, jobject thiz, jfloat delay)
 {
     MPTRACE("%s(%f)\n", __func__, (double) delay);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1129,7 +1129,7 @@ LABEL_RETURN:
 }
 
 static jfloat
-IjkMediaPlayer_getSubtitleExtraDelay(JNIEnv *env, jobject thiz)
+FSPlayer_getSubtitleExtraDelay(JNIEnv *env, jobject thiz)
 {
     jfloat retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1144,7 +1144,7 @@ LABEL_RETURN:
 
 /* add an external subtitle file and activate it right away */
 static jboolean
-IjkMediaPlayer_loadThenActiveSubtitle(JNIEnv *env, jobject thiz, jstring path)
+FSPlayer_loadThenActiveSubtitle(JNIEnv *env, jobject thiz, jstring path)
 {
     jboolean retval = JNI_FALSE;
     const char *c_path = NULL;
@@ -1165,7 +1165,7 @@ LABEL_RETURN:
 
 /* add an external subtitle file but do not activate it; 0 means succ, 1 means already added */
 static jint
-IjkMediaPlayer_addOnlyExternalSubtitle(JNIEnv *env, jobject thiz, jstring path)
+FSPlayer_addOnlyExternalSubtitle(JNIEnv *env, jobject thiz, jstring path)
 {
     jint retval = -1;
     const char *c_path = NULL;
@@ -1186,7 +1186,7 @@ LABEL_RETURN:
 
 /* add several external subtitle files at once; returns how many were added */
 static jint
-IjkMediaPlayer_addOnlyExternalSubtitles(JNIEnv *env, jobject thiz, jobjectArray paths)
+FSPlayer_addOnlyExternalSubtitles(JNIEnv *env, jobject thiz, jobjectArray paths)
 {
     jint retval = -1;
     jsize count = 0;
@@ -1232,7 +1232,7 @@ LABEL_RETURN:
 /* copy a java FSSubtitlePreference into the native struct; fields are read by
  * name, so the java class has to keep exactly these field names. */
 static void
-IjkMediaPlayer_setSubtitlePreference(JNIEnv *env, jobject thiz, jobject sp)
+FSPlayer_setSubtitlePreference(JNIEnv *env, jobject thiz, jobject sp)
 {
     FSSubtitlePreference pref = fs_subtitle_default_preference();
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1299,7 +1299,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_stepToNextFrame(JNIEnv *env, jobject thiz)
+FSPlayer_stepToNextFrame(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1312,7 +1312,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_enableAccurateSeek(JNIEnv *env, jobject thiz, jboolean open)
+FSPlayer_enableAccurateSeek(JNIEnv *env, jobject thiz, jboolean open)
 {
     MPTRACE("%s(%d)\n", __func__, (int) open);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1325,7 +1325,7 @@ LABEL_RETURN:
 }
 
 static jlong
-IjkMediaPlayer_getPlayableDuration(JNIEnv *env, jobject thiz)
+FSPlayer_getPlayableDuration(JNIEnv *env, jobject thiz)
 {
     jlong retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1343,7 +1343,7 @@ LABEL_RETURN:
  * outSize 回填 {width, height}，格式见 ijksdl/android/vulkan/fs_vulkan_renderer.h 的 FSSnapshotType。
  */
 static jbyteArray
-IjkMediaPlayer_takeSnapshot(JNIEnv *env, jobject thiz, jint type, jintArray out_size)
+FSPlayer_takeSnapshot(JNIEnv *env, jobject thiz, jint type, jintArray out_size)
 {
     jbyteArray retval = NULL;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1377,7 +1377,7 @@ LABEL_RETURN:
  * 渲染器还没建好（还没 setSurface）时会失败，Java 侧会在设置 surface 后重试。
  */
 static void
-IjkMediaPlayer_setBackgroundImage(JNIEnv *env, jobject thiz, jbyteArray rgba, jint width, jint height)
+FSPlayer_setBackgroundImage(JNIEnv *env, jobject thiz, jbyteArray rgba, jint width, jint height)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setBackgroundImage: null mp", LABEL_RETURN);
@@ -1400,7 +1400,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setBackgroundBlur(JNIEnv *env, jobject thiz, jint iterations, jfloat sigma)
+FSPlayer_setBackgroundBlur(JNIEnv *env, jobject thiz, jint iterations, jfloat sigma)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setBackgroundBlur: null mp", LABEL_RETURN);
@@ -1416,7 +1416,7 @@ LABEL_RETURN:
  * 渲染器还没建好（还没 setSurface）时会失败，Java 侧会在设置 surface 后重试。
  */
 static void
-IjkMediaPlayer_setColorAdjust(JNIEnv *env, jobject thiz, jfloat brightness, jfloat saturation, jfloat contrast)
+FSPlayer_setColorAdjust(JNIEnv *env, jobject thiz, jfloat brightness, jfloat saturation, jfloat contrast)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setColorAdjust: null mp", LABEL_RETURN);
@@ -1429,7 +1429,7 @@ LABEL_RETURN:
 
 /* 无视频区域（黑边）的背景色，0~255。对齐 iOS 的 -setBackgroundColor:g:b:。 */
 static void
-IjkMediaPlayer_setBackgroundColor(JNIEnv *env, jobject thiz, jint red, jint green, jint blue)
+FSPlayer_setBackgroundColor(JNIEnv *env, jobject thiz, jint red, jint green, jint blue)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setBackgroundColor: null mp", LABEL_RETURN);
@@ -1442,7 +1442,7 @@ LABEL_RETURN:
 
 /* HDR 直显开关，对齐 iOS 的 allowHDRDirectDisplay */
 static void
-IjkMediaPlayer_native_setAllowHDRDirectDisplay(JNIEnv *env, jobject thiz, jboolean allow)
+FSPlayer_native_setAllowHDRDirectDisplay(JNIEnv *env, jobject thiz, jboolean allow)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, NULL, "mpjni: setAllowHDRDirectDisplay: null mp", LABEL_RETURN);
@@ -1454,7 +1454,7 @@ LABEL_RETURN:
 }
 
 static jboolean
-IjkMediaPlayer_native_isDirectDisplayHDRSupported(JNIEnv *env, jobject thiz)
+FSPlayer_native_isDirectDisplayHDRSupported(JNIEnv *env, jobject thiz)
 {
     jboolean retval = JNI_FALSE;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1468,7 +1468,7 @@ LABEL_RETURN:
 }
 
 static jboolean
-IjkMediaPlayer_native_isHDRContent(JNIEnv *env, jobject thiz)
+FSPlayer_native_isHDRContent(JNIEnv *env, jobject thiz)
 {
     jboolean retval = JNI_FALSE;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1483,7 +1483,7 @@ LABEL_RETURN:
 
 /* type: 1 audio, 2 video, 3 subtitle */
 static jint
-IjkMediaPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
+FSPlayer_getFrameCacheRemaining(JNIEnv *env, jobject thiz, jint type)
 {
     jint retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1497,7 +1497,7 @@ LABEL_RETURN:
 }
 
 static void
-IjkMediaPlayer_setDeinterlace(JNIEnv *env, jobject thiz, jint deinterlace)
+FSPlayer_setDeinterlace(JNIEnv *env, jobject thiz, jint deinterlace)
 {
     MPTRACE("%s(%d)\n", __func__, (int) deinterlace);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1510,7 +1510,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_getDeinterlace(JNIEnv *env, jobject thiz)
+FSPlayer_getDeinterlace(JNIEnv *env, jobject thiz)
 {
     jint retval = 0;
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1525,7 +1525,7 @@ LABEL_RETURN:
 
 /* ask the vout to redraw the current frame, e.g. after the surface changed */
 static void
-IjkMediaPlayer_refreshPicture(JNIEnv *env, jobject thiz)
+FSPlayer_refreshPicture(JNIEnv *env, jobject thiz)
 {
     MPTRACE("%s\n", __func__);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1538,7 +1538,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_reloadVideoStream(JNIEnv *env, jobject thiz)
+FSPlayer_reloadVideoStream(JNIEnv *env, jobject thiz)
 {
     jint retval = 0;
     MPTRACE("%s\n", __func__);
@@ -1553,7 +1553,7 @@ LABEL_RETURN:
 }
 
 static jstring
-IjkMediaPlayer_getIFormatExtensions(JNIEnv *env, jobject thiz)
+FSPlayer_getIFormatExtensions(JNIEnv *env, jobject thiz)
 {
     jstring retval = NULL;
     const char *extensions = NULL;
@@ -1570,19 +1570,19 @@ LABEL_RETURN:
 }
 
 static jstring
-IjkMediaPlayer_getPlayerVersion(JNIEnv *env, jclass clazz)
+FSPlayer_getPlayerVersion(JNIEnv *env, jclass clazz)
 {
     return (*env)->NewStringUTF(env, ijkmp_version());
 }
 
 static jstring
-IjkMediaPlayer_getFFmpegVersion(JNIEnv *env, jclass clazz)
+FSPlayer_getFFmpegVersion(JNIEnv *env, jclass clazz)
 {
     return (*env)->NewStringUTF(env, av_version_info());
 }
 
 static jint
-IjkMediaPlayer_startFastRecord(JNIEnv *env, jobject thiz, jstring path)
+FSPlayer_startFastRecord(JNIEnv *env, jobject thiz, jstring path)
 {
     jint retval = -1;
     const char *c_path = NULL;
@@ -1602,7 +1602,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_stopFastRecord(JNIEnv *env, jobject thiz)
+FSPlayer_stopFastRecord(JNIEnv *env, jobject thiz)
 {
     jint retval = -1;
     MPTRACE("%s\n", __func__);
@@ -1617,7 +1617,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_startExactRecord(JNIEnv *env, jobject thiz, jstring path)
+FSPlayer_startExactRecord(JNIEnv *env, jobject thiz, jstring path)
 {
     jint retval = -1;
     const char *c_path = NULL;
@@ -1637,7 +1637,7 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_stopExactRecord(JNIEnv *env, jobject thiz)
+FSPlayer_stopExactRecord(JNIEnv *env, jobject thiz)
 {
     jint retval = -1;
     MPTRACE("%s\n", __func__);
@@ -1652,14 +1652,14 @@ LABEL_RETURN:
 }
 
 static jint
-IjkMediaPlayer_native_getLogLevel(JNIEnv *env, jclass clazz)
+FSPlayer_native_getLogLevel(JNIEnv *env, jclass clazz)
 {
     (void) env; (void) clazz;
     return ijkmp_global_get_log_level();
 }
 
 static void
-IjkMediaPlayer_native_setLogReport(JNIEnv *env, jclass clazz, jint useReport)
+FSPlayer_native_setLogReport(JNIEnv *env, jclass clazz, jint useReport)
 {
     (void) env; (void) clazz;
     MPTRACE("%s(%d)\n", __func__, (int) useReport);
@@ -1727,7 +1727,7 @@ audio_samples_callback(void *opaque, int16_t *samples, int sampleSize, int sampl
 }
 
 static void
-IjkMediaPlayer_setAudioSamplesObserver(JNIEnv *env, jobject thiz, jboolean enable)
+FSPlayer_setAudioSamplesObserver(JNIEnv *env, jobject thiz, jboolean enable)
 {
     MPTRACE("%s(%d)\n", __func__, (int) enable);
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
@@ -1745,85 +1745,85 @@ static JNINativeMethod g_methods[] = {
     {
         "_setDataSource",
         "(Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;)V",
-        (void *) IjkMediaPlayer_setDataSourceAndHeaders
+        (void *) FSPlayer_setDataSourceAndHeaders
     },
-    { "_setDataSourceFd",       "(I)V",     (void *) IjkMediaPlayer_setDataSourceFd },
-    { "_setDataSource",         "(Ltv/danmaku/ijk/media/player/misc/IMediaDataSource;)V", (void *)IjkMediaPlayer_setDataSourceCallback },
-    { "_setAndroidIOCallback",  "(Ltv/danmaku/ijk/media/player/misc/IAndroidIO;)V", (void *)IjkMediaPlayer_setAndroidIOCallback },
+    { "_setDataSourceFd",       "(I)V",     (void *) FSPlayer_setDataSourceFd },
+    { "_setDataSource",         "(Lcom/debugly/fsplayer/player/misc/IMediaDataSource;)V", (void *)FSPlayer_setDataSourceCallback },
+    { "_setAndroidIOCallback",  "(Lcom/debugly/fsplayer/player/misc/IAndroidIO;)V", (void *)FSPlayer_setAndroidIOCallback },
 
-    { "_setVideoSurface",       "(Landroid/view/Surface;)V", (void *) IjkMediaPlayer_setVideoSurface },
-    { "_prepareAsync",          "()V",      (void *) IjkMediaPlayer_prepareAsync },
-    { "_start",                 "()V",      (void *) IjkMediaPlayer_start },
-    { "_stop",                  "()V",      (void *) IjkMediaPlayer_stop },
-    { "seekTo",                 "(J)V",     (void *) IjkMediaPlayer_seekTo },
-    { "_pause",                 "()V",      (void *) IjkMediaPlayer_pause },
-    { "isPlaying",              "()Z",      (void *) IjkMediaPlayer_isPlaying },
-    { "getCurrentPosition",     "()J",      (void *) IjkMediaPlayer_getCurrentPosition },
-    { "getDuration",            "()J",      (void *) IjkMediaPlayer_getDuration },
-    { "_release",               "()V",      (void *) IjkMediaPlayer_release },
-    { "_reset",                 "()V",      (void *) IjkMediaPlayer_reset },
-    { "setVolume",              "(FF)V",    (void *) IjkMediaPlayer_setVolume },
-    { "getAudioSessionId",      "()I",      (void *) IjkMediaPlayer_getAudioSessionId },
-    { "native_init",            "()V",      (void *) IjkMediaPlayer_native_init },
-    { "native_setup",           "(Ljava/lang/Object;)V", (void *) IjkMediaPlayer_native_setup },
-    { "native_finalize",        "()V",      (void *) IjkMediaPlayer_native_finalize },
+    { "_setVideoSurface",       "(Landroid/view/Surface;)V", (void *) FSPlayer_setVideoSurface },
+    { "_prepareAsync",          "()V",      (void *) FSPlayer_prepareAsync },
+    { "_start",                 "()V",      (void *) FSPlayer_start },
+    { "_stop",                  "()V",      (void *) FSPlayer_stop },
+    { "seekTo",                 "(J)V",     (void *) FSPlayer_seekTo },
+    { "_pause",                 "()V",      (void *) FSPlayer_pause },
+    { "isPlaying",              "()Z",      (void *) FSPlayer_isPlaying },
+    { "getCurrentPosition",     "()J",      (void *) FSPlayer_getCurrentPosition },
+    { "getDuration",            "()J",      (void *) FSPlayer_getDuration },
+    { "_release",               "()V",      (void *) FSPlayer_release },
+    { "_reset",                 "()V",      (void *) FSPlayer_reset },
+    { "setVolume",              "(FF)V",    (void *) FSPlayer_setVolume },
+    { "getAudioSessionId",      "()I",      (void *) FSPlayer_getAudioSessionId },
+    { "native_init",            "()V",      (void *) FSPlayer_native_init },
+    { "native_setup",           "(Ljava/lang/Object;)V", (void *) FSPlayer_native_setup },
+    { "native_finalize",        "()V",      (void *) FSPlayer_native_finalize },
 
-    { "_setOption",             "(ILjava/lang/String;Ljava/lang/String;)V", (void *) IjkMediaPlayer_setOption },
-    { "_setOption",             "(ILjava/lang/String;J)V",                  (void *) IjkMediaPlayer_setOptionLong },
+    { "_setOption",             "(ILjava/lang/String;Ljava/lang/String;)V", (void *) FSPlayer_setOption },
+    { "_setOption",             "(ILjava/lang/String;J)V",                  (void *) FSPlayer_setOptionLong },
 
-    { "_getColorFormatName",    "(I)Ljava/lang/String;",    (void *) IjkMediaPlayer_getColorFormatName },
-    { "_getVideoCodecInfo",     "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getVideoCodecInfo },
-    { "_getAudioCodecInfo",     "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getAudioCodecInfo },
-    { "_getMediaMeta",          "()Landroid/os/Bundle;",    (void *) IjkMediaPlayer_getMediaMeta },
-    { "_setLoopCount",          "(I)V",                     (void *) IjkMediaPlayer_setLoopCount },
-    { "_getLoopCount",          "()I",                      (void *) IjkMediaPlayer_getLoopCount },
+    { "_getColorFormatName",    "(I)Ljava/lang/String;",    (void *) FSPlayer_getColorFormatName },
+    { "_getVideoCodecInfo",     "()Ljava/lang/String;",     (void *) FSPlayer_getVideoCodecInfo },
+    { "_getAudioCodecInfo",     "()Ljava/lang/String;",     (void *) FSPlayer_getAudioCodecInfo },
+    { "_getMediaMeta",          "()Landroid/os/Bundle;",    (void *) FSPlayer_getMediaMeta },
+    { "_setLoopCount",          "(I)V",                     (void *) FSPlayer_setLoopCount },
+    { "_getLoopCount",          "()I",                      (void *) FSPlayer_getLoopCount },
     { "_getPropertyFloat",      "(IF)F",                    (void *) ijkMediaPlayer_getPropertyFloat },
     { "_setPropertyFloat",      "(IF)V",                    (void *) ijkMediaPlayer_setPropertyFloat },
     { "_getPropertyLong",       "(IJ)J",                    (void *) ijkMediaPlayer_getPropertyLong },
     { "_setPropertyLong",       "(IJ)V",                    (void *) ijkMediaPlayer_setPropertyLong },
     { "_setStreamSelected",     "(IZ)V",                    (void *) ijkMediaPlayer_setStreamSelected },
 
-    { "native_profileBegin",    "(Ljava/lang/String;)V",    (void *) IjkMediaPlayer_native_profileBegin },
-    { "native_profileEnd",      "()V",                      (void *) IjkMediaPlayer_native_profileEnd },
+    { "native_profileBegin",    "(Ljava/lang/String;)V",    (void *) FSPlayer_native_profileBegin },
+    { "native_profileEnd",      "()V",                      (void *) FSPlayer_native_profileEnd },
 
-    { "native_setLogLevel",     "(I)V",                     (void *) IjkMediaPlayer_native_setLogLevel },
-    { "_setFrameAtTime",        "(Ljava/lang/String;JJII)V", (void *) IjkMediaPlayer_setFrameAtTime },
+    { "native_setLogLevel",     "(I)V",                     (void *) FSPlayer_native_setLogLevel },
+    { "_setFrameAtTime",        "(Ljava/lang/String;JJII)V", (void *) FSPlayer_setFrameAtTime },
 
     /* ported from the iOS wrapper */
-    { "setAudioExtraDelay",       "(F)V",                     (void *) IjkMediaPlayer_setAudioExtraDelay },
-    { "getAudioExtraDelay",       "()F",                      (void *) IjkMediaPlayer_getAudioExtraDelay },
-    { "setSubtitleExtraDelay",    "(F)V",                     (void *) IjkMediaPlayer_setSubtitleExtraDelay },
-    { "getSubtitleExtraDelay",    "()F",                      (void *) IjkMediaPlayer_getSubtitleExtraDelay },
-    { "loadThenActiveSubtitle",   "(Ljava/lang/String;)Z",    (void *) IjkMediaPlayer_loadThenActiveSubtitle },
-    { "addOnlyExternalSubtitle",  "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_addOnlyExternalSubtitle },
-    { "addOnlyExternalSubtitles", "([Ljava/lang/String;)I",   (void *) IjkMediaPlayer_addOnlyExternalSubtitles },
-    { "setSubtitlePreference",    "(Ltv/danmaku/ijk/media/player/FSSubtitlePreference;)V", (void *) IjkMediaPlayer_setSubtitlePreference },
-    { "stepToNextFrame",          "()V",                      (void *) IjkMediaPlayer_stepToNextFrame },
-    { "enableAccurateSeek",       "(Z)V",                     (void *) IjkMediaPlayer_enableAccurateSeek },
-    { "getPlayableDuration",      "()J",                      (void *) IjkMediaPlayer_getPlayableDuration },
-    { "getFrameCacheRemaining",   "(I)I",                     (void *) IjkMediaPlayer_getFrameCacheRemaining },
-    { "takeSnapshot",             "(I[I)[B",                  (void *) IjkMediaPlayer_takeSnapshot },
-    { "setBackgroundImage",       "([BII)V",                   (void *) IjkMediaPlayer_setBackgroundImage },
-    { "setBackgroundBlur",         "(IF)V",                    (void *) IjkMediaPlayer_setBackgroundBlur },
-    { "setColorAdjust",            "(FFF)V",                   (void *) IjkMediaPlayer_setColorAdjust },
-    { "native_setBackgroundColor", "(III)V",                   (void *) IjkMediaPlayer_setBackgroundColor },
-    { "native_setAllowHDRDirectDisplay", "(Z)V",               (void *) IjkMediaPlayer_native_setAllowHDRDirectDisplay },
-    { "native_isDirectDisplayHDRSupported", "()Z",             (void *) IjkMediaPlayer_native_isDirectDisplayHDRSupported },
-    { "native_isHDRContent",       "()Z",                      (void *) IjkMediaPlayer_native_isHDRContent },
-    { "setDeinterlace",           "(I)V",                     (void *) IjkMediaPlayer_setDeinterlace },
-    { "getDeinterlace",           "()I",                      (void *) IjkMediaPlayer_getDeinterlace },
-    { "refreshPicture",           "()V",                      (void *) IjkMediaPlayer_refreshPicture },
-    { "reloadVideoStream",        "()I",                      (void *) IjkMediaPlayer_reloadVideoStream },
-    { "getIFormatExtensions",     "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getIFormatExtensions },
-    { "getPlayerVersion",         "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getPlayerVersion },
-    { "getFFmpegVersion",         "()Ljava/lang/String;",     (void *) IjkMediaPlayer_getFFmpegVersion },
-    { "startFastRecord",          "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_startFastRecord },
-    { "stopFastRecord",           "()I",                      (void *) IjkMediaPlayer_stopFastRecord },
-    { "startExactRecord",         "(Ljava/lang/String;)I",    (void *) IjkMediaPlayer_startExactRecord },
-    { "stopExactRecord",          "()I",                      (void *) IjkMediaPlayer_stopExactRecord },
-    { "_setAudioSamplesObserver", "(Z)V",                     (void *) IjkMediaPlayer_setAudioSamplesObserver },
-    { "native_getLogLevel",       "()I",                      (void *) IjkMediaPlayer_native_getLogLevel },
-    { "native_setLogReport",      "(I)V",                     (void *) IjkMediaPlayer_native_setLogReport },
+    { "setAudioExtraDelay",       "(F)V",                     (void *) FSPlayer_setAudioExtraDelay },
+    { "getAudioExtraDelay",       "()F",                      (void *) FSPlayer_getAudioExtraDelay },
+    { "setSubtitleExtraDelay",    "(F)V",                     (void *) FSPlayer_setSubtitleExtraDelay },
+    { "getSubtitleExtraDelay",    "()F",                      (void *) FSPlayer_getSubtitleExtraDelay },
+    { "loadThenActiveSubtitle",   "(Ljava/lang/String;)Z",    (void *) FSPlayer_loadThenActiveSubtitle },
+    { "addOnlyExternalSubtitle",  "(Ljava/lang/String;)I",    (void *) FSPlayer_addOnlyExternalSubtitle },
+    { "addOnlyExternalSubtitles", "([Ljava/lang/String;)I",   (void *) FSPlayer_addOnlyExternalSubtitles },
+    { "setSubtitlePreference",    "(Lcom/debugly/fsplayer/player/FSSubtitlePreference;)V", (void *) FSPlayer_setSubtitlePreference },
+    { "stepToNextFrame",          "()V",                      (void *) FSPlayer_stepToNextFrame },
+    { "enableAccurateSeek",       "(Z)V",                     (void *) FSPlayer_enableAccurateSeek },
+    { "getPlayableDuration",      "()J",                      (void *) FSPlayer_getPlayableDuration },
+    { "getFrameCacheRemaining",   "(I)I",                     (void *) FSPlayer_getFrameCacheRemaining },
+    { "takeSnapshot",             "(I[I)[B",                  (void *) FSPlayer_takeSnapshot },
+    { "setBackgroundImage",       "([BII)V",                   (void *) FSPlayer_setBackgroundImage },
+    { "setBackgroundBlur",         "(IF)V",                    (void *) FSPlayer_setBackgroundBlur },
+    { "setColorAdjust",            "(FFF)V",                   (void *) FSPlayer_setColorAdjust },
+    { "native_setBackgroundColor", "(III)V",                   (void *) FSPlayer_setBackgroundColor },
+    { "native_setAllowHDRDirectDisplay", "(Z)V",               (void *) FSPlayer_native_setAllowHDRDirectDisplay },
+    { "native_isDirectDisplayHDRSupported", "()Z",             (void *) FSPlayer_native_isDirectDisplayHDRSupported },
+    { "native_isHDRContent",       "()Z",                      (void *) FSPlayer_native_isHDRContent },
+    { "setDeinterlace",           "(I)V",                     (void *) FSPlayer_setDeinterlace },
+    { "getDeinterlace",           "()I",                      (void *) FSPlayer_getDeinterlace },
+    { "refreshPicture",           "()V",                      (void *) FSPlayer_refreshPicture },
+    { "reloadVideoStream",        "()I",                      (void *) FSPlayer_reloadVideoStream },
+    { "getIFormatExtensions",     "()Ljava/lang/String;",     (void *) FSPlayer_getIFormatExtensions },
+    { "getPlayerVersion",         "()Ljava/lang/String;",     (void *) FSPlayer_getPlayerVersion },
+    { "getFFmpegVersion",         "()Ljava/lang/String;",     (void *) FSPlayer_getFFmpegVersion },
+    { "startFastRecord",          "(Ljava/lang/String;)I",    (void *) FSPlayer_startFastRecord },
+    { "stopFastRecord",           "()I",                      (void *) FSPlayer_stopFastRecord },
+    { "startExactRecord",         "(Ljava/lang/String;)I",    (void *) FSPlayer_startExactRecord },
+    { "stopExactRecord",          "()I",                      (void *) FSPlayer_stopExactRecord },
+    { "_setAudioSamplesObserver", "(Z)V",                     (void *) FSPlayer_setAudioSamplesObserver },
+    { "native_getLogLevel",       "()I",                      (void *) FSPlayer_native_getLogLevel },
+    { "native_setLogReport",      "(I)V",                     (void *) FSPlayer_native_setLogReport },
 };
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)

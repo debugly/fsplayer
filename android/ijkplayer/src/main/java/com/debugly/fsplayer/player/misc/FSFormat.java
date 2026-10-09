@@ -25,9 +25,9 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import com.debugly.fsplayer.player.IjkMediaMeta;
+import com.debugly.fsplayer.player.FSMeta;
 
-public class IjkMediaFormat implements IMediaFormat {
+public class FSFormat implements IMediaFormat {
     // Common
     public static final String KEY_IJK_CODEC_LONG_NAME_UI = "ijk-codec-long-name-ui";
     public static final String KEY_IJK_CODEC_NAME_UI = "ijk-codec-name-ui";
@@ -46,9 +46,9 @@ public class IjkMediaFormat implements IMediaFormat {
     // Codec
     public static final String CODEC_NAME_H264 = "h264";
 
-    public final IjkMediaMeta.IjkStreamMeta mMediaFormat;
+    public final FSMeta.FSStreamMeta mMediaFormat;
 
-    public IjkMediaFormat(IjkMediaMeta.IjkStreamMeta streamMeta) {
+    public FSFormat(FSMeta.FSStreamMeta streamMeta) {
         mMediaFormat = streamMeta;
     }
 
@@ -79,14 +79,14 @@ public class IjkMediaFormat implements IMediaFormat {
     //-------------------------
 
     private static abstract class Formatter {
-        public String format(IjkMediaFormat mediaFormat) {
+        public String format(FSFormat mediaFormat) {
             String value = doFormat(mediaFormat);
             if (TextUtils.isEmpty(value))
                 return getDefaultString();
             return value;
         }
 
-        protected abstract String doFormat(IjkMediaFormat mediaFormat);
+        protected abstract String doFormat(FSFormat mediaFormat);
 
         @SuppressWarnings("SameReturnValue")
         protected String getDefaultString() {
@@ -99,20 +99,20 @@ public class IjkMediaFormat implements IMediaFormat {
     {
         sFormatterMap.put(KEY_IJK_CODEC_LONG_NAME_UI, new Formatter() {
             @Override
-            public String doFormat(IjkMediaFormat mediaFormat) {
-                return mMediaFormat.getString(IjkMediaMeta.IJKM_KEY_CODEC_LONG_NAME);
+            public String doFormat(FSFormat mediaFormat) {
+                return mMediaFormat.getString(FSMeta.IJKM_KEY_CODEC_LONG_NAME);
             }
         });
         sFormatterMap.put(KEY_IJK_CODEC_NAME_UI, new Formatter() {
             @Override
-            public String doFormat(IjkMediaFormat mediaFormat) {
-                return mMediaFormat.getString(IjkMediaMeta.IJKM_KEY_CODEC_NAME);
+            public String doFormat(FSFormat mediaFormat) {
+                return mMediaFormat.getString(FSMeta.IJKM_KEY_CODEC_NAME);
             }
         });
         sFormatterMap.put(KEY_IJK_BIT_RATE_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
-                int bitRate = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_BITRATE);
+            protected String doFormat(FSFormat mediaFormat) {
+                int bitRate = mediaFormat.getInteger(FSMeta.IJKM_KEY_BITRATE);
                 if (bitRate <= 0) {
                     return null;
                 } else if (bitRate < 1000) {
@@ -124,47 +124,47 @@ public class IjkMediaFormat implements IMediaFormat {
         });
         sFormatterMap.put(KEY_IJK_CODEC_PROFILE_LEVEL_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
-                int profileIndex = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_CODEC_PROFILE_ID);
+            protected String doFormat(FSFormat mediaFormat) {
+                int profileIndex = mediaFormat.getInteger(FSMeta.IJKM_KEY_CODEC_PROFILE_ID);
                 String profile;
                 switch (profileIndex) {
-                    case IjkMediaMeta.FF_PROFILE_H264_BASELINE:
+                    case FSMeta.FF_PROFILE_H264_BASELINE:
                         profile = "Baseline";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_CONSTRAINED_BASELINE:
+                    case FSMeta.FF_PROFILE_H264_CONSTRAINED_BASELINE:
                         profile = "Constrained Baseline";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_MAIN:
+                    case FSMeta.FF_PROFILE_H264_MAIN:
                         profile = "Main";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_EXTENDED:
+                    case FSMeta.FF_PROFILE_H264_EXTENDED:
                         profile = "Extended";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH:
+                    case FSMeta.FF_PROFILE_H264_HIGH:
                         profile = "High";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_10:
+                    case FSMeta.FF_PROFILE_H264_HIGH_10:
                         profile = "High 10";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_10_INTRA:
+                    case FSMeta.FF_PROFILE_H264_HIGH_10_INTRA:
                         profile = "High 10 Intra";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_422:
+                    case FSMeta.FF_PROFILE_H264_HIGH_422:
                         profile = "High 4:2:2";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_422_INTRA:
+                    case FSMeta.FF_PROFILE_H264_HIGH_422_INTRA:
                         profile = "High 4:2:2 Intra";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_444:
+                    case FSMeta.FF_PROFILE_H264_HIGH_444:
                         profile = "High 4:4:4";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_444_PREDICTIVE:
+                    case FSMeta.FF_PROFILE_H264_HIGH_444_PREDICTIVE:
                         profile = "High 4:4:4 Predictive";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_HIGH_444_INTRA:
+                    case FSMeta.FF_PROFILE_H264_HIGH_444_INTRA:
                         profile = "High 4:4:4 Intra";
                         break;
-                    case IjkMediaMeta.FF_PROFILE_H264_CAVLC_444:
+                    case FSMeta.FF_PROFILE_H264_CAVLC_444:
                         profile = "CAVLC 4:4:4";
                         break;
                     default:
@@ -174,9 +174,9 @@ public class IjkMediaFormat implements IMediaFormat {
                 StringBuilder sb = new StringBuilder();
                 sb.append(profile);
 
-                String codecName = mediaFormat.getString(IjkMediaMeta.IJKM_KEY_CODEC_NAME);
+                String codecName = mediaFormat.getString(FSMeta.IJKM_KEY_CODEC_NAME);
                 if (!TextUtils.isEmpty(codecName) && codecName.equalsIgnoreCase(CODEC_NAME_H264)) {
-                    int level = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_CODEC_LEVEL);
+                    int level = mediaFormat.getInteger(FSMeta.IJKM_KEY_CODEC_LEVEL);
                     if (level < 10)
                         return sb.toString();
 
@@ -193,17 +193,17 @@ public class IjkMediaFormat implements IMediaFormat {
         });
         sFormatterMap.put(KEY_IJK_CODEC_PIXEL_FORMAT_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
-                return mediaFormat.getString(IjkMediaMeta.IJKM_KEY_CODEC_PIXEL_FORMAT);
+            protected String doFormat(FSFormat mediaFormat) {
+                return mediaFormat.getString(FSMeta.IJKM_KEY_CODEC_PIXEL_FORMAT);
             }
         });
         sFormatterMap.put(KEY_IJK_RESOLUTION_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
+            protected String doFormat(FSFormat mediaFormat) {
                 int width = mediaFormat.getInteger(KEY_WIDTH);
                 int height = mediaFormat.getInteger(KEY_HEIGHT);
-                int sarNum = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_SAR_NUM);
-                int sarDen = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_SAR_DEN);
+                int sarNum = mediaFormat.getInteger(FSMeta.IJKM_KEY_SAR_NUM);
+                int sarDen = mediaFormat.getInteger(FSMeta.IJKM_KEY_SAR_DEN);
 
                 if (width <= 0 || height <= 0) {
                     return null;
@@ -217,9 +217,9 @@ public class IjkMediaFormat implements IMediaFormat {
         });
         sFormatterMap.put(KEY_IJK_FRAME_RATE_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
-                int fpsNum = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_FPS_NUM);
-                int fpsDen = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_FPS_DEN);
+            protected String doFormat(FSFormat mediaFormat) {
+                int fpsNum = mediaFormat.getInteger(FSMeta.IJKM_KEY_FPS_NUM);
+                int fpsDen = mediaFormat.getInteger(FSMeta.IJKM_KEY_FPS_DEN);
                 if (fpsNum <= 0 || fpsDen <= 0) {
                     return null;
                 } else {
@@ -229,8 +229,8 @@ public class IjkMediaFormat implements IMediaFormat {
         });
         sFormatterMap.put(KEY_IJK_SAMPLE_RATE_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
-                int sampleRate = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_SAMPLE_RATE);
+            protected String doFormat(FSFormat mediaFormat) {
+                int sampleRate = mediaFormat.getInteger(FSMeta.IJKM_KEY_SAMPLE_RATE);
                 if (sampleRate <= 0) {
                     return null;
                 } else {
@@ -240,14 +240,14 @@ public class IjkMediaFormat implements IMediaFormat {
         });
         sFormatterMap.put(KEY_IJK_CHANNEL_UI, new Formatter() {
             @Override
-            protected String doFormat(IjkMediaFormat mediaFormat) {
-                int channelLayout = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_CHANNEL_LAYOUT);
+            protected String doFormat(FSFormat mediaFormat) {
+                int channelLayout = mediaFormat.getInteger(FSMeta.IJKM_KEY_CHANNEL_LAYOUT);
                 if (channelLayout <= 0) {
                     return null;
                 } else {
-                    if (channelLayout == IjkMediaMeta.AV_CH_LAYOUT_MONO) {
+                    if (channelLayout == FSMeta.AV_CH_LAYOUT_MONO) {
                         return "mono";
-                    } else if (channelLayout == IjkMediaMeta.AV_CH_LAYOUT_STEREO) {
+                    } else if (channelLayout == FSMeta.AV_CH_LAYOUT_STEREO) {
                         return "stereo";
                     } else {
                         return String.format(Locale.US, "%x", channelLayout);

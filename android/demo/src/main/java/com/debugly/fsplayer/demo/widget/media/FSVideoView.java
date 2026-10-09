@@ -51,19 +51,19 @@ import com.debugly.fsplayer.player.AndroidMediaPlayer;
 import com.debugly.fsplayer.demo.player.Media3MediaPlayer;
 import com.debugly.fsplayer.player.FSHudView;
 import com.debugly.fsplayer.player.IMediaPlayer;
-import com.debugly.fsplayer.player.IjkMediaPlayer;
-import com.debugly.fsplayer.player.IjkTimedText;
+import com.debugly.fsplayer.player.FSPlayer;
+import com.debugly.fsplayer.player.FSTimedText;
 import com.debugly.fsplayer.player.TextureMediaPlayer;
 import com.debugly.fsplayer.player.misc.IMediaDataSource;
 import com.debugly.fsplayer.player.misc.IMediaFormat;
 import com.debugly.fsplayer.player.misc.ITrackInfo;
-import com.debugly.fsplayer.player.misc.IjkMediaFormat;
+import com.debugly.fsplayer.player.misc.FSFormat;
 import com.debugly.fsplayer.demo.R;
 import com.debugly.fsplayer.demo.application.Settings;
 import com.debugly.fsplayer.demo.services.MediaPlayerService;
 
-public class IjkVideoView extends FrameLayout implements MediaController.MediaPlayerControl {
-    private String TAG = "IjkVideoView";
+public class FSVideoView extends FrameLayout implements MediaController.MediaPlayerControl {
+    private String TAG = "FSVideoView";
     // settable by the client
     private Uri mUri;
     private String mManifestString;
@@ -131,23 +131,23 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     private TextView subtitleDisplay;
 
-    public IjkVideoView(Context context) {
+    public FSVideoView(Context context) {
         super(context);
         initVideoView(context);
     }
 
-    public IjkVideoView(Context context, AttributeSet attrs) {
+    public FSVideoView(Context context, AttributeSet attrs) {
         super(context, attrs);
         initVideoView(context);
     }
 
-    public IjkVideoView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public FSVideoView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initVideoView(context);
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public IjkVideoView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    public FSVideoView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         initVideoView(context);
     }
@@ -254,8 +254,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     /** 把统计卡片挂到当前播放器上（对齐 iOS 的 attachHudView） */
     private void attachHudView() {
-        if (mHudView != null && mMediaPlayer instanceof IjkMediaPlayer)
-            ((IjkMediaPlayer) mMediaPlayer).attachHudView(mHudView);
+        if (mHudView != null && mMediaPlayer instanceof FSPlayer)
+            ((FSPlayer) mMediaPlayer).attachHudView(mHudView);
         applyHudVisibility();
         updateHudPlayerType();
     }
@@ -281,19 +281,19 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     }
 
     private void applyHudVisibility() {
-        if (mHudView == null || !(mMediaPlayer instanceof IjkMediaPlayer))
+        if (mHudView == null || !(mMediaPlayer instanceof FSPlayer))
             return;
-        ((IjkMediaPlayer) mMediaPlayer).setShouldShowHudView(mShouldShowHudView);
+        ((FSPlayer) mMediaPlayer).setShouldShowHudView(mShouldShowHudView);
     }
 
     /** HUD 统计卡片只有 ijkplayer 驱动，非 ijk 后端没有这张卡片可显示。 */
     public boolean canToggleHudView() {
-        return mMediaPlayer instanceof IjkMediaPlayer;
+        return mMediaPlayer instanceof FSPlayer;
     }
 
     /** "HUD" 菜单项：开关统计卡片（等价 iOS 的 shouldShowHudView） */
     public boolean toggleHudView() {
-        if (!(mMediaPlayer instanceof IjkMediaPlayer))
+        if (!(mMediaPlayer instanceof FSPlayer))
             return false;
         setShouldShowHudView(!mShouldShowHudView);
         return mShouldShowHudView;
@@ -431,11 +431,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      *
      * 和 setVideoPath() 的区别是这里不销毁重建：setVideoPath 会走
      * openVideo() -&gt; release(false) 把 native 实例整个 ffp_destroy 掉，
-     * 紧接着再 new IjkMediaPlayer() 新建。销毁和创建挤在同一个调用栈里，
+     * 紧接着再 new FSPlayer() 新建。销毁和创建挤在同一个调用栈里，
      * 旧实例的 Vulkan 渲染线程还没收尾，新实例就去抢设备，
      * 结果 ijkmp_android_create() 里 SIGSEGV（fault addr 是变化的小整数）。
      *
-     * 这里走 ijkplayer 设计的正规切换姿势：同一个 IjkMediaPlayer 实例
+     * 这里走 ijkplayer 设计的正规切换姿势：同一个 FSPlayer 实例
      * reset() 之后换数据源，底层是 ffp_reset_internal 复用解封装/解码管线，
      * Vulkan 上下文原封不动，不存在「旧实例销毁 vs 新实例创建」的交接窗口。
      *
@@ -711,7 +711,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     private IMediaPlayer.OnTimedTextListener mOnTimedTextListener = new IMediaPlayer.OnTimedTextListener() {
         @Override
-        public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
+        public void onTimedText(IMediaPlayer mp, FSTimedText text) {
             if (text != null) {
                 subtitleDisplay.setText(text.getText());
             }
@@ -1134,8 +1134,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
             case Settings.PV_PLAYER__AndroidMediaPlayer:
                 text = context.getString(R.string.VideoView_player_AndroidMediaPlayer);
                 break;
-            case Settings.PV_PLAYER__IjkMediaPlayer:
-                text = context.getString(R.string.VideoView_player_IjkMediaPlayer);
+            case Settings.PV_PLAYER__FSPlayer:
+                text = context.getString(R.string.VideoView_player_FSPlayer);
                 break;
             case Settings.PV_PLAYER__AndroidXMedia3:
                 text = context.getString(R.string.VideoView_player_AndroidXMedia3);
@@ -1147,7 +1147,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         return text;
     }
 
-    /** 当前真正在用的播放器实例。菜单里那些需要 IjkMediaPlayer 特有 API
+    /** 当前真正在用的播放器实例。菜单里那些需要 FSPlayer 特有 API
      *  （声道选择、三轴旋转等）的入口必须走这个，不能走 MediaPlayerService：
      *  后者的静态字段只有后台播放时才赋值，前台播放一直是 null。 */
     public IMediaPlayer getMediaPlayer() {
@@ -1170,55 +1170,55 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                 mediaPlayer = androidMediaPlayer;
             }
             break;
-            case Settings.PV_PLAYER__IjkMediaPlayer:
+            case Settings.PV_PLAYER__FSPlayer:
             default: {
-                IjkMediaPlayer ijkMediaPlayer = null;
+                FSPlayer fsPlayer = null;
                 if (mUri != null) {
-                    ijkMediaPlayer = new IjkMediaPlayer();
-                    ijkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_DEBUG);
-                    ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "analyzeduration", "600000");
+                    fsPlayer = new FSPlayer();
+                    fsPlayer.native_setLogLevel(FSPlayer.IJK_LOG_DEBUG);
+                    fsPlayer.setOption(FSPlayer.OPT_CATEGORY_FORMAT, "analyzeduration", "600000");
 
                     if (mManifestString != null) {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "iformat", "ijklas");
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "find_stream_info", 0);
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "manifest_string", mManifestString);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "iformat", "ijklas");
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "find_stream_info", 0);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_FORMAT, "manifest_string", mManifestString);
                     }
                     if (mSettings.getUsingMediaCodec()) {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1);
                         if (mSettings.getUsingMediaCodecAutoRotate()) {
-                            ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 1);
+                            fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 1);
                         } else {
-                            ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 0);
+                            fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 0);
                         }
                         if (mSettings.getMediaCodecHandleResolutionChange()) {
-                            ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 1);
+                            fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 1);
                         } else {
-                            ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 0);
+                            fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 0);
                         }
                     } else {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 0);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 0);
                     }
 
                     if (mSettings.getUsingOpenSLES()) {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles", 1);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "opensles", 1);
                     } else {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles", 0);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "opensles", 0);
                     }
 
                     String pixelFormat = mSettings.getPixelFormat();
                     if (TextUtils.isEmpty(pixelFormat)) {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "overlay-format", IjkMediaPlayer.SDL_FCC_RV32);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "overlay-format", FSPlayer.SDL_FCC_RV32);
                     } else {
-                        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "overlay-format", pixelFormat);
+                        fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "overlay-format", pixelFormat);
                     }
-                    ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "framedrop", 1);
-                    ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "start-on-prepared", 0);
+                    fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "framedrop", 1);
+                    fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "start-on-prepared", 0);
 
-                    ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "http-detect-range-support", 0);
+                    fsPlayer.setOption(FSPlayer.OPT_CATEGORY_FORMAT, "http-detect-range-support", 0);
 
-                    ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_CODEC, "skip_loop_filter", 48);
+                    fsPlayer.setOption(FSPlayer.OPT_CATEGORY_CODEC, "skip_loop_filter", 48);
                 }
-                mediaPlayer = ijkMediaPlayer;
+                mediaPlayer = fsPlayer;
             }
             break;
         }
@@ -1296,22 +1296,22 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
                 IMediaFormat mediaFormat = trackInfo.getFormat();
                 if (mediaFormat == null) {
-                } else if (mediaFormat instanceof IjkMediaFormat) {
+                } else if (mediaFormat instanceof FSFormat) {
                     switch (trackType) {
                         case ITrackInfo.MEDIA_TRACK_TYPE_VIDEO:
-                            builder.appendRow2(R.string.mi_codec, mediaFormat.getString(IjkMediaFormat.KEY_IJK_CODEC_LONG_NAME_UI));
-                            builder.appendRow2(R.string.mi_profile_level, mediaFormat.getString(IjkMediaFormat.KEY_IJK_CODEC_PROFILE_LEVEL_UI));
-                            builder.appendRow2(R.string.mi_pixel_format, mediaFormat.getString(IjkMediaFormat.KEY_IJK_CODEC_PIXEL_FORMAT_UI));
-                            builder.appendRow2(R.string.mi_resolution, mediaFormat.getString(IjkMediaFormat.KEY_IJK_RESOLUTION_UI));
-                            builder.appendRow2(R.string.mi_frame_rate, mediaFormat.getString(IjkMediaFormat.KEY_IJK_FRAME_RATE_UI));
-                            builder.appendRow2(R.string.mi_bit_rate, mediaFormat.getString(IjkMediaFormat.KEY_IJK_BIT_RATE_UI));
+                            builder.appendRow2(R.string.mi_codec, mediaFormat.getString(FSFormat.KEY_IJK_CODEC_LONG_NAME_UI));
+                            builder.appendRow2(R.string.mi_profile_level, mediaFormat.getString(FSFormat.KEY_IJK_CODEC_PROFILE_LEVEL_UI));
+                            builder.appendRow2(R.string.mi_pixel_format, mediaFormat.getString(FSFormat.KEY_IJK_CODEC_PIXEL_FORMAT_UI));
+                            builder.appendRow2(R.string.mi_resolution, mediaFormat.getString(FSFormat.KEY_IJK_RESOLUTION_UI));
+                            builder.appendRow2(R.string.mi_frame_rate, mediaFormat.getString(FSFormat.KEY_IJK_FRAME_RATE_UI));
+                            builder.appendRow2(R.string.mi_bit_rate, mediaFormat.getString(FSFormat.KEY_IJK_BIT_RATE_UI));
                             break;
                         case ITrackInfo.MEDIA_TRACK_TYPE_AUDIO:
-                            builder.appendRow2(R.string.mi_codec, mediaFormat.getString(IjkMediaFormat.KEY_IJK_CODEC_LONG_NAME_UI));
-                            builder.appendRow2(R.string.mi_profile_level, mediaFormat.getString(IjkMediaFormat.KEY_IJK_CODEC_PROFILE_LEVEL_UI));
-                            builder.appendRow2(R.string.mi_sample_rate, mediaFormat.getString(IjkMediaFormat.KEY_IJK_SAMPLE_RATE_UI));
-                            builder.appendRow2(R.string.mi_channels, mediaFormat.getString(IjkMediaFormat.KEY_IJK_CHANNEL_UI));
-                            builder.appendRow2(R.string.mi_bit_rate, mediaFormat.getString(IjkMediaFormat.KEY_IJK_BIT_RATE_UI));
+                            builder.appendRow2(R.string.mi_codec, mediaFormat.getString(FSFormat.KEY_IJK_CODEC_LONG_NAME_UI));
+                            builder.appendRow2(R.string.mi_profile_level, mediaFormat.getString(FSFormat.KEY_IJK_CODEC_PROFILE_LEVEL_UI));
+                            builder.appendRow2(R.string.mi_sample_rate, mediaFormat.getString(FSFormat.KEY_IJK_SAMPLE_RATE_UI));
+                            builder.appendRow2(R.string.mi_channels, mediaFormat.getString(FSFormat.KEY_IJK_CHANNEL_UI));
+                            builder.appendRow2(R.string.mi_bit_rate, mediaFormat.getString(FSFormat.KEY_IJK_BIT_RATE_UI));
                             break;
                         default:
                             break;

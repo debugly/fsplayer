@@ -2,7 +2,7 @@
 <resources>
     <attr name="entrySummaries" format="reference" />
 
-    <declare-styleable name="IjkListPreference">
+    <declare-styleable name="FSListPreference">
         <attr name="entrySummaries" />
     </declare-styleable>
 </resources>

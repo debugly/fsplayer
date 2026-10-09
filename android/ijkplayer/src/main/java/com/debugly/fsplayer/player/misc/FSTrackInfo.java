@@ -19,23 +19,23 @@ package com.debugly.fsplayer.player.misc;
 
 import android.text.TextUtils;
 
-import com.debugly.fsplayer.player.IjkMediaMeta;
+import com.debugly.fsplayer.player.FSMeta;
 
-public class IjkTrackInfo implements ITrackInfo {
+public class FSTrackInfo implements ITrackInfo {
     private int mTrackType = MEDIA_TRACK_TYPE_UNKNOWN;
-    private IjkMediaMeta.IjkStreamMeta mStreamMeta;
+    private FSMeta.FSStreamMeta mStreamMeta;
 
-    public IjkTrackInfo(IjkMediaMeta.IjkStreamMeta streamMeta) {
+    public FSTrackInfo(FSMeta.FSStreamMeta streamMeta) {
         mStreamMeta = streamMeta;
     }
 
-    public void setMediaMeta(IjkMediaMeta.IjkStreamMeta streamMeta) {
+    public void setMediaMeta(FSMeta.FSStreamMeta streamMeta) {
         mStreamMeta = streamMeta;
     }
 
     @Override
     public IMediaFormat getFormat() {
-        return new IjkMediaFormat(mStreamMeta);
+        return new FSFormat(mStreamMeta);
     }
 
     @Override

@@ -25,37 +25,37 @@ import android.util.AttributeSet;
 
 import com.debugly.fsplayer.demo.R;
 
-public class IjkListPreference extends ListPreference {
+public class FSListPreference extends ListPreference {
     private CharSequence[] mEntrySummaries;
 
-    public IjkListPreference(Context context) {
+    public FSListPreference(Context context) {
         super(context);
         initPreference(context, null);
     }
 
-    public IjkListPreference(Context context, AttributeSet attrs) {
+    public FSListPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
         initPreference(context, attrs);
     }
 
-    public IjkListPreference(Context context, AttributeSet attrs, int defStyleAttr) {
+    public FSListPreference(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initPreference(context, attrs);
     }
 
-    public IjkListPreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    public FSListPreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         initPreference(context, attrs);
     }
 
     private void initPreference(Context context, AttributeSet attrs) {
         TypedArray a = context.obtainStyledAttributes(attrs,
-                R.styleable.IjkListPreference, 0, 0);
+                R.styleable.FSListPreference, 0, 0);
         if (a == null)
             return;
 
         mEntrySummaries = a
-                .getTextArray(R.styleable.IjkListPreference_entrySummaries);
+                .getTextArray(R.styleable.FSListPreference_entrySummaries);
 
         a.recycle();
     }

@@ -26,5 +26,5 @@ public class MediaInfo {
     public String mAudioDecoder;
     public String mAudioDecoderImpl;
 
-    public IjkMediaMeta mMeta;
+    public FSMeta mMeta;
 }

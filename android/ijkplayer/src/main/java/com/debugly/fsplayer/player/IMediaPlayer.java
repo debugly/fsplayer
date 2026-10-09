@@ -181,7 +181,7 @@ public interface IMediaPlayer {
     }
 
     interface OnTimedTextListener {
-        void onTimedText(IMediaPlayer mp, IjkTimedText text);
+        void onTimedText(IMediaPlayer mp, FSTimedText text);
     }
 
     /*--------------------

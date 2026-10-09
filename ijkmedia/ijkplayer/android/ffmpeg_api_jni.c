@@ -30,7 +30,7 @@
 #include "ijksdl/ijksdl_log.h"
 #include "ijksdl/android/ijksdl_android_jni.h"
 
-#define JNI_CLASS_FFMPEG_API "tv/danmaku/ijk/media/player/ffmpeg/FFmpegApi"
+#define JNI_CLASS_FFMPEG_API "com/debugly/fsplayer/player/ffmpeg/FFmpegApi"
 
 typedef struct ffmpeg_api_fields_t {
     jclass clazz;

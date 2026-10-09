@@ -16,7 +16,7 @@
     <string-array name="pref_entries_player">
         <item>Auto Select</item>
         <item>AndroidMediaPlayer</item>
-        <item>IjkMediaPlayer</item>
+        <item>FSPlayer</item>
         <item>AndroidX Media3</item>
     </string-array>
     <string-array name="pref_entry_values_player">
@@ -28,7 +28,7 @@
     <string-array name="pref_entry_summaries_player">
         <item>Auto Select</item>
         <item>AndroidMediaPlayer</item>
-        <item>IjkMediaPlayer</item>
+        <item>FSPlayer</item>
         <item>AndroidX Media3</item>
     </string-array>
 

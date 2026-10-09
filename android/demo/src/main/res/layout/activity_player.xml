@@ -13,11 +13,11 @@
         android:layout_height="match_parent"
         android:background="#0099cc">
 
-        <com.debugly.fsplayer.demo.widget.media.IjkVideoView
+        <com.debugly.fsplayer.demo.widget.media.FSVideoView
             android:id="@+id/video_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="center"></com.debugly.fsplayer.demo.widget.media.IjkVideoView>
+            android:layout_gravity="center"></com.debugly.fsplayer.demo.widget.media.FSVideoView>
 
         <!-- 上下拖拽切换视频时的预览层：跟手移动，松手过半才落到新地址 -->
         <FrameLayout

@@ -18,7 +18,7 @@
 package com.debugly.fsplayer.demo.widget.media;
 
 import com.debugly.fsplayer.player.IMediaPlayer;
-import com.debugly.fsplayer.player.IjkMediaPlayer;
+import com.debugly.fsplayer.player.FSPlayer;
 import com.debugly.fsplayer.player.MediaPlayerProxy;
 import com.debugly.fsplayer.player.TextureMediaPlayer;
 import com.debugly.fsplayer.demo.player.Media3MediaPlayer;
@@ -58,22 +58,22 @@ public class MediaPlayerCompat {
         }
     }
 
-    public static IjkMediaPlayer getIjkMediaPlayer(IMediaPlayer mp) {
-        IjkMediaPlayer ijkMediaPlayer = null;
+    public static FSPlayer getFSPlayer(IMediaPlayer mp) {
+        FSPlayer fsPlayer = null;
         if (mp == null) {
             return null;
-        } if (mp instanceof IjkMediaPlayer) {
-            ijkMediaPlayer = (IjkMediaPlayer) mp;
-        } else if (mp instanceof MediaPlayerProxy && ((MediaPlayerProxy) mp).getInternalMediaPlayer() instanceof IjkMediaPlayer) {
-            ijkMediaPlayer = (IjkMediaPlayer) ((MediaPlayerProxy) mp).getInternalMediaPlayer();
+        } if (mp instanceof FSPlayer) {
+            fsPlayer = (FSPlayer) mp;
+        } else if (mp instanceof MediaPlayerProxy && ((MediaPlayerProxy) mp).getInternalMediaPlayer() instanceof FSPlayer) {
+            fsPlayer = (FSPlayer) ((MediaPlayerProxy) mp).getInternalMediaPlayer();
         }
-        return ijkMediaPlayer;
+        return fsPlayer;
     }
 
     public static void selectTrack(IMediaPlayer mp, int stream) {
-        IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer != null) {
-            ijkMediaPlayer.selectTrack(stream);
+        FSPlayer fsPlayer = getFSPlayer(mp);
+        if (fsPlayer != null) {
+            fsPlayer.selectTrack(stream);
             return;
         }
         Media3MediaPlayer media3 = getMedia3MediaPlayer(mp);
@@ -82,9 +82,9 @@ public class MediaPlayerCompat {
     }
 
     public static void deselectTrack(IMediaPlayer mp, int stream) {
-        IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer != null) {
-            ijkMediaPlayer.deselectTrack(stream);
+        FSPlayer fsPlayer = getFSPlayer(mp);
+        if (fsPlayer != null) {
+            fsPlayer.deselectTrack(stream);
             return;
         }
         Media3MediaPlayer media3 = getMedia3MediaPlayer(mp);
@@ -93,9 +93,9 @@ public class MediaPlayerCompat {
     }
 
     public static int getSelectedTrack(IMediaPlayer mp, int trackType) {
-        IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer != null)
-            return ijkMediaPlayer.getSelectedTrack(trackType);
+        FSPlayer fsPlayer = getFSPlayer(mp);
+        if (fsPlayer != null)
+            return fsPlayer.getSelectedTrack(trackType);
 
         // Media3 没有「按 type 返回流下标」这回事：选中与否由
         // TrackSelectionOverride / 自适应选择决定，下标取当前选中组的下标。

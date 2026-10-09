@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 @SuppressWarnings("SameParameterValue")
-public class IjkMediaMeta {
+public class FSMeta {
     // media meta
     public static final String IJKM_KEY_FORMAT = "format";
     public static final String IJKM_KEY_DURATION_US = "duration_us";
@@ -142,9 +142,9 @@ public class IjkMediaMeta {
     public long mStartUS;
     public long mBitrate;
 
-    public final ArrayList<IjkStreamMeta> mStreams = new ArrayList<IjkStreamMeta>();
-    public IjkStreamMeta mVideoStream;
-    public IjkStreamMeta mAudioStream;
+    public final ArrayList<FSStreamMeta> mStreams = new ArrayList<FSStreamMeta>();
+    public FSStreamMeta mVideoStream;
+    public FSStreamMeta mAudioStream;
 
     public String getString(String key) {
         return mMediaMeta.getString(key);
@@ -196,11 +196,11 @@ public class IjkMediaMeta {
         return String.format(Locale.US, "%02d:%02d:%02d", hours, mins, secs);
     }
 
-    public static IjkMediaMeta parse(Bundle mediaMeta) {
+    public static FSMeta parse(Bundle mediaMeta) {
         if (mediaMeta == null)
             return null;
 
-        IjkMediaMeta meta = new IjkMediaMeta();
+        FSMeta meta = new FSMeta();
         meta.mMediaMeta = mediaMeta;
 
         meta.mFormat = meta.getString(IJKM_KEY_FORMAT);
@@ -225,7 +225,7 @@ public class IjkMediaMeta {
                 continue;
             }
 
-            IjkStreamMeta streamMeta = new IjkStreamMeta(index);
+            FSStreamMeta streamMeta = new FSStreamMeta(index);
             streamMeta.mMeta = streamBundle;
             streamMeta.mType = streamMeta.getString(IJKM_KEY_TYPE);
             streamMeta.mLanguage = streamMeta.getString(IJKM_KEY_LANGUAGE);
@@ -281,7 +281,7 @@ public class IjkMediaMeta {
         return meta;
     }
 
-    public static class IjkStreamMeta {
+    public static class FSStreamMeta {
         public Bundle mMeta;
 
         public final int mIndex;
@@ -315,7 +315,7 @@ public class IjkMediaMeta {
         public int mSampleRate;
         public long mChannelLayout;
 
-        public IjkStreamMeta(int index) {
+        public FSStreamMeta(int index) {
             mIndex = index;
         }
 

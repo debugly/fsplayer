@@ -32,12 +32,12 @@ import java.util.Locale;
  * open delegates and have no source on Android, so they are not filled here.
  */
 public final class FSHudPresenter {
-    private final IjkMediaPlayer mPlayer;
+    private final FSPlayer mPlayer;
     private final FSHudView mHud;
     /** 媒体 meta 在一次播放里不变，取到就留着（iOS 也存在 monitor 里） */
-    private IjkMediaMeta mMeta;
+    private FSMeta mMeta;
 
-    public FSHudPresenter(IjkMediaPlayer player, FSHudView hud) {
+    public FSHudPresenter(FSPlayer player, FSHudView hud) {
         mPlayer = player;
         mHud = hud;
     }
@@ -56,8 +56,8 @@ public final class FSHudPresenter {
                 mMeta = info.mMeta;
             }
         }
-        IjkMediaMeta.IjkStreamMeta video = mMeta != null ? mMeta.mVideoStream : null;
-        IjkMediaMeta.IjkStreamMeta audio = mMeta != null ? mMeta.mAudioStream : null;
+        FSMeta.FSStreamMeta video = mMeta != null ? mMeta.mVideoStream : null;
+        FSMeta.FSStreamMeta audio = mMeta != null ? mMeta.mAudioStream : null;
 
         refreshResolution(video);
 
@@ -141,11 +141,11 @@ public final class FSHudPresenter {
                 "frames(a,v,s)");
 
         long videoCachedDuration = mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_VIDEO_CACHED_DURATION, 0);
+                FSPlayer.FFP_PROP_INT64_VIDEO_CACHED_DURATION, 0);
         long videoCachedBytes = mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_VIDEO_CACHED_BYTES, 0);
+                FSPlayer.FFP_PROP_INT64_VIDEO_CACHED_BYTES, 0);
         long videoCachedPackets = mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_VIDEO_CACHED_PACKETS, 0);
+                FSPlayer.FFP_PROP_INT64_VIDEO_CACHED_PACKETS, 0);
         mHud.setHudValue(String.format(Locale.US, "v-cache: %s, %s, %d packets",
                         formatedDurationMilli(videoCachedDuration),
                         formatedSize(videoCachedBytes),
@@ -153,11 +153,11 @@ public final class FSHudPresenter {
                 "v-cache");
 
         long audioCachedDuration = mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_AUDIO_CACHED_DURATION, 0);
+                FSPlayer.FFP_PROP_INT64_AUDIO_CACHED_DURATION, 0);
         long audioCachedBytes = mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_AUDIO_CACHED_BYTES, 0);
+                FSPlayer.FFP_PROP_INT64_AUDIO_CACHED_BYTES, 0);
         long audioCachedPackets = mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_AUDIO_CACHED_PACKETS, 0);
+                FSPlayer.FFP_PROP_INT64_AUDIO_CACHED_PACKETS, 0);
         mHud.setHudValue(String.format(Locale.US, "a-cache: %s, %s, %d packets",
                         formatedDurationMilli(audioCachedDuration),
                         formatedSize(audioCachedBytes),
@@ -172,7 +172,7 @@ public final class FSHudPresenter {
                 formatedSpeed(mPlayer.getTcpSpeed(), 1000)), "tcp-spd");
     }
 
-    private void refreshResolution(IjkMediaMeta.IjkStreamMeta video) {
+    private void refreshResolution(FSMeta.FSStreamMeta video) {
         int width = mPlayer.getVideoWidth();
         int height = mPlayer.getVideoHeight();
         if (width <= 0 || height <= 0) {
@@ -182,8 +182,8 @@ public final class FSHudPresenter {
         long sarNum = mPlayer.getVideoSarNum();
         long sarDen = mPlayer.getVideoSarDen();
         if (sarNum <= 0 || sarDen <= 0) {
-            sarNum = mPlayer.getPropertyLong(IjkMediaPlayer.FFP_PROP_INT64_VIDEO_SAR_NUM, 0);
-            sarDen = mPlayer.getPropertyLong(IjkMediaPlayer.FFP_PROP_INT64_VIDEO_SAR_DEN, 0);
+            sarNum = mPlayer.getPropertyLong(FSPlayer.FFP_PROP_INT64_VIDEO_SAR_NUM, 0);
+            sarDen = mPlayer.getPropertyLong(FSPlayer.FFP_PROP_INT64_VIDEO_SAR_DEN, 0);
         }
         if ((sarNum <= 0 || sarDen <= 0) && video != null) {
             sarNum = video.mSarNum;
@@ -214,20 +214,20 @@ public final class FSHudPresenter {
     /** FFP_PROP_INT64_VIDEO_DECODER 到名字，对齐 iOS 的 coderNameWithVdecType: */
     private String decoderName() {
         int decoder = (int) mPlayer.getPropertyLong(
-                IjkMediaPlayer.FFP_PROP_INT64_VIDEO_DECODER, 0);
+                FSPlayer.FFP_PROP_INT64_VIDEO_DECODER, 0);
         switch (decoder) {
-            case IjkMediaPlayer.FFP_PROPV_DECODER_AVCODEC:
+            case FSPlayer.FFP_PROPV_DECODER_AVCODEC:
                 return "avcodec";
-            case IjkMediaPlayer.FFP_PROPV_DECODER_MEDIACODEC:
+            case FSPlayer.FFP_PROPV_DECODER_MEDIACODEC:
                 return "mediacodec";
-            case IjkMediaPlayer.FFP_PROPV_DECODER_AVCODEC_HW:
+            case FSPlayer.FFP_PROPV_DECODER_AVCODEC_HW:
                 return "avcodec-hw";
             default:
                 return "N/A";
         }
     }
 
-    private static double fpsInMeta(IjkMediaMeta.IjkStreamMeta video) {
+    private static double fpsInMeta(FSMeta.FSStreamMeta video) {
         if (video == null || video.mFpsDen == 0) {
             return 0;
         }

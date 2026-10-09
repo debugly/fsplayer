@@ -17,11 +17,11 @@ import java.io.FileOutputStream;
 
 import com.debugly.fsplayer.player.FSHudView;
 import com.debugly.fsplayer.player.IMediaPlayer;
-import com.debugly.fsplayer.player.IjkMediaPlayer;
+import com.debugly.fsplayer.player.FSPlayer;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
-    private IjkMediaPlayer mPlayer;
+    private FSPlayer mPlayer;
     private SurfaceView mSurfaceView;
     private FrameLayout mRootLayout;
     private FSHudView mHudView;
@@ -29,12 +29,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private int mSnapshotType = -1;
     private int mSnapshotDelayMs = 4000;
     private String mBackgroundPath;
-    private int mBlurIterations = IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
+    private int mBlurIterations = FSPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
     private float mBrightness;
     private float mSaturation;
     private float mContrast;
     private int mBgColor;
-    private float mBlurSigma = IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA;
+    private float mBlurSigma = FSPlayer.FS_BACKGROUND_BLUR_SIGMA;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
     // 可用 intent extra "url" 覆盖（本地文件或网络地址）
@@ -89,23 +89,23 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         int seekToMs = getIntent() != null ? getIntent().getIntExtra("seekToMs", 30000) : 30000;
         mBackgroundPath = getIntent() != null ? getIntent().getStringExtra("background") : null;
         mBlurIterations = getIntent() != null
-                ? getIntent().getIntExtra("blurIterations", IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS)
-                : IjkMediaPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
+                ? getIntent().getIntExtra("blurIterations", FSPlayer.FS_BACKGROUND_BLUR_ITERATIONS)
+                : FSPlayer.FS_BACKGROUND_BLUR_ITERATIONS;
         mBlurSigma = getIntent() != null
-                ? getIntent().getFloatExtra("blurSigma", IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA)
-                : IjkMediaPlayer.FS_BACKGROUND_BLUR_SIGMA;
+                ? getIntent().getFloatExtra("blurSigma", FSPlayer.FS_BACKGROUND_BLUR_SIGMA)
+                : FSPlayer.FS_BACKGROUND_BLUR_SIGMA;
         mBrightness = getIntent() != null
-                ? getIntent().getFloatExtra("brightness", IjkMediaPlayer.FS_COLOR_DEFAULT)
-                : IjkMediaPlayer.FS_COLOR_DEFAULT;
+                ? getIntent().getFloatExtra("brightness", FSPlayer.FS_COLOR_DEFAULT)
+                : FSPlayer.FS_COLOR_DEFAULT;
         mSaturation = getIntent() != null
-                ? getIntent().getFloatExtra("saturation", IjkMediaPlayer.FS_COLOR_DEFAULT)
-                : IjkMediaPlayer.FS_COLOR_DEFAULT;
+                ? getIntent().getFloatExtra("saturation", FSPlayer.FS_COLOR_DEFAULT)
+                : FSPlayer.FS_COLOR_DEFAULT;
         mContrast = getIntent() != null
-                ? getIntent().getFloatExtra("contrast", IjkMediaPlayer.FS_COLOR_DEFAULT)
-                : IjkMediaPlayer.FS_COLOR_DEFAULT;
+                ? getIntent().getFloatExtra("contrast", FSPlayer.FS_COLOR_DEFAULT)
+                : FSPlayer.FS_COLOR_DEFAULT;
         mBgColor = getIntent() != null ? getIntent().getIntExtra("bgColor", 0) : 0;
 
-        mPlayer = new IjkMediaPlayer();
+        mPlayer = new FSPlayer();
         mPlayer.attachHudView(mHudView);
         mPlayer.setShouldShowHudView(getIntent() != null
                 && getIntent().getIntExtra("hud", 0) != 0);
@@ -119,12 +119,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         // 可用 intent extra "mediacodec" 传 0 强制走软解（排查硬解通路用）
         int useMediaCodec = getIntent() != null ? getIntent().getIntExtra("mediacodec", 1) : 1;
         if (useMediaCodec != 0) {
-            mPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
+            mPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
         }
         // 画面缩放模式（和 iOS 的 player.scalingMode 对齐）
         int scaleMode = getIntent() != null
-                ? getIntent().getIntExtra("scaleMode", IjkMediaPlayer.FS_SCALING_MODE_ASPECT_FIT)
-                : IjkMediaPlayer.FS_SCALING_MODE_ASPECT_FIT;
+                ? getIntent().getIntExtra("scaleMode", FSPlayer.FS_SCALING_MODE_ASPECT_FIT)
+                : FSPlayer.FS_SCALING_MODE_ASPECT_FIT;
         mPlayer.setScalingMode(scaleMode);
         mPlayer.setOnPreparedListener(new IMediaPlayer.OnPreparedListener() {
             @Override

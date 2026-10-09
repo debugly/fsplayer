@@ -12,8 +12,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class IjkMediaCodecInfo {
-    private final static String TAG = "IjkMediaCodecInfo";
+public class FSCodecInfo {
+    private final static String TAG = "FSCodecInfo";
 
     public static final int RANK_MAX = 1000;
     public static final int RANK_TESTED = 800;
@@ -135,7 +135,7 @@ public class IjkMediaCodecInfo {
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-    public static IjkMediaCodecInfo setupCandidate(MediaCodecInfo codecInfo,
+    public static FSCodecInfo setupCandidate(MediaCodecInfo codecInfo,
             String mimeType) {
         if (codecInfo == null
                 || Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
@@ -187,7 +187,7 @@ public class IjkMediaCodecInfo {
             }
         }
 
-        IjkMediaCodecInfo candidate = new IjkMediaCodecInfo();
+        FSCodecInfo candidate = new FSCodecInfo();
         candidate.mCodecInfo = codecInfo;
         candidate.mRank = rank;
         candidate.mMimeType = mimeType;

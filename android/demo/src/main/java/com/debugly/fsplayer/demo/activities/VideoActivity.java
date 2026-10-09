@@ -61,7 +61,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.debugly.fsplayer.player.FSHudView;
-import com.debugly.fsplayer.player.IjkMediaPlayer;
+import com.debugly.fsplayer.player.FSPlayer;
 import com.debugly.fsplayer.demo.services.MediaPlayerService;
 import com.debugly.fsplayer.demo.widget.media.MediaPlayerCompat;
 import com.debugly.fsplayer.player.misc.ITrackInfo;
@@ -72,7 +72,7 @@ import com.debugly.fsplayer.demo.content.ZlistParser;
 import com.debugly.fsplayer.demo.fragments.PlaylistFragment;
 import com.debugly.fsplayer.demo.fragments.TracksFragment;
 import com.debugly.fsplayer.demo.widget.media.AndroidMediaController;
-import com.debugly.fsplayer.demo.widget.media.IjkVideoView;
+import com.debugly.fsplayer.demo.widget.media.FSVideoView;
 import com.debugly.fsplayer.demo.widget.media.MeasureHelper;
 
 public class VideoActivity extends AppCompatActivity implements TracksFragment.ITrackHolder, PlaylistFragment.IPlaylistHolder {
@@ -82,7 +82,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private Uri    mVideoUri;
 
     private AndroidMediaController mMediaController;
-    private IjkVideoView mVideoView;
+    private FSVideoView mVideoView;
     private TextView mToastTextView;
     private FSHudView mHudView;
     private DrawerLayout mDrawerLayout;
@@ -211,10 +211,10 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mDrawerLayout.setScrimColor(Color.TRANSPARENT);
 
         // init player
-        IjkMediaPlayer.loadLibrariesOnce(null);
-        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
+        FSPlayer.loadLibrariesOnce(null);
+        FSPlayer.native_profileBegin("libijkplayer.so");
 
-        mVideoView = (IjkVideoView) findViewById(R.id.video_view);
+        mVideoView = (FSVideoView) findViewById(R.id.video_view);
         mVideoView.setMediaController(mMediaController);
         mVideoView.setHudView(mHudView);
         // HUD 卡片放到工具栏下面（间距 15dp）：按主题的 actionBarSize 取工具栏高度，
@@ -328,21 +328,21 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         } else {
             mVideoView.enterBackground();
         }
-        IjkMediaPlayer.native_profileEnd();
+        FSPlayer.native_profileEnd();
     }
 
     /**
-     * 拿当前正在使用的 IjkMediaPlayer（系统播放器/代理包装时返回 null）。
+     * 拿当前正在使用的 FSPlayer（系统播放器/代理包装时返回 null）。
      *
      * 必须从 mVideoView 取：MediaPlayerService.getMediaPlayer() 的静态字段只有
      * 后台播放（initBackground/enterBackground）才会被赋值，前台播放一直是 null，
      * 用它会让声道切换、三轴旋转这些菜单永远提示"请切换播放器"。
      */
-    private IjkMediaPlayer getIjkPlayer() {
+    private FSPlayer getFSPlayer() {
         if (mVideoView == null) {
             return null;
         }
-        return MediaPlayerCompat.getIjkMediaPlayer(mVideoView.getMediaPlayer());
+        return MediaPlayerCompat.getFSPlayer(mVideoView.getMediaPlayer());
     }
 
     /** 复用 demo 的 toast 展示方式。 */
@@ -386,13 +386,13 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             return true;
         } else if (id == R.id.action_toggle_player) {
             int player = mVideoView.togglePlayer();
-            String playerText = IjkVideoView.getPlayerText(this, player);
+            String playerText = FSVideoView.getPlayerText(this, player);
             mToastTextView.setText(playerText);
             mMediaController.showOnce(mToastTextView);
             return true;
         } else if (id == R.id.action_toggle_render) {
             int render = mVideoView.toggleRender();
-            String renderText = IjkVideoView.getRenderText(this, render);
+            String renderText = FSVideoView.getRenderText(this, render);
             mToastTextView.setText(renderText);
             mMediaController.showOnce(mToastTextView);
             return true;
@@ -405,30 +405,30 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             mVideoView.showMediaInfo();
         } else if (id == R.id.action_audio_channel) {
             // 新 API 演示：声道选择（对应 iOS 的 setAudioChannel:）
-            IjkMediaPlayer mp = getIjkPlayer();
+            FSPlayer mp = getFSPlayer();
             if (mp == null) {
-                showToast(R.string.need_ijk_player);
+                showToast(R.string.need_fs_player);
                 return true;
             }
             int channel = mp.getAudioChannel();
-            if (channel == IjkMediaPlayer.AUDIO_CHANNEL_STEREO) {
-                channel = IjkMediaPlayer.AUDIO_CHANNEL_LEFT;
-            } else if (channel == IjkMediaPlayer.AUDIO_CHANNEL_LEFT) {
-                channel = IjkMediaPlayer.AUDIO_CHANNEL_RIGHT;
+            if (channel == FSPlayer.AUDIO_CHANNEL_STEREO) {
+                channel = FSPlayer.AUDIO_CHANNEL_LEFT;
+            } else if (channel == FSPlayer.AUDIO_CHANNEL_LEFT) {
+                channel = FSPlayer.AUDIO_CHANNEL_RIGHT;
             } else {
-                channel = IjkMediaPlayer.AUDIO_CHANNEL_STEREO;
+                channel = FSPlayer.AUDIO_CHANNEL_STEREO;
             }
             mp.setAudioChannel(channel);
-            showToast(channel == IjkMediaPlayer.AUDIO_CHANNEL_STEREO ? R.string.audio_channel_stereo
-                    : channel == IjkMediaPlayer.AUDIO_CHANNEL_LEFT ? R.string.audio_channel_left
+            showToast(channel == FSPlayer.AUDIO_CHANNEL_STEREO ? R.string.audio_channel_stereo
+                    : channel == FSPlayer.AUDIO_CHANNEL_LEFT ? R.string.audio_channel_left
                     : R.string.audio_channel_right);
             return true;
         } else if (id == R.id.action_rotate_x || id == R.id.action_rotate_y
                 || id == R.id.action_rotate_z || id == R.id.action_rotate_reset) {
             // 新 API 演示：画面三轴旋转（对应 iOS 的 x/y/zRotateDegrees）
-            IjkMediaPlayer mp = getIjkPlayer();
+            FSPlayer mp = getFSPlayer();
             if (mp == null) {
-                showToast(R.string.need_ijk_player);
+                showToast(R.string.need_fs_player);
                 return true;
             }
             float x = mp.getXRotateDegrees();
@@ -689,7 +689,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
                         if (!tracking || candidate < 0) {
                             hideSwipePreview();
                             // 没成拖拽手势 = 点击：切换媒体控制条
-                            // （替代被 OnTouchListener 拦掉的 IjkVideoView.onTouchEvent 行为）
+                            // （替代被 OnTouchListener 拦掉的 FSVideoView.onTouchEvent 行为）
                             if (event.getActionMasked() == MotionEvent.ACTION_UP) {
                                 if (mMediaController.isShowing()) {
                                     mMediaController.hide();

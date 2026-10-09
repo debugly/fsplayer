@@ -63,7 +63,7 @@ import com.debugly.fsplayer.player.annotations.CalledByNative;
 import com.debugly.fsplayer.player.misc.IAndroidIO;
 import com.debugly.fsplayer.player.misc.IMediaDataSource;
 import com.debugly.fsplayer.player.misc.ITrackInfo;
-import com.debugly.fsplayer.player.misc.IjkTrackInfo;
+import com.debugly.fsplayer.player.misc.FSTrackInfo;
 import com.debugly.fsplayer.player.pragma.DebugLog;
 
 /**
@@ -71,8 +71,8 @@ import com.debugly.fsplayer.player.pragma.DebugLog;
  *
  *         Java wrapper of ffplay.
  */
-public final class IjkMediaPlayer extends AbstractMediaPlayer {
-    private final static String TAG = IjkMediaPlayer.class.getName();
+public final class FSPlayer extends AbstractMediaPlayer {
+    private final static String TAG = FSPlayer.class.getName();
 
     private static final int MEDIA_NOP = 0; // interface test message
     private static final int MEDIA_PREPARED = 1;
@@ -302,7 +302,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * Default library loader
      * Load them by yourself, if your libraries are not installed at default place.
      */
-    private static final IjkLibLoader sLocalLibLoader = new IjkLibLoader() {
+    private static final FSLibLoader sLocalLibLoader = new FSLibLoader() {
         @Override
         public void loadLibrary(String libName) throws UnsatisfiedLinkError, SecurityException {
             System.loadLibrary(libName);
@@ -310,8 +310,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     };
 
     private static volatile boolean mIsLibLoaded = false;
-    public static void loadLibrariesOnce(IjkLibLoader libLoader) {
-        synchronized (IjkMediaPlayer.class) {
+    public static void loadLibrariesOnce(FSLibLoader libLoader) {
+        synchronized (FSPlayer.class) {
             if (!mIsLibLoaded) {
                 if (libLoader == null)
                     libLoader = sLocalLibLoader;
@@ -324,7 +324,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     private static volatile boolean mIsNativeInitialized = false;
     private static void initNativeOnce() {
-        synchronized (IjkMediaPlayer.class) {
+        synchronized (FSPlayer.class) {
             if (!mIsNativeInitialized) {
                 native_init();
                 mIsNativeInitialized = true;
@@ -334,14 +334,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     /**
      * Default constructor. Consider using one of the create() methods for
-     * synchronously instantiating a IjkMediaPlayer from a Uri or resource.
+     * synchronously instantiating a FSPlayer from a Uri or resource.
      * <p>
-     * When done with the IjkMediaPlayer, you should call {@link #release()}, to
-     * free the resources. If not released, too many IjkMediaPlayer instances
+     * When done with the FSPlayer, you should call {@link #release()}, to
+     * free the resources. If not released, too many FSPlayer instances
      * may result in an exception.
      * </p>
      */
-    public IjkMediaPlayer() {
+    public FSPlayer() {
         this(sLocalLibLoader);
     }
 
@@ -350,11 +350,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * @param libLoader
      *              custom library loader, can be null.
      */
-    public IjkMediaPlayer(IjkLibLoader libLoader) {
+    public FSPlayer(FSLibLoader libLoader) {
         initPlayer(libLoader);
     }
 
-    private void initPlayer(IjkLibLoader libLoader) {
+    private void initPlayer(FSLibLoader libLoader) {
         loadLibrariesOnce(libLoader);
         initNativeOnce();
 
@@ -371,14 +371,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
          * Native setup requires a weak reference to our object. It's easier to
          * create it here than in C++.
          */
-        native_setup(new WeakReference<IjkMediaPlayer>(this));
+        native_setup(new WeakReference<FSPlayer>(this));
     }
 
     private native void _setFrameAtTime(String imgCachePath, long startTime, long endTime, int num, int imgDefinition)
             throws IllegalArgumentException, IllegalStateException;
 
     /*
-     * Update the IjkMediaPlayer SurfaceTexture. Call after setting a new
+     * Update the FSPlayer SurfaceTexture. Call after setting a new
      * display surface.
      */
     private native void _setVideoSurface(Surface surface);
@@ -557,7 +557,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     sb.append(entry.getValue());
                 sb.append("\r\n");
                 setOption(OPT_CATEGORY_FORMAT, "headers", sb.toString());
-                setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "protocol_whitelist", "async,cache,crypto,file,http,https,ijkhttphook,ijkinject,ijklivehook,ijklongurl,ijksegment,ijktcphook,pipe,rtp,tcp,tls,udp,ijkurlhook,data");
+                setOption(FSPlayer.OPT_CATEGORY_FORMAT, "protocol_whitelist", "async,cache,crypto,file,http,https,ijkhttphook,ijkinject,ijklivehook,ijklongurl,ijksegment,ijktcphook,pipe,rtp,tcp,tls,udp,ijkurlhook,data");
             }
         }
         setDataSource(path);
@@ -688,7 +688,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         PowerManager pm = (PowerManager) context
                 .getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(mode | PowerManager.ON_AFTER_RELEASE,
-                IjkMediaPlayer.class.getName());
+                FSPlayer.class.getName());
         mWakeLock.setReferenceCounted(false);
         if (washeld) {
             mWakeLock.acquire();
@@ -727,29 +727,29 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
-    public IjkTrackInfo[] getTrackInfo() {
+    public FSTrackInfo[] getTrackInfo() {
         Bundle bundle = getMediaMeta();
         if (bundle == null)
             return null;
 
-        IjkMediaMeta mediaMeta = IjkMediaMeta.parse(bundle);
+        FSMeta mediaMeta = FSMeta.parse(bundle);
         if (mediaMeta == null || mediaMeta.mStreams == null)
             return null;
 
-        ArrayList<IjkTrackInfo> trackInfos = new ArrayList<IjkTrackInfo>();
-        for (IjkMediaMeta.IjkStreamMeta streamMeta: mediaMeta.mStreams) {
-            IjkTrackInfo trackInfo = new IjkTrackInfo(streamMeta);
-            if (streamMeta.mType.equalsIgnoreCase(IjkMediaMeta.IJKM_VAL_TYPE__VIDEO)) {
+        ArrayList<FSTrackInfo> trackInfos = new ArrayList<FSTrackInfo>();
+        for (FSMeta.FSStreamMeta streamMeta: mediaMeta.mStreams) {
+            FSTrackInfo trackInfo = new FSTrackInfo(streamMeta);
+            if (streamMeta.mType.equalsIgnoreCase(FSMeta.IJKM_VAL_TYPE__VIDEO)) {
                 trackInfo.setTrackType(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO);
-            } else if (streamMeta.mType.equalsIgnoreCase(IjkMediaMeta.IJKM_VAL_TYPE__AUDIO)) {
+            } else if (streamMeta.mType.equalsIgnoreCase(FSMeta.IJKM_VAL_TYPE__AUDIO)) {
                 trackInfo.setTrackType(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO);
-            } else if (streamMeta.mType.equalsIgnoreCase(IjkMediaMeta.IJKM_VAL_TYPE__TIMEDTEXT)) {
+            } else if (streamMeta.mType.equalsIgnoreCase(FSMeta.IJKM_VAL_TYPE__TIMEDTEXT)) {
                 trackInfo.setTrackType(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT);
             }
             trackInfos.add(trackInfo);
         }
 
-        return trackInfos.toArray(new IjkTrackInfo[trackInfos.size()]);
+        return trackInfos.toArray(new FSTrackInfo[trackInfos.size()]);
     }
 
     // TODO: @Override
@@ -813,15 +813,15 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public native long getDuration();
 
     /**
-     * Releases resources associated with this IjkMediaPlayer object. It is
+     * Releases resources associated with this FSPlayer object. It is
      * considered good practice to call this method when you're done using the
-     * IjkMediaPlayer. In particular, whenever an Activity of an application is
+     * FSPlayer. In particular, whenever an Activity of an application is
      * paused (its onPause() method is called), or stopped (its onStop() method
-     * is called), this method should be invoked to release the IjkMediaPlayer
+     * is called), this method should be invoked to release the FSPlayer
      * object, unless the application has a special need to keep the object
      * around. In addition to unnecessary resources (such as memory and
      * instances of codecs) being held, failure to call this method immediately
-     * if a IjkMediaPlayer object is no longer needed may also lead to
+     * if a FSPlayer object is no longer needed may also lead to
      * continuous battery consumption for mobile devices, and playback failure
      * for other applications if no multiple instances of the same codec are
      * supported on a device. Even if multiple instances of the same codec are
@@ -910,12 +910,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     /** 对应 iOS 的 FSPlayerPlaybackScheduleDidChange 通知。 */
     public interface OnPlaybackScheduleChangedListener {
-        void onPlaybackScheduleChanged(IjkMediaPlayer mp, int schedule);
+        void onPlaybackScheduleChanged(FSPlayer mp, int schedule);
     }
 
     /** 对应 iOS 的 FSPlayerLoadStateDidChangeNotification。 */
     public interface OnLoadStateChangedListener {
-        void onLoadStateChanged(IjkMediaPlayer mp, int loadState);
+        void onLoadStateChanged(FSPlayer mp, int loadState);
     }
 
     public void setOnPlaybackScheduleChangedListener(OnPlaybackScheduleChangedListener listener) {
@@ -1204,7 +1204,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
 
         try {
-            mediaInfo.mMeta = IjkMediaMeta.parse(_getMediaMeta());
+            mediaInfo.mMeta = FSMeta.parse(_getMediaMeta());
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -1260,11 +1260,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     private static native void native_init();
 
-    private native void native_setup(Object IjkMediaPlayer_this);
+    private native void native_setup(Object FSPlayer_this);
 
     private native void native_finalize();
 
-    private native void native_message_loop(Object IjkMediaPlayer_this);
+    private native void native_message_loop(Object FSPlayer_this);
 
     protected void finalize() throws Throwable {
         super.finalize();
@@ -1525,19 +1525,19 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     private static class EventHandler extends Handler {
-        private final WeakReference<IjkMediaPlayer> mWeakPlayer;
+        private final WeakReference<FSPlayer> mWeakPlayer;
 
-        public EventHandler(IjkMediaPlayer mp, Looper looper) {
+        public EventHandler(FSPlayer mp, Looper looper) {
             super(looper);
-            mWeakPlayer = new WeakReference<IjkMediaPlayer>(mp);
+            mWeakPlayer = new WeakReference<FSPlayer>(mp);
         }
 
         @Override
         public void handleMessage(Message msg) {
-            IjkMediaPlayer player = mWeakPlayer.get();
+            FSPlayer player = mWeakPlayer.get();
             if (player == null || player.mNativeMediaPlayer == 0) {
                 DebugLog.w(TAG,
-                        "IjkMediaPlayer went away with unhandled events");
+                        "FSPlayer went away with unhandled events");
                 return;
             }
 
@@ -1623,7 +1623,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 if (msg.obj == null) {
                     player.notifyOnTimedText(null);
                 } else {
-                    IjkTimedText text = new IjkTimedText(new Rect(0, 0, 1, 1), (String)msg.obj);
+                    FSTimedText text = new FSTimedText(new Rect(0, 0, 1, 1), (String)msg.obj);
                     player.notifyOnTimedText(text);
                 }
                 return;
@@ -1646,7 +1646,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     /*
      * Called from native code when an interesting event happens. This method
      * just uses the EventHandler system to post the event back to the main app
-     * thread. We use a weak reference to the original IjkMediaPlayer object so
+     * thread. We use a weak reference to the original FSPlayer object so
      * that the native code is safe from the object disappearing from underneath
      * it. (This is the cookie passed to native_setup().)
      */
@@ -1657,7 +1657,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             return;
 
         @SuppressWarnings("rawtypes")
-        IjkMediaPlayer mp = (IjkMediaPlayer) ((WeakReference) weakThiz).get();
+        FSPlayer mp = (FSPlayer) ((WeakReference) weakThiz).get();
         if (mp == null) {
             return;
         }
@@ -1685,7 +1685,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             return;
 
         @SuppressWarnings("rawtypes")
-        IjkMediaPlayer mp = (IjkMediaPlayer) ((WeakReference) weakThiz).get();
+        FSPlayer mp = (FSPlayer) ((WeakReference) weakThiz).get();
         if (mp == null || mp.mOnAudioSamplesListener == null) {
             return;
         }
@@ -1757,8 +1757,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             throw new IllegalStateException("<null weakThiz>.onNativeInvoke()");
 
         @SuppressWarnings("unchecked")
-        WeakReference<IjkMediaPlayer> weakPlayer = (WeakReference<IjkMediaPlayer>) weakThiz;
-        IjkMediaPlayer player = weakPlayer.get();
+        WeakReference<FSPlayer> weakPlayer = (WeakReference<FSPlayer>) weakThiz;
+        FSPlayer player = weakPlayer.get();
         if (player == null)
             throw new IllegalStateException("<null weakPlayer>.onNativeInvoke()");
 
@@ -1811,8 +1811,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             return null;
 
         @SuppressWarnings("unchecked")
-        WeakReference<IjkMediaPlayer> weakPlayer = (WeakReference<IjkMediaPlayer>) weakThiz;
-        IjkMediaPlayer player = weakPlayer.get();
+        WeakReference<FSPlayer> weakPlayer = (WeakReference<FSPlayer>) weakThiz;
+        FSPlayer player = weakPlayer.get();
         if (player == null)
             return null;
 
@@ -1836,7 +1836,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 return null;
 
             Log.i(TAG, String.format(Locale.US, "onSelectCodec: mime=%s, profile=%d, level=%d", mimeType, profile, level));
-            ArrayList<IjkMediaCodecInfo> candidateCodecList = new ArrayList<IjkMediaCodecInfo>();
+            ArrayList<FSCodecInfo> candidateCodecList = new ArrayList<FSCodecInfo>();
             int numCodecs = MediaCodecList.getCodecCount();
             for (int i = 0; i < numCodecs; i++) {
                 MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
@@ -1856,7 +1856,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     if (!type.equalsIgnoreCase(mimeType))
                         continue;
 
-                    IjkMediaCodecInfo candidate = IjkMediaCodecInfo.setupCandidate(codecInfo, mimeType);
+                    FSCodecInfo candidate = FSCodecInfo.setupCandidate(codecInfo, mimeType);
                     if (candidate == null)
                         continue;
 
@@ -1870,15 +1870,15 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 return null;
             }
 
-            IjkMediaCodecInfo bestCodec = candidateCodecList.get(0);
+            FSCodecInfo bestCodec = candidateCodecList.get(0);
 
-            for (IjkMediaCodecInfo codec : candidateCodecList) {
+            for (FSCodecInfo codec : candidateCodecList) {
                 if (codec.mRank > bestCodec.mRank) {
                     bestCodec = codec;
                 }
             }
 
-            if (bestCodec.mRank < IjkMediaCodecInfo.RANK_LAST_CHANCE) {
+            if (bestCodec.mRank < FSCodecInfo.RANK_LAST_CHANCE) {
                 Log.w(TAG, String.format(Locale.US, "unaccetable codec: %s", bestCodec.mCodecInfo.getName()));
                 return null;
             }

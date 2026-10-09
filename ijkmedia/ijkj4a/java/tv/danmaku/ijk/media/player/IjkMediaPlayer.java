@@ -1,4 +1,4 @@
-package tv.danmaku.ijk.media.player;
+package com.debugly.fsplayer.player;
 
 import android.os.Bundle;
 

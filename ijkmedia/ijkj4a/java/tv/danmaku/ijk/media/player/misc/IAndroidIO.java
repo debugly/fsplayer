@@ -1,4 +1,4 @@
-package tv.danmaku.ijk.media.player.misc;
+package com.debugly.fsplayer.player.misc;
 
 @SimpleCClassName
 public interface IAndroidIO {

@@ -82,7 +82,7 @@ int J4A_loadClass__J4AC_tv_danmaku_ijk_media_player_misc_IMediaDataSource(JNIEnv
     if (class_J4AC_tv_danmaku_ijk_media_player_misc_IMediaDataSource.id != NULL)
         return 0;
 
-    sign = "tv/danmaku/ijk/media/player/misc/IMediaDataSource";
+    sign = "com/debugly/fsplayer/player/misc/IMediaDataSource";
     class_J4AC_tv_danmaku_ijk_media_player_misc_IMediaDataSource.id = J4A_FindClass__asGlobalRef__catchAll(env, sign);
     if (class_J4AC_tv_danmaku_ijk_media_player_misc_IMediaDataSource.id == NULL)
         goto fail;
@@ -108,7 +108,7 @@ int J4A_loadClass__J4AC_tv_danmaku_ijk_media_player_misc_IMediaDataSource(JNIEnv
     if (class_J4AC_tv_danmaku_ijk_media_player_misc_IMediaDataSource.method_close == NULL)
         goto fail;
 
-    J4A_ALOGD("J4ALoader: OK: '%s' loaded\n", "tv.danmaku.ijk.media.player.misc.IMediaDataSource");
+    J4A_ALOGD("J4ALoader: OK: '%s' loaded\n", "com.debugly.fsplayer.player.misc.IMediaDataSource");
     ret = 0;
 fail:
     return ret;

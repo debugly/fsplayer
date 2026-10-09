@@ -288,7 +288,7 @@ public class MediaPlayerProxy implements IMediaPlayer {
             final OnTimedTextListener finalListener = listener;
             mBackEndMediaPlayer.setOnTimedTextListener(new OnTimedTextListener() {
                 @Override
-                public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
+                public void onTimedText(IMediaPlayer mp, FSTimedText text) {
                     finalListener.onTimedText(MediaPlayerProxy.this, text);
                 }
             });

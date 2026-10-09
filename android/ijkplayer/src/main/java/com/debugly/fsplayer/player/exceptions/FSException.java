@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 
-package com.debugly.fsplayer.player;
+package com.debugly.fsplayer.player.exceptions;
 
-public interface IjkLibLoader {
-    void loadLibrary(String libName) throws UnsatisfiedLinkError,
-            SecurityException;
+public class FSException extends Exception {
+    private static final long serialVersionUID = 7234796519009099506L;
 }
