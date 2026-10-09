@@ -86,6 +86,7 @@ static const FSQuadVertex kQuadVertices[6] = {
 };
 
 struct FSVulkanRenderer {
+    int destroying;            /* destroy 重入守卫，见 fs_vulkan_renderer_destroy */
     VkInstance instance;
     VkPhysicalDevice physical_device;
     VkDevice device;
@@ -1377,6 +1378,14 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     if (!r)
         return NULL;
 
+    /*
+     * bg_mutex 必须在任何可能 goto fail 的资源创建之前初始化：
+     * fs_vulkan_renderer_destroy 无条件 pthread_mutex_destroy(&r->bg_mutex)，
+     * 而 mutex 尚未 init 时 destroy 触发 bionic 的 HandleUsingDestroyedMutex → SIGABRT。
+     * （calloc 只把内存清零，不等于 pthread_mutex_init。）
+     */
+    pthread_mutex_init(&r->bg_mutex, NULL);
+
     if (create_instance(r) != VK_SUCCESS)
         goto fail;
     if (create_device(r) != VK_SUCCESS)
@@ -1403,7 +1412,6 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     r->converted_frame = av_frame_alloc();
 
     r->snapshot_type = -1;
-    pthread_mutex_init(&r->bg_mutex, NULL);
     r->bg_iterations = 3;      /* 和 iOS 的默认值一致 */
     r->bg_sigma = 30.0f;
     r->color_brightness = 1.0f;
@@ -3303,6 +3311,16 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
 {
     if (!r)
         return;
+
+    /*
+     * 防重入：切换视频时 release 与渲染线程退出可能并发走到这里，
+     * 第二次 pthread_mutex_destroy(&r->bg_mutex) 会触发 bionic 的
+     * HandleUsingDestroyedMutex → abort。销毁后立刻把自身置空，
+     * 让并发的第二次调用直接返回（首次调用者会 free(r)）。
+     */
+    if (r->destroying)
+        return;
+    r->destroying = 1;
 
     if (r->device) {
         vkDeviceWaitIdle(r->device);

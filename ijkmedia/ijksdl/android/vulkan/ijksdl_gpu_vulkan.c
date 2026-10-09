@@ -352,7 +352,8 @@ static void fsvk_texture_dealloc(SDL_TextureOverlay *overlay)
         return;
 
     FSVulkanTexture *t = overlay->opaque;
-    if (t->g && t->owns_image) {
+    /* device 可能已随渲染器销毁（vk_alive == 0），此时绝不能再碰任何 Vulkan 资源 */
+    if (t->g && t->owns_image && t->g->vk_alive) {
         vkDeviceWaitIdle(t->g->ctx.device);
         if (t->handle.view) vkDestroyImageView(t->g->ctx.device, t->handle.view, NULL);
         if (t->image)       vkDestroyImage(t->g->ctx.device, t->image, NULL);
@@ -618,6 +619,9 @@ static void fsvk_fbo_dealloc(SDL_FBOOverlay *overlay)
 
     FSVulkanFbo *f = overlay->opaque;
     FSVulkanGpu *g = f->g;
+    /* device 可能已随渲染器销毁（vk_alive == 0），此时绝不能再碰任何 Vulkan 资源 */
+    if (g && !g->vk_alive)
+        g = NULL;
     if (g) {
         vkDeviceWaitIdle(g->ctx.device);
         if (f->overlay) {
@@ -993,7 +997,17 @@ void SDL_VulkanGPU_DetachDevice(SDL_GPU *gpu)
 {
     if (!gpu || !gpu->opaque)
         return;
-    fsvk_gpu_release_vulkan(gpu->opaque);
+    /*
+     * 正常只会被 vout_free_l 调一次（fsfp_destroy 里 SDL_GPUFreeP 之后再调就是
+     * 在已 free 的 opaque 上操作）。ffp_destroy 的顺序是
+     * SDL_VoutFreeP(vout) -> SDL_GPUFreeP(gpu)，vout 先 detach 并把 gpu->opaque
+     * 置空，之后 SDL_GPUFreeP 只回收壳。这里再兜一层：detach 后清空 opaque，
+     * 让后续任何一次 DetachDevice 都直接返回，不会二次碰 device。
+     */
+    FSVulkanGpu *g = gpu->opaque;
+    gpu->opaque = NULL;
+    fsvk_gpu_release_vulkan(g);
+    free(g);
 }
 
 static void fsvk_gpu_dealloc(SDL_GPU *gpu)
@@ -1002,9 +1016,10 @@ static void fsvk_gpu_dealloc(SDL_GPU *gpu)
         return;
 
     /* 设备还在就顺手释放（正常情况下 vout 已经 detach 过了） */
-    fsvk_gpu_release_vulkan(gpu->opaque);
-    free(gpu->opaque);
+    FSVulkanGpu *g = gpu->opaque;
     gpu->opaque = NULL;
+    fsvk_gpu_release_vulkan(g);
+    free(g);
 }
 
 SDL_GPU *SDL_VulkanGPU_Create(const FSVulkanContext *ctx)
