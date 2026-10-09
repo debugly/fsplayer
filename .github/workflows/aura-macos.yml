@@ -11,9 +11,9 @@ on:
       archs:
         type: choice
         description: Architectures to build (universal by default)
-        default: arm64,x86_64
+        default: universal
         options:
-          - arm64,x86_64
+          - universal
           - arm64
           - x86_64
         required: false
@@ -76,11 +76,19 @@ jobs:
       env:
         ARCHS: ${{ inputs.archs }}
       run: |
+        # ARCHS 要空格分隔。传逗号列表（arm64,x86_64）会让 framework target 编不出二进制，
+        # 表现为 Copy Frameworks 阶段 "lipo: no input files specified"。
+        case "$ARCHS" in
+          universal) ARCH_LIST="arm64 x86_64" ;;
+          *)          ARCH_LIST="$ARCHS" ;;
+        esac
+        # FSPlayer.yml 里 framework 的 deployment target 还是 10.14，Xcode 16 起不再支持，
+        # 这里按 AuraPlayer 自己的 12.0 覆盖。
         xcodebuild -workspace examples/macos/AuraPlayer.xcworkspace \
           -scheme AuraPlayer \
           -configuration Release \
           -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-          ARCHS="$ARCHS" ONLY_ACTIVE_ARCH=NO \
+          ARCHS="$ARCH_LIST" ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET=12.0 \
           CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
           build
 
