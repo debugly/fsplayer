@@ -78,6 +78,9 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private FSHudView mHudView;
     private DrawerLayout mDrawerLayout;
     private ViewGroup mRightDrawer;
+    /** 上下拖拽时跟手移动的预览层，见 setupPlaylistSwipe()。 */
+    private View mSwipePreview;
+    private TextView mSwipePreviewLabel;
 
     private Settings mSettings;
     private boolean mBackPressed;
@@ -154,6 +157,8 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mHudView = (FSHudView) findViewById(R.id.hud_view);
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mRightDrawer = (ViewGroup) findViewById(R.id.right_drawer);
+        mSwipePreview = findViewById(R.id.swipe_preview);
+        mSwipePreviewLabel = (TextView) findViewById(R.id.swipe_preview_label);
 
         mDrawerLayout.setScrimColor(Color.TRANSPARENT);
 
@@ -479,14 +484,28 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mVideoView.postDelayed(() -> mPlaylistSwitching = false, 1500);
     }
 
-    /** 有播放列表时，上下滑动切换视频：上滑下一个、下滑上一个，头尾不循环。 */
+    /**
+     * 切换预览的色块占位：没做封面图之前，用按序号取色 + 轻微渐变代替「下一条的视频」，
+     * 让「下面还有一条」这件事有实感。序号做色相偏移，所以相邻两条颜色必然不同。
+     */
+    private int previewColorFor(int index) {
+        float[] hsv = {((index * 47) % 360) / 360f, 0.62f, 0.55f};
+        return Color.HSVToColor(hsv);
+    }
+
+    /** 有播放列表时的上下拖拽切换视频：上拖预览下一条、下拖预览上一条，松手过半才真正切换。 */
     private void setupPlaylistSwipe() {
         if (mPlaylist == null || mPlaylist.size() <= 1)
             return;
         final float slop = ViewConfiguration.get(this).getScaledTouchSlop();
+        final float previewHeight = Math.max(mVideoView.getHeight(), 1);
+        final int threshold = (int) (previewHeight / 2);
+
         mVideoView.setOnTouchListener(new View.OnTouchListener() {
             private float downX;
             private float downY;
+            private boolean tracking;
+            private int candidate = -1;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -494,28 +513,97 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
                     case MotionEvent.ACTION_DOWN:
                         downX = event.getX();
                         downY = event.getY();
+                        tracking = false;
+                        candidate = -1;
                         // 必须消费 DOWN 才能收到后续 MOVE/UP，进而判断滑动
                         return true;
-                    case MotionEvent.ACTION_UP: {
+
+                    case MotionEvent.ACTION_MOVE: {
                         float dy = event.getY() - downY;
                         float dx = event.getX() - downX;
-                        // 垂直滑动占优，且超过触摸判定阈值，才当成切换手势
-                        if (Math.abs(dy) > slop && Math.abs(dy) > Math.abs(dx)) {
-                            // 上滑下一个、下滑上一个；头尾越界时 playUrlAtIndex 静默不切（不循环）
-                            playUrlAtIndex(mPlaylistIndex + (dy < 0 ? 1 : -1));
-                        } else {
-                            // 点击：切换媒体控制条（替代被拦掉的 IjkVideoView.onTouchEvent 行为）
-                            if (mMediaController.isShowing()) {
-                                mMediaController.hide();
-                            } else {
-                                mMediaController.show();
+                        // 超过触摸阈值、且垂直方向占优，才把这次手势当作拖拽切换
+                        if (!tracking && Math.abs(dy) > slop && Math.abs(dy) > Math.abs(dx)) {
+                            tracking = true;
+                            candidate = mPlaylistIndex + (dy < 0 ? 1 : -1);
+                            if (candidate < 0 || candidate >= mPlaylist.size()) {
+                                // 头尾不循环：到边了就直接放弃这次切换
+                                candidate = -1;
+                                tracking = false;
+                                return true;
                             }
+                            showSwipePreview(candidate);
                         }
+                        if (tracking && candidate >= 0)
+                            moveSwipePreview(dy, threshold);
                         return true;
                     }
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL: {
+                        if (!tracking || candidate < 0) {
+                            hideSwipePreview();
+                            // 没成拖拽手势 = 点击：切换媒体控制条
+                            // （替代被 OnTouchListener 拦掉的 IjkVideoView.onTouchEvent 行为）
+                            if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                                if (mMediaController.isShowing()) {
+                                    mMediaController.hide();
+                                } else {
+                                    mMediaController.show();
+                                }
+                            }
+                            return true;
+                        }
+                        float dy = event.getY() - downY;
+                        if (Math.abs(dy) > threshold) {
+                            // 露出过半：预览落位，再重建播放器加载新地址
+                            commitSwipePreview();
+                            playUrlAtIndex(candidate);
+                        } else {
+                            // 没过半：预览弹回原位，什么都不做
+                            cancelSwipePreview();
+                        }
+                        tracking = false;
+                        candidate = -1;
+                        return true;
+                    }
+
                     default:
                         return true;
                 }
+            }
+
+            private void showSwipePreview(int index) {
+                mSwipePreview.setBackgroundColor(previewColorFor(index));
+                mSwipePreviewLabel.setText((index + 1) + ". " + PlaylistFragment.displayName(mPlaylist.get(index)));
+                mSwipePreview.setVisibility(View.VISIBLE);
+            }
+
+            /** 跟手：位移取绝对值封顶到整屏，保证不会拖过头把预览甩出屏幕。 */
+            private void moveSwipePreview(float dy, int threshold) {
+                float offset = Math.max(-1f, Math.min(1f, dy / (float) threshold));
+                mSwipePreview.setTranslationY(offset * threshold);
+            }
+
+            private void hideSwipePreview() {
+                mSwipePreview.animate().cancel();
+                mSwipePreview.setTranslationY(0);
+                mSwipePreview.setVisibility(View.GONE);
+            }
+
+            private void commitSwipePreview() {
+                mSwipePreview.animate()
+                        .translationY(0)
+                        .setDuration(180)
+                        .withEndAction(() -> mSwipePreview.setVisibility(View.GONE))
+                        .start();
+            }
+
+            private void cancelSwipePreview() {
+                mSwipePreview.animate()
+                        .translationY(0)
+                        .setDuration(180)
+                        .withEndAction(() -> mSwipePreview.setVisibility(View.GONE))
+                        .start();
             }
         });
     }

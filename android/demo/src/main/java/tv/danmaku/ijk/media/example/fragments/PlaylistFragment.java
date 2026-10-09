@@ -19,10 +19,12 @@ package tv.danmaku.ijk.media.example.fragments;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -71,6 +73,7 @@ public class PlaylistFragment extends Fragment {
         final IPlaylistHolder holder = (IPlaylistHolder) activity;
         mAdapter = new PlaylistAdapter(activity);
         mAdapter.setItems(holder.getPlaylist());
+        mAdapter.setCurrentIndex(holder.getCurrentPlaylistIndex());
         mListView.setAdapter(mAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -78,6 +81,26 @@ public class PlaylistFragment extends Fragment {
                 holder.onPlaylistItemSelected(position);
             }
         });
+        // 当前播放项高亮：抽屉每次打开都是新 Fragment，所以在 onResume 里对齐一次，
+        // 覆盖「播放中切换了视频才打开抽屉」和「已打开时点了列表项」两种情况。
+        mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                mAdapter.setCurrentIndex(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mAdapter != null && getActivity() instanceof IPlaylistHolder) {
+            mAdapter.setCurrentIndex(((IPlaylistHolder) getActivity()).getCurrentPlaylistIndex());
+        }
     }
 
     public interface IPlaylistHolder {
@@ -93,8 +116,27 @@ public class PlaylistFragment extends Fragment {
     }
 
     final class PlaylistAdapter extends ArrayAdapter<PlaylistItem> {
+        /** 当前播放项的行背景，用 theme 的 primary 淡化版，和普通行区分得开又不抢戏。 */
+        private final int mCurrentBackground;
+        private final int mCurrentTextColor;
+        private int mCurrentIndex = -1;
+
         public PlaylistAdapter(Context context) {
             super(context, android.R.layout.simple_list_item_2);
+            TypedValue tv = new TypedValue();
+            int primary = context.getResources().getColor(R.color.ijk_color_blue_700);
+            mCurrentBackground = Color.argb(56, Color.red(primary), Color.green(primary), Color.blue(primary));
+            mCurrentTextColor = context.getResources().getColor(R.color.ijk_color_blue_700);
+        }
+
+        /** 切换当前播放项，并刷新可见行让它立刻高亮。 */
+        void setCurrentIndex(int index) {
+            if (mCurrentIndex == index)
+                return;
+            mCurrentIndex = index;
+            // ArrayAdapter 没有 notifyItemChanged，用 notifyDataSetChanged 让可见行重走 getView
+            if (getCount() > 0)
+                notifyDataSetChanged();
         }
 
         public void setItems(List<String> urls) {
@@ -135,6 +177,14 @@ public class PlaylistFragment extends Fragment {
             viewHolder.mNameTextView.setText(item.mName);
             viewHolder.mUrlTextView.setText(item.mUrl);
 
+            boolean isCurrent = position == mCurrentIndex;
+            view.setBackgroundColor(isCurrent ? mCurrentBackground : Color.TRANSPARENT);
+            viewHolder.mNameTextView.setTextColor(isCurrent ? mCurrentTextColor
+                    : viewHolder.mNameTextView.getContext().getResources()
+                    .getColor(android.R.color.primary_text_dark));
+            // 正在播的那条加个小标记，色弱用户也能一眼分辨
+            viewHolder.mNameTextView.setText(isCurrent ? "▶ " + item.mName : item.mName);
+
             return view;
         }
 
@@ -144,7 +194,8 @@ public class PlaylistFragment extends Fragment {
         }
     }
 
-    private static String displayName(String url) {
+    /** 从地址里取出可读的片名（列表和切换预览共用）。 */
+    public static String displayName(String url) {
         if (url == null)
             return "";
         String s = url;

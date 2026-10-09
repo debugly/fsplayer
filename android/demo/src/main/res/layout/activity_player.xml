@@ -19,6 +19,25 @@
             android:layout_height="match_parent"
             android:layout_gravity="center"></tv.danmaku.ijk.media.example.widget.media.IjkVideoView>
 
+        <!-- 上下拖拽切换视频时的预览层：跟手移动，松手过半才落到新地址 -->
+        <FrameLayout
+            android:id="@+id/swipe_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/swipe_preview_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:padding="16dp"
+                android:textColor="@android:color/white"
+                android:textSize="18sp" />
+        </FrameLayout>
+
         <TextView
             android:id="@+id/toast_text_view"
             android:layout_width="wrap_content"
