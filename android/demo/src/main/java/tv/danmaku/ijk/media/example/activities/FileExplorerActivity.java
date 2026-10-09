@@ -17,10 +17,14 @@
 
 package tv.danmaku.ijk.media.example.activities;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import android.text.TextUtils;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import com.squareup.otto.Subscribe;
 
@@ -36,6 +40,14 @@ import tv.danmaku.ijk.media.example.fragments.FileListFragment;
 public class FileExplorerActivity extends AppActivity {
     private Settings mSettings;
 
+    public static Intent newIntent(Context context) {
+        return new Intent(context, FileExplorerActivity.class);
+    }
+
+    public static void intentTo(Context context) {
+        context.startActivity(newIntent(context));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,6 +62,20 @@ public class FileExplorerActivity extends AppActivity {
             doOpenDirectory("sdcard", false);
         else
             doOpenDirectory("sdcard", false);
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        boolean show = super.onPrepareOptionsMenu(menu);
+        if (!show)
+            return show;
+
+        // 已经在文件选择页，工具栏上再放一个入口只会无限叠页面
+        MenuItem files = menu.findItem(R.id.action_files);
+        if (files != null)
+            files.setVisible(false);
+
+        return true;
     }
 
     @Override

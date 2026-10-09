@@ -47,8 +47,8 @@ import java.net.URL;
 
 import tv.danmaku.ijk.media.example.BuildConfig;
 import tv.danmaku.ijk.media.example.R;
+import tv.danmaku.ijk.media.example.activities.FileExplorerActivity;
 import tv.danmaku.ijk.media.example.activities.RecentMediaActivity;
-import tv.danmaku.ijk.media.example.activities.SampleMediaActivity;
 import tv.danmaku.ijk.media.example.activities.SettingsActivity;
 import tv.danmaku.ijk.media.example.updater.UpdateChecker;
 
@@ -106,8 +106,8 @@ public class AppActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_recent) {
             RecentMediaActivity.intentTo(this);
-        } else if (id == R.id.action_sample) {
-            SampleMediaActivity.intentTo(this);
+        } else if (id == R.id.action_files) {
+            FileExplorerActivity.intentTo(this);
         } else if (id == R.id.action_check_update) {
             checkUpdate();
             return true;

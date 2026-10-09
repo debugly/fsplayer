@@ -17,7 +17,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme">
         <activity
-            android:name="tv.danmaku.ijk.media.example.activities.FileExplorerActivity"
+            android:name="tv.danmaku.ijk.media.example.activities.SampleMediaActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/app_name"
             android:screenOrientation="user"
@@ -30,7 +30,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="tv.danmaku.ijk.media.example.activities.SampleMediaActivity"
+            android:name="tv.danmaku.ijk.media.example.activities.FileExplorerActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/app_name"
             android:screenOrientation="user"
