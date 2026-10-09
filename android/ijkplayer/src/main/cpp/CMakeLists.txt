@@ -88,6 +88,12 @@ list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijksegment")
 
 add_library(ijkplayer SHARED ${SOURCE_IJKJ4A} ${SOURCE_SDL} ${SOURCE_IJKPLAYER} ${SOURCE_SOUNDTOUCH})
 
+# 排查用（二分定位）：./gradlew :demo:assembleDebug -PfsNoVulkan=1
+# 让 SDL_VoutAndroid_CreateForVulkan 直接返回 NULL，用来判断崩溃是否来自 Vulkan 渲染器本身。
+if (fsNoVulkan)
+    add_compile_definitions(FS_NO_VULKAN=1)
+endif()
+
 set(FFMPEG_LIB ${FFMPEG_DIR}/lib)
 add_library(ijkffmpeg-lib INTERFACE)
 target_link_libraries(ijkffmpeg-lib INTERFACE

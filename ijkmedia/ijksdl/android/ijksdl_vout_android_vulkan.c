@@ -318,6 +318,10 @@ static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_TextureO
 
 SDL_Vout *SDL_VoutAndroid_CreateForVulkan(void)
 {
+#ifdef FS_NO_VULKAN
+    /* 排查用（-PfsNoVulkan=1）：跳过整个 Vulkan 渲染器创建，用来二分定位崩溃源 */
+    return NULL;
+#endif
     SDL_Vout *vout = SDL_Vout_CreateInternal(sizeof(SDL_Vout_Opaque));
     if (!vout)
         return NULL;
