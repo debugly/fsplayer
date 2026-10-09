@@ -890,6 +890,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         return isInPlaybackState() && mMediaPlayer.isPlaying();
     }
 
+    /** 是否还在异步准备中（prepareAsync 未完成）。此时 stopPlayback 会阻塞主线程，别急着切源。 */
+    public boolean isPreparing() {
+        return mCurrentState == STATE_PREPARING;
+    }
+
     @Override
     public int getBufferPercentage() {
         if (mMediaPlayer != null) {

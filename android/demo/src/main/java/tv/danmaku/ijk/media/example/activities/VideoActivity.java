@@ -38,6 +38,9 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
@@ -183,6 +186,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             finish();
             return;
         }
+        setupPlaylistSwipe();
         mVideoView.start();
     }
 
@@ -455,13 +459,65 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         }
     }
 
+    /** 播放列表切换中的守卫：一次只允许一个视频在准备/重建，避免 native 侧播放器反复销毁重建。 */
+    private boolean mPlaylistSwitching = false;
+
     private void playUrlAtIndex(int index) {
         if (mPlaylist == null || index < 0 || index >= mPlaylist.size())
             return;
+        if (mVideoView.isPreparing() || mPlaylistSwitching) {
+            // 正在准备 / 正在切换：此时 stopPlayback+setVideoPath 会在主线程阻塞（ANR），
+            // 而且 native 侧上一次的播放器可能还没完全销毁，反复重建会踩坏堆。忽略这次手势。
+            return;
+        }
+        mPlaylistSwitching = true;
         mPlaylistIndex = index;
         mVideoView.stopPlayback();
         mVideoView.setVideoPath(mPlaylist.get(index));
         mVideoView.start();
+        // native 侧播放器重建完成前不接受下一次切换；onPrepared 里也会清，这里兜个底
+        mVideoView.postDelayed(() -> mPlaylistSwitching = false, 1500);
+    }
+
+    /** 有播放列表时，上下滑动切换视频：上滑下一个、下滑上一个，头尾不循环。 */
+    private void setupPlaylistSwipe() {
+        if (mPlaylist == null || mPlaylist.size() <= 1)
+            return;
+        final float slop = ViewConfiguration.get(this).getScaledTouchSlop();
+        mVideoView.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
+            private float downY;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = event.getX();
+                        downY = event.getY();
+                        // 必须消费 DOWN 才能收到后续 MOVE/UP，进而判断滑动
+                        return true;
+                    case MotionEvent.ACTION_UP: {
+                        float dy = event.getY() - downY;
+                        float dx = event.getX() - downX;
+                        // 垂直滑动占优，且超过触摸判定阈值，才当成切换手势
+                        if (Math.abs(dy) > slop && Math.abs(dy) > Math.abs(dx)) {
+                            // 上滑下一个、下滑上一个；头尾越界时 playUrlAtIndex 静默不切（不循环）
+                            playUrlAtIndex(mPlaylistIndex + (dy < 0 ? 1 : -1));
+                        } else {
+                            // 点击：切换媒体控制条（替代被拦掉的 IjkVideoView.onTouchEvent 行为）
+                            if (mMediaController.isShowing()) {
+                                mMediaController.hide();
+                            } else {
+                                mMediaController.show();
+                            }
+                        }
+                        return true;
+                    }
+                    default:
+                        return true;
+                }
+            }
+        });
     }
 
     @Override
