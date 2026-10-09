@@ -50,6 +50,14 @@ jobs:
       if: ${{ env.HAS_MACOS == '1' }}
       run: brew install tree xcodegen
 
+    # examples/macos/FSPlayer.xcodeproj 是个指向根目录 FSPlayer.xcodeproj 的 symlink，
+    # 而后者由 xcodegen 从 FSPlayer.yml 生成且被 .gitignore —— 全新 checkout 上是悬空的。
+    # AuraPlayer.xcworkspace 交叉引用了它，所以必须先生成，否则会报
+    # "This Copy Files build phase contains a reference to a missing file"。
+    - name: Generate FSPlayer project
+      if: ${{ env.HAS_MACOS == '1' }}
+      run: ./generate-proj.sh
+
     # 只装 macOS demo 实际用到的两个包，和 apple.yml 的 macOS 一致：
     # FSPlayer.framework 把 FFmpeg 静态链进去了（otool 只剩 asan），
     # 别照抄 aura-apk.yml 那份安卓长列表 —— 里面的 fontconfig 没有 macOS 预编译包，会 404。
