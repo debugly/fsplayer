@@ -14,10 +14,10 @@ android {
         applicationId "com.debugly.fsplayer.demo"
         minSdk 24
         targetSdk 35
-        // Aura 演示包版本：默认 0.1.4 / 104，aura-apk workflow 直接读这里（不再读 version.sh）；
+        // Aura 演示包版本：默认 0.1.5 / 105，aura-apk workflow 直接读这里（不再读 version.sh）；
         // android.yml（AAR/Maven）仍通过 -PversionName/-PversionCode 覆盖成 version.sh 的版本。
-        versionCode((project.findProperty("versionCode") ?: 104).toInteger())
-        versionName(project.findProperty("versionName") ?: "0.1.4")
+        versionCode((project.findProperty("versionCode") ?: 105).toInteger())
+        versionName(project.findProperty("versionName") ?: "0.1.5")
     }
 
     signingConfigs {
