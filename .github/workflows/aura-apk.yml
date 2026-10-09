@@ -10,9 +10,10 @@ on:
     inputs:
       abis:
         type: choice
-        description: ABI list to build (default covers real devices)
-        default: arm64-v8a,armeabi-v7a
+        description: ABI list to build (default arm64-v8a only for quick device testing)
+        default: arm64-v8a
         options:
+          - arm64-v8a
           - arm64-v8a,armeabi-v7a
           - arm64-v8a,armeabi-v7a,x86,x86_64
         required: false
