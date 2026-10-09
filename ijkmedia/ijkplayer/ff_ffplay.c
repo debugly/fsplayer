@@ -5091,10 +5091,29 @@ FFPlayer *ffp_create(void)
     return ffp;
 }
 
+/*
+ * ffp_destroy 重入守卫（不改动 FFPlayer 结构体，避免 ABI/布局风险）。
+ * 切换视频时 Java 侧 release() 与渲染线程/msg_loop 的收尾可能并发走到
+ * ffp_destroy，第二次就是 use-after-free（stream_close 里 SDL_WaitThread
+ * 访问已释放的 is；更早的表现是 heap 被写坏，av_mallocz 返回 0x200000000
+ * 这种整数当指针用）。
+ */
+static pthread_mutex_t g_ffp_destroy_mutex = PTHREAD_MUTEX_INITIALIZER;
+static void *g_ffp_destroying = NULL;
+
 void ffp_destroy(FFPlayer *ffp)
 {
     if (!ffp)
         return;
+
+    pthread_mutex_lock(&g_ffp_destroy_mutex);
+    if (g_ffp_destroying == ffp) {
+        /* 已有另一个线程在销毁同一个 ffp，直接返回，不要碰任何字段 */
+        pthread_mutex_unlock(&g_ffp_destroy_mutex);
+        return;
+    }
+    g_ffp_destroying = ffp;
+    pthread_mutex_unlock(&g_ffp_destroy_mutex);
 
     if (ffp->is) {
         av_log(NULL, AV_LOG_WARNING, "ffp_destroy_ffplayer: force stream_close()");
@@ -5114,6 +5133,14 @@ void ffp_destroy(FFPlayer *ffp)
     msg_queue_destroy(&ffp->msg_queue);
 
     av_free(ffp);
+
+    /*
+     * 必须在 av_free 之后再清标志：并发进来的第二个 ffp_destroy 就是靠这个标志
+     * 才没去读已释放的 ffp。若在 free 前清，另一个线程会误以为没人销毁而继续跑。
+     */
+    pthread_mutex_lock(&g_ffp_destroy_mutex);
+    g_ffp_destroying = NULL;
+    pthread_mutex_unlock(&g_ffp_destroy_mutex);
 }
 
 void ffp_destroy_p(FFPlayer **pffp)
