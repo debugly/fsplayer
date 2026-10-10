@@ -133,7 +133,7 @@ jobs:
         echo "building AAR version=$VERSION"
         chmod +x android/gradlew
         cd android
-        ./gradlew :ijkplayer:assembleRelease \
+        ./gradlew :fsplayer:assembleRelease \
           -PabiFilters="${{ inputs.abis }}" \
           -PversionName="$VERSION" \
           --no-daemon --stacktrace
@@ -142,7 +142,7 @@ jobs:
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
         mkdir -p dist
-        cp android/ijkplayer/build/outputs/aar/ijkplayer-release.aar "dist/ijkplayer-${VERSION}.aar"
+        cp android/fsplayer/build/outputs/aar/fsplayer-release.aar "dist/fsplayer-${VERSION}.aar"
         # 许可证文件必须找到：ls 失败后继续会在 cp "" 那一步报出一个与真实原因
         # 无关的错误，所以在这里就明确失败。
         LICENSE_FILE=""
@@ -189,11 +189,11 @@ jobs:
         # 坐标从 build.gradle 里读，不写死：groupId 和 artifactId 都在那里定义，
         # 改了之后这里会自动跟上。publishGroupId 可以由 -P 覆盖，所以先看命令行。
         ARTIFACT_ID=$(sed -n "s/.*coordinates(fsPublishGroupId, '\([^']*\)'.*/\1/p" \
-          android/ijkplayer/build.gradle | head -1)
+          android/fsplayer/build.gradle | head -1)
         GROUP_ID=$(sed -n "s/.*findProperty('publishGroupId') ?: '\([^']*\)'.*/\1/p" \
-          android/ijkplayer/build.gradle | head -1)
+          android/fsplayer/build.gradle | head -1)
         if [[ -z "$ARTIFACT_ID" || -z "$GROUP_ID" ]]; then
-          echo "::error::无法从 android/ijkplayer/build.gradle 解析出 Maven 坐标"
+          echo "::error::无法从 android/fsplayer/build.gradle 解析出 Maven 坐标"
           exit 1
         fi
         NOTES="Android AAR.
@@ -217,7 +217,7 @@ jobs:
                 <version>${VERSION}</version>
               </dependency>"
 
-        ASSETS=("dist/ijkplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt)
+        ASSETS=("dist/fsplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt)
 
         # 序号是在本次运行开始时算的，所以同一提交重跑会得到同一个 TAG。
         # 直接 gh release create 会撞 "a release with the same tag name already
@@ -254,8 +254,8 @@ jobs:
         done
         chmod +x android/gradlew
         cd android
-        ./gradlew :ijkplayer:publishAndReleaseToMavenCentral \
+        ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
           -PabiFilters="${{ inputs.abis }}" \
           -PversionName="$VERSION" \
           --no-daemon --stacktrace
-        echo "::notice::ijkplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"
+        echo "::notice::fsplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"

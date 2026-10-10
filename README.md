@@ -128,7 +128,7 @@ pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/downlo
 
 ```groovy
 dependencies {
-    implementation 'io.github.debugly:ijkplayer:1.1.1'
+    implementation 'io.github.debugly:fsplayer:1.1.1'
 }
 ```
 

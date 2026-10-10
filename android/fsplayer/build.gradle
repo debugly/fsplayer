@@ -53,14 +53,14 @@ dependencies {
 // ---------------------------------------------------------------------------
 // Maven Central 发布配置（Central Portal，https://central.sonatype.com）
 //
-// 坐标 io.github.debugly:ijkplayer:<version>，版本由 -PversionName 传入（CI 从
+// 坐标 io.github.debugly:fsplayer:<version>，版本由 -PversionName 传入（CI 从
 // version.sh 读），本地默认 1.1.1；groupId 可用 -PpublishGroupId 覆盖。
 //
-// 本地自检（不发布）：./gradlew :ijkplayer:publishToMavenLocal
-//   → 看 ~/.m2/repository/io/github/debugly/ijkplayer/<ver>/ 里的 aar、pom、
+// 本地自检（不发布）：./gradlew :fsplayer:publishToMavenLocal
+//   → 看 ~/.m2/repository/io/github/debugly/fsplayer/<ver>/ 里的 aar、pom、
 //     sources.jar、javadoc.jar 以及各自的 .asc 签名
 //
-// 正式发布（CI 执行）：./gradlew :ijkplayer:publishToMavenCentral
+// 正式发布（CI 执行）：./gradlew :fsplayer:publishToMavenCentral
 //   ORG_GRADLE_PROJECT_mavenCentralUsername/_mavenCentralPassword   = Portal user token
 //   ORG_GRADLE_PROJECT_signingInMemoryKey/_signingInMemoryKeyPassword = GPG 私钥
 // ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ mavenPublishing {
     publishToMavenCentral()   // 默认即 Central Portal
     signAllPublications()     // Maven Central 强制要求 GPG 签名
 
-    coordinates(fsPublishGroupId, 'ijkplayer', fsPublishVersion)
+    coordinates(fsPublishGroupId, 'fsplayer', fsPublishVersion)
 
     pom {
         name = 'FSPlayer Android'
