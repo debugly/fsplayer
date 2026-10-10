@@ -146,7 +146,7 @@ jobs:
     - name: Determine Version
       run: |
         set -euo pipefail
-        .github/scripts/prepare-release-version.sh android "${{ inputs.beta }}"
+        .github/scripts/prepare-release-version.sh "${{ inputs.beta }}"
         mv constants.env release-constants.env
 
     # 版本号定了之后，把需要带版本号的产物补齐：podspec 里写着版本，AAR 的文件名
