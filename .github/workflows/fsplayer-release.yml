@@ -22,10 +22,15 @@ on:
 jobs:
   build:
     name: build-and-publish
-    runs-on: macos-15
+    runs-on: macos-26
     # 发布用的凭据（Portal token + GPG）放在这个 environment 里，job 不声明就读不到
     # secrets.MAVEN_CENTRAL_*/GPG_*。
     environment: fsplayer-maven
+    # GH_TOKEN 要在 job 上给，Determine Version 那步要靠它跑 gh release list
+    # 来算 beta 序号；runner 上没有 gh 的 keyring 凭据，缺了这个 token 时
+    # next-beta-version.sh 会直接失败（它刻意不做兜底，见那里的注释）。
+    env:
+      GH_TOKEN: ${{ github.token }}
 
     steps:
     - name: Checkout
@@ -180,8 +185,6 @@ jobs:
     # 同名 tag 已存在就直接失败，这是故意的：Maven 坐标一旦被占用就再也换不了，
     # 覆盖掉别人刚发的产物属于不可逆的事故。想要新版本就重新 dispatch，序号会自增。
     - name: Publish Release
-      env:
-        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         set -a; source release-constants.env; set +a
@@ -196,34 +199,45 @@ jobs:
         gh release create "$TAG" --target "$GITHUB_REF_NAME" \
           --title "FSPlayer ${TAG}" --notes-file release-notes.md "${ASSETS[@]}"
 
-    # 发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret（值不进仓库）：
+    # 【临时禁用】发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret
+    # （值不进仓库）：
     #   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD = Portal 生成的 user token
     #   GPG_PRIVATE_KEY（ASCII-armored 私钥）/ GPG_PASSPHRASE
-    # 用 publishAndReleaseToMavenCentral 而不是 publishToMavenCentral：后者只上传成
-    # 「待发布部署」，还得去 Portal 手动点一次 Release 才真正对外可见。
+    #
+    # 暂时注释掉整个 step，只保留下面这行 notice，方便先验证 GitHub Release
+    # 这一侧的产物和版本号是对的。Central 的坐标一旦发布就撤不回来（禁止同坐标
+    # 覆盖），所以在 CI 链路完全跑通之前不往那里发。
+    #
+    # 恢复时把这段注释去掉、删掉 notice 即可，脚本本身不用改。
     - name: Publish to Maven Central
-      env:
-        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
-        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
       run: |
         set -euo pipefail
-        for k in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
-                 ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
-          if [[ -z "${!k}" ]]; then
-            echo "::error::$k is empty - add the MAVEN_CENTRAL_*/GPG_* repository secrets first"
-            exit 1
-          fi
-        done
         set -a; source release-constants.env; set +a
-        chmod +x android/gradlew
-        cd android
-        ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
-          -PabiFilters="arm64-v8a,armeabi-v7a" \
-          -PversionName="$VERSION" \
-          --no-daemon --stacktrace
-        echo "::notice::fsplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"
+        echo "::notice::Publish to Maven Central 已临时禁用；本次版本为 io.github.debugly:fsplayer:${VERSION}（未发布到 Central）"
+    # 下面是原实现，恢复时整段取消注释：
+    #
+    #   env:
+    #     ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+    #     ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+    #     ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+    #     ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
+    #   run: |
+    #     set -euo pipefail
+    #     for k in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
+    #              ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
+    #       if [[ -z "${!k}" ]]; then
+    #         echo "::error::$k is empty - add the MAVEN_CENTRAL_*/GPG_* repository secrets first"
+    #         exit 1
+    #       fi
+    #     done
+    #     set -a; source release-constants.env; set +a
+    #     chmod +x android/gradlew
+    #     cd android
+    #     ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
+    #       -PabiFilters="arm64-v8a,armeabi-v7a" \
+    #       -PversionName="$VERSION" \
+    #       --no-daemon --stacktrace
+    #     echo "::notice::fsplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"
 
     # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）。
     - name: Upload artifacts
