@@ -57,3 +57,8 @@ Java 层的包名和类名同时改到了 `com.debugly.fsplayer.*`，import 必�
 
 注意：这次改名没有改 C 层。`struct IjkMediaPlayer` 和所有 C 函数名保持原样，
 只有 JNI 绑定用的类名字符串随 Java 类名一起更新，所以下游不需要碰 native。
+
+demo app 自己不属于 AAR 的一部分，它的命名空间单独跟着 applicationId 走：
+`com.debugly.fsplayer.demo` → `com.debugly.aura`（`applicationId` 一直是
+`com.debugly.aura`，这次只是让 Java 包与之对齐）。照着 demo 抄代码的调用方
+需要把 `tv.danmaku.ijk.media.example.*` 一起换成 `com.debugly.aura.*`。
