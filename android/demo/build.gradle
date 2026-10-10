@@ -42,6 +42,10 @@ android {
             applicationIdSuffix ".debug"
             // 装包脚本（aura-apk 等）只发布 release，这里只影响本地调试。
             versionNameSuffix "-debug"
+            // 桌面上和 release 同名会分不清哪个是调试包（两个包 applicationId
+            // 不同，能并存）。resValue 覆盖 src/main 的 app_name，launcher 标签
+            // 随之变成 Aura-D；release 不受影响。
+            resValue "string", "app_name", "Aura-D"
         }
         release {
             minifyEnabled false
