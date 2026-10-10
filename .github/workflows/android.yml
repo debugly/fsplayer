@@ -192,10 +192,7 @@ jobs:
         - note: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
         - Changelog: https://github.com/debugly/fsplayer/compare/${PREV_TAG}...${TAG}
         - license: LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
-        - third-party: FFmpeg 8、OpenSSL 3、libass、FreeType、FriBidi、HarfBuzz、fontconfig、libunibreak、libxml2、libopus、libbluray、dav1d、libuavs3d、SoundTouch、libsmb2
-
-        The demo APK is published separately as Aura-android-<version>."
-
+        - third-party: FFmpeg 8、OpenSSL 3、libass、FreeType、FriBidi、HarfBuzz、fontconfig、libunibreak、libxml2、libopus、libbluray、dav1d、libuavs3d、SoundTouch、libsmb2"
         ASSETS=("dist/ijkplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt)
 
         # 序号是在本次运行开始时算的，所以同一提交重跑会得到同一个 TAG。
