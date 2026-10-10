@@ -191,7 +191,10 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 - (void)loadFeedAndPlay {
     __weak __typeof(self) weakSelf = self;
 
-    NSString *roomId = [[NSUserDefaults standardUserDefaults] stringForKey:@"FSVerticalLastRoomId"];
+    // Always start at the feed's first room. Remembering the last one meant a
+    // second run began mid-list, and swiping up from the end of the feed just
+    // bounced back.
+    NSString *roomId = nil;
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *error = nil;
@@ -240,8 +243,6 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     self.roomLabel.text = [NSString stringWithFormat:@"room: %@", item.roomId];
     self.hintLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.6];
     self.hintLabel.text = @"Swipe up / down to change room";
-
-    [[NSUserDefaults standardUserDefaults] setObject:item.roomId forKey:@"FSVerticalLastRoomId"];
 
     [self applyBackdropForItem:item];
 
