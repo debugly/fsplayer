@@ -199,23 +199,24 @@ jobs:
         NOTES="Android AAR.
 
         - ABIs: ${{ inputs.abis }}
+        - Changelog: [${PREV_TAG}...${TAG}](https://github.com/debugly/fsplayer/compare/${PREV_TAG}...${TAG})
+        - license: LGPL-2.1-or-later, no --enable-gpl/--enable-nonfree
         - note: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
+        - third-party: FFmpeg 8、OpenSSL 3、libass、FreeType、FriBidi、HarfBuzz、fontconfig、libunibreak、libxml2、libopus、libbluray、dav1d、libuavs3d、SoundTouch、libsmb2
 
-          Gradle:
+        - Gradle:
 
               repositories { mavenCentral() }
               dependencies { implementation '${GROUP_ID}:${ARTIFACT_ID}:${VERSION}' }
 
-          Maven:
+        - Maven:
 
               <dependency>
                 <groupId>${GROUP_ID}</groupId>
                 <artifactId>${ARTIFACT_ID}</artifactId>
                 <version>${VERSION}</version>
-              </dependency>
-        - Changelog: https://github.com/debugly/fsplayer/compare/${PREV_TAG}...${TAG}
-        - license: LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
-        - third-party: FFmpeg 8、OpenSSL 3、libass、FreeType、FriBidi、HarfBuzz、fontconfig、libunibreak、libxml2、libopus、libbluray、dav1d、libuavs3d、SoundTouch、libsmb2"
+              </dependency>"
+
         ASSETS=("dist/ijkplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt)
 
         # 序号是在本次运行开始时算的，所以同一提交重跑会得到同一个 TAG。
