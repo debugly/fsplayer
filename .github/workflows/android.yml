@@ -58,21 +58,20 @@ jobs:
       run: |
         set -euo pipefail
         BASE_VERSION=$(grep -m 1 VERSION_NAME= version.sh | cut -d= -f2)
-        if [[ "$GITHUB_REF_NAME" == "master" || "$GITHUB_REF_NAME" == "main" ]]; then
-          edition=beta
-        else
-          edition=$GITHUB_REF_NAME
-        fi
+        # 版本号始终是 <base>-<分支名>-beta-<序号>，master 也一样
+        # （1.1.1-master-beta-1、1.1.1-dev-1.1.1-beta-1），这样同一套
+        # 解析规则就能从任意 tag 反推出分支和序号，分支名也不会在
+        # master/main 与其它分支之间切换格式。
+        edition=$GITHUB_REF_NAME
         BETA_NO=$(.github/scripts/next-beta-version.sh "$BASE_VERSION" "$edition")
         {
           # VERSION 流到 -PversionName，即 AAR 的 Maven 坐标版本和 POM 里的
           # <version>，也是 dist/ijkplayer-<VERSION>.aar 的文件名。
           # 序号由 next-beta-version.sh 查已有 tag 自增得出，没有就 1 起步。
-          # 分支名（edition）让 master 的 beta 和 dev-1.1.1 的 beta 不重名。
           echo "BASE_VERSION=$BASE_VERSION"
-          echo "VERSION=${BASE_VERSION}-${edition}-${BETA_NO}"
+          echo "VERSION=${BASE_VERSION}-${edition}-beta-${BETA_NO}"
           echo "BETA_NO=$BETA_NO"
-          echo "TAG=${BASE_VERSION}-${edition}-${BETA_NO}"
+          echo "TAG=${BASE_VERSION}-${edition}-beta-${BETA_NO}"
         } > constants.env
         cat constants.env
 
@@ -167,7 +166,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "👏👏 FSPlayer Android ${TAG}" \
+        gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "FSPlayer Android ${TAG}" \
           --notes "Android AAR.
 
         - ijkplayer-${VERSION}.aar: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside

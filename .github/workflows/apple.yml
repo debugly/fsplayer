@@ -85,6 +85,6 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         branch=$(git branch --show-current)
-        gh release create ${{ env.TAG }} --target $branch -t "👏👏 FSPlayer ${{ env.TAG }}" \
+        gh release create ${{ env.TAG }} --target $branch -t "FSPlayer ${{ env.TAG }}" \
           dist/FSPlayer.zip dist/FSPlayer-iOS.zip dist/FSPlayer-macOS.zip dist/FSPlayer-tvOS.zip \
           examples/xcframewrok/FSPlayer.spec.json examples/xcframewrok/FSPlayer-iOS.spec.json examples/xcframewrok/FSPlayer-macOS.spec.json examples/xcframewrok/FSPlayer-tvOS.spec.json

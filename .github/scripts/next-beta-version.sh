@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # 算出下一个 beta 序号。
 #
-# 用法: next-beta-version.sh <base_version> <edition>
+# 用法: next-beta-version.sh <base_version> <branch>
 #   base_version  例如 1.1.1
-#   edition       master/main 会传 "beta"，其它分支传分支名
+#   branch        总是分支名，例如 master 或 dev-1.1.1
 #
-# 查 GitHub 上已有的 <base>-<edition>-<N> release tag，取最大的 N 加一；
+# 查 GitHub 上已有的 <base>-<branch>-beta-<N> release tag，取最大的 N 加一；
 # 一个都没有就从 1 开始。用最大值而不是取最后一个，保证 beta-1 和 beta-3
 # 同时存在时下一个是 beta-4 而不是 beta-2（tag 被删过就会留缺口）。
 #
 # 自增序号是为了让每个 beta 都是一个全新的 Maven 坐标：Central 只禁止同坐标
-# 覆盖，而 1.1.1-beta-1 / -beta-2 / 1.1.1 互不相同，所以 beta 也能发 Central。
+# 覆盖，而 1.1.1-dev-1.1.1-beta-1 / -beta-2 / 1.1.1 互不相同，所以 beta 也能
+# 发 Central。
 set -uo pipefail
 
 BASE_VERSION="$1"
 EDITION="$2"
-PREFIX="${BASE_VERSION}-${EDITION}-"
+PREFIX="${BASE_VERSION}-${EDITION}-beta-"
 
 # 序号限长 6 位。这不是随意挑的：旧格式的时间戳 tag 是 1.1.1-dev-1.1.1-<14位>，
 # 分隔符换成 '-' 之后它们同样以「前缀 + 纯数字」结尾，字面匹配无法排除。
