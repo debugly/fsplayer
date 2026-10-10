@@ -14,7 +14,7 @@
     "MattReach": "qianlongxu@gmail.com"
   },
   "platforms": {
-    "osx": "10.11"
+    "osx": "10.14"
   },
   "source": {
     "http": "https://github.com/debugly/fsplayer/releases/download/__VERSION__/FSPlayer-macOS.zip"

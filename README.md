@@ -8,14 +8,14 @@
 
 ## Why FSPlayer over ijkplayer
 
-ijkplayer has been effectively unmaintained for years — its last release (`k0.8.8`) is from 2018 , It ships FFmpeg 4.0 (2021). Renders through OpenGL ES 2.0, and its own README lists native subtitle rendering and avfilter support as explicitly *not on plan*.
+ijkplayer has been effectively unmaintained for years — its last release (`k0.8.8`) is from 2018. It ships FFmpeg 4.0 (2021). Renders through OpenGL ES 2.0, and its own README lists native subtitle rendering and avfilter support as explicitly *not on plan*.
 
 FSPlayer keeps the same architecture you know, and moves the stack forward:
 
 
 |                                      | ijkplayer                                     | FSPlayer                                          |
 | ------------------------------------ | --------------------------------------------- | ------------------------------------------------- |
-| **Maintenance**                      | Stalled — last release 2017, last commit 2021 | Active — updated monthly                          |
+| **Maintenance**                      | Stalled — last release 2018, last commit 2021 | Active — updated monthly                          |
 | **FFmpeg**                           | 4.0                                    | **8.1.2**                                         |
 | **Platforms**                        | Android, iOS                                  | Android, iOS, macOS, tvOS,                        |
 | **Video output**                     | OpenGL ES 2.0                                 | **Metal** (iOS/macOS/tvOS) · **Vulkan** (Android) |
@@ -98,7 +98,7 @@ Under investigation
 
 - macOS Tahoe (26.5)
 - Xcode 26.6 (17F113)
-- Android NDK 27.3 (to build Android)
+- Android NDK 27.3
 
 
 | Minimum platform     | Architectures                               |
@@ -106,7 +106,7 @@ Under investigation
 | iOS 12.0             | arm64, arm64\_simulator, x86\_64\_simulator |
 | macOS 10.14          | arm64, x86\_64                              |
 | tvOS 12.0            | arm64, arm64\_simulator, x86\_64\_simulator |
-| Android 7.0 (API 24) | arm64-v8a                                   |
+| Android 7.0 (API 24) | arm64-v8a, armeabi-v7a                       |
 
 
 ## Changelog
@@ -132,9 +132,9 @@ dependencies {
 }
 ```
 
-The AAR ships the `arm64-v8a` and `armeabi-v7a` native libraries (`libfsplayer.so` with FFmpeg linked in, plus `libsmb2.so`); `minSdk` is 24.
-
 ### Usage
+
+**Apple**
 
 ```objc
 FSOptions *options = [FSOptions optionsByDefault];
@@ -148,6 +148,28 @@ playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 self.player.shouldAutoplay = YES;
 [self.player prepareToPlay];
 ```
+
+**Android**
+
+The Android build is an AAR. `FSPlayer` implements `IMediaPlayer` directly (the
+ijkplayer-style `setDataSource` / `prepareAsync` / `start` lifecycle), so hand it a
+`SurfaceHolder` and it renders there.
+
+```java
+FSPlayer player = new FSPlayer();
+// hardware / software decoding, same option semantics as ijkplayer
+player.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1);
+player.setDisplay(surfaceView.getHolder());   // or setSurface(surface)
+
+player.setDataSource(context, uri);
+player.setOnPreparedListener(mp -> mp.start());
+player.prepareAsync();
+```
+
+Call `release()` when done. To switch media source on a live instance use `reset()`,
+which tears down and recreates the native player. To check whether hardware or
+software decoding is in use, look at `getVideoDecoder()`
+(`FFP_PROPV_DECODER_MEDIACODEC` means hardware).
 
 Full [documentation](https://fsplayer.debugly.cn/manuals/getting-started.html).
 
@@ -167,7 +189,7 @@ The source is fully open; build the framework (Apple) or AAR (Android) yourself:
 ./examples/tvos/build-framework.sh
 # Android
 ./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
-cd android && ./gradlew assembleRelease
+cd android && ./gradlew :fsplayer:assembleRelease
 ```
 
 ## FSPlayer-Pro

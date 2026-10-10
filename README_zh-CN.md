@@ -106,7 +106,7 @@ FSPlayer 保留了你熟悉的 ijkplayer 大部分架构，同时应用了更加
 
 - macOS Tahoe(26.5)
 - Xcode Version 26.6 (17F113)
-- Android NDK 27.3（如需编译 Android）
+- Android NDK 27.3
 
 
 | 最低支持平台              | 架构                                        |
@@ -114,7 +114,7 @@ FSPlayer 保留了你熟悉的 ijkplayer 大部分架构，同时应用了更加
 | iOS 12.0            | arm64、arm64\_simulator、x86\_64\_simulator |
 | macOS 10.14         | arm64、x86\_64                             |
 | tvOS 12.0           | arm64、arm64\_simulator、x86\_64\_simulator |
-| Android 7.0（API 24） | arm64-v8a                                 |
+| Android 7.0（API 24） | arm64-v8a、armeabi-v7a                     |
 
 
 ## 更新记录
@@ -140,9 +140,9 @@ dependencies {
 }
 ```
 
-AAR 内含 `arm64-v8a`、`armeabi-v7a` 两个 ABI 的原生库（`libfsplayer.so` 已静态链接 FFmpeg，另有 `libsmb2.so`），`minSdk` 为 24；FFmpeg 等三方组件的许可与 NOTICE 随 AAR 一起分发（`META-INF/fsplayer/`）。
-
 ### 调用
+
+**Apple**
 
 ```
 FSOptions *options = [FSOptions optionsByDefault];
@@ -158,6 +158,26 @@ self.player.shouldAutoplay = YES;
 //异步加载
 [self.player prepareToPlay];
 ```
+
+**Android**
+
+Android 版是 AAR。`FSPlayer` 直接实现 `IMediaPlayer`（ijkplayer 风格的
+`setDataSource` / `prepareAsync` / `start` 生命周期），把 `SurfaceHolder` 交给它渲染即可。
+
+```java
+FSPlayer player = new FSPlayer();
+// 硬解/软解开关，同 ijkplayer 的 option 语义
+player.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1);
+player.setDisplay(surfaceView.getHolder());   // 或 setSurface(surface)
+
+player.setDataSource(context, uri);
+player.setOnPreparedListener(mp -> mp.start());
+player.prepareAsync();
+```
+
+用完记得 `release()`；切换视频源复用同一实例时用 `reset()`，它会销毁并重建 native
+播放器。想查当前用了硬解还是软解，看 `getVideoDecoder()`（`FFP_PROPV_DECODER_MEDIACODEC`
+表示硬解）。
 
 更详细的使用[说明文档](https://fsplayer.debugly.cn/manuals/getting-started.html)
 
@@ -177,7 +197,7 @@ self.player.shouldAutoplay = YES;
 ./examples/tvos/build-framework.sh
 # Build Android AAR
 ./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
-cd android && ./gradlew assembleRelease
+cd android && ./gradlew :fsplayer:assembleRelease
 ```
 
 ## FSPlayer-Pro
