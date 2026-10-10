@@ -55,6 +55,7 @@ jobs:
         # master/main 与其它分支之间切换格式。
         edition=$GITHUB_REF_NAME
         BETA_NO=$(.github/scripts/next-beta-version.sh "$BASE_VERSION" "$edition")
+        SHORT_SHA=$(git rev-parse --short=8 HEAD)
         {
           # VERSION 流到 -PversionName，即 AAR 的 Maven 坐标版本和 POM 里的
           # <version>，也是 dist/ijkplayer-<VERSION>.aar 的文件名。
@@ -159,13 +160,14 @@ jobs:
       run: |
         NOTES="Android AAR.
 
-        - ijkplayer-${VERSION}.aar: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
         - ABIs: ${{ inputs.abis }}
+        - note: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
         - commit: \`${SHORT_SHA}\` on ${GITHUB_REF_NAME}
-        - FFmpeg product: ffmpeg8, LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
-        - license: LGPL-2.1-or-later (see LICENSE); third-party components keep their own licenses (FFmpeg LGPL-2.1+, libsmb2 LGPL-2.1 as a separate .so, libass/FreeType/friBidi/HarfBuzz/OpenSSL/opus/dav1d/uavs3d/libbluray)
+        - license: LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
+        - third-party: FFmpeg 8; OpenSSL 3; libass; FreeType; FriBidi; HarfBuzz; fontconfig; libunibreak; libxml2; libopus; libbluray; dav1d; libuavs3d; SoundTouch; libsmb2
 
         The demo APK is published separately as Aura-android-<version>."
+
         ASSETS=("dist/ijkplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt)
 
         # 序号是在本次运行开始时算的，所以同一提交重跑会得到同一个 TAG。
