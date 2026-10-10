@@ -104,7 +104,7 @@ Under investigation
 | Minimum platform     | Architectures                               |
 | -------------------- | ------------------------------------------- |
 | iOS 12.0             | arm64, arm64\_simulator, x86\_64\_simulator |
-| macOS 10.14          | arm64, x86\_64                              |
+| macOS 10.14 (Intel), 11.0 (Apple Silicon) | arm64, x86\_64         |
 | tvOS 12.0            | arm64, arm64\_simulator, x86\_64\_simulator |
 | Android 7.0 (API 24) | arm64-v8a, armeabi-v7a                       |
 
