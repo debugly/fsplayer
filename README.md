@@ -121,14 +121,14 @@ FSPlayer is free and released under [LGPLv2.1+](./COPYING.LGPLv2.1). If it's use
 - CocoaPods:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.1/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.2/FSPlayer.spec.json'
 ```
 
 - Android (Gradle, Maven Central):
 
 ```groovy
 dependencies {
-    implementation 'io.github.debugly:fsplayer:1.1.1'
+    implementation 'io.github.debugly:fsplayer:1.1.2'
 }
 ```
 

@@ -54,7 +54,7 @@ dependencies {
 // Maven Central 发布配置（Central Portal，https://central.sonatype.com）
 //
 // 坐标 io.github.debugly:fsplayer:<version>，版本由 -PversionName 传入（CI 从
-// version.sh 读），本地默认 1.1.1；groupId 可用 -PpublishGroupId 覆盖。
+// version.sh 读），本地默认 1.1.2；groupId 可用 -PpublishGroupId 覆盖。
 //
 // 本地自检（不发布）：./gradlew :fsplayer:publishToMavenLocal
 //   → 看 ~/.m2/repository/io/github/debugly/fsplayer/<ver>/ 里的 aar、pom、
@@ -64,7 +64,7 @@ dependencies {
 //   ORG_GRADLE_PROJECT_mavenCentralUsername/_mavenCentralPassword   = Portal user token
 //   ORG_GRADLE_PROJECT_signingInMemoryKey/_signingInMemoryKeyPassword = GPG 私钥
 // ---------------------------------------------------------------------------
-def fsPublishVersion = (findProperty('versionName') ?: '1.1.1').toString()
+def fsPublishVersion = (findProperty('versionName') ?: '1.1.2').toString()
 def fsPublishGroupId = (findProperty('publishGroupId') ?: 'io.github.debugly').toString()
 
 mavenPublishing {
