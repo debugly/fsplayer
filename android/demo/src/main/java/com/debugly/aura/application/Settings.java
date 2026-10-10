@@ -27,9 +27,11 @@ public class Settings {
     private Context mAppContext;
     private SharedPreferences mSharedPreferences;
 
-    public static final int PV_PLAYER__Auto = 0;
+    // 0 曾经是 PV_PLAYER__Auto（"未设置"），createPlayer 的 default 分支也一直
+    // 落到 FSPlayer，所以它和 FSPlayer 实际是同一个后端。现在 0 直接就是 FSPlayer：
+    // 已装用户 prefs 里存的旧值 0 无需迁移，getPlayer() 解析失败同样回落到这里。
+    public static final int PV_PLAYER__FSPlayer = 0;
     public static final int PV_PLAYER__AndroidMediaPlayer = 1;
-    public static final int PV_PLAYER__FSPlayer = 2;
     public static final int PV_PLAYER__AndroidXMedia3 = 3;
 
     public Settings(Context context) {
@@ -45,11 +47,17 @@ public class Settings {
     public int getPlayer() {
         String key = mAppContext.getString(R.string.pref_key_player);
         String value = mSharedPreferences.getString(key, "");
+        int player;
         try {
-            return Integer.valueOf(value).intValue();
+            player = Integer.valueOf(value).intValue();
         } catch (NumberFormatException e) {
-            return 0;
+            player = PV_PLAYER__FSPlayer;
         }
+        // 旧版把 FSPlayer 存成 2（现在的 2 已经是无效值），已装用户的 prefs 里
+        // 还留着这个数；映射回 FSPlayer，避免落到 createPlayer 的 default。
+        if (player == 2)
+            return PV_PLAYER__FSPlayer;
+        return player;
     }
 
     public boolean getUsingMediaCodec() {
@@ -110,5 +118,11 @@ public class Settings {
     public void setLastDirectory(String path) {
         String key = mAppContext.getString(R.string.pref_key_last_directory);
         mSharedPreferences.edit().putString(key, path).apply();
+    }
+
+    /** Player 菜单切换后端时落盘；设置页写的是同一个 key。 */
+    public void setPlayer(int player) {
+        String key = mAppContext.getString(R.string.pref_key_player);
+        mSharedPreferences.edit().putString(key, String.valueOf(player)).apply();
     }
 }

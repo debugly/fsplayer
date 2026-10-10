@@ -1117,14 +1117,23 @@ public class FSVideoView extends FrameLayout implements MediaController.MediaPla
     //-------------------------
     // Extend: Player
     //-------------------------
+    /** Player 菜单：在 FSPlayer 和 AndroidX Media3 之间循环切换。
+     *  之前是「按设置页选好的值重开一遍」，现在自己推进状态并落盘，
+     *  这样菜单点击就能直接换后端，不必绕去设置页。 */
     public int togglePlayer() {
+        int current = mSettings.getPlayer();
+        int next = (current == Settings.PV_PLAYER__AndroidXMedia3)
+                ? Settings.PV_PLAYER__FSPlayer
+                : Settings.PV_PLAYER__AndroidXMedia3;
+        mSettings.setPlayer(next);
+
         if (mMediaPlayer != null)
             mMediaPlayer.release();
 
         if (mRenderView != null)
             mRenderView.getView().invalidate();
         openVideo();
-        return mSettings.getPlayer();
+        return next;
     }
 
     @NonNull

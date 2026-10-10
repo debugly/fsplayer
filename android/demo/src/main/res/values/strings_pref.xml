@@ -13,23 +13,24 @@
 
     <string name="pref_key_player">pref.player</string>
     <string name="pref_title_player">Choose Player</string>
+    <!-- 三个数组必须逐项对齐：entries 的顺序即下拉顺序，values 存进 prefs 的实际数字。
+         0 = FSPlayer（默认），旧的 "Auto Select" 和它的 2 都已合并进 0：
+         createPlayer 的 default 分支本来就落到 FSPlayer，行为不变。已装用户
+         prefs 里残留的 2 由 Settings.getPlayer() 映射回 0。 -->
     <string-array name="pref_entries_player">
-        <item>Auto Select</item>
-        <item>AndroidMediaPlayer</item>
         <item>FSPlayer</item>
         <item>AndroidX Media3</item>
+        <item>AndroidMediaPlayer</item>
     </string-array>
     <string-array name="pref_entry_values_player">
         <item>0</item>
-        <item>1</item>
-        <item>2</item>
         <item>3</item>
+        <item>1</item>
     </string-array>
     <string-array name="pref_entry_summaries_player">
-        <item>Auto Select</item>
-        <item>AndroidMediaPlayer</item>
         <item>FSPlayer</item>
         <item>AndroidX Media3</item>
+        <item>AndroidMediaPlayer</item>
     </string-array>
 
     <!-- -->
