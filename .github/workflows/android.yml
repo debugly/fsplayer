@@ -157,7 +157,6 @@ jobs:
           exit 1
         fi
         cp "$LICENSE_FILE" dist/LICENSE
-        (cd dist && sha256sum * > SHA256SUMS.txt)
         ls -l dist
 
     # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）。
@@ -217,7 +216,7 @@ jobs:
                 <version>${VERSION}</version>
               </dependency>"
 
-        ASSETS=("dist/fsplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt)
+        ASSETS=("dist/fsplayer-${VERSION}.aar" dist/LICENSE)
 
         # 序号是在本次运行开始时算的，所以同一提交重跑会得到同一个 TAG。
         # 直接 gh release create 会撞 "a release with the same tag name already
