@@ -1,0 +1,234 @@
+name: fsplayer-release
+# Android 和 Apple 用同一个 job：两边都是 macOS runner（FFToolChain 本来就能在
+# macOS 上交叉编译 Android），共用一次 checkout、一次 NDK 安装，产物也在同一个
+# 工作目录里，不用通过 artifact 来回搬。每次发布都编全部平台。
+#
+# 正式版两个平台共用同一个裸版本号 tag（Apple 历史上的正式版 1.1.0 及之前也都是
+# 裸版本号），所以两个平台的所有产物和说明一次发布就挂到同一个 release 上。
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      beta:
+        type: boolean
+        description: publish beta edition
+        default: true
+        required: false
+# ABI 固定为真机需要的两个：arm64-v8a + armeabi-v7a。x86/x86_64 只有模拟器用，
+# 每次都编进来会让 AAR 体积翻倍、CI 时间明显变长。
+
+jobs:
+  build:
+    name: build-and-publish
+    runs-on: macos-15
+    # 发布用的凭据（Portal token + GPG）放在这个 environment 里，job 不声明就读不到
+    # secrets.MAVEN_CENTRAL_*/GPG_*。
+    environment: fsplayer-maven
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: recursive
+        # 完整历史 + tag：release notes 里的 Changelog 行要按版本号找出上一个
+        # 正式版 tag 来生成 compare 链接，默认的浅克隆拿不到 tag。
+        fetch-depth: 0
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    # macos-15 镜像自带 Android SDK，NDK 用 setup-ndk 装：ndk-version 必须和
+    # build.gradle 里的 ndkVersion 对上（r27c == 27.3.x）。platform 和 build-tools
+    # setup-ndk 不管，还得用 sdkmanager 补。
+    - name: Set up Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r27c
+        add-to-path: true
+        link-to-sdk: true
+        local-cache: false
+
+    - name: Install Android platform / build-tools
+      run: |
+        SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+        test -d "$SDK" || { echo "::error::no Android SDK at $SDK"; exit 1; }
+        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+        export PATH="$SDK/cmdline-tools/latest/bin:$PATH"
+        sdkmanager --version
+        yes | sdkmanager --licenses > /dev/null || true
+        sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        sdkmanager --list_installed | head -20 || true
+
+    - name: Install xcodegen
+      run: brew install tree xcodegen
+
+    # install 本身不吃平台列表，逐个平台调用最省事。
+    #
+    # 用不带版本号的 ffmpeg，不是 ffmpeg8：configs/libs/ffmpeg.sh 是一个滚动别名，
+    # 指向 FFToolChain 当前默认的 FFmpeg。升级到 ffmpeg9 时只需要改那个文件，这里
+    # 不用跟着动。ass 是 FFmpeg 的字体渲染依赖，要带上；其余依赖 FFToolChain 会
+    # 按 FFmpeg 的配置自动带齐。
+    - name: Download Pre Compiled Dependencies
+      run: |
+        set -euo pipefail
+        PLATFORMS=(ios macos tvos android)
+        echo "platforms: ${PLATFORMS[*]}"
+
+        for p in "${PLATFORMS[@]}"; do
+          echo "::group::install $p"
+          ./FFToolChain/main.sh install -p "$p" -l 'ass ffmpeg'
+          echo "::endgroup::"
+        done
+        
+    - name: Build Apple Frameworks
+      run: |
+        set -euo pipefail
+        ./examples/ios/build-framework.sh
+        ./examples/macos/build-framework.sh
+        ./examples/tvos/build-framework.sh
+        ./examples/xcframewrok/make-xcframework.sh
+
+    # 每个平台的 xcframework 单独打一个 zip，连CHANGELOG/README/LICENSE 一起。
+    - name: Package Apple Distribution
+      run: |
+        package_dist() {
+          local name="$1"
+          local xcf_path="$2"
+          local temp_dir="dist/${name}"
+
+          mkdir -p "$temp_dir"
+          cp CHANGELOG.md README.md "$temp_dir/"
+          cp COPYING.LGPLv2.1 "$temp_dir/LICENSE"
+          cp -pPR "$xcf_path" "$temp_dir/"
+          (cd "$temp_dir" && zip -ryq "../${name}.zip" ./*)
+          rm -rf "$temp_dir"
+        }
+
+        mkdir -p dist
+        package_dist "FSPlayer" "examples/xcframewrok/FSPlayer.xcframework"
+        package_dist "FSPlayer-iOS" "examples/xcframewrok/ios/FSPlayer.xcframework"
+        package_dist "FSPlayer-macOS" "examples/xcframewrok/macos/FSPlayer.xcframework"
+        package_dist "FSPlayer-tvOS" "examples/xcframewrok/tvos/FSPlayer.xcframework"
+        ls -l dist
+
+    - name: Build AAR
+      run: |
+        set -euo pipefail
+        chmod +x android/gradlew
+        cd android
+        ./gradlew :fsplayer:assembleRelease \
+          -PabiFilters="arm64-v8a,armeabi-v7a" \
+          --no-daemon --stacktrace
+
+    # AAR + 许可证，就是这次 release 里 Android 侧的全部资产。
+    - name: Collect AAR
+      run: |
+        set -euo pipefail
+        mkdir -p dist
+        cp android/fsplayer/build/outputs/aar/fsplayer-release.aar dist/fsplayer-release.aar
+        # LICENSE 必须跟着 release 一起发：库是 LGPL-2.1-or-later，源码里对应的
+        # 许可是 COPYING.LGPLv2.1，下游要重新分发就必须带上它。
+        cp COPYING.LGPLv2.1 dist/LICENSE
+        ls -l dist
+
+    # 构建完成之后才定版本号。build.gradle 里的 versionName 只在
+    # publishAndReleaseToMavenCentral 时用来决定 Maven 坐标，AAR 编译本身不需要；
+    # 产物的文件名是我们 cp 时自己加的。所以版本号不用提前烧进构建过程。
+    #
+    # 晚定的好处是 beta 序号取到的是发布那一刻的最大值，编译期间别人发的 beta
+    # 会被算进去，不会撞号。抢先走的问题由发布那一步兜底：gh release create 撞上
+    # 已存在的 tag 会直接失败，不会覆盖别人的产物。
+    - name: Determine Version
+      run: |
+        set -euo pipefail
+        .github/scripts/prepare-release-version.sh android "${{ inputs.beta }}"
+        mv constants.env release-constants.env
+
+    # 版本号定了之后，把需要带版本号的产物补齐：podspec 里写着版本，AAR 的文件名
+    # 也是 release 资产名的一部分。两者都晚做，才不需要在编译前就知道版本号。
+    #
+    # 两边用同一个版本号，所以 podspec 里的 releases/download/<version>/ 链接和
+    # release 的 tag 一定对得上。
+    - name: Stamp Version Into Artifacts
+      run: |
+        set -euo pipefail
+        set -a; source release-constants.env; set +a
+        echo "version: $VERSION"
+        ./examples/xcframewrok/make-podspec.sh "$VERSION"
+        mv dist/fsplayer-release.aar "dist/fsplayer-${VERSION}.aar"
+
+    # 发布前最后一步才生成说明。放这么靠后是因为 third-party 要读
+    # FFToolChain 的产物目录，Changelog 要读 tag，越接近发布时刻读到的状态越准。
+    #
+    # Apple 和 Android 两个部分一次写出：它们挂在同一个 release、共用同一个版本号，
+    # 说明本身也只有一份。内容仍分开讲——两边的坐标和 third-party 不能互相替代。
+    - name: Generate Release Notes
+      env:
+        ABIS: arm64-v8a,armeabi-v7a
+      run: |
+        set -euo pipefail
+        .github/scripts/generate-release-notes.sh release-constants.env release-notes.md
+
+    # 全部构建完成之后，一次性发布。dist/ 里已经有两个平台的产物和两份说明，
+    # 一次 gh release create 全部挂上去，不用分平台挑。
+    #
+    # 同名 tag 已存在就直接失败，这是故意的：Maven 坐标一旦被占用就再也换不了，
+    # 覆盖掉别人刚发的产物属于不可逆的事故。想要新版本就重新 dispatch，序号会自增。
+    - name: Publish Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        set -a; source release-constants.env; set +a
+
+        # 资产就是 dist/ 里的全部内容，发布说明就是 release-notes.md。
+        
+        shopt -s nullglob
+        ASSETS=(dist/*)
+        shopt -u nullglob
+
+        echo "::notice::发布 ${TAG}：${#ASSETS[@]} 个资产"
+        gh release create "$TAG" --target "$GITHUB_REF_NAME" \
+          --title "FSPlayer ${TAG}" --notes-file release-notes.md "${ASSETS[@]}"
+
+    # 发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret（值不进仓库）：
+    #   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD = Portal 生成的 user token
+    #   GPG_PRIVATE_KEY（ASCII-armored 私钥）/ GPG_PASSPHRASE
+    # 用 publishAndReleaseToMavenCentral 而不是 publishToMavenCentral：后者只上传成
+    # 「待发布部署」，还得去 Portal 手动点一次 Release 才真正对外可见。
+    - name: Publish to Maven Central
+      env:
+        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
+      run: |
+        set -euo pipefail
+        for k in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
+                 ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
+          if [[ -z "${!k}" ]]; then
+            echo "::error::$k is empty - add the MAVEN_CENTRAL_*/GPG_* repository secrets first"
+            exit 1
+          fi
+        done
+        set -a; source release-constants.env; set +a
+        chmod +x android/gradlew
+        cd android
+        ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
+          -PabiFilters="arm64-v8a,armeabi-v7a" \
+          -PversionName="$VERSION" \
+          --no-daemon --stacktrace
+        echo "::notice::fsplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"
+
+    # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）。
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: fsplayer-release
+        path: dist/
+        retention-days: 30
