@@ -33,6 +33,9 @@ jobs:
       uses: actions/checkout@v7
       with:
           submodules: recursive
+          # 完整历史 + tag：release notes 里的 Changelog 行要按版本号找出上一个
+          # 正式版 tag 来生成 compare 链接，默认的浅克隆拿不到 tag。
+          fetch-depth: 0
 
     # 这个 workflow 只在含 android/ 的分支（android）上有效；被 cherry-pick 到其它分支时静默跳过，不把 main 弄红
     - name: Check android project present
