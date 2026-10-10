@@ -143,7 +143,19 @@ jobs:
       run: |
         mkdir -p dist
         cp android/ijkplayer/build/outputs/aar/ijkplayer-release.aar "dist/ijkplayer-${VERSION}.aar"
-        LICENSE_FILE=$(ls COPYING.LGPLv2.1 COPYING.LGPLv3 2>/dev/null | head -1)
+        # 许可证文件必须找到：ls 失败后继续会在 cp "" 那一步报出一个与真实原因
+        # 无关的错误，所以在这里就明确失败。
+        LICENSE_FILE=""
+        for f in COPYING.LGPLv2.1 COPYING.LGPLv3; do
+          if [[ -f "$f" ]]; then
+            LICENSE_FILE="$f"
+            break
+          fi
+        done
+        if [[ -z "$LICENSE_FILE" ]]; then
+          echo "::error::找不到 COPYING.LGPLv2.1 或 COPYING.LGPLv3"
+          exit 1
+        fi
         cp "$LICENSE_FILE" dist/LICENSE
         (cd dist && sha256sum * > SHA256SUMS.txt)
         ls -l dist
@@ -171,15 +183,16 @@ jobs:
           | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" \
           | sed -n '1p')
         if [[ -z "$PREV_TAG" ]]; then
+          echo "::warning::没有任何正式版 tag，Changelog 退回与上一个提交的对比"
           PREV_TAG="HEAD~1"
         fi
         NOTES="Android AAR.
 
         - ABIs: ${{ inputs.abis }}
         - note: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
-        - Changelog: ${PREV_TAG}...${TAG} (https://github.com/debugly/fsplayer/compare/${PREV_TAG}...${TAG})
+        - Changelog: https://github.com/debugly/fsplayer/compare/${PREV_TAG}...${TAG}
         - license: LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
-        - third-party: FFmpeg 8; OpenSSL 3; libass; FreeType; FriBidi; HarfBuzz; fontconfig; libunibreak; libxml2; libopus; libbluray; dav1d; libuavs3d; SoundTouch; libsmb2
+        - third-party: FFmpeg 8、OpenSSL 3、libass、FreeType、FriBidi、HarfBuzz、fontconfig、libunibreak、libxml2、libopus、libbluray、dav1d、libuavs3d、SoundTouch、libsmb2
 
         The demo APK is published separately as Aura-android-<version>."
 
