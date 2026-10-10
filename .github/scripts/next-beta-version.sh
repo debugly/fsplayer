@@ -18,6 +18,14 @@ BASE_VERSION="$1"
 EDITION="$2"
 PREFIX="${BASE_VERSION}-${EDITION}-beta-"
 
+# gh 查询必须成功，否则序号会退回 1 并和已有 release 撞名——CI 里就因为这步
+# 缺 GH_TOKEN 而连着两次都用 beta-1 覆盖同一个 release。所以这里不做兜底：
+# 拿不到列表就直接失败，让问题当场暴露。
+TAGS=$(gh release list --limit 200 --json tagName -q '.[].tagName') || {
+  echo "error: gh release list 失败，无法计算下一个 beta 序号" >&2
+  exit 1
+}
+
 # 序号限长 6 位。这不是随意挑的：旧格式的时间戳 tag 是 1.1.1-dev-1.1.1-<14位>，
 # 分隔符换成 '-' 之后它们同样以「前缀 + 纯数字」结尾，字面匹配无法排除。
 # 限定位数才能把它们挡在外面（6 位够用到 beta-999999）。
@@ -27,12 +35,9 @@ PREFIX="${BASE_VERSION}-${EDITION}-beta-"
 #
 # 前缀里带上了 BASE_VERSION，所以 1.1.1-beta- 不会命中 1.1.2-beta-9 或
 # 1.1.11-beta-50；末尾的 '-' 同时充当版本号边界。
-#
-# || true 是必须的：第一次跑时一条 tag 都匹配不到，管道会返回 1，
-# 在 pipefail 下会让脚本提前打断。
 ESCAPED_PREFIX=$(printf '%s' "$PREFIX" | sed 's/[][\.*^$()+?{|]/\\&/g')
 MAX_BETA="$(
-  gh release list --limit 200 --json tagName -q '.[].tagName' |
+  printf '%s\n' "$TAGS" |
     sed -n "s|^${ESCAPED_PREFIX}\\([0-9][0-9]\\{0,5\\}\\)\$|\\1|p" |
     sort -n |
     tail -1 || true

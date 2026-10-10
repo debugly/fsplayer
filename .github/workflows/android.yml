@@ -49,6 +49,10 @@ jobs:
 
     - name: Prepare Beta Version
       if: ${{ env.HAS_ANDROID == '1' && inputs.beta == true }}
+      env:
+        # next-beta-version.sh 用 gh 查已有 release 来算序号，没有 token 时 gh 会
+        # 直接报错退出，序号会退回 1 并和已有 release 撞名。
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         BASE_VERSION=$(grep -m 1 VERSION_NAME= version.sh | cut -d= -f2)
