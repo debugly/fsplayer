@@ -24,6 +24,7 @@
 #import "FSMediaPlayback.h"
 #import "FSDisplayLinkWrapper.h"
 #import "FSMetalTextureUtils.h"
+#import "../apple/ijk_cvpixelbuffer.h"
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 typedef CGRect NSRect;
@@ -60,6 +61,11 @@ typedef CGRect NSRect;
 @end
 
 @implementation FSMetalView
+{
+    // Pool reused when converting software-decoded AVFrames into CVPixelBuffers on the
+    // render thread (moved here from the retired SDL_VoutOverlay conversion).
+    FSSwPixelBufferPool _swPixelBufferPool;
+}
 
 @synthesize scalingMode = _scalingMode;
 // rotate preference
@@ -85,12 +91,32 @@ typedef CGRect NSRect;
 
 - (void)dealloc
 {
+    // 先停掉 display link，确保没有回调仍在向 textureCache 生成/释放纹理。
+    // CVDisplayLinkStop 会等待正在执行的回调返回（回调内已用 @autoreleasepool 及时释放纹理）。
     [_displayLinkWrapper invalidate];
     _displayLinkWrapper = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+
+    // 释放顺序很关键：所有持有 CVMetalTexture（其 backing 属于 _pictureTextureCache）
+    // 的对象必须在 CFRelease(cache) 之前先释放，否则纹理 finalize 时会回调进已释放的
+    // cache，造成崩溃。ARC 默认在 dealloc 方法体结束后才释放 strong ivar，太晚了，
+    // 因此这里显式提前置空。
+    _currentAttach = nil;
+    _drawingAttach = nil;
+    _tileGridPipeline = nil;
+    _picturePipeline = nil;
+    _subPipeline = nil;
+    _backgroundPipeline = nil;
+    _backgroundTexture = nil;
+
     if (_pictureTextureCache) {
+        // 释放前 flush，回收 cache 内已无引用的纹理，避免残留纹理在 cache 释放后 finalize。
+        CVMetalTextureCacheFlush(_pictureTextureCache, 0);
         CFRelease(_pictureTextureCache);
         _pictureTextureCache = NULL;
+    }
+    if (_swPixelBufferPool.pool) {
+        FSSwPixelBufferPoolRelease(&_swPixelBufferPool);
     }
 }
 
@@ -183,7 +209,13 @@ typedef CGRect NSRect;
     _displayLinkWrapper = [[FSDisplayLinkWrapper alloc] initWithCallback:^(CFTimeInterval timestamp) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
-        [self displayAttachWithTimestamp:timestamp];
+        // 每帧独立的自动释放池：本次回调里生成的 CVMetalTexture/MTLTexture 等自动释放对象
+        // 在回调结束时立即在 CVDisplayLink 线程释放，而不是堆积到线程退出时才 drain。
+        // 否则切换播放源销毁 view 时，线程退出 drain 的纹理会回调进正在被主线程
+        // CFRelease 的 textureCache，造成并发释放崩溃（bufferBackingNotInUse @ 0x0）。
+        @autoreleasepool {
+            [self displayAttachWithTimestamp:timestamp];
+        }
     }];
 #if TARGET_OS_OSX
     [_displayLinkWrapper updateWithWindow:self.window];
@@ -599,7 +631,7 @@ typedef CGRect NSRect;
     attach.videoPicture = CVPixelBufferRetain(self.tileGridPipeline.compositedPixelBuffer); // 由 attach dealloc 释放
     attach.pixelW = attach.w;
     attach.pixelH = attach.h;
-    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer/textures
+    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer
     return YES;
 }
 
@@ -619,23 +651,99 @@ typedef CGRect NSRect;
     self.refreshCurrentPicBlock = block;
 }
 
+// Produce a +1 retained CVPixelBuffer from a decoded AVFrame. VideoToolbox frames
+// already carry the buffer in data[3] (zero copy, just retained); software frames are
+// converted via the shared FSCVPixelBufferCreateFromAVFrame, reusing a per-view pool
+// (recreated on dimension/format change) to avoid a per-frame allocation.
+// Returns NULL on unsupported formats. Caller owns the returned buffer.
+- (CVPixelBufferRef)pixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
+{
+    if (!frame) {
+        return NULL;
+    }
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
+        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
+    }
+
+    if (frame->width <= 0 || frame->height <= 0) {
+        return NULL;
+    }
+
+    CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool,
+                                                          frame->width, frame->height, frame->format);
+    return FSCVPixelBufferCreateFromAVFrame(frame, pool);
+}
+
+// Produce a +1 retained CVPixelBuffer from a single HEIC tile's AVFrame. Same conversion as
+// -pixelBufferFromAVFrame: but WITHOUT the per-view pool: tiles vary in size within a grid (and
+// across grids), so pooling would thrash. VTB frames still zero-copy via data[3].
+// Returns NULL on unsupported formats. Caller owns the returned buffer.
+- (CVPixelBufferRef)tilePixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
+{
+    if (!frame) {
+        return NULL;
+    }
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
+        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
+    }
+    if (frame->width <= 0 || frame->height <= 0) {
+        return NULL;
+    }
+    return FSCVPixelBufferCreateFromAVFrame(frame, NULL);
+}
+
 - (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
     //call form (ff_vout thread)
-    
+
     attach.tag = self.previousTag + 1;
+
+    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
+    BOOL hasTiles = (attach.tilePieces.count > 0);
     
+    if (!attach.avframe && !hasTiles) {
+        ALOGD("FSMetalView: displayAttach refresh frame\n");
+        [self.renderSnapshotLock lock];
+        self.currentAttach = attach;
+        [self.renderSnapshotLock unlock];
+        return NO;
+    }
+    
+    // Convert each tile's AVFrame to a CVPixelBuffer here (render side), matching the
+    // single-frame path. The dispatch layer only carries AVFrames now; the tile-grid
+    // pipeline still consumes piece.pixelBuffer. Done once per attach (not per draw) so the
+    // buffer pointer is stable across refresh/rotate → FSMetalTileGridPipeline cache still hits.
+    if (hasTiles) {
+        for (FSTilePiece *piece in attach.tilePieces) {
+            if (!piece.pixelBuffer && piece.avframe) {
+                piece.pixelBuffer = [self tilePixelBufferFromAVFrame:piece.avframe]; // +1 retained
+            }
+        }
+    }
+    
+    // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did
+    // not attach one (AVFrame-passthrough path). VideoToolbox frames wrap the pixel
+    // buffer in data[3]; software frames are converted (planes copied, color/DoVi
+    // side data stamped as CVBuffer attachments) so the rest of the Metal pipeline —
+    // texture cache, colorspace detection, snapshots — keeps working unchanged.
+    if (!attach.videoPicture && attach.avframe) {
+        CVPixelBufferRef pb = [self pixelBufferFromAVFrame:attach.avframe];
+        if (pb) {
+            attach.videoPicture = pb; // +1 retained; balanced by FSOverlayAttach dealloc
+            // Derive pixelW/H from the actual buffer, not frame->width: VideoToolbox
+            // buffers are padded to coded width, and the crop calc in the picture
+            // pipeline needs the buffer's real (padded) dimensions.
+            attach.pixelW = (int)CVPixelBufferGetWidth(pb);
+            attach.pixelH = (int)CVPixelBufferGetHeight(pb);
+        }
+    }
+
     if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
         attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
     }
 
-    // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
-    BOOL hasTiles = (attach.tilePieces.count > 0);
-    if (!attach.videoPicture && !hasTiles) {
-        ALOGW("FSMetalView: videoPicture is nil and no tile pieces\n");
-        return NO;
-    }
-    
     if (self.preventDisplay) {
         return YES;
     }
@@ -659,24 +767,34 @@ typedef CGRect NSRect;
     // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
     // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
     // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
-    CVPixelBufferRef pipelineRef = currentAttach.videoPicture;
-    if (!pipelineRef && currentAttach.tilePieces.count > 0) {
-        pipelineRef = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
+    //
+    // HDR 判定用原始参考 buffer：普通帧用 videoPicture，tile-grid 用首个 tile 的像素缓冲。
+    BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
+    CVPixelBufferRef videoPicture = currentAttach.videoPicture;
+    if (!videoPicture && hasTileGrid) {
+        videoPicture = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
     }
-    
-    if (!pipelineRef) {
+
+    if (!videoPicture) {
         return;
     }
-    
+
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pipelineRef];
+        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:videoPicture];
         [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
 #endif
-    
+
     [self.renderSnapshotLock lock];
-    [self setupPipelineIfNeed:pipelineRef blend:currentAttach.hasAlpha];
+    // tile-grid 必须先合成成单帧（BGRA）再建管线：否则管线会按原始 tile 的像素格式
+    // 格式建立，但是采样合成后是 BGRA 纹理，chroma 缺失导致画面全绿。
+    if (hasTileGrid && ![self ensureTileGridComposited:currentAttach]) {
+        [self.renderSnapshotLock unlock];
+        return;
+    }
+    // 用合成后的 videoPicture（tile-grid 为 BGRA，普通帧即原缓冲）建立显示管线。
+    [self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha];
     if (currentAttach.subTexture) {
         [self setupSubPipelineIfNeed];
     }

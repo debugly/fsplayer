@@ -1,0 +1,20 @@
+FSPlayer Android (ijkplayer)
+
+Copyright (C) 2024 Matt Reach <qianlongxu@gmail.com>
+https://github.com/debugly/fsplayer
+
+This library is distributed under the GNU Lesser General Public License,
+version 2.1 or later. The full license text ships next to this notice as
+LICENSE, and in the source repository as COPYING.LGPLv2.1.
+
+The native libraries (libijkplayer.so) link against FFmpeg built without
+--enable-gpl and without --enable-nonfree, i.e. FFmpeg under the GNU Lesser
+General Public License v2.1 or later. FFmpeg source, build configuration and
+the exact build scripts are published at:
+
+  https://github.com/debugly/fsplayer  (FFToolChain submodule)
+  https://github.com/debugly/MRFFToolChainBuildShell
+
+The libraries are loaded dynamically (System.loadLibrary), so an application
+that uses them can be relinked against a modified version of the library, as
+required by section 6 of the LGPL.

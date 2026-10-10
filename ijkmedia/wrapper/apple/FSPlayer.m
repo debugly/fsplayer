@@ -108,11 +108,6 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @synthesize scalingMode = _scalingMode;
 @synthesize shouldAutoplay = _shouldAutoplay;
 
-@synthesize allowsMediaAirPlay = _allowsMediaAirPlay;
-@synthesize airPlayMediaActive = _airPlayMediaActive;
-
-@synthesize isDanmakuMediaAirPlay = _isDanmakuMediaAirPlay;
-
 @synthesize monitor = _monitor;
 @synthesize shouldShowHudView           = _shouldShowHudView;
 @synthesize isSeekBuffering = _isSeekBuffering;
@@ -152,6 +147,9 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         /// VideoRendering在父视图移除
         if ([view respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
             [view registerRefreshCurrentPicObserver:nil];
+        }
+        if ([view respondsToSelector:@selector(destroy)]) {
+            [view destroy];
         }
         [view removeFromSuperview];
         view = nil;
@@ -251,6 +249,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         
         // init hud
         _hudCardView = [[FSHudCardView alloc] initWithFrame:CGRectZero];
+        [_hudCardView appendTitle:[videoRendering name]];
         self.shouldShowHudView = options.showHudView;
     } else {
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
@@ -2198,55 +2197,6 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
         return -1;
     }
 }
-
-#pragma mark Airplay
-
--(BOOL)allowsMediaAirPlay
-{
-    if (!self)
-        return NO;
-    return _allowsMediaAirPlay;
-}
-
--(void)setAllowsMediaAirPlay:(BOOL)b
-{
-    if (!self)
-        return;
-    _allowsMediaAirPlay = b;
-}
-
--(BOOL)airPlayMediaActive
-{
-    if (!self)
-        return NO;
-    if (_isDanmakuMediaAirPlay) {
-        return YES;
-    }
-    return NO;
-}
-
--(BOOL)isDanmakuMediaAirPlay
-{
-    return _isDanmakuMediaAirPlay;
-}
-
--(void)setIsDanmakuMediaAirPlay:(BOOL)isDanmakuMediaAirPlay
-{
-    _isDanmakuMediaAirPlay = isDanmakuMediaAirPlay;
-
-#if TARGET_OS_IOS
-    if (_isDanmakuMediaAirPlay) {
-        _videoRendering.scaleFactor = 1.0f;
-    } else {
-        CGFloat scale = [[UIScreen mainScreen] scale];
-        if (scale < 0.1f)
-            scale = 1.0f;
-        _videoRendering.scaleFactor = scale;
-    }
-#endif
-     [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerIsAirPlayVideoActiveDidChangeNotification object:nil userInfo:nil];
-}
-
 
 #pragma mark Option Conventionce
 

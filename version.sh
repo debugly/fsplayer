@@ -2,7 +2,9 @@
 
 set -e
 
-VERSION_NAME=1.1.0
+cd "$(dirname "$0")"
+
+VERSION_NAME=1.1.1
 VERSION_TARGET=$1
 
 echo "alter version to $VERSION_NAME"

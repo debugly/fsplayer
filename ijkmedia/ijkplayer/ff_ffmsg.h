@@ -72,6 +72,10 @@
 #define FFP_PROP_FLOAT_VMDIFF                           10005
 #define FFP_PROP_FLOAT_DROP_FRAME_RATE                  10007
 #define FFP_PROP_FLOAT_DROP_FRAME_COUNT                 10008
+/* 画面手动三轴旋转（度），语义与 iOS 的 xRotateDegrees/yRotateDegrees/zRotateDegrees 一致 */
+#define FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES           10009
+#define FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES           10010
+#define FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES           10011
 
 #define FFP_PROP_INT64_SELECTED_VIDEO_STREAM            20001
 #define FFP_PROP_INT64_SELECTED_AUDIO_STREAM            20002
@@ -90,6 +94,8 @@
 #define FFP_PROP_INT64_AUDIO_CACHED_PACKETS             20010
 #define FFP_PROP_INT64_VIDEO_SAR_NUM                    20021
 #define FFP_PROP_INT64_VIDEO_SAR_DEN                    20022
+/* 画面缩放模式：0 等比完整显示(默认) 1 等比铺满 2 非等比拉伸 */
+#define FFP_PROP_INT64_VIDEO_SCALING_MODE               20023
 
 #define FFP_PROP_INT64_BIT_RATE                         20100
 

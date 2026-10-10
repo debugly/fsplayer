@@ -129,10 +129,6 @@ typedef enum FSAudioChannel {
 @property(nonatomic) FSScalingMode scalingMode;
 @property(nonatomic) BOOL shouldAutoplay;
 
-@property (nonatomic) BOOL allowsMediaAirPlay;
-@property (nonatomic) BOOL isDanmakuMediaAirPlay;
-@property (nonatomic, readonly) BOOL airPlayMediaActive;
-
 @property (nonatomic) float playbackRate;
 //from 0.0 to 1.0
 @property (nonatomic) float playbackVolume;
@@ -184,9 +180,6 @@ FS_EXTERN NSString *const FSPlayerIsPreparedToPlayNotification;
 //  MPMoviePlayerController.h
 //  Movie Player Notifications
 
-// Posted when the scaling mode changes.
-FS_EXTERN NSString* const FSPlayerScalingModeDidChangeNotification;
-
 // Posted when movie playback ends or a user exits playback.
 FS_EXTERN NSString* const FSPlayerDidFinishNotification;
 FS_EXTERN NSString* const FSPlayerDidFinishReasonUserInfoKey; // NSNumber (FSFinishReason)
@@ -196,9 +189,6 @@ FS_EXTERN NSString* const FSPlayerPlaybackStateDidChangeNotification;
 
 // Posted when the network load state changes.
 FS_EXTERN NSString* const FSPlayerLoadStateDidChangeNotification;
-
-// Posted when the movie player begins or ends playing video via AirPlay.
-FS_EXTERN NSString* const FSPlayerIsAirPlayVideoActiveDidChangeNotification;
 
 // Posted when the buffering changes.
 FS_EXTERN NSString* const FSPlayerBufferingDidChangeNotification;
@@ -229,10 +219,15 @@ FS_EXTERN NSString *const FSPlayerFindStreamInfoNotification;
 FS_EXTERN NSString *const FSPlayerComponentOpenNotification;
 
 FS_EXTERN NSString *const FSPlayerDidSeekCompleteNotification;
+//FSPlayerDidSeekCompleteNotification's userInfo
 FS_EXTERN NSString *const FSPlayerDidSeekCompleteTargetKey;
+//FSPlayerDidSeekCompleteNotification's userInfo
 FS_EXTERN NSString *const FSPlayerDidSeekCompleteErrorKey;
-FS_EXTERN NSString *const FSPlayerDidAccurateSeekCompleteCurPos;
+
 FS_EXTERN NSString *const FSPlayerAccurateSeekCompleteNotification;
+//FSPlayerAccurateSeekCompleteNotification's userInfo
+FS_EXTERN NSString *const FSPlayerDidAccurateSeekCompleteCurPos;
+
 FS_EXTERN NSString *const FSPlayerSeekAudioStartNotification;
 FS_EXTERN NSString *const FSPlayerSeekVideoStartNotification;
 

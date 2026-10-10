@@ -41,6 +41,17 @@
 #define FSALIGN(x, align) ((( x ) + (align) - 1) / (align) * (align))
 #endif
 
+/* ijkplayer 兼容别名（移植的安卓代码仍用 IJK 前缀） */
+#ifndef IJKMAX
+#define IJKMAX(a, b)    FSMAX(a, b)
+#endif
+#ifndef IJKMIN
+#define IJKMIN(a, b)    FSMIN(a, b)
+#endif
+#ifndef IJKALIGN
+#define IJKALIGN(x, align) FSALIGN(x, align)
+#endif
+
 #define FS_CHECK_RET(condition__, retval__, ...) \
     if (!(condition__)) { \
         ALOGE(__VA_ARGS__); \

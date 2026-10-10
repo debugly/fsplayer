@@ -47,15 +47,16 @@ typedef NS_ENUM(NSInteger, FSScalingMode) {
 
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
-// HEIC tile grid: 单个 tile 的 CVPixelBuffer + 位置信息
+// HEIC tile grid: 单个 tile 的位置信息 + 帧数据。
+// avframe 由 dispatch 层从 overlay 克隆（owned）；pixelBuffer 由渲染器（FSMetalView）
+// 从 avframe 转换后填充并持有。
 @interface FSTilePiece : NSObject
+@property(nonatomic) struct AVFrame * _Nullable avframe;        // 持有 (owned, av_frame_free in dealloc)
 @property(nonatomic) CVPixelBufferRef _Nullable pixelBuffer;    // 持有 (owned, Retain/Release by this class)
 @property(nonatomic) int x;         // canvas 上左上角
 @property(nonatomic) int y;
 @property(nonatomic) int w;         // tile 尺寸
 @property(nonatomic) int h;
-@property(nonatomic) NSArray * _Nullable textures;              // 首次使用时生成并缓存
-@property(nonatomic) NSArray * _Nullable cvTextures;            // 对应的 CVMetalTextureRef 包装引用
 @end
 
 @interface FSOverlayAttach : NSObject
@@ -72,11 +73,15 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) int sarDen;
 //degrees
 @property(nonatomic) int autoZRotate;
-@property(nonatomic) int hasAlpha;
 
 @property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
 @property(nonatomic) NSArray * _Nullable videoTextures;
 @property(nonatomic) NSArray * _Nullable videoCVTextures;      // 对应的 CVMetalTextureRef 包装引用
+
+// Full decoded frame (av_frame_ref'd, owned; freed in dealloc). Carries side data
+// such as Dolby Vision RPU.
+// nil for renderers that only consume videoPicture (e.g. FSMetalView).
+@property(nonatomic) struct AVFrame * _Nullable avframe;
 
 // HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
 @property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
@@ -85,6 +90,7 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 @property(nonatomic) id _Nullable subTexture;
 @property(nonatomic) long tag;
 
+- (BOOL)hasAlpha;
 @end
 
 static inline uint32_t fs_ass_color_to_int(UIColor *color) {
@@ -185,9 +191,11 @@ typedef enum : NSUInteger {
 #endif
 - (CGImageRef)snapshot:(FSSnapshotType)aType;
 - (NSString *)name;
-- (id)context;
 
 @optional;
+// GPU context used to build the subtitle SDL_GPU (e.g. FSMetalView returns its
+// MTLDevice).
+- (id)context;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
 // 高斯模糊背景图片：替代默认纯色背景，填充无视频或黑边区域。传 nil 清除。
 @property(nonatomic, strong, nullable) UIImage *backgroundImage;
@@ -196,6 +204,9 @@ typedef enum : NSUInteger {
 // 单次高斯模糊的 sigma（模糊半径），默认 30，值越大越模糊。
 @property(nonatomic) float backgroundBlurSigma;
 - (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
+// Release rendering resources (Vulkan/Metal/GPU). Called when the player stops
+// and removes the view. Implementations must be safe to call multiple times.
+- (void)destroy;
 
 @end
 

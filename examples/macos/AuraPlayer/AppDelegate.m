@@ -116,6 +116,29 @@
     if ([self.waitHandleArr count] > 0) {
         [self application:NSApp openURLs:self.waitHandleArr];
         self.waitHandleArr = nil;
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSArray *args = [[NSProcessInfo processInfo] arguments];
+            NSLog(@"AppDelegate process args: %@", args);
+            if (args.count > 1) {
+                NSMutableArray *urls = [NSMutableArray array];
+                for (NSUInteger i = 1; i < args.count; i++) {
+                    NSString *arg = args[i];
+                    if ([arg hasPrefix:@"-"]) continue;
+                    NSURL *url = [NSURL URLWithString:arg];
+                    if (!url || !url.scheme) {
+                        url = [NSURL fileURLWithPath:arg];
+                    }
+                    if (url) {
+                        [urls addObject:url];
+                    }
+                }
+                if (urls.count > 0) {
+                    NSLog(@"AppDelegate playOpenedURL: %@", urls);
+                    [self playOpenedURL:urls];
+                }
+            }
+        });
     }
 }
 

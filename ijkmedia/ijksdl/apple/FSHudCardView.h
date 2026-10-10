@@ -34,8 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FSHudCardView : UIView
 
-- (void)setDeviceName:(NSString * _Nullable)deviceName;
-
+- (void)appendTitle:(NSString *)title;
 - (void)setHudValue:(NSString * _Nullable)value forKey:(NSString *)key;
 - (NSDictionary *)allHudItem;
 

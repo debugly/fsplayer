@@ -1,0 +1,53 @@
+{
+  "name": "FSPlayer-macOS",
+  "version": "__VERSION__",
+  "summary": "FSPlayer is a free (as in freedom) media player for macOS apps.",
+  "description": "FSPlayer is a free (as in freedom) media player for macOS apps.\n\nIt supports a wide variety of media file formats, audio and video codecs, and subtitle types.",
+  "homepage": "https://github.com/debugly/fsplayer",
+  "documentation_url": "https://github.com/debugly/fsplayer",
+  "social_media_url": "https://github.com/debugly/fsplayer",
+  "license": {
+    "type": "LGPL",
+    "file": "FSPlayer-macOS/LICENSE"
+  },
+  "authors": {
+    "MattReach": "qianlongxu@gmail.com"
+  },
+  "platforms": {
+    "osx": "10.11"
+  },
+  "source": {
+    "http": "https://github.com/debugly/fsplayer/releases/download/__VERSION__/FSPlayer-macOS.zip"
+  },
+  "preserve_paths": [
+    "FSPlayer-macOS/README.md",
+    "FSPlayer-macOS/CHANGELOG.md",
+    "FSPlayer-macOS/LICENSE"
+  ],
+  "vendored_frameworks": "FSPlayer.xcframework",
+  "libraries": [
+    "z",
+    "iconv",
+    "xml2",
+    "bz2",
+    "c++",
+    "lzma"
+  ],
+  "frameworks": [
+    "AVFoundation",
+    "AudioToolbox",
+    "CoreMedia",
+    "CoreVideo",
+    "VideoToolbox",
+    "Metal"
+  ],
+  "osx": {
+    "frameworks": [
+      "Cocoa",
+      "AudioUnit",
+      "OpenGL",
+      "GLKit",
+      "CoreImage"
+    ]
+  }
+}

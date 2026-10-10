@@ -40,22 +40,6 @@
 typedef struct SDL_VoutOverlay_Opaque SDL_VoutOverlay_Opaque;
 typedef struct SDL_VoutOverlay SDL_VoutOverlay;
 struct SDL_VoutOverlay {
-    int w; /**< Read-only, avframe's width */
-    int h; /**< Read-only, avframe's height */
-    Uint32 format; /**< Read-only,on Apple plat is SDL_FCC__VTB or  SDL_FCC__FFVTB; other plat SDL_FCC_I420 */
-#ifndef __APPLE__
-    Uint8 **pixels; /**< Read-write */
-    int planes; /**< Read-only */
-#endif
-    Uint16 *pitches; /**< in bytes, Read-only */
-    
-    int is_private;
-    float fps;
-    int sar_num;
-    int sar_den;
-    //for auto rotate video
-    int auto_z_rotate_degrees;
-    int has_alpha;
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 支持：
      * 当 overlay 处于 tile-grid 模式时 is_tile_grid=1,
@@ -63,8 +47,8 @@ struct SDL_VoutOverlay {
      * 普通单帧播放 is_tile_grid=0, 其余字段忽略。
      */
     int is_tile_grid;
-    int tile_canvas_w;
-    int tile_canvas_h;
+//    int tile_canvas_w;
+//    int tile_canvas_h;
 #endif
     
     SDL_Class               *opaque_class;
@@ -73,22 +57,23 @@ struct SDL_VoutOverlay {
     void    (*free_l)(SDL_VoutOverlay *overlay);
     int     (*lock)(SDL_VoutOverlay *overlay);
     int     (*unlock)(SDL_VoutOverlay *overlay);
-    void    (*unref)(SDL_VoutOverlay *overlay);
 
     int     (*func_fill_frame)(SDL_VoutOverlay *overlay, const AVFrame *frame);
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile grid 查询接口（可选实现，NULL 表示不支持）
      *  func_is_tile_pending:  返回 1 表示当前还在累积 tile，上游不应把此帧 push 到渲染队列
      *  func_get_tile_count:   返回已收集到的 tile 数（一般等于 nb_tiles）
-     *  func_get_tile_buffers: 取出所有 tile 的 CVPixelBufferRef 及其在 canvas 上的 x/y/w/h
+     *  func_get_tile_avframes: 取出所有 tile 的 AVFrame（overlay 持有，调用方 borrow）及其在
+     *                          canvas 上的 x/y/w/h。渲染侧再把 AVFrame 转成 CVPixelBuffer。
      */
     int     (*func_is_tile_pending)(SDL_VoutOverlay *overlay);
     int     (*func_get_tile_count)(SDL_VoutOverlay *overlay);
-    int     (*func_get_tile_buffers)(SDL_VoutOverlay *overlay,
-                                     CVPixelBufferRef *out_buffers,
-                                     int *out_x, int *out_y,
-                                     int *out_w, int *out_h,
-                                     int max_count);
+    int     (*func_get_tile_avframes)(SDL_VoutOverlay *overlay,
+                                      AVFrame **out_frames,
+                                      int *out_x, int *out_y,
+                                      int *out_w, int *out_h,
+                                      int max_count);
+    void    (*func_get_tile_canvas)(SDL_VoutOverlay *overlay, int *out_w, int *out_h);
 #endif
 };
 
@@ -96,13 +81,20 @@ typedef struct SDL_Vout_Opaque SDL_Vout_Opaque;
 typedef struct SDL_Vout SDL_Vout;
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
+/* Forward declaration only. Defined in ijkplayer/ff_ffplay_def.h (a higher layer).
+   The display path passes the owning Frame down so renderers can migrate toward
+   consuming its AVFrame directly instead of going through SDL_VoutOverlay. ijksdl
+   must not include the ijkplayer header (that would invert the layer dependency),
+   so the frame is carried opaquely as a pointer here. */
+typedef struct Frame Frame;
+
 struct SDL_Vout {
     SDL_mutex *mutex;
     SDL_Class       *opaque_class;
     SDL_Vout_Opaque *opaque;
     SDL_VoutOverlay *(*create_overlay)(int width, int height, int frame_format, SDL_Vout *vout);
     void (*free_l)(SDL_Vout *vout);
-    int (*display_overlay)(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay);
+    int (*display_overlay)(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay);
     Uint32 overlay_format;
     int z_rotate_degrees;
     //convert image
@@ -112,7 +104,7 @@ struct SDL_Vout {
 
 void SDL_VoutFree(SDL_Vout *vout);
 void SDL_VoutFreeP(SDL_Vout **pvout);
-int  SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay);
+int  SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay);
 //convert a frame use vout. not free outFrame,when free vout the outFrame will free. if convert failed return greater then 0.
 int  SDL_VoutConvertFrame(SDL_Vout *vout,int dst_format, const AVFrame *inFrame, const AVFrame **outFrame);
 
@@ -121,7 +113,6 @@ SDL_VoutOverlay *SDL_Vout_CreateOverlay(int width, int height, int src_format, S
 int     SDL_VoutLockYUVOverlay(SDL_VoutOverlay *overlay);
 int     SDL_VoutUnlockYUVOverlay(SDL_VoutOverlay *overlay);
 void    SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay);
-void    SDL_VoutUnrefYUVOverlay(SDL_VoutOverlay *overlay);
 int     SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame);
 
 #if IS_TILEGRID_HEIC_ENABLED
@@ -129,11 +120,12 @@ int     SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *fra
 int     SDL_VoutOverlay_IsTilePending(SDL_VoutOverlay *overlay);
 /* HEIC tile grid: 已收集的 tile 数 */
 int     SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay);
-/* HEIC tile grid: 批量取 tile CVPixelBufferRef 及位置（调用方负责 CVPixelBufferRetain/Release） */
-int     SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
-                                              CVPixelBufferRef *out_buffers,
-                                              int *out_x, int *out_y,
-                                              int *out_w, int *out_h,
-                                              int max_count);
+/* HEIC tile grid: 批量取 tile AVFrame（overlay 持有，调用方 borrow，不要 free）及位置 */
+int     SDL_VoutOverlay_GetTileAVFrames(SDL_VoutOverlay *overlay,
+                                        AVFrame **out_frames,
+                                        int *out_x, int *out_y,
+                                        int *out_w, int *out_h,
+                                        int max_count);
+void    SDL_VoutOverlay_GetTileCanvas(SDL_VoutOverlay *overlay, int *out_w, int *out_h);
 #endif
 #endif

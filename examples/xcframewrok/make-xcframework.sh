@@ -35,30 +35,62 @@ function get_inputs_with_path()
     echo "$inputs"
 }
 
+function get_macos_inputs()
+{
+    get_inputs_with_path 'macos/Release'
+}
+
+function get_ios_inputs()
+{
+    echo "$(get_inputs_with_path 'ios/Release-iphoneos') $(get_inputs_with_path 'ios/Release-iphonesimulator')"
+}
+
+function get_tvos_inputs()
+{
+    echo "$(get_inputs_with_path 'tvos/Release-appletvos') $(get_inputs_with_path 'tvos/Release-appletvsimulator')"
+}
+
 function get_inputs()
 {
-    # add macOS
-    macos_inputs=$(get_inputs_with_path 'macos/Release')
-    # add iOS
-    ios_inputs=$(get_inputs_with_path 'ios/Release-iphoneos')
-    # add iOS Simulator
-    ios_sim_inputs=$(get_inputs_with_path 'ios/Release-iphonesimulator')
-    # add tvOS
-    tvos_inputs=$(get_inputs_with_path 'tvos/Release-appletvos')
-    # add tvOS Simulator
-    tvos_sim_inputs=$(get_inputs_with_path 'tvos/Release-appletvsimulator')
-    
-    echo "${macos_inputs} ${ios_inputs} ${ios_sim_inputs} ${tvos_inputs} ${tvos_sim_inputs}"
+    echo "$(get_macos_inputs) $(get_ios_inputs) $(get_tvos_inputs)"
+}
+
+function create_one_xcframework() {
+    local inputs="$1"
+    local output="$2"
+    inputs="$(echo $inputs | xargs)"
+    if [[ -n "$inputs" ]]; then
+        rm -rf "$output"
+        mkdir -p "$(dirname "$output")"
+        xcodebuild -create-xcframework $inputs -output "$output"
+    fi
 }
 
 function do_make_xcframework() {
     cd ..
     local XC_XCFRMK_DIR='xcframewrok'
-    inputs="$(get_inputs)"
-    output=$XC_XCFRMK_DIR/${FMN}.xcframework
-    rm -rf "$output"
-    # echo "xcodebuild -create-xcframework $inputs -output $output"
-    xcodebuild -create-xcframework $inputs -output $output
+    local target="${1:-all_and_platforms}"
+
+    case "$target" in
+        'all')
+            create_one_xcframework "$(get_inputs)" "$XC_XCFRMK_DIR/${FMN}.xcframework"
+            ;;
+        'ios')
+            create_one_xcframework "$(get_ios_inputs)" "$XC_XCFRMK_DIR/ios/${FMN}.xcframework"
+            ;;
+        'macos')
+            create_one_xcframework "$(get_macos_inputs)" "$XC_XCFRMK_DIR/macos/${FMN}.xcframework"
+            ;;
+        'tvos')
+            create_one_xcframework "$(get_tvos_inputs)" "$XC_XCFRMK_DIR/tvos/${FMN}.xcframework"
+            ;;
+        *)
+            create_one_xcframework "$(get_inputs)" "$XC_XCFRMK_DIR/${FMN}.xcframework"
+            create_one_xcframework "$(get_ios_inputs)" "$XC_XCFRMK_DIR/ios/${FMN}.xcframework"
+            create_one_xcframework "$(get_macos_inputs)" "$XC_XCFRMK_DIR/macos/${FMN}.xcframework"
+            create_one_xcframework "$(get_tvos_inputs)" "$XC_XCFRMK_DIR/tvos/${FMN}.xcframework"
+            ;;
+    esac
 }
 
-do_make_xcframework
+do_make_xcframework "$1"

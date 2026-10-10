@@ -1,0 +1,78 @@
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".activities.VideoActivity"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- The main content view -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#0099cc">
+
+        <com.debugly.aura.widget.media.FSVideoView
+            android:id="@+id/video_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"></com.debugly.aura.widget.media.FSVideoView>
+
+        <!-- 上下拖拽切换视频时的预览层：跟手移动，松手过半才落到新地址 -->
+        <FrameLayout
+            android:id="@+id/swipe_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/swipe_preview_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:padding="16dp"
+                android:textColor="@android:color/white"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/toast_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="left|center_vertical"
+            android:background="@color/ijk_transparent_dark"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+        <!-- fsplayer 的统计卡片（对齐 iOS FSHudCardView），由 "HUD" 菜单项开关 -->
+        <com.debugly.fsplayer.player.FSHudView
+            android:id="@+id/hud_view"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|right"
+            android:layout_marginTop="15dp"
+            android:layout_marginEnd="12dp"
+            android:visibility="gone" />
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/ijk_transparent_dark"
+            android:minHeight="?attr/actionBarSize"
+            android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+            app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+            tools:context=".toolbar_widget" />
+    </FrameLayout>
+
+    <!-- The navigation drawer -->
+    <FrameLayout android:id="@+id/right_drawer"
+        android:layout_width="240dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="right"
+        android:background="@color/ijk_transparent_dark" />
+</androidx.drawerlayout.widget.DrawerLayout>

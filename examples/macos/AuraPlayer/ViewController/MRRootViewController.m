@@ -1217,6 +1217,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                     self.player.view.zRotateDegrees = rotateDegrees;
                 }
                 NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.player.view.xRotateDegrees,(int)self.player.view.yRotateDegrees,(int)self.player.view.zRotateDegrees);
+                return YES;
             }
             case kVK_ANSI_S:
             {
@@ -3097,6 +3098,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     NSURL *customURL = [MRCocoaBindingUserDefault snapshotDirectoryURL];
     if (customURL) {
         NSString *movieSubDir = [self.playingUrl lastPathComponent];
+        movieSubDir = [movieSubDir stringByRemovingPercentEncoding];
         if (!movieSubDir) movieSubDir = @"Captured";
         NSString *dirPath = [customURL.path stringByAppendingPathComponent:movieSubDir];
         [[NSFileManager defaultManager] createDirectoryAtPath:dirPath withIntermediateDirectories:YES attributes:nil error:nil];
@@ -3110,11 +3112,10 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     CGImageRef img = [self.player.view snapshot:[MRCocoaBindingUserDefault snapshot_type]];
     if (img) {
         NSString *dir = [self caputeDirForCurrentPlayingUrl];
-        NSString *movieName = [self.playingUrl lastPathComponent];
-        if (!movieName) movieName = @"capture";
         NSString *fmt = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_format"];
         if (!fmt) fmt = @"jpg";
-        NSString *fileName = [NSString stringWithFormat:@"%@-%ld.%@", movieName, (long)(CFAbsoluteTimeGetCurrent() * 1000), fmt];
+        
+        NSString *fileName = [NSString stringWithFormat:@"%d-%ld.%@", (int)self.player.currentPlaybackTime, (long)(CFAbsoluteTimeGetCurrent() * 1000), fmt];
         NSString *filePath = [dir stringByAppendingPathComponent:fileName];
         NSLog(@"截屏:%@",filePath);
         [MRUtil saveImageToFile:img path:filePath];

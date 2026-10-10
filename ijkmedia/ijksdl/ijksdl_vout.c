@@ -73,10 +73,10 @@ void SDL_VoutFreeP(SDL_Vout **pvout)
     *pvout = NULL;
 }
 
-int SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+int SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay)
 {
     if (vout && vout->display_overlay)
-        return vout->display_overlay(vout, overlay, sub_overlay);
+        return vout->display_overlay(vout, frame, sub_overlay);
 
     return -1;
 }
@@ -97,7 +97,7 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
     _SDL_Image_Converter *convert = vout->image_converter;
     if (NULL == convert) {
         convert = malloc(sizeof(_SDL_Image_Converter));
-        bzero(convert, sizeof(_SDL_Image_Converter));
+        memset(convert, 0, sizeof(_SDL_Image_Converter));
         
         convert->frame = av_frame_alloc();
         
@@ -155,12 +155,25 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
         
         int scaled = sws_scale(convert->sws_ctx, (const uint8_t**) inFrame->data, inFrame->linesize,
                   0, inFrame->height, convert->frame->data, convert->frame->linesize);
-        r = scaled == inFrame->height ? 0 : -1;
+        r = scaled == inFrame->height ? 0 : -6;
     }
     
     if (r == 0 && outFrame) {
         convert->frame->width  = inFrame->width;
         convert->frame->height = inFrame->height;
+
+        /* convert->frame is reused across frames, so av_frame_copy_props (called
+         * once at converter creation) leaves a stale opaque_ref. Refresh it from
+         * the current inFrame so per-frame metadata (e.g. HEIC tile-grid
+         * FSTileGridMetadata) propagates through the conversion. */
+        av_buffer_unref(&convert->frame->opaque_ref);
+        if (inFrame->opaque_ref) {
+            convert->frame->opaque_ref = av_buffer_ref(inFrame->opaque_ref);
+            if (!convert->frame->opaque_ref) {
+                return -5;
+            }
+        }
+
         *outFrame = convert->frame;
     }
     
@@ -195,18 +208,11 @@ void SDL_VoutFreeYUVOverlay(SDL_VoutOverlay *overlay)
 {
     if (!overlay)
         return;
-
     if (overlay->free_l) {
         overlay->free_l(overlay);
     } else {
         free(overlay);
     }
-}
-
-void SDL_VoutUnrefYUVOverlay(SDL_VoutOverlay *overlay)
-{
-    if (overlay && overlay->unref)
-        overlay->unref(overlay);
 }
 
 int SDL_VoutFillFrameYUVOverlay(SDL_VoutOverlay *overlay, const AVFrame *frame)
@@ -232,14 +238,22 @@ int SDL_VoutOverlay_GetTileCount(SDL_VoutOverlay *overlay)
     return overlay->func_get_tile_count(overlay);
 }
 
-int SDL_VoutOverlay_GetTileCVPixelBuffers(SDL_VoutOverlay *overlay,
-                                          CVPixelBufferRef *out_buffers,
-                                          int *out_x, int *out_y,
-                                          int *out_w, int *out_h,
-                                          int max_count)
+int SDL_VoutOverlay_GetTileAVFrames(SDL_VoutOverlay *overlay,
+                                    AVFrame **out_frames,
+                                    int *out_x, int *out_y,
+                                    int *out_w, int *out_h,
+                                    int max_count)
 {
-    if (!overlay || !overlay->func_get_tile_buffers)
+    if (!overlay || !overlay->func_get_tile_avframes)
         return 0;
-    return overlay->func_get_tile_buffers(overlay, out_buffers, out_x, out_y, out_w, out_h, max_count);
+    return overlay->func_get_tile_avframes(overlay, out_frames, out_x, out_y, out_w, out_h, max_count);
 }
+
+void SDL_VoutOverlay_GetTileCanvas(SDL_VoutOverlay *overlay, int *out_w, int *out_h)
+{
+    if (!overlay || !overlay->func_get_tile_canvas)
+        return;
+    return overlay->func_get_tile_canvas(overlay, out_w, out_h);
+}
+
 #endif

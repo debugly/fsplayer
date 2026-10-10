@@ -25,7 +25,6 @@
 void frame_queue_unref_item(Frame *vp)
 {
     av_frame_unref(vp->frame);
-    SDL_VoutUnrefYUVOverlay(vp->bmp);
     
     int count = 0;
     while (count < SUB_REF_MAX_LEN) {
@@ -36,7 +35,7 @@ void frame_queue_unref_item(Frame *vp)
         ff_subtitle_buffer_release(&h);
         count++;
     }
-    bzero(vp->sub_list, sizeof(vp->sub_list));
+    memset(vp->sub_list, 0, sizeof(vp->sub_list));
 }
 
 int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int keep_last)

@@ -36,6 +36,12 @@
 
 @synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
 
+@synthesize backgroundImage = _backgroundImage;
+
+@synthesize backgroundBlurIterations = _backgroundBlurIterations;
+
+@synthesize backgroundBlurSigma = _backgroundBlurSigma;
+
 @synthesize displayDelegate;
 
 - (void)dealloc
@@ -231,6 +237,51 @@
     [self.lock unlock];
     NSView<FSVideoRenderingProtocol> *view = [renderViewArr firstObject];
     return [view directDisplayHDRSupportted];
+}
+
+- (void)setBackgroundImage:(UIImage *)backgroundImage
+{
+    _backgroundImage = backgroundImage;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        if ([view respondsToSelector:@selector(setBackgroundImage:)]) {
+            [view setBackgroundImage:backgroundImage];
+        }
+    }
+}
+
+- (void)setBackgroundBlurIterations:(int)backgroundBlurIterations
+{
+    _backgroundBlurIterations = backgroundBlurIterations;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        if ([view respondsToSelector:@selector(setBackgroundBlurIterations:)]) {
+            [view setBackgroundBlurIterations:backgroundBlurIterations];
+        }
+    }
+}
+
+- (void)setBackgroundBlurSigma:(float)backgroundBlurSigma
+{
+    _backgroundBlurSigma = backgroundBlurSigma;
+    
+    [self.lock lock];
+    NSArray *renderViewArr = [self.renderViewArr copy];
+    [self.lock unlock];
+    
+    for (NSView<FSVideoRenderingProtocol> *view in renderViewArr) {
+        if ([view respondsToSelector:@selector(setBackgroundBlurSigma:)]) {
+            [view setBackgroundBlurSigma:backgroundBlurSigma];
+        }
+    }
 }
 
 @end

@@ -41,7 +41,7 @@ inline static SDL_Vout *SDL_Vout_CreateInternal(size_t opaque_size)
         free(vout);
         return NULL;
     }
-    bzero(vout->opaque, opaque_size);
+    memset(vout->opaque, 0, opaque_size);
     vout->mutex = SDL_CreateMutex();
     if (vout->mutex == NULL) {
         free(vout->opaque);

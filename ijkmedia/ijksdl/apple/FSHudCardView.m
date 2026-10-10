@@ -121,7 +121,9 @@ static NSString *FSGetDeviceChipName(void) {
 #elif TARGET_OS_IOS
     return [UIDevice currentDevice].model ?: @"iOS Device";
 #elif TARGET_OS_TV
-    return @"Apple TV";
+    NSString *model = [UIDevice currentDevice].localizedModel ?: @"Apple TV";
+    NSString *osVersion = [UIDevice currentDevice].systemVersion;
+    return [model stringByAppendingFormat:@" %@",osVersion];
 #else
     return @"Apple Device";
 #endif
@@ -279,10 +281,10 @@ static NSString *FSGetDeviceChipName(void) {
     return label;
 }
 
-- (void)setDeviceName:(NSString *)deviceName
+- (void)appendTitle:(NSString *)title
 {
-    if (deviceName && deviceName.length > 0) {
-        self.deviceLb.stringValue = deviceName;
+    if (title && title.length > 0) {
+        self.deviceLb.stringValue = [FSGetDeviceChipName() stringByAppendingFormat:@" %@",title];
     }
 }
 
@@ -547,10 +549,10 @@ static NSString *FSGetDeviceChipName(void) {
     return label;
 }
 
-- (void)setDeviceName:(NSString *)deviceName
+- (void)appendTitle:(NSString *)title
 {
-    if (deviceName && deviceName.length > 0) {
-        self.deviceLb.text = deviceName;
+    if (title && title.length > 0) {
+        self.deviceLb.text = [FSGetDeviceChipName() stringByAppendingFormat:@" %@",title];
     }
 }
 

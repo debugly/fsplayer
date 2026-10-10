@@ -276,6 +276,11 @@ static int ff_sub_upload_texture(FFSubtitle *sub, double pts, SDL_GPU *gpu, SDL_
     if (!sub || !texture) {
         return -1;
     }
+    // Android 也接了 SDL_GPU（vulkan/ijksdl_gpu_vulkan.c），只有创建失败时才为 NULL
+    if (!gpu) {
+        *texture = NULL;
+        return -1;
+    }
     
     FFSubtitleBufferPacket packet = {0};
     int r = ff_sub_upload_buffer(sub, pts, &packet);

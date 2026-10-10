@@ -1,0 +1,81 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    // R 的包名 = Java 源码包名 = namespace = com.debugly.aura，与 applicationId 一致。
+    namespace 'com.debugly.aura'
+    // Media3 1.11.x 要求 compileSdk 36。targetSdk 仍保持 35（不改变运行时行为），
+    // compileSdk 只决定能调用哪些 API。
+    compileSdk 36
+
+    defaultConfig {
+        // Aura 的正式包名。历史上用过 com.debugly.fsplayer.demo，改名后旧包
+        // 无法覆盖升级（会被当成另一个 app 并存），需要手动卸载。
+        applicationId "com.debugly.aura"
+        minSdk 24
+        targetSdk 35
+        // Aura 演示包版本：默认 0.1.6 / 106，aura-apk workflow 直接读这里（不再读 version.sh）；
+        // android.yml（AAR/Maven）仍通过 -PversionName/-PversionCode 覆盖成 version.sh 的版本。
+        versionCode((project.findProperty("versionCode") ?: 106).toInteger())
+        versionName(project.findProperty("versionName") ?: "0.1.6")
+    }
+
+    signingConfigs {
+        release {
+            // CI 用 secrets 解码出 keystore 并导出这三个环境变量；本地没有就退回 debug 签名
+            def ks = System.getenv("FS_KEYSTORE_FILE")
+            if (ks != null) {
+                storeFile file(ks)
+                storePassword System.getenv("FS_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("FS_KEY_ALIAS")
+                keyPassword System.getenv("FS_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // 本地 debug 包和 CI 的 release 包 applicationId 相同但签名不同，
+            // 装到同一台手机上会互相覆盖/签名冲突。加 .debug 后缀让两者并存，
+            // 各自独立的 RecentMedia、设置和权限，不用卸载重装。
+            applicationIdSuffix ".debug"
+            // 装包脚本（aura-apk 等）只发布 release，这里只影响本地调试。
+            versionNameSuffix "-debug"
+            // 桌面上和 release 同名会分不清哪个是调试包（两个包 applicationId
+            // 不同，能并存）。resValue 覆盖 src/main 的 app_name，launcher 标签
+            // 随之变成 Aura-D；release 不受影响。
+            resValue "string", "app_name", "Aura-D"
+        }
+        release {
+            minifyEnabled false
+            signingConfig System.getenv("FS_KEYSTORE_FILE") != null
+                    ? signingConfigs.release
+                    : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation project(':fsplayer')
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.squareup:otto:1.3.8'
+
+    // 「AndroidX Media3」播放器后端。原 ExoPlayer 的
+    // com.google.android.exoplayer2 已于 2023 年归档废弃，现在叫
+    // androidx.media3（同一份代码，官方在继续迭代，当前 1.11.x）。
+    // 只要基础 exoplayer + HLS/DASH，SmoothStreaming 用得少就不引。
+    implementation "androidx.media3:media3-exoplayer:1.11.1"
+    implementation "androidx.media3:media3-exoplayer-hls:1.11.1"
+    implementation "androidx.media3:media3-exoplayer-dash:1.11.1"
+}

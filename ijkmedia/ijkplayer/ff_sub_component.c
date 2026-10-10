@@ -85,6 +85,17 @@ static int pre_render_ass_frame(FFSubComponent *com, int serial)
         goto end;
     }
     
+    /*
+     * libass 渲染器还没建好（字幕流仍在打开的窗口期）时不能往下走：
+     * 下面这圈会把 pre_loading 一路推到 ass_processed，而 pre_loading 只增不减，
+     * 于是这段本该显示的字幕被永久跳过，之后再也不会渲染。
+     * 直接返回，等渲染器就绪后从当时的 previous_uploading 起算。
+     */
+    if (!com->assRenderer) {
+        result = -8;
+        goto end;
+    }
+    
     if (com->pre_loading < 0) {
         if (com->previous_uploading >= 0) {
             com->pre_loading = com->previous_uploading;
@@ -438,7 +449,7 @@ static int subtitle_thread(void *arg)
                     sp->height = com->sub_height;
                     sp->shown = 0;
                     
-                    bzero(sp->sub_list, sizeof(sp->sub_list));
+                    memset(sp->sub_list, 0, sizeof(sp->sub_list));
                     if (num_rect > 0) {
                         memcpy(sp->sub_list, buffers, num_rect * sizeof(buffers[0]));
                     }

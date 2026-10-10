@@ -47,6 +47,7 @@
 #include "libavutil/samplefmt.h"
 #include "libavutil/time.h"
 #include "libavformat/avformat.h"
+#include "libavcodec/bsf.h"
 #include "libswscale/swscale.h"
 #include "libavutil/opt.h"
 //#include "libavcodec/avfft.h"
@@ -200,9 +201,16 @@ typedef struct Frame {
     int allocated;
     int width;
     int height;
+    /* Display dimensions carried to the renderer (was SDL_VoutOverlay->w/h).
+       Single-frame: equals width/height. HEIC tile-grid: the grid's display size
+       (tmeta->w/h), which differs from width/height (the padded canvas size). */
+    int disp_w;
+    int disp_h;
     int format;
     AVRational sar;
     int shown;
+    float fps;
+    int auto_z_rotate_degrees;
 } Frame;
 
 typedef struct FrameQueue {
@@ -234,6 +242,11 @@ typedef struct Decoder {
     int packet_pending;
     int bfsc_ret;
     uint8_t *bfsc_data;
+
+    /* 见 decoder_bsf_init：补齐解码器要求的码流封装（MP4 的 AVCC -> Annex-B） */
+    AVBSFContext *bsf;
+    int bsf_insert_aud;
+
 
     SDL_cond *empty_queue_cond;
     int64_t start_pts;
@@ -601,6 +614,14 @@ typedef struct FFPlayer {
     ijk_audio_samples_callback audio_samples_callback;
     
     FSSubtitlePreference sp;
+
+    int video_scaling_mode;   // 画面缩放模式，见 FFP_PROP_INT64_VIDEO_SCALING_MODE
+
+    /* 画面手动三轴旋转（度），见 FFP_PROP_FLOAT_VIDEO_*_ROTATE_DEGREES；
+       语义对齐 iOS 的 xRotateDegrees/yRotateDegrees/zRotateDegrees */
+    float x_rotate_degrees;
+    float y_rotate_degrees;
+    float z_rotate_degrees;
     
     //icy update
     int64_t icy_update_period;//ms
@@ -683,11 +704,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     
     ffp->sar_num                = 0;
     ffp->sar_den                = 0;
-#ifdef __APPLE__
     ffp->overlay_format         = SDL_FCC__GLES2;
-#else
-    ffp->overlay_format         = SDL_FCC_RV32;
-#endif
     ffp->prepared               = 0;
     ffp->auto_resume            = 0;
     ffp->error                  = 0;
@@ -717,6 +734,18 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
 
     ffp->opensles                       = 0; // option
     ffp->soundtouch_enable              = 0; // option
+
+    /*
+     * 字幕偏好必须有初值：ffp_apply_subtitle_preference 会把它推给字幕组件，
+     * 全 0 的偏好会把 libass 的字体缩放设成 0（字号 0 -> 一张图都渲染不出来）。
+     * 这里和 ff_subtitle 内部默认值保持一致。
+     */
+    ffp->sp = fs_subtitle_default_preference();
+
+    ffp->video_scaling_mode             = 0; // option: 等比完整显示
+    ffp->x_rotate_degrees               = 0.0f;
+    ffp->y_rotate_degrees               = 0.0f;
+    ffp->z_rotate_degrees               = 0.0f;
 
     ffp->iformat_name                   = NULL; // option
 
@@ -799,6 +828,8 @@ inline static void ffp_remove_msg(FFPlayer *ffp, int what) {
 
 int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond);
 int decoder_start(Decoder *d, int (*fn)(void *), void *arg, const char *name);
+int decoder_bsf_init(Decoder *d, AVCodecContext *avctx, AVStream *st);
+int decoder_extradata_annexb(AVCodecContext *avctx, AVStream *st);
 void decoder_destroy(Decoder *d);
 void decoder_abort(Decoder *d, FrameQueue *fq);
 

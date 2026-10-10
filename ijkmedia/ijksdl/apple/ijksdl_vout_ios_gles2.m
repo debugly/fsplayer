@@ -27,10 +27,10 @@
 #include <assert.h>
 #include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_vout_internal.h"
-#include "ijksdl_vout_overlay_ffmpeg.h"
-#include "ijksdl_vout_overlay_ffmpeg_hw.h"
+#include "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h"
 #include "ijkplayer/ff_subtitle_def.h"
 #import "ijksdl_gpu_metal.h"
+#include "ff_ffplay_def.h"
 
 @implementation FSTilePiece
 
@@ -40,17 +40,21 @@
         CVPixelBufferRelease(_pixelBuffer);
         _pixelBuffer = NULL;
     }
-    if (_cvTextures) {
-        for (id item in _cvTextures) {
-            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
-            if (texRef) {
-                CFRelease(texRef);
-            }
-        }
-        _cvTextures = nil;
+    if (_avframe) {
+        av_frame_free(&self->_avframe);
     }
 }
 
+- (BOOL)hasAlpha
+{
+    if (self.avframe) {
+        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(self.avframe->format);
+        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
+            return YES;
+        }
+    }
+    return NO;
+}
 @end
 
 @implementation FSOverlayAttach
@@ -61,6 +65,10 @@
         CVPixelBufferRelease(self.videoPicture);
         self.videoPicture = NULL;
     }
+    if (self.avframe) {
+        av_frame_free(&self->_avframe);
+    }
+    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer
     if (self.videoCVTextures) {
         for (id item in self.videoCVTextures) {
             CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
@@ -87,22 +95,30 @@
     }
 }
 
+- (BOOL)hasAlpha
+{
+    if (self.tilePieces.count > 0) {
+        return [self.tilePieces.firstObject hasAlpha];
+    }
+    
+    if (self.avframe) {
+        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(self.avframe->format);
+        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 @end
 
 struct SDL_Vout_Opaque {
-    void *cvPixelBufferPool;
-    int cv_format;
     __strong UIView<FSVideoRenderingProtocol> *gl_view;
 };
 
 static SDL_VoutOverlay *vout_create_overlay_l(int width, int height, int src_format, SDL_Vout *vout)
 {
-    switch (src_format) {
-        case AV_PIX_FMT_VIDEOTOOLBOX:
-            return SDL_VoutFFmpeg_HW_CreateOverlay(width, height, vout);
-        default:
-            return SDL_VoutFFmpeg_CreateOverlay(width, height, src_format, vout);
-    }
+    return SDL_VoutFFmpeg_CreateOverlay(width, height, src_format, vout);
 }
 
 static SDL_VoutOverlay *vout_create_overlay(int width, int height, int src_format, SDL_Vout *vout)
@@ -121,110 +137,98 @@ static void vout_free_l(SDL_Vout *vout)
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque) {
         opaque->gl_view = nil;
-        if (opaque->cvPixelBufferPool) {
-            CVPixelBufferPoolRelease(opaque->cvPixelBufferPool);
-            opaque->cvPixelBufferPool = NULL;
-        }
     }
-
+    
     SDL_Vout_FreeInternal(vout);
 }
 
-static CVPixelBufferRef SDL_Overlay_getCVPixelBufferRef(SDL_VoutOverlay *overlay)
+static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay)
 {
-    switch (overlay->format) {
-        case SDL_FCC__VTB:
-            return SDL_VoutFFmpeg_HW_GetCVPixelBufferRef(overlay);
-        case SDL_FCC__FFVTB:
-            return SDL_VoutFFmpeg_GetCVPixelBufferRef(overlay);
-        default:
-            return NULL;
-    }
-}
+    // `frame` is the owning Frame from the player's picture queue. It carries the
+    // display geometry (frame->w/h) the renderer scales to;
 
-static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
-{
     SDL_Vout_Opaque *opaque = vout->opaque;
     UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
-
+    
     if (!gl_view) {
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
         return -1;
     }
 
-    if (!overlay) {
+    if (!frame || frame->disp_w <= 0 || frame->disp_h <= 0) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     }
 
-    if (overlay->w <= 0 || overlay->h <= 0) {
-        ALOGE("vout_display_overlay_l: invalid overlay dimensions(%d, %d)\n", overlay->w, overlay->h);
-        return -3;
-    }
-
-    if (SDL_FCC__VTB != overlay->format && SDL_FCC__FFVTB != overlay->format) {
-        ALOGE("vout_display_overlay_l: invalid format:%d\n",overlay->format);
-        return -4;
-    }
 #if IS_TILEGRID_HEIC_ENABLED
-    /* HEIC tile grid 路径：把所有 tile 打包到 FSOverlayAttach.tilePieces */
+    SDL_VoutOverlay *overlay = frame->bmp;
+    /* HEIC tile grid 路径：把所有 tile 的 AVFrame 打包到 FSOverlayAttach.tilePieces，
+       渲染侧（FSMetalView）再把每个 AVFrame 转成 CVPixelBuffer 后合成。 */
     if (overlay->is_tile_grid) {
         int count = SDL_VoutOverlay_GetTileCount(overlay);
         if (count <= 0) {
             ALOGE("vout_display_overlay_l: tile-grid overlay with 0 tiles\n");
             return -5;
         }
-        CVPixelBufferRef *bufs = (CVPixelBufferRef *)calloc(count, sizeof(CVPixelBufferRef));
+        AVFrame **frames = (AVFrame **)calloc(count, sizeof(AVFrame *));
         int *xs = (int *)calloc(count, sizeof(int));
         int *ys = (int *)calloc(count, sizeof(int));
         int *ws = (int *)calloc(count, sizeof(int));
         int *hs = (int *)calloc(count, sizeof(int));
-        int got = SDL_VoutOverlay_GetTileCVPixelBuffers(overlay, bufs, xs, ys, ws, hs, count);
-
+        int got = SDL_VoutOverlay_GetTileAVFrames(overlay, frames, xs, ys, ws, hs, count);
+        int tile_canvas_w = 0,tile_canvas_h = 0;
+        SDL_VoutOverlay_GetTileCanvas(overlay, &tile_canvas_w, &tile_canvas_h);
+        
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
-        attach.w = overlay->w;
-        attach.h = overlay->h;
-        attach.pixelW = overlay->tile_canvas_w;
-        attach.pixelH = overlay->tile_canvas_h;
-        attach.fps    = overlay->fps;
-        attach.sarNum = overlay->sar_num;
-        attach.sarDen = overlay->sar_den;
-        attach.autoZRotate = overlay->auto_z_rotate_degrees;
-        attach.hasAlpha = overlay->has_alpha;
+        attach.w = frame->disp_w;
+        attach.h = frame->disp_h;
+        attach.pixelW = tile_canvas_w;
+        attach.pixelH = tile_canvas_h;
+        attach.fps    = frame->fps;
+        attach.sarNum = frame->sar.num;
+        attach.sarDen = frame->sar.den;
+        attach.autoZRotate = frame->auto_z_rotate_degrees;
         attach.videoPicture = NULL;
 
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
-            if (!bufs[i]) continue;
+            if (!frames[i]) continue;
             FSTilePiece *p = [[FSTilePiece alloc] init];
-            p.pixelBuffer = CVPixelBufferRetain(bufs[i]);
+            // Clone the tile frame (owned by attach); the renderer converts it to a
+            // CVPixelBuffer. Mirrors the single-frame av_frame_clone below.
+            p.avframe = av_frame_clone(frames[i]);
             p.x = xs[i]; p.y = ys[i];
             p.w = ws[i]; p.h = hs[i];
             [pieces addObject:p];
         }
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
-
-        free(bufs); free(xs); free(ys); free(ws); free(hs);
+        free(frames); free(xs); free(ys); free(ws); free(hs);
         return [gl_view displayAttach:attach];
     }
 #endif
     
-    CVPixelBufferRef videoPic = SDL_Overlay_getCVPixelBufferRef(overlay);
-    if (videoPic) {
+    // The renderer consumes the decoded AVFrame directly: FSPlaceboView uploads it,
+    // FSMetalView derives a CVPixelBuffer from it on the render thread. The dispatch
+    // layer no longer pulls a CVPixelBuffer here (that logic moved into the renderer).
+    AVFrame *av_frame = frame->frame;
+    if (av_frame) {
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
-        attach.w = overlay->w;
-        attach.h = overlay->h;
-        
-        attach.pixelW = (int)CVPixelBufferGetWidth(videoPic);
-        attach.pixelH = (int)CVPixelBufferGetHeight(videoPic);
-        attach.fps    = overlay->fps;
-        attach.sarNum = overlay->sar_num;
-        attach.sarDen = overlay->sar_den;
-        attach.autoZRotate = overlay->auto_z_rotate_degrees;
-        attach.hasAlpha = overlay->has_alpha;
-        attach.videoPicture = CVPixelBufferRetain(videoPic);
+        attach.w = frame->disp_w;
+        attach.h = frame->disp_h;
+
+        // pixelW/H default to the frame's coded size; renderers that need the padded
+        // buffer dimensions (FSMetalView crop) overwrite these once they materialise
+        // the CVPixelBuffer.
+        attach.pixelW = av_frame->width;
+        attach.pixelH = av_frame->height;
+        attach.fps    = frame->fps;
+        attach.sarNum = frame->sar.num;
+        attach.sarDen = frame->sar.den;
+        attach.autoZRotate = frame->auto_z_rotate_degrees;
+        // Carry the full frame (with DoVi/HDR side data) to the renderer.
+        attach.avframe = av_frame_clone(av_frame);
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         return [gl_view displayAttach:attach];
     } else {
@@ -233,11 +237,11 @@ static int vout_display_overlay_l(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_
     }
 }
 
-static int vout_display_overlay(SDL_Vout *vout, SDL_VoutOverlay *overlay, SDL_TextureOverlay *sub_overlay)
+static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_TextureOverlay *sub_overlay)
 {
     @autoreleasepool {
         SDL_LockMutex(vout->mutex);
-        int retval = vout_display_overlay_l(vout, overlay, sub_overlay);
+        int retval = vout_display_overlay_l(vout, frame, sub_overlay);
         SDL_UnlockMutex(vout->mutex);
         return retval;
     }
@@ -248,9 +252,6 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     SDL_Vout *vout = SDL_Vout_CreateInternal(sizeof(SDL_Vout_Opaque));
     if (!vout)
         return NULL;
-
-    SDL_Vout_Opaque *opaque = vout->opaque;
-    opaque->cv_format = -1;
     vout->create_overlay = vout_create_overlay;
     vout->free_l = vout_free_l;
     vout->display_overlay = vout_display_overlay;
@@ -336,14 +337,14 @@ static CGContextRef _CreateCGBitmapContext(size_t w, size_t h, size_t bpc, size_
     //CGColorSpaceCreateWithName(kCGColorSpaceSRGB)
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef bitmapContext = CGBitmapContextCreate(
-        NULL,
-        w,
-        h,
-        bpc,
-        bpr,
-        colorSpace,
-        bmi
-    );
+                                                       NULL,
+                                                       w,
+                                                       h,
+                                                       bpc,
+                                                       bpr,
+                                                       colorSpace,
+                                                       bmi
+                                                       );
     
     CGColorSpaceRelease(colorSpace);
     return bitmapContext;
@@ -400,7 +401,7 @@ static BOOL saveImageToFile(CGImageRef img,NSString *imgPath)
     if (imageUTType == NULL) {
         imageUTType = kUTTypePNG;
     }
-
+    
     CFStringRef key = kCGImageDestinationLossyCompressionQuality;
     CFStringRef value = CFSTR("0.5");
     const void * keys[] = {key};

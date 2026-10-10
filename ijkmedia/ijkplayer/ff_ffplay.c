@@ -77,6 +77,7 @@
 #include <stdatomic.h>
 #if defined(__ANDROID__)
 #include "ijksoundtouch/ijksoundtouch_wrap.h"
+#include "ijksdl/android/ijksdl_vout_android_vulkan.h"
 #elif defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
@@ -95,7 +96,7 @@
 #ifdef isnan
 #undef isnan
 #endif
-#define isnan(x) (isnan((double)(x)) || isnanf((float)(x)))
+#define isnan(x) __builtin_isnan((double)(x))
 #endif
 
 #if defined(__ANDROID__)
@@ -197,6 +198,54 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  */
+/*
+ * 给一个 Annex-B 包补上 AUD（Access Unit Delimiter）。
+ *
+ * MediaCodec 解码器（至少 TV 模拟器上的 c2.goldfish.h264.decoder）靠 AUD 划分
+ * 访问单元：MP4 里不带 AUD，喂给它 Annex-B 会出现"入队全部成功、输入缓冲也
+ * 全部回收，却一帧输出都没有"；TS 能正常解码只是因为 mpegts 封装自带 AUD。
+ * AUD 是标准 NAL，不需要它的解码器也会忽略，所以无脑补上。
+ *
+ * primary_pic_type 取 0xf0（任意 slice 类型）。
+ */
+static int packet_prepend_aud(AVPacket *pkt)
+{
+    static const uint8_t aud[6] = { 0x00, 0x00, 0x00, 0x01, 0x09, 0xf0 };
+    AVPacket *np;
+    int ret;
+
+    if (!pkt || pkt->size < 4)
+        return 0;
+    /* 已经是 AUD 开头（0x00000001 0x09）就不用补 */
+    if (pkt->data[0] == 0 && pkt->data[1] == 0 && pkt->data[2] == 0 &&
+        pkt->data[3] == 1 && pkt->size > 4 && (pkt->data[4] & 0x1f) == 9)
+        return 0;
+
+    np = av_packet_alloc();
+    if (!np)
+        return AVERROR(ENOMEM);
+
+    ret = av_new_packet(np, pkt->size + (int)sizeof(aud));
+    if (ret < 0) {
+        av_packet_free(&np);
+        return ret;
+    }
+
+    memcpy(np->data, aud, sizeof(aud));
+    memcpy(np->data + sizeof(aud), pkt->data, pkt->size);
+    av_packet_copy_props(np, pkt);
+    np->pts          = pkt->pts;
+    np->dts          = pkt->dts;
+    np->duration     = pkt->duration;
+    np->stream_index = pkt->stream_index;
+    np->flags        = pkt->flags;
+
+    av_packet_unref(pkt);
+    av_packet_move_ref(pkt, np);
+    av_packet_free(&np);
+    return 0;
+}
+
 static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
     
     int status = 0;
@@ -215,7 +264,10 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     case AVMEDIA_TYPE_VIDEO:
                         ret = avcodec_receive_frame(d->avctx, frame);
                         if (ret >= 0) {
-                            int vdec_type = frame->format == AV_PIX_FMT_VIDEOTOOLBOX ? FFP_PROPV_DECODER_AVCODEC_HW : FFP_PROPV_DECODER_AVCODEC;
+                            int vdec_type = (frame->format == AV_PIX_FMT_VIDEOTOOLBOX ||
+                                             frame->format == AV_PIX_FMT_MEDIACODEC)
+                                                ? FFP_PROPV_DECODER_AVCODEC_HW
+                                                : FFP_PROPV_DECODER_AVCODEC;
                             
                             if (ffp->node_vdec->vdec_type == FFP_PROPV_DECODER_UNKNOWN) {
                                 ffp->node_vdec->vdec_type = vdec_type;
@@ -285,6 +337,8 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 if (ret == AVERROR_EOF) {
                     d->finished = d->pkt_serial;
                     avcodec_flush_buffers(d->avctx);
+                    if (d->bsf)
+                        av_bsf_flush(d->bsf);
                     status = 0;
                     goto abort_end;
                 }
@@ -314,6 +368,8 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     
                 if (old_serial != d->pkt_serial) {
                     avcodec_flush_buffers(d->avctx);
+                    if (d->bsf)
+                        av_bsf_flush(d->bsf);
                     d->finished = 0;
                     d->hw_failed_count = 0;
                     d->next_pts = d->start_pts;
@@ -360,6 +416,26 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 fd->pkt_pos = d->pkt->pos;
             }
 #endif
+            if (d->bsf) {
+                int bsf_ret = av_bsf_send_packet(d->bsf, d->pkt);
+                if (bsf_ret < 0) {
+                    av_log(d->avctx, AV_LOG_ERROR, "bsf send_packet failed:%d\n", bsf_ret);
+                    av_packet_unref(d->pkt);
+                    continue;
+                }
+                bsf_ret = av_bsf_receive_packet(d->bsf, d->pkt);
+                if (bsf_ret == AVERROR(EAGAIN))
+                    continue;
+                if (bsf_ret < 0) {
+                    av_log(d->avctx, AV_LOG_ERROR, "bsf receive_packet failed:%d\n", bsf_ret);
+                    av_packet_unref(d->pkt);
+                    continue;
+                }
+                if (d->bsf_insert_aud && packet_prepend_aud(d->pkt) < 0) {
+                    av_packet_unref(d->pkt);
+                    continue;
+                }
+            }
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
@@ -478,7 +554,7 @@ static void video_image_display2(FFPlayer *ffp)
                 SDL_Delay(20);
             }
         }
-        SDL_VoutDisplayYUVOverlay(ffp->vout, vp->bmp, sub_overlay);
+        SDL_VoutDisplayYUVOverlay(ffp->vout, vp, sub_overlay);
         SDL_TextureOverlay_Release(&sub_overlay);
         
         ffp->stat.vfps = SDL_SpeedSamplerAdd(&ffp->vfps_sampler, FFP_SHOW_VFPS_FFPLAY, "vfps[ffplay]");
@@ -1173,7 +1249,7 @@ static void alloc_picture(FFPlayer *ffp, int src_format)
                                      src_format,
                                    ffp->vout);
     /* RV16, RV32 contains only one plane */
-    if (!vp->bmp || (!vp->bmp->is_private && vp->bmp->pitches[0] < vp->width))
+    if (!vp->bmp)
     {
         /* SDL allocates a buffer smaller than requested if the video
          * overlay hardware is unable to support the requested size. */
@@ -1284,6 +1360,155 @@ static void ffp_calculate_accurate_seek_drop_diff(FFPlayer *ffp) {
     } else {
         //av_log(ffp, AV_LOG_DEBUG, "seek_drop_diff: audio_pts(%0.3f) >= video_pts(%0.3f) by %0.3fs, no drop needed\n", audio_pts, video_pts, -diff);
     }
+}
+
+static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFrame **outFrame) {
+    const int src_format = src_frame->format;
+    Uint32 overlay_format = vout->overlay_format;
+#if defined(__ANDROID__)
+    // 安卓侧把 RGB 系（老的 ANativeWindow/GLES 通路用的格式）请求归一成"让 Vout 自己选"：
+    // ijkplayer-example 的 IjkVideoView 默认就传 fcc-rv32（它的 "Auto Select"），
+    // 而现在的 Vulkan 渲染器直接消费 YUV/10bit/硬解帧、在着色器里转 RGB，不做 CPU 转换。
+    // 不归一的话会掉进下面 switch 的 default 分支，每帧返回 -1000 被丢掉（整屏黑）。
+    if (SDL_FCC_RV32 == overlay_format || SDL_FCC_RV24 == overlay_format
+        || SDL_FCC_RV16 == overlay_format) {
+        overlay_format = SDL_FCC__GLES2;
+    }
+#endif
+    if (SDL_FCC__GLES2 == overlay_format) {
+    #if defined(__ANDROID__)
+        overlay_format = SDL_FCC_YV12;
+    #elif defined(__APPLE__)
+    #if TARGET_OS_OSX
+        if (src_format == AV_PIX_FMT_UYVY422) {
+            overlay_format = SDL_FCC_UYVY;
+        } else if (src_format == AV_PIX_FMT_YUYV422) {
+            overlay_format = SDL_FCC_YUV2;
+        } else
+    #endif
+    // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
+    #if TARGET_CPU_ARM64
+        if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
+            overlay_format = SDL_FCC_J420;
+        } else if (src_format == AV_PIX_FMT_YUV420P) {
+            overlay_format = SDL_FCC_I420;
+        } else if (src_format == AV_PIX_FMT_YUVJ420P) {
+            overlay_format = SDL_FCC_J420;
+        } else if (src_format == AV_PIX_FMT_YUV420P10) {
+            overlay_format = SDL_FCC_P010;
+        } else if (src_format == AV_PIX_FMT_YUV422P10) {
+            overlay_format = SDL_FCC_P010;
+        } else if (src_format == AV_PIX_FMT_YUV444P10) {
+            overlay_format = SDL_FCC_P010;
+        } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
+            overlay_format = SDL_FCC_P416;
+        } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
+            overlay_format = SDL_FCC_P216;
+        } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
+            overlay_format = SDL_FCC_AYUV64;
+        } else
+    #endif
+        {
+            const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
+            if (pfd->nb_components > 0) {
+                if (pfd->comp[0].depth == 10) {
+                    overlay_format = SDL_FCC_P010;
+                } else {
+                    overlay_format = SDL_FCC_NV12;
+                    switch (src_format) {
+                        case AV_PIX_FMT_BGRA:
+                            overlay_format = SDL_FCC_BGRA;
+                            break;
+                        case AV_PIX_FMT_BGR0:
+                            overlay_format = SDL_FCC_BGR0;
+                            break;
+                        case AV_PIX_FMT_ARGB: {
+                            overlay_format = SDL_FCC_ARGB;
+                            break;
+                        }
+                        case AV_PIX_FMT_0RGB: {
+                            overlay_format = SDL_FCC_0RGB;
+                            break;
+                        }
+                        default: {
+                            if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+                                overlay_format = SDL_FCC_BGRA;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    #endif
+        //
+        vout->overlay_format = overlay_format;
+    }
+    
+    enum AVPixelFormat dst_format = AV_PIX_FMT_NONE;
+    switch (overlay_format) {
+        case SDL_FCC_J420:
+        case SDL_FCC_I420:
+        case SDL_FCC_YV12:
+        {
+            if (overlay_format == SDL_FCC_J420) {
+                dst_format = AV_PIX_FMT_YUVJ420P;
+            } else {
+                dst_format = AV_PIX_FMT_YUV420P;
+            }
+            break;
+        }
+        case SDL_FCC_NV12: {
+            dst_format = AV_PIX_FMT_NV12;
+            break;
+        }
+        case SDL_FCC_BGRA: {
+            dst_format = AV_PIX_FMT_BGRA;
+            break;
+        }
+        case SDL_FCC_BGR0: {
+            dst_format = AV_PIX_FMT_BGR0;
+            break;
+        }
+        case SDL_FCC_ARGB: {
+            dst_format = AV_PIX_FMT_ARGB;
+            break;
+        }
+        case SDL_FCC_0RGB: {
+            dst_format = AV_PIX_FMT_0RGB;
+            break;
+        }
+        case SDL_FCC_UYVY: {
+            dst_format = AV_PIX_FMT_UYVY422;
+            break;
+        }
+        case SDL_FCC_YUV2: {
+            dst_format = AV_PIX_FMT_YUYV422;
+            break;
+        }
+        case SDL_FCC_P010: {
+            dst_format = AV_PIX_FMT_P010;
+        }
+            break;
+        case SDL_FCC_P416: {
+            dst_format = AV_PIX_FMT_P416;
+        }
+            break;
+        case SDL_FCC_P216: {
+            dst_format = AV_PIX_FMT_P216;
+        }
+            break;
+        case SDL_FCC_AYUV64: {
+            dst_format = AV_PIX_FMT_AYUV64;
+        }
+            break;
+        default:
+            ALOGE("unknow overly format:%.4s(0x%x)\n", (char*)&overlay_format, overlay_format);
+            return -1000;
+            break;
+    }
+    
+    return SDL_VoutConvertFrame(vout, dst_format, src_frame, outFrame);
 }
 
 static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
@@ -1432,181 +1657,43 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
     if (!(vp = frame_queue_peek_writable(&is->pictq)))
         return -1;
 
-    vp->sar = src_frame->sample_aspect_ratio;
-
-    //TODO: windows and android plat.
-    //软解时，上层指定了明确的overlay-format时需要转格式
-    if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
-        
-        const int src_format = src_frame->format;
-        Uint32 overlay_format = ffp->vout->overlay_format;
-        if (SDL_FCC__GLES2 == overlay_format) {
-        #if defined(__ANDROID__)
-            overlay_format = SDL_FCC_YV12;
-        #elif defined(__APPLE__)
-        #if TARGET_OS_OSX
-            if (src_format == AV_PIX_FMT_UYVY422) {
-                overlay_format = SDL_FCC_UYVY;
-            } else if (src_format == AV_PIX_FMT_YUYV422) {
-                overlay_format = SDL_FCC_YUV2;
-            } else
-        #endif
-        // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
-        #if TARGET_CPU_ARM64
-            if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
-                overlay_format = SDL_FCC_J420;
-            } else if (src_format == AV_PIX_FMT_YUV420P) {
-                overlay_format = SDL_FCC_I420;
-            } else if (src_format == AV_PIX_FMT_YUVJ420P) {
-                overlay_format = SDL_FCC_J420;
-            } else if (src_format == AV_PIX_FMT_YUV420P10) {
-                overlay_format = SDL_FCC_P010;
-            } else if (src_format == AV_PIX_FMT_YUV422P10) {
-                overlay_format = SDL_FCC_P010;
-            } else if (src_format == AV_PIX_FMT_YUV444P10) {
-                overlay_format = SDL_FCC_P010;
-            } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
-                overlay_format = SDL_FCC_P416;
-            } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
-                overlay_format = SDL_FCC_P216;
-            } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
-                overlay_format = SDL_FCC_AYUV64;
-            } else
-        #endif
-            {
-                const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
-                if (pfd->nb_components > 0) {
-                    if (pfd->comp[0].depth == 10) {
-                        overlay_format = SDL_FCC_P010;
-                    } else {
-                        overlay_format = SDL_FCC_NV12;
-                        switch (src_format) {
-                            case AV_PIX_FMT_BGRA:
-                                overlay_format = SDL_FCC_BGRA;
-                                break;
-                            case AV_PIX_FMT_BGR0:
-                                overlay_format = SDL_FCC_BGR0;
-                                break;
-                            case AV_PIX_FMT_ARGB: {
-                                overlay_format = SDL_FCC_ARGB;
-                                break;
-                            }
-                            case AV_PIX_FMT_0RGB: {
-                                overlay_format = SDL_FCC_0RGB;
-                                break;
-                            }
-                            default: {
-                                if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
-                                    overlay_format = SDL_FCC_BGRA;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        #endif
-            //
-            ffp->vout->overlay_format = overlay_format;
+    //软解时，根据上层指定的 overlay-format 进行格式转换；
+    //硬解帧（VideoToolbox / MediaCodec）保留原始帧，由渲染器直接消费
+    if (src_frame->format != AV_PIX_FMT_VIDEOTOOLBOX &&
+        src_frame->format != AV_PIX_FMT_MEDIACODEC) {
+        const AVFrame *outFrame = NULL;
+        if (convert_frame_format(ffp->vout, src_frame, &outFrame)) {
+            return -2;
         }
-        
-        enum AVPixelFormat dst_format = AV_PIX_FMT_NONE;
-        switch (overlay_format) {
-            case SDL_FCC_J420:
-            case SDL_FCC_I420:
-            case SDL_FCC_YV12:
-            {
-                if (overlay_format == SDL_FCC_J420) {
-                    dst_format = AV_PIX_FMT_YUVJ420P;
-                } else {
-                    dst_format = AV_PIX_FMT_YUV420P;
-                }
-                break;
-            }
-            case SDL_FCC_NV12: {
-                dst_format = AV_PIX_FMT_NV12;
-                break;
-            }
-            case SDL_FCC_BGRA: {
-                dst_format = AV_PIX_FMT_BGRA;
-                break;
-            }
-            case SDL_FCC_BGR0: {
-                dst_format = AV_PIX_FMT_BGR0;
-                break;
-            }
-            case SDL_FCC_ARGB: {
-                dst_format = AV_PIX_FMT_ARGB;
-                break;
-            }
-            case SDL_FCC_0RGB: {
-                dst_format = AV_PIX_FMT_0RGB;
-                break;
-            }
-            case SDL_FCC_UYVY: {
-                dst_format = AV_PIX_FMT_UYVY422;
-                break;
-            }
-            case SDL_FCC_YUV2: {
-                dst_format = AV_PIX_FMT_YUYV422;
-                break;
-            }
-            case SDL_FCC_P010: {
-                dst_format = AV_PIX_FMT_P010;
-            }
-                break;
-            case SDL_FCC_P416: {
-                dst_format = AV_PIX_FMT_P416;
-            }
-                break;
-            case SDL_FCC_P216: {
-                dst_format = AV_PIX_FMT_P216;
-            }
-                break;
-            case SDL_FCC_AYUV64: {
-                dst_format = AV_PIX_FMT_AYUV64;
-            }
-                break;
-            default:
-                ALOGE("unknow overly format:%.4s(0x%x)\n", (char*)&overlay_format, overlay_format);
-                return -1000;
-                break;
-        }
-        
-        if (src_format != dst_format) {
-            const AVFrame *outFrame = NULL;
-            if (SDL_VoutConvertFrame(ffp->vout, dst_format, src_frame, &outFrame)) {
-                //convert failed.
-                return -2;
-            }
-            src_frame = (AVFrame *)outFrame;
-        }
+        src_frame = (AVFrame *)outFrame;
     }
+    
+    int cmp_w = src_frame->width;
+    int cmp_h = src_frame->height;
+    int disp_w = src_frame->width;
+    int disp_h = src_frame->height;
     
 #if IS_TILEGRID_HEIC_ENABLED
     /* HEIC tile-grid: decode 输出是每个 tile 的独立 AVFrame，
      * 但 overlay 应当承载整张 canvas；将 tile 的宽高改写为 canvas 宽高
      * 以避免 alloc_picture 在 tile 切换时反复重建 overlay。
      */
-    int tile_canvas_w_fix = 0;
-    int tile_canvas_h_fix = 0;
+    /* cmp_w/h: buffer/canvas size that drives alloc_picture (tile-grid uses the
+       padded canvas). disp_w/h: display size the renderer scales to (SDL_VoutOverlay->w/h
+       before the hoist; tile-grid uses the grid's display dims, not the padded canvas). */
     if (src_frame->opaque_ref &&
         src_frame->opaque_ref->size >= (int)sizeof(FSTileGridMetadata)) {
         FSTileGridMetadata *tmeta = (FSTileGridMetadata *)src_frame->opaque_ref->data;
         if (tmeta->nb_tiles > 0 && tmeta->canvas_w > 0 && tmeta->canvas_h > 0) {
-            tile_canvas_w_fix = tmeta->canvas_w;
-            tile_canvas_h_fix = tmeta->canvas_h;
+            cmp_w  = tmeta->canvas_w;
+            cmp_h  = tmeta->canvas_h;
+            disp_w = tmeta->w;
+            disp_h = tmeta->h;
         }
     }
-    int cmp_w = tile_canvas_w_fix > 0 ? tile_canvas_w_fix : src_frame->width;
-    int cmp_h = tile_canvas_h_fix > 0 ? tile_canvas_h_fix : src_frame->height;
-#else
-    int cmp_w = src_frame->width;
-    int cmp_h = src_frame->height;
 #endif
     
     /* alloc or resize hardware picture buffer */
-    
     if (!vp->bmp || !vp->allocated ||
         vp->width  != cmp_w ||
         vp->height != cmp_h ||
@@ -1632,6 +1719,11 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
             return -1;
     }
 
+    /* Display dims carried to the renderer (formerly SDL_VoutOverlay->w/h),
+       refreshed every frame like the overlay's func_fill_frame did. */
+    vp->disp_w = disp_w;
+    vp->disp_h = disp_h;
+    
     /* if the frame is not skipped, then display it */
     if (vp->bmp) {
         /* get a pointer on the bitmap */
@@ -1662,20 +1754,14 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->duration = duration;
         vp->pos = pos;
         vp->frame_serial = serial;
+        vp->fps = ffp->stat.vfps_probe;
         vp->sar = av_guess_sample_aspect_ratio(is->ic, is->video_st, src_frame);
-        vp->bmp->sar_num = vp->sar.num;
-        vp->bmp->sar_den = vp->sar.den;
         ffp->stat.sar_num = vp->sar.num;
         ffp->stat.sar_den = vp->sar.den;
-        vp->bmp->fps = ffp->stat.vfps_probe;
         
-        // 获取像素格式描述符
-        const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(src_frame->format);
-        if (desc && (desc->flags & AV_PIX_FMT_FLAG_ALPHA)) {
-            vp->bmp->has_alpha = 1;
-        } else {
-            vp->bmp->has_alpha = 0;
-        }
+        av_frame_unref(vp->frame);
+        if (av_frame_ref(vp->frame, src_frame) < 0)
+            return -3;
         
         if (ffp->autorotate) {
             //fill video ratate degrees
@@ -1690,9 +1776,9 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
 //                causing it to play in the wrong direction
                 int32_t *displaymatrix = (int32_t *)sd->data;
                 int degrees = get_degree_with_displaymatrix(displaymatrix);
-                vp->bmp->auto_z_rotate_degrees = - degrees;
+                vp->auto_z_rotate_degrees = - degrees;
             } else {
-                vp->bmp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
+                vp->auto_z_rotate_degrees = - ffp->vout->z_rotate_degrees;
             }
         }
         
@@ -2778,7 +2864,7 @@ reload:
             }
 
             int ret_len = ijk_soundtouch_translate(is->handle, is->audio_new_buf, (float)(ffp->pf_playback_rate), (float)(1.0f/ffp->pf_playback_rate),
-                    resampled_data_size / 2, bytes_per_sample, is->audio_tgt.channels, af->frame->sample_rate);
+                    resampled_data_size / 2, bytes_per_sample, is->audio_tgt.ch_layout.nb_channels, af->frame->sample_rate);
             if (ret_len > 0) {
                 is->audio_buf = (uint8_t*)is->audio_new_buf;
                 resampled_data_size = ret_len;
@@ -3167,6 +3253,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
     return AV_PIX_FMT_NONE;
 }
 
+
 static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) {
     int err = 0;
     AVBufferRef *hw_device_ctx = NULL;
@@ -3174,12 +3261,157 @@ static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) 
         ALOGE("create mac HW device failed for type: %d\n", config->device_type);
         return err;
     }
-    //将硬件支持的图像格式传给解码器的方法
-    ctx->get_format = get_hw_format;
+    //硬解初始化失败自动降级到软解优化：避免硬解出错等到 avcodec_send_packet 时检测到错误再给上层抛事件后重启的弯路
+    /*
+     Format videotoolbox_vld chosen by get_format().
+     Format videotoolbox_vld requires hwaccel vp9_videotoolbox initialisation.
+     VideoToolbox decoder for this format not found.
+     Failed setup for format videotoolbox_vld: hwaccel initialisation returned error:-65537
+     Format videotoolbox_vld not usable, retrying get_format() without it.
+     Picture size 0x0 is invalid
+     Failed to initialize decoder for 3840x2160 @ 62
+     avcodec_send_packet failed:Invalid data found when processing input(-1094995529).
+     */
+    //ctx->get_format = get_hw_format;
     av_opt_set_int(ctx, "refcounted_frames", 1, 0);
     //创建hw_device_ctx传给解码器上下文，必须在avcodec_open2之前并且之后不能修改
     ctx->hw_device_ctx = hw_device_ctx;
     return err;
+}
+#endif
+
+#if defined(__ANDROID__)
+#include <libavcodec/mediacodec.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_mediacodec.h>
+#include "ijksdl/android/ijksdl_android_jni.h"
+#include "ijksdl/android/ijksdl_vout_android_vulkan.h"
+
+/*
+ * FFmpeg 把 MediaCodec 实现成独立解码器（h264_mediacodec / hevc_mediacodec ...），
+ * 原生解码器（h264 等）的 hw_configs 里并不包含它，所以硬解必须换用这些解码器。
+ */
+static const char *ffp_android_mediacodec_decoder_name(enum AVCodecID id)
+{
+    switch (id) {
+    case AV_CODEC_ID_H264:       return "h264_mediacodec";
+    case AV_CODEC_ID_HEVC:       return "hevc_mediacodec";
+    case AV_CODEC_ID_MPEG2VIDEO: return "mpeg2_mediacodec";
+    case AV_CODEC_ID_MPEG4:      return "mpeg4_mediacodec";
+    default:                     return NULL;
+    }
+}
+
+/* 该 codec 是否被用户打开硬解（对应 ijkplayer 的 mediacodec-* 选项语义）。 */
+static int ffp_android_mediacodec_wanted(FFPlayer *ffp, enum AVCodecID id)
+{
+    if (!ffp || !ffp_android_mediacodec_decoder_name(id))
+        return 0;
+    if (ffp->mediacodec_all_videos)
+        return 1;
+
+    switch (id) {
+    case AV_CODEC_ID_H264:       return ffp->mediacodec_avc;
+    case AV_CODEC_ID_HEVC:       return ffp->mediacodec_hevc;
+    case AV_CODEC_ID_MPEG2VIDEO: return ffp->mediacodec_mpeg2;
+    case AV_CODEC_ID_MPEG4:      return ffp->mediacodec_mpeg4;
+    default:                     return 0;
+    }
+}
+
+/* 硬解时只接受 MediaCodec 输出格式，解码结果留在 GPU 侧。 */
+static enum AVPixelFormat get_hw_format_mediacodec(AVCodecContext *ctx,
+                                                   const enum AVPixelFormat *pix_fmts)
+{
+    (void)ctx;
+    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+        if (*p == AV_PIX_FMT_MEDIACODEC)
+            return *p;
+    }
+    return AV_PIX_FMT_NONE;
+}
+
+/* hw_device_ctx 最后一次 unref 时回收我们持有的 Surface global ref。 */
+static void mediacodec_device_free(AVHWDeviceContext *ctx)
+{
+    AVMediaCodecDeviceContext *hwctx = ctx->hwctx;
+    JNIEnv *env = NULL;
+
+    if (hwctx && hwctx->surface && JNI_OK == SDL_JNI_SetupThreadEnv(&env))
+        (*env)->DeleteGlobalRef(env, hwctx->surface);
+
+    if (hwctx)
+        hwctx->surface = NULL;
+    ctx->user_opaque = NULL;
+}
+
+/*
+ * 给 avctx 挂上 MediaCodec 硬解：
+ * - 解码输出目标是渲染器内部的 AImageReader Surface（零拷贝的源头）
+ * - get_format 选定 AV_PIX_FMT_MEDIACODEC，帧不落 CPU 内存
+ * 返回 0 表示已启用，非 0 表示保持软解。
+ */
+static int ffp_android_mediacodec_init(FFPlayer *ffp, AVCodecContext *avctx, const AVCodec *codec)
+{
+    if (!ffp->vout || !SDL_VoutAndroid_IsMediaCodecSupported(ffp->vout)) {
+        ALOGW("android: mediacodec zero-copy unsupported by vout\n");
+        return -1;
+    }
+
+    enum AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
+    if (type == AV_HWDEVICE_TYPE_NONE)
+        return -1;
+
+    const AVCodecHWConfig *config = NULL;
+    for (int i = 0;; i++) {
+        const AVCodecHWConfig *node = avcodec_get_hw_config(codec, i);
+        if (!node)
+            break;
+        if ((node->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) &&
+            node->device_type == type) {
+            config = node;
+            break;
+        }
+    }
+    if (!config) {
+        ALOGI("android: %s does not support mediacodec\n", codec->name);
+        return -1;
+    }
+
+    JNIEnv *env = NULL;
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env))
+        return -1;
+
+    jobject surface = SDL_VoutAndroid_GetMediaCodecSurface(env, ffp->vout);
+    if (!surface)
+        return -1;
+
+    AVBufferRef *device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
+    if (!device_ref) {
+        (*env)->DeleteLocalRef(env, surface);
+        return -1;
+    }
+
+    AVHWDeviceContext *dev_ctx = (AVHWDeviceContext *) device_ref->data;
+    AVMediaCodecDeviceContext *hwctx = dev_ctx->hwctx;
+    hwctx->surface = (*env)->NewGlobalRef(env, surface);
+    (*env)->DeleteLocalRef(env, surface);
+    if (!hwctx->surface) {
+        av_buffer_unref(&device_ref);
+        return -1;
+    }
+
+    /* FFmpeg 解码时会自行再取一份 global ref；这一份由我们在 device 释放时回收。 */
+    dev_ctx->free = mediacodec_device_free;
+
+    if (av_hwdevice_ctx_init(device_ref) < 0) {
+        av_buffer_unref(&device_ref);
+        return -1;
+    }
+
+    avctx->hw_device_ctx = device_ref;
+    avctx->get_format = get_hw_format_mediacodec;
+    return 0;
 }
 #endif
 
@@ -3363,6 +3595,27 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         goto fail;
     }
 
+#if defined(__ANDROID__)
+    /*
+     * MediaCodec 硬解必须换用 FFmpeg 的 *_mediacodec 解码器：
+     * 原生 h264/hevc 等解码器的 hw_configs 里不含 MediaCodec。
+     * 其解码输出目标是渲染器内部的 AImageReader Surface（零拷贝源头）。
+     */
+    if (!forced_codec_name && avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
+        !(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+        ffp_android_mediacodec_wanted(ffp, avctx->codec_id)) {
+        const char *mc_name = ffp_android_mediacodec_decoder_name(avctx->codec_id);
+        const AVCodec *mc_codec = mc_name ? avcodec_find_decoder_by_name(mc_name) : NULL;
+        if (mc_codec) {
+            codec = mc_codec;
+            ALOGI("android: use %s\n", mc_name);
+        } else {
+            ALOGI("android: %s unavailable, fallback to %s\n",
+                  mc_name ? mc_name : "(none)", codec->name);
+        }
+    }
+#endif
+
     avctx->codec_id = codec->id;
     
     if(stream_lowres > codec->max_lowres){
@@ -3409,6 +3662,26 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
                 ALOGI("try use videotoolbox accel\n");
             }
         }
+    }
+#endif
+#if defined(__ANDROID__)
+    /*
+     * MediaCodec 硬解：解码直出 AImageReader 的 Surface，帧不落 CPU，
+     * 渲染器用 Vulkan 外部显存（零拷贝）直接采样。
+     */
+    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
+        !(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+        ffp_android_mediacodec_wanted(ffp, avctx->codec_id)) {
+        if (ffp_android_mediacodec_init(ffp, avctx, codec) == 0)
+            ALOGI("try use mediacodec accel: %s\n", codec->name);
+
+        /*
+         * MP4 里是 AVCC（长度前缀），MediaCodec 只吃 Annex-B：把 extradata
+         * 换成 Annex-B 形式，免得 avcodec_open2 内部那份同名过滤器重复转换。
+         * 真正的码流转换在 decoder_bsf_init() 里自己做。
+         */
+        if (strstr(codec->name, "_mediacodec"))
+            decoder_extradata_annexb(avctx, st);
     }
 #endif
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
@@ -3551,6 +3824,13 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
             if (!ffp->node_vdec)
                 goto fail;
         }
+        /*
+         * MP4 的 AVCC -> MediaCodec 要的 Annex-B 由这里自己挂的过滤器完成
+         * （avcodec_open2 内部那份在 MP4 上不生效，见 decoder_bsf_init）。
+         */
+        if (strstr(codec->name, "_mediacodec"))
+            decoder_bsf_init(&is->viddec, avctx, st);
+
         if ((ret = decoder_start(&is->viddec, video_thread, ffp, "ff_video_dec")) < 0)
             goto out;
 
@@ -4301,14 +4581,14 @@ static int read_thread(void *arg)
                         unsigned int count = group->nb_streams;
 
                         av_log(NULL, AV_LOG_INFO,
-                               "Group %u (Type: %d) contains %u streams.\n",
+                               "HEIC Group %u (Type: %d) contains %u streams.\n",
                                i, group->type, count);
 
                         // 2. 只有当类型是 Tile Grid 时，才进行拼图逻辑判断
                         if (group->type == AV_STREAM_GROUP_PARAMS_TILE_GRID) {
                             AVStreamGroupTileGrid *grid = group->params.tile_grid;
                             av_log(NULL, AV_LOG_INFO,
-                                   "  Tile grid: nb_tiles=%u, canvas=%dx%d, roi=(%d,%d %dx%d)\n",
+                                   "HEIC Tile grid: nb_tiles=%u, canvas=%dx%d, roi=(%d,%d %dx%d)\n",
                                    grid->nb_tiles, grid->coded_width, grid->coded_height,
                                    grid->horizontal_offset, grid->vertical_offset,
                                    grid->width, grid->height);
@@ -4351,6 +4631,8 @@ static int read_thread(void *arg)
                                 meta->nb_tiles   = (int)grid->nb_tiles;
                                 meta->canvas_w   = grid->coded_width;
                                 meta->canvas_h   = grid->coded_height;
+                                meta->roi_x      = grid->horizontal_offset;
+                                meta->roi_y      = grid->vertical_offset;
                                 meta->w          = grid->width;
                                 meta->h          = grid->height;
                                 meta->tile_x     = tile_x;
@@ -4366,7 +4648,7 @@ static int read_thread(void *arg)
                             }
 
                             av_log(NULL, AV_LOG_DEBUG,
-                                   "put tile packet: group=%u stream=%d tile_idx=%d pos=(%d,%d)\n",
+                                   "HEIC put tile packet: group=%u stream=%d tile_idx=%d pos=(%d,%d)\n",
                                    i, pkt->stream_index, tile_index, tile_x, tile_y);
 
                             packet_queue_put(&is->videoq, pkt);
@@ -4809,10 +5091,29 @@ FFPlayer *ffp_create(void)
     return ffp;
 }
 
+/*
+ * ffp_destroy 重入守卫（不改动 FFPlayer 结构体，避免 ABI/布局风险）。
+ * 切换视频时 Java 侧 release() 与渲染线程/msg_loop 的收尾可能并发走到
+ * ffp_destroy，第二次就是 use-after-free（stream_close 里 SDL_WaitThread
+ * 访问已释放的 is；更早的表现是 heap 被写坏，av_mallocz 返回 0x200000000
+ * 这种整数当指针用）。
+ */
+static pthread_mutex_t g_ffp_destroy_mutex = PTHREAD_MUTEX_INITIALIZER;
+static void *g_ffp_destroying = NULL;
+
 void ffp_destroy(FFPlayer *ffp)
 {
     if (!ffp)
         return;
+
+    pthread_mutex_lock(&g_ffp_destroy_mutex);
+    if (g_ffp_destroying == ffp) {
+        /* 已有另一个线程在销毁同一个 ffp，直接返回，不要碰任何字段 */
+        pthread_mutex_unlock(&g_ffp_destroy_mutex);
+        return;
+    }
+    g_ffp_destroying = ffp;
+    pthread_mutex_unlock(&g_ffp_destroy_mutex);
 
     if (ffp->is) {
         av_log(NULL, AV_LOG_WARNING, "ffp_destroy_ffplayer: force stream_close()");
@@ -4832,6 +5133,14 @@ void ffp_destroy(FFPlayer *ffp)
     msg_queue_destroy(&ffp->msg_queue);
 
     av_free(ffp);
+
+    /*
+     * 必须在 av_free 之后再清标志：并发进来的第二个 ffp_destroy 就是靠这个标志
+     * 才没去读已释放的 ffp。若在 free 前清，另一个线程会误以为没人销毁而继续跑。
+     */
+    pthread_mutex_lock(&g_ffp_destroy_mutex);
+    g_ffp_destroying = NULL;
+    pthread_mutex_unlock(&g_ffp_destroy_mutex);
 }
 
 void ffp_destroy_p(FFPlayer **pffp)
@@ -5622,6 +5931,12 @@ float ffp_get_property_float(FFPlayer *ffp, int id, float default_value)
             return ffp ? ffp->pf_playback_volume : default_value;
         case FFP_PROP_FLOAT_DROP_FRAME_RATE:
             return ffp ? ffp->stat.drop_frame_rate : default_value;
+        case FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES:
+            return ffp ? ffp->x_rotate_degrees : default_value;
+        case FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES:
+            return ffp ? ffp->y_rotate_degrees : default_value;
+        case FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES:
+            return ffp ? ffp->z_rotate_degrees : default_value;
         default:
             return default_value;
     }
@@ -5635,6 +5950,28 @@ void ffp_set_property_float(FFPlayer *ffp, int id, float value)
             break;
         case FFP_PROP_FLOAT_PLAYBACK_VOLUME:
             ffp_set_playback_volume(ffp, value);
+            break;
+        case FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES:
+        case FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES:
+        case FFP_PROP_FLOAT_VIDEO_Z_ROTATE_DEGREES:
+            if (ffp) {
+                if (id == FFP_PROP_FLOAT_VIDEO_X_ROTATE_DEGREES) {
+                    ffp->x_rotate_degrees = value;
+                } else if (id == FFP_PROP_FLOAT_VIDEO_Y_ROTATE_DEGREES) {
+                    ffp->y_rotate_degrees = value;
+                } else {
+                    ffp->z_rotate_degrees = value;
+                }
+#if defined(__ANDROID__)
+                /* 渲染器持有三轴旋转，播放中改也能下一帧生效 */
+                if (ffp->vout) {
+                    SDL_VoutAndroid_SetRotateDegrees(ffp->vout,
+                                                     ffp->x_rotate_degrees,
+                                                     ffp->y_rotate_degrees,
+                                                     ffp->z_rotate_degrees);
+                }
+#endif
+            }
             break;
         default:
             return;
@@ -5672,6 +6009,10 @@ int64_t ffp_get_property_int64(FFPlayer *ffp, int id, int64_t default_value)
             }
         case FFP_PROP_INT64_AUDIO_DECODER:
             return FFP_PROPV_DECODER_AVCODEC;
+        case FFP_PROP_INT64_VIDEO_SCALING_MODE:
+            if (!ffp)
+                return default_value;
+            return ffp->video_scaling_mode;
 
         case FFP_PROP_INT64_VIDEO_CACHED_DURATION:
             if (!ffp)
@@ -5778,6 +6119,17 @@ void ffp_set_property_int64(FFPlayer *ffp, int id, int64_t value)
         case FFP_PROP_INT64_CHANNEL_CONFIG:
             if(ffp){
                 ffp->channel_config = (int)value;
+            }
+            break;
+        case FFP_PROP_INT64_VIDEO_SCALING_MODE:
+            if (ffp) {
+                ffp->video_scaling_mode = (int)value;
+#if defined(__ANDROID__)
+                /* 渲染器持有缩放模式，播放中改也能下一帧生效 */
+                if (ffp->vout) {
+                    SDL_VoutAndroid_SetScalingMode(ffp->vout, (int)value);
+                }
+#endif
             }
             break;
         default:
