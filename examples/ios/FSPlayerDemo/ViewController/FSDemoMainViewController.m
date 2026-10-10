@@ -22,6 +22,7 @@
 #import "FSMoviePlayerViewController.h"
 #import "FSDemoLocalFolderViewController.h"
 #import "FSDemoSampleViewController.h"
+#import "FSVerticalSwipeViewController.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 
 @interface FSDemoMainViewController () <UITableViewDataSource, UITableViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
@@ -38,6 +39,15 @@
     [super viewDidLoad];
     
     self.title = @"Main";
+
+    // Lets the swipe screen be opened without tapping through the menu, e.g.
+    // xcrun simctl launch <device> <bundle> -FSVerticalSwipe
+    if ([[NSProcessInfo processInfo].arguments containsObject:@"-FSVerticalSwipe"]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.navigationController pushViewController:[[FSVerticalSwipeViewController alloc] init]
+                                                 animated:NO];
+        });
+    }
     
     self.tableViewCellTitles = @[
                                  @"Local Folder",
@@ -45,6 +55,7 @@
                                  @"Input URL",
                                  @"Scan QRCode",
                                  @"Online Samples",
+                                 @"Vertical Swipe Rooms",
                                  ];
     
     NSURL *documentsUrl = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
@@ -150,6 +161,10 @@
 
                 case 4:
                     [self.navigationController pushViewController:[[FSDemoSampleViewController alloc] init] animated:YES];
+                    break;
+
+                case 5:
+                    [self.navigationController pushViewController:[[FSVerticalSwipeViewController alloc] init] animated:YES];
                     break;
 
                 default:

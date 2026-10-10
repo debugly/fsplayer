@@ -1,0 +1,41 @@
+{
+  "//": "Mock feed for the vertical swipe demo. Swap this file (or point FSVerticalFeedStore.remoteURLString at a URL) to change rooms without touching view code. Keys are read leniently: roomId/roomid/rid, streamUrl/url/playUrl, coverUrl/cover/pic, tint (hex RRGGBB).",
+  "currentRoomId": "bipbop-16x9-720p",
+  "items": [
+    {
+      "roomId": "bipbop-16x9-720p",
+      "title": "Advanced 1280x720 @ 1 Mbps",
+      "anchor": "gear4",
+      "tint": "4A90D9",
+      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear4/prog_index.m3u8"
+    },
+    {
+      "roomId": "bipbop-16x9-1080p",
+      "title": "Advanced 1920x1080 @ 2 Mbps",
+      "anchor": "gear5",
+      "tint": "C05CA8",
+      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear5/prog_index.m3u8"
+    },
+    {
+      "roomId": "bipbop-16x9-540p",
+      "title": "Advanced 960x540 @ 910 kbps",
+      "anchor": "gear3",
+      "tint": "4CAF6E",
+      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear3/prog_index.m3u8"
+    },
+    {
+      "roomId": "bipbop-4x3-480p",
+      "title": "Basic 640x480 @ 650 kbps",
+      "anchor": "4x3-gear2",
+      "tint": "E0A030",
+      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8"
+    },
+    {
+      "roomId": "bipbop-4x3-300p",
+      "title": "Basic 400x300 @ 232 kbps",
+      "anchor": "4x3-gear1",
+      "tint": "7C6BD0",
+      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8"
+    }
+  ]
+}

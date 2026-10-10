@@ -7,7 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C3C9329EFDF28A47473EE77 /* UIImage+FSImageEffects.m in Sources */ = {isa = PBXBuildFile; fileRef = DEC2C2C74BCFFE0485469091 /* UIImage+FSImageEffects.m */; };
+		28A12567E9A1CAB692469BA3 /* FSVerticalFeed.m in Sources */ = {isa = PBXBuildFile; fileRef = 620B5B348E88CED30CE17077 /* FSVerticalFeed.m */; };
+		2E564E8DB21FF8F05988A0C8 /* vertical_feed.json in Resources */ = {isa = PBXBuildFile; fileRef = 6E1F2AAD0E0CF1216EF9E853 /* vertical_feed.json */; };
 		55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 55E809E51B145B55003E98A5 /* LaunchScreen.xib */; };
+		8261A9D4B1BEADE34876988B /* FSVerticalSwipeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 95D10D175AD56EDA729C616C /* FSVerticalSwipeViewController.m */; };
 		C969F9192DCB053B00EB31DF /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
 		C969F91A2DCB053B00EB31DF /* FSPlayer-iOS.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD02D91434300D768BC /* FSAppDelegate.m */; };
@@ -25,6 +29,7 @@
 		C9CC8BF92D91438F00D768BC /* FSDemoSampleViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BE02D91438F00D768BC /* FSDemoSampleViewController.m */; };
 		C9CC8BFA2D91438F00D768BC /* FSDemoHistory.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD62D91438F00D768BC /* FSDemoHistory.m */; };
 		C9CC8BFB2D91438F00D768BC /* FSDemoMainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BDD2D91438F00D768BC /* FSDemoMainViewController.m */; };
+		DC8C3DD4AB281F11EE1EB0DC /* FSSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = D29DE69D16C547DFA26AE54F /* FSSceneDelegate.m */; };
 		E67323A71B69E6F800CB9036 /* AppIcons.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323A51B69E6F800CB9036 /* AppIcons.xcassets */; };
 		E67323A81B69E6F800CB9036 /* LaunchImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */; };
 		E67323AC1B69E76100CB9036 /* MoviePlayerImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */; };
@@ -83,6 +88,10 @@
 /* Begin PBXFileReference section */
 		1B1684312DC3B91900A1BA88 /* FSPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = FSPlayer.xcodeproj; sourceTree = "<group>"; };
 		55E809E51B145B55003E98A5 /* LaunchScreen.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LaunchScreen.xib; sourceTree = "<group>"; };
+		620B5B348E88CED30CE17077 /* FSVerticalFeed.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FSVerticalFeed.m; path = FSVerticalFeed.m; sourceTree = "<group>"; };
+		667C42EDB24A9A0F66AD8600 /* UIImage+FSImageEffects.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+FSImageEffects.h"; path = "UIImage+FSImageEffects.h"; sourceTree = "<group>"; };
+		6E1F2AAD0E0CF1216EF9E853 /* vertical_feed.json */ = {isa = PBXFileReference; includeInIndex = 1; name = vertical_feed.json; path = vertical_feed.json; sourceTree = "<group>"; };
+		95D10D175AD56EDA729C616C /* FSVerticalSwipeViewController.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FSVerticalSwipeViewController.m; path = FSVerticalSwipeViewController.m; sourceTree = "<group>"; };
 		C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAppDelegate.h; sourceTree = "<group>"; };
 		C9CC8BD02D91434300D768BC /* FSAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSAppDelegate.m; sourceTree = "<group>"; };
 		C9CC8BD22D91438F00D768BC /* Barcode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Barcode.h; sourceTree = "<group>"; };
@@ -109,6 +118,11 @@
 		C9CC8BE92D91438F00D768BC /* FSQRCodeScanViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSQRCodeScanViewController.h; sourceTree = "<group>"; };
 		C9CC8BEA2D91438F00D768BC /* FSQRCodeScanViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSQRCodeScanViewController.m; sourceTree = "<group>"; };
 		C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = FSQRCodeScanViewController.xib; sourceTree = "<group>"; };
+		D29DE69D16C547DFA26AE54F /* FSSceneDelegate.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = FSSceneDelegate.m; sourceTree = "<group>"; };
+		DE44A9C3F48284A9E4B83AAB /* FSSceneDelegate.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = FSSceneDelegate.h; sourceTree = "<group>"; };
+		DEC2C2C74BCFFE0485469091 /* UIImage+FSImageEffects.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+FSImageEffects.m"; path = "UIImage+FSImageEffects.m"; sourceTree = "<group>"; };
+		DFF5D7B51322A822043DDC24 /* FSVerticalFeed.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FSVerticalFeed.h; path = FSVerticalFeed.h; sourceTree = "<group>"; };
+		E2B4D2621AE46F93048FBEF6 /* FSVerticalSwipeViewController.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FSVerticalSwipeViewController.h; path = FSVerticalSwipeViewController.h; sourceTree = "<group>"; };
 		E6166C9B17EDA4A20006B956 /* FSPlayerDemo.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FSPlayerDemo.pch; sourceTree = "<group>"; };
 		E67323A51B69E6F800CB9036 /* AppIcons.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = AppIcons.xcassets; sourceTree = "<group>"; };
 		E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = LaunchImages.xcassets; sourceTree = "<group>"; };
@@ -178,6 +192,12 @@
 				C9CC8BE92D91438F00D768BC /* FSQRCodeScanViewController.h */,
 				C9CC8BEA2D91438F00D768BC /* FSQRCodeScanViewController.m */,
 				C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */,
+				DFF5D7B51322A822043DDC24 /* FSVerticalFeed.h */,
+				620B5B348E88CED30CE17077 /* FSVerticalFeed.m */,
+				E2B4D2621AE46F93048FBEF6 /* FSVerticalSwipeViewController.h */,
+				95D10D175AD56EDA729C616C /* FSVerticalSwipeViewController.m */,
+				667C42EDB24A9A0F66AD8600 /* UIImage+FSImageEffects.h */,
+				DEC2C2C74BCFFE0485469091 /* UIImage+FSImageEffects.m */,
 			);
 			path = ViewController;
 			sourceTree = "<group>";
@@ -218,6 +238,9 @@
 				C9CC8BEC2D91438F00D768BC /* ViewController */,
 				E67323A01B69E6B800CB9036 /* XCAssets */,
 				E6903F0617EAF70200CFD954 /* Supporting Files */,
+				6E1F2AAD0E0CF1216EF9E853 /* vertical_feed.json */,
+				DE44A9C3F48284A9E4B83AAB /* FSSceneDelegate.h */,
+				D29DE69D16C547DFA26AE54F /* FSSceneDelegate.m */,
 			);
 			path = FSPlayerDemo;
 			sourceTree = "<group>";
@@ -344,6 +367,7 @@
 				E67323A71B69E6F800CB9036 /* AppIcons.xcassets in Resources */,
 				55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */,
 				E67323A81B69E6F800CB9036 /* LaunchImages.xcassets in Resources */,
+				2E564E8DB21FF8F05988A0C8 /* vertical_feed.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,6 +389,10 @@
 				C9CC8BF92D91438F00D768BC /* FSDemoSampleViewController.m in Sources */,
 				C9CC8BFA2D91438F00D768BC /* FSDemoHistory.m in Sources */,
 				C9CC8BFB2D91438F00D768BC /* FSDemoMainViewController.m in Sources */,
+				28A12567E9A1CAB692469BA3 /* FSVerticalFeed.m in Sources */,
+				8261A9D4B1BEADE34876988B /* FSVerticalSwipeViewController.m in Sources */,
+				0C3C9329EFDF28A47473EE77 /* UIImage+FSImageEffects.m in Sources */,
+				DC8C3DD4AB281F11EE1EB0DC /* FSSceneDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -514,7 +542,7 @@
 				);
 				MARKETING_VERSION = 0.10.2;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM;
+				PRODUCT_BUNDLE_IDENTIFIER = "cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -550,7 +578,7 @@
 				);
 				MARKETING_VERSION = 0.10.2;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM;
+				PRODUCT_BUNDLE_IDENTIFIER = "cn.debugly.FSPlayerDemo.$DEVELOPMENT_TEAM";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				PROVISIONING_PROFILE_SPECIFIER = "";
