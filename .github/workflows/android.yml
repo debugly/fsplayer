@@ -1,4 +1,4 @@
-name: android-aar-apk
+name: android-aar
 # release 步骤要用 workflow token 建 tag/release，默认 token 权限不一定够
 permissions:
   contents: write
@@ -13,7 +13,7 @@ on:
         required: false
       publish:
         type: choice
-        description: GitHub release (APK on the release page) / Maven Central / both
+        description: GitHub release (AAR on the release page) / Maven Central / both
         default: release
         options:
           - release
@@ -30,7 +30,7 @@ on:
         required: false
 jobs:
   build:
-    name: build-android-aar-apk
+    name: build-android-aar
     runs-on: ubuntu-24.04
     # 发布用的凭据（Portal token + GPG）放在这个 environment 里，
     # job 不声明就读不到 secrets.MAVEN_CENTRAL_*/GPG_*；该 environment 没有保护规则，
@@ -56,21 +56,37 @@ jobs:
     - name: Prepare Beta Version
       if: ${{ env.HAS_ANDROID == '1' && inputs.beta == true }}
       run: |
-        grep -m 1 VERSION_NAME= version.sh | awk -F = '{printf "VERSION=%s",$2}' | xargs > constants.env
-        echo "RELEAE_DATE=$(TZ=UTC-8 date +'%y%m%d%H%M%S')" >> constants.env
+        set -euo pipefail
+        BASE_VERSION=$(grep -m 1 VERSION_NAME= version.sh | cut -d= -f2)
         if [[ "$GITHUB_REF_NAME" == "master" || "$GITHUB_REF_NAME" == "main" ]]; then
           edition=beta
         else
           edition=$GITHUB_REF_NAME
         fi
-        echo "TAG=$(grep "VERSION" constants.env | cut -d'=' -f2)-${edition}-$(grep "RELEAE_DATE" constants.env | cut -d'=' -f2)" >> constants.env
+        BETA_NO=$(.github/scripts/next-beta-version.sh "$BASE_VERSION" "$edition")
+        {
+          # VERSION 流到 -PversionName，即 AAR 的 Maven 坐标版本和 POM 里的
+          # <version>，也是 dist/ijkplayer-<VERSION>.aar 的文件名。
+          # 序号由 next-beta-version.sh 查已有 tag 自增得出，没有就 1 起步。
+          # 分支名（edition）让 master 的 beta 和 dev-1.1.1 的 beta 不重名。
+          echo "BASE_VERSION=$BASE_VERSION"
+          echo "VERSION=${BASE_VERSION}-${edition}-${BETA_NO}"
+          echo "BETA_NO=$BETA_NO"
+          echo "TAG=${BASE_VERSION}-${edition}-${BETA_NO}"
+        } > constants.env
         cat constants.env
 
     - name: Prepare Normal Version
       if: ${{ env.HAS_ANDROID == '1' && inputs.beta == false }}
       run: |
-        VERSION=$(grep -m 1 VERSION_NAME= version.sh | cut -d= -f2)
-        printf 'VERSION=%s\nTAG=%s\n' "$VERSION" "$VERSION" > constants.env
+        set -euo pipefail
+        BASE_VERSION=$(grep -m 1 VERSION_NAME= version.sh | cut -d= -f2)
+        {
+          echo "BASE_VERSION=$BASE_VERSION"
+          echo "VERSION=$BASE_VERSION"
+          echo "SHORT_SHA=$(git rev-parse --short=8 HEAD)"
+          echo "TAG=$BASE_VERSION"
+        } > constants.env
         cat constants.env
 
     - name: Export Env
@@ -111,32 +127,19 @@ jobs:
           grep -E 'FFMPEG_LICENSE|^#define CONFIG_(GPL|NONFREE)' "$cfg"
         done
 
-    - name: Decode release keystore
-      if: ${{ env.HAS_ANDROID == '1' }}
-      env:
-        KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      run: |
-        if [[ -z "$KEYSTORE_B64" ]]; then
-          echo "::notice::ANDROID_KEYSTORE_BASE64 is not set, the APK will be signed with the debug key"
-          exit 0
-        fi
-        echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
-        {
-          echo "FS_KEYSTORE_FILE=$RUNNER_TEMP/release.jks"
-          echo "FS_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
-          echo "FS_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}"
-          echo "FS_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}"
-        } >> "$GITHUB_ENV"
-
-    - name: Build AAR and APK
+    - name: Build AAR
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        VCODE=$(echo "$VERSION" | awk -F. '{printf "%d%02d%02d", $1, $2, $3}')
+        # 这里只出 AAR。demo APK 由 aura-apk.yml 单独发布（它读 demo 模块的
+        # versionName，并产出 Aura-android-<version> 那个 release），所以本
+        # workflow 不再 assembleRelease demo，也就不需要 versionCode —— 那是
+        # APK 覆盖安装用的概念，AAR 只认 Maven 坐标版本。
+        echo "building AAR version=$VERSION"
         chmod +x android/gradlew
         cd android
-        ./gradlew :ijkplayer:assembleRelease :demo:assembleRelease \
+        ./gradlew :ijkplayer:assembleRelease \
           -PabiFilters="${{ inputs.abis }}" \
-          -PversionName="$VERSION" -PversionCode="$VCODE" \
+          -PversionName="$VERSION" \
           --no-daemon --stacktrace
 
     - name: Collect artifacts
@@ -144,14 +147,13 @@ jobs:
       run: |
         mkdir -p dist
         cp android/ijkplayer/build/outputs/aar/ijkplayer-release.aar "dist/ijkplayer-${VERSION}.aar"
-        cp android/demo/build/outputs/apk/release/demo-release.apk "dist/fsplayer-demo-${VERSION}.apk"
         LICENSE_FILE=$(ls COPYING.LGPLv2.1 COPYING.LGPLv3 2>/dev/null | head -1)
         cp "$LICENSE_FILE" dist/LICENSE
         (cd dist && sha256sum * > SHA256SUMS.txt)
         ls -l dist
 
-    # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）；
-    # 手机上想直接装包，走 release：APK 会挂到 Release 资产上，浏览器点开就能下。
+    # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）。
+    # 要装到手机上的 demo APK 走另一个 workflow：aura-apk.yml 发 Aura-android-<version>。
     - name: Upload artifacts
       if: ${{ env.HAS_ANDROID == '1' }}
       uses: actions/upload-artifact@v7
@@ -166,14 +168,16 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "👏👏 FSPlayer Android ${TAG}" \
-          --notes "Android AAR + demo APK.
+          --notes "Android AAR.
 
         - ijkplayer-${VERSION}.aar: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
-        - fsplayer-demo-${VERSION}.apk: the demo app (applicationId com.debugly.aura)
         - ABIs: ${{ inputs.abis }}
+        - commit: \`${SHORT_SHA}\` on ${GITHUB_REF_NAME}
         - FFmpeg product: ffmpeg8, LGPL version 2.1 or later, no --enable-gpl/--enable-nonfree
-        - license: LGPL-2.1-or-later (see LICENSE); third-party components keep their own licenses (FFmpeg LGPL-2.1+, libsmb2 LGPL-2.1 as a separate .so, libass/FreeType/friBidi/HarfBuzz/OpenSSL/opus/dav1d/uavs3d/libbluray)" \
-          "dist/ijkplayer-${VERSION}.aar" "dist/fsplayer-demo-${VERSION}.apk" dist/LICENSE dist/SHA256SUMS.txt
+        - license: LGPL-2.1-or-later (see LICENSE); third-party components keep their own licenses (FFmpeg LGPL-2.1+, libsmb2 LGPL-2.1 as a separate .so, libass/FreeType/friBidi/HarfBuzz/OpenSSL/opus/dav1d/uavs3d/libbluray)
+
+        The demo APK is published separately as Aura-android-<version>." \
+          "dist/ijkplayer-${VERSION}.aar" dist/LICENSE dist/SHA256SUMS.txt
 
     # 发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret（值不进仓库）：
     #   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD = Portal 生成的 user token
@@ -188,10 +192,6 @@ jobs:
         ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
         ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
       run: |
-        if [[ "${{ inputs.beta }}" == "true" ]]; then
-          echo "::error::Maven Central 发布需要 beta=false（Beta 版本号带时间戳，Central 不接受重复/临时版本）"
-          exit 1
-        fi
         for k in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
                  ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
           if [[ -z "${!k}" ]]; then
