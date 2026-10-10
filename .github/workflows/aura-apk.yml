@@ -1,6 +1,6 @@
 name: aura-apk
-# 给 demo APK 单独发一个 Aura 品牌 release：tag 和 APK 文件名都叫 Aura-android-<version>。
-# 版本号读 demo 模块 build.gradle 的 defaultConfig（= APK 的 versionName），不读 version.sh，
+# 给 Aura APK 单独发一个 release：tag 和 APK 文件名都叫 Aura-android-<version>。
+# 版本号读 aura 模块 build.gradle 的 defaultConfig（= APK 的 versionName），不读 version.sh，
 # 所以 Aura 的版本独立于 fsplayer 库的版本（version.sh 只影响 AAR / Maven Central）。
 permissions:
   contents: write
@@ -95,7 +95,7 @@ jobs:
       run: |
         chmod +x android/gradlew
         cd android
-        ./gradlew :demo:assembleRelease \
+        ./gradlew :aura:assembleRelease \
           -PabiFilters="${{ inputs.abis }}" \
           --no-daemon --stacktrace
 
@@ -103,7 +103,7 @@ jobs:
     - name: Read version from APK
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        APK=android/demo/build/outputs/apk/release/demo-release.apk
+        APK=android/aura/build/outputs/apk/release/aura-release.apk
         VERSION=$("$ANDROID_HOME"/build-tools/35.0.0/aapt dump badging "$APK" | grep -oE "versionName='[^']+'" | cut -d"'" -f2)
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "TAG=Aura-android-$VERSION" >> "$GITHUB_ENV"
@@ -115,7 +115,7 @@ jobs:
       run: |
         PREV_TAG=$(git tag --list 'Aura-android-*' --sort=-creatordate | head -1)
         {
-          echo "Aura demo APK."
+          echo "Aura APK."
           echo ""
           echo "- Aura-android-${VERSION}.apk (applicationId com.debugly.aura)"
           echo "- ABIs: ${{ inputs.abis }}"
@@ -135,7 +135,7 @@ jobs:
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
         mkdir -p dist
-        cp android/demo/build/outputs/apk/release/demo-release.apk "dist/Aura-android-${VERSION}.apk"
+        cp android/aura/build/outputs/apk/release/aura-release.apk "dist/Aura-android-${VERSION}.apk"
         ls -l dist
 
     - name: Upload Release Asset
