@@ -27,6 +27,9 @@ jobs:
   build:
     name: build-aura-macos
     runs-on: macos-15
+    # WORKFLOW_TOKEN 是存在名为 workflow 的 environment 里的 environment-level secret，
+    # 不声明这个 environment 就读不到它（repo 级 secret 列表是空的）。
+    environment: workflow
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -152,7 +155,7 @@ jobs:
     # 想在 workflow 里触发别处的 workflow，得用 PAT 或 GitHub App installation token。
     # 给 workflow 加 permissions: actions: write 也没用，别再试那条路。
     #
-    # WORKFLOW_TOKEN 是个 fine-grained PAT，只勾了 homebrew-aura 的 Actions: write。
+    # WORKFLOW_TOKEN 是用户级 PAT，存在名为 workflow 的 environment 里（environment-level secret）。
     - name: Trigger homebrew-aura cask update
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
