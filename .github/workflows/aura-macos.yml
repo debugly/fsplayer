@@ -4,6 +4,9 @@ name: aura-macos
 # CFBundleShortVersionString），不读 version.sh —— Aura demo 的版本独立于 FSPlayer 库的版本。
 permissions:
   contents: write
+  # 跨仓库 dispatch 靠的是 actions 权限，光有 contents: write 调不动
+  # gh workflow run —— 会报 403 Resource not accessible by integration。
+  actions: write
 
 on:
   workflow_dispatch:
