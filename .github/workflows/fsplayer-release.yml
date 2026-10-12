@@ -199,6 +199,17 @@ jobs:
         gh release create "$TAG" --target "$GITHUB_REF_NAME" \
           --title "FSPlayer ${TAG}" --notes-file release-notes.md "${ASSETS[@]}"
 
+    - name: Trigger fsplayer-spm upgrade
+      run: |
+        set -euo pipefail
+        set -a; source release-constants.env; set +a
+        
+        # 触发 fsplayer-spm 仓库的 upgrade.yml workflow，传递版本号
+        echo "::notice::触发 fsplayer-spm upgrade workflow，版本号：${VERSION}"
+        gh workflow run upgrade.yml \
+          --repo debugly/fsplayer-spm \
+          -f version="$VERSION"
+
     # 【临时禁用】发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret
     # （值不进仓库）：
     #   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD = Portal 生成的 user token
