@@ -1,3 +1,7 @@
+## tag 1.1.2
+
+- fix HEVC hardware decoding on android by enabling all mediacodec decoders instead of only h264
+
 ## tag 1.1.1
 
 - support setting the smb2 protocol timeout via the rw_timeout option, fix #31
