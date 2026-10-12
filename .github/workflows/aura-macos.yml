@@ -143,3 +143,58 @@ jobs:
         gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "Aura macOS ${VERSION}" \
           --notes-file "$RUNNER_TEMP/release-notes.md" \
           "dist/Aura-macos-${VERSION}.zip"
+
+    - name: Update Homebrew formula (homebrew-aura tap)
+      if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Calculate SHA256 of the release zip
+        RELEASE_ZIP="dist/Aura-macos-${VERSION}.zip"
+        SHA256=$(shasum -a 256 "$RELEASE_ZIP" | awk '{print $1}')
+        echo "SHA256: $SHA256"
+        
+        # Prepare formula content
+        cat > /tmp/aura.rb << 'FORMULA'
+        cask "aura" do
+          version "VERSION_PLACEHOLDER"
+          sha256 "SHA256_PLACEHOLDER"
+
+          url "https://github.com/debugly/fsplayer/releases/download/Aura-macos-#{version}/Aura-macos-#{version}.zip"
+          name "Aura"
+          desc "Multi-platform video player based on ijkplayer"
+          homepage "https://github.com/debugly/fsplayer"
+
+          app "AuraPlayer.app"
+
+          zap trash: [
+            "~/Library/Preferences/cn.debugly.AuraPlayer.plist",
+            "~/Library/Caches/cn.debugly.AuraPlayer",
+            "~/Library/Application Support/CrashReporter/AuraPlayer*",
+          ]
+        end
+        FORMULA
+        
+        sed -i "" "s/VERSION_PLACEHOLDER/${VERSION}/g; s/SHA256_PLACEHOLDER/${SHA256}/g" /tmp/aura.rb
+        
+        # Clone homebrew-aura, update formula, and push
+        cd "$RUNNER_TEMP"
+        git clone --depth 1 https://github.com/debugly/homebrew-aura.git || true
+        cd homebrew-aura
+        mkdir -p Casks
+        cp /tmp/aura.rb Casks/aura.rb
+        
+        # Configure git for push
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/debugly/homebrew-aura.git"
+        
+        # Commit and push if there are changes
+        if git diff --quiet Casks/aura.rb; then
+          echo "No changes to formula"
+        else
+          git add Casks/aura.rb
+          git commit -m "chore: update aura to ${VERSION}"
+          git push
+          echo "Formula updated successfully"
+        fi
