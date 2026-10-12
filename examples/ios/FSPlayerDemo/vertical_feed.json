@@ -1,41 +1,34 @@
 {
   "//": "Mock feed for the vertical swipe demo. Swap this file (or point FSVerticalFeedStore.remoteURLString at a URL) to change rooms without touching view code. Keys are read leniently: roomId/roomid/rid, streamUrl/url/playUrl, coverUrl/cover/pic, tint (hex RRGGBB).",
-  "currentRoomId": "bipbop-16x9-720p",
+  "currentRoomId": "apple-16x9-540p",
   "items": [
     {
-      "roomId": "bipbop-16x9-720p",
-      "title": "Advanced 1280x720 @ 1 Mbps",
-      "anchor": "gear4",
-      "tint": "4A90D9",
-      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear4/prog_index.m3u8"
+      "roomId": "apple-16x9-540p",
+      "title": "Apple bipbop 960x540",
+      "anchor": "16x9-gear3",
+      "tint": "1F6FB2",
+      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear3/prog_index.m3u8"
     },
     {
-      "roomId": "bipbop-16x9-1080p",
-      "title": "Advanced 1920x1080 @ 2 Mbps",
-      "anchor": "gear5",
-      "tint": "C05CA8",
-      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear5/prog_index.m3u8"
+      "roomId": "apple-16x9-360p",
+      "title": "Apple bipbop 640x360",
+      "anchor": "16x9-gear2",
+      "tint": "B03A6B",
+      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear2/prog_index.m3u8"
     },
     {
-      "roomId": "bipbop-16x9-540p",
-      "title": "Advanced 960x540 @ 910 kbps",
-      "anchor": "gear3",
-      "tint": "4CAF6E",
-      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear3/prog_index.m3u8"
-    },
-    {
-      "roomId": "bipbop-4x3-480p",
-      "title": "Basic 640x480 @ 650 kbps",
+      "roomId": "apple-4x3-480p",
+      "title": "Apple bipbop 4:3 640x480",
       "anchor": "4x3-gear2",
-      "tint": "E0A030",
-      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8"
+      "tint": "1E8449",
+      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8"
     },
     {
-      "roomId": "bipbop-4x3-300p",
-      "title": "Basic 400x300 @ 232 kbps",
+      "roomId": "apple-4x3-300p",
+      "title": "Apple bipbop 4:3 400x300",
       "anchor": "4x3-gear1",
-      "tint": "7C6BD0",
-      "streamUrl": "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8"
+      "tint": "B9770E",
+      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8"
     }
   ]
 }
