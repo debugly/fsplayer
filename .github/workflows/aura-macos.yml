@@ -4,9 +4,6 @@ name: aura-macos
 # CFBundleShortVersionString），不读 version.sh —— Aura demo 的版本独立于 FSPlayer 库的版本。
 permissions:
   contents: write
-  # 跨仓库 dispatch 靠的是 actions 权限，光有 contents: write 调不动
-  # gh workflow run —— 会报 403 Resource not accessible by integration。
-  actions: write
 
 on:
   workflow_dispatch:
@@ -148,16 +145,29 @@ jobs:
           "dist/Aura-macos-${VERSION}.zip"
 
     # Release 建好之后，把 zip 的校验和交给 homebrew-aura 去更新 cask。
-    # 和 fsplayer-release.yml 触发 fsplayer-spm 的写法一致：checksum 在这里算好再传，
-    # 接收端不重新下载 —— 刚发布的 release 在 CDN 上是最终一致的，立刻下载可能拿不到。
+    #
+    # 这里必须用 WORKFLOW_TOKEN 而不是内建的 github.token：GITHUB_TOKEN 只在
+    # 触发它的那个仓库里有权限，dispatch 另一个仓库的 workflow 一律 403
+    # （Resource not accessible by integration）。官方文档也是这么说的 ——
+    # 想在 workflow 里触发别处的 workflow，得用 PAT 或 GitHub App installation token。
+    # 给 workflow 加 permissions: actions: write 也没用，别再试那条路。
+    #
+    # WORKFLOW_TOKEN 是个 fine-grained PAT，只勾了 homebrew-aura 的 Actions: write。
     - name: Trigger homebrew-aura cask update
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
-        GH_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
       run: |
+        if [[ -z "${GH_TOKEN}" ]]; then
+          echo "::error::secret WORKFLOW_TOKEN 未配置，无法更新 homebrew-aura 的 cask"
+          echo "::error::请在 debugly/fsplayer 仓库添加该 secret（只需 homebrew-aura 的 Actions: write 权限）"
+          exit 1
+        fi
+
         SHA256=$(shasum -a 256 "dist/Aura-macos-${VERSION}.zip" | awk '{print $1}')
         echo "::notice::Aura-macos-${VERSION}.zip 校验和：${SHA256}"
         echo "::notice::触发 homebrew-aura cask 更新，版本号：${VERSION}"
+
         gh workflow run update-cask.yml \
           --repo debugly/homebrew-aura \
           -f version="${VERSION}" \
