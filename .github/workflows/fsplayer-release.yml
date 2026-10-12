@@ -7,9 +7,6 @@ name: fsplayer-release
 # 裸版本号），所以两个平台的所有产物和说明一次发布就挂到同一个 release 上。
 permissions:
   contents: write
-  # 触发 fsplayer-spm 的 upgrade workflow 用的是 gh workflow run，属于 actions 权限；
-  # 只给 contents: write 会 403 Resource not accessible by integration。
-  actions: write
 
 on:
   workflow_dispatch:
@@ -202,11 +199,22 @@ jobs:
         gh release create "$TAG" --target "$GITHUB_REF_NAME" \
           --title "FSPlayer ${TAG}" --notes-file release-notes.md "${ASSETS[@]}"
 
+    # 跨仓库 dispatch 必须用 PAT / GitHub App token：内建的 github.token 只在
+    # 触发它的仓库里有权限，dispatch fsplayer-spm 一律 403
+    # （Resource not accessible by integration）。给本 workflow 加
+    # permissions: actions: write 也没用，别再试那条路。
     - name: Trigger fsplayer-spm upgrade
+      env:
+        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
       run: |
         set -euo pipefail
+        if [[ -z "${GH_TOKEN}" ]]; then
+          echo "::error::secret WORKFLOW_TOKEN 未配置，无法触发 fsplayer-spm 的 upgrade"
+          echo "::error::需要在 debugly/fsplayer 仓库添加该 secret，并授予 fsplayer-spm 的 Actions: write"
+          exit 1
+        fi
         set -a; source release-constants.env; set +a
-        
+
         # 计算 FSPlayer.zip 的校验和，触发 fsplayer-spm upgrade workflow
         CHECKSUM=$(swift package compute-checksum dist/FSPlayer.zip)
         echo "::notice::FSPlayer.zip 校验和：${CHECKSUM}"
