@@ -7,6 +7,7 @@
 
 #import "FSMetalTileGridPipeline.h"
 #import "FSMetalRenderer.h"
+#import "FSMetalPipelineMeta.h"
 #import "FSMetalFBO.h"
 #import "FSMetalTextureUtils.h"
 #import "FSVideoRenderingProtocol.h"
@@ -104,7 +105,8 @@
     // 目标是 BGRA FBO，所以 colorPixelFormat 固定为 BGRA8Unorm。
     FSMetalRenderer *renderer = [[FSMetalRenderer alloc] initWithDevice:_device
                                                       colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-    if (![renderer createRenderPipelineIfNeed:refPixelBuffer blend:hasAlpha]) {
+    FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:refPixelBuffer];
+    if (![renderer createRenderPipelineIfNeed:meta blend:hasAlpha]) {
         ALOGE("create tile grid renderer failed.");
         return NO;
     }

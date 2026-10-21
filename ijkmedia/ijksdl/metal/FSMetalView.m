@@ -35,6 +35,7 @@ typedef CGRect NSRect;
 // The command queue used to pass commands to the device.
 @property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
 @property (nonatomic, assign) CVMetalTextureCacheRef pictureTextureCache;
+@property (nonatomic, strong) FSMetalPipelineMeta *pipelineMeta;
 @property (atomic, strong) FSMetalRenderer *picturePipeline;
 // HEIC tile-grid 合成管线：把多个 tile 合成成一张完整画面缓存到 attach。
 @property (atomic, strong) FSMetalTileGridPipeline *tileGridPipeline;
@@ -340,15 +341,11 @@ typedef CGRect NSRect;
     BOOL displaySupportsHDR = [self currentDisplaySupportsHDR];
     [self.renderSnapshotLock lock];
     _screenSupportsHDR = displaySupportsHDR;
-    if (self.picturePipeline) {
-        BOOL isHDRContent = [self.picturePipeline isHDRContent];
-        [self.renderSnapshotLock unlock];
-        
-        if (@available(iOS 16.0, macOS 10.11, *)) {
-            [self updateHDRDisplayModeForHDRContent:isHDRContent];
-        }
-    } else {
-        [self.renderSnapshotLock unlock];
+    BOOL isHDRContent = [self.pipelineMeta hdrContent];
+    [self.renderSnapshotLock unlock];
+    
+    if (@available(iOS 16.0, macOS 10.11, *)) {
+        [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
 #endif
 }
@@ -536,13 +533,14 @@ typedef CGRect NSRect;
         picturePipeline.hdrDisplay = self.hdrDirectDisplayActive;
     }
 #endif
-    BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
+    FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:pixelBuffer];
+    BOOL created = [picturePipeline createRenderPipelineIfNeed:meta blend:blend];
 
     if (!created) {
         ALOGE("create RenderPipeline failed.");
         picturePipeline = nil;
     }
-
+    self.pipelineMeta = meta;
     self.picturePipeline = picturePipeline;
     return picturePipeline != nil;
 }
@@ -997,10 +995,12 @@ typedef CGRect NSRect;
         if (self.directDisplayHDRSupportted) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            if (![sdrPipeline createRenderPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:attach.videoPicture];
+            if (![sdrPipeline createRenderPipelineIfNeed:meta blend:attach.hasAlpha]) {
                 [self.renderSnapshotLock unlock];
                 return NULL;
             }
+            self.pipelineMeta = meta;
             self.picturePipeline = sdrPipeline;
         }
     } else {
@@ -1100,10 +1100,12 @@ typedef CGRect NSRect;
         if (self.directDisplayHDRSupportted) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            if (![sdrPipeline createRenderPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:attach.videoPicture];
+            if (![sdrPipeline createRenderPipelineIfNeed:meta  blend:attach.hasAlpha]) {
                 [self.renderSnapshotLock unlock];
                 return NULL;
             }
+            self.pipelineMeta = meta;
             self.picturePipeline = sdrPipeline;
         }
     } else {

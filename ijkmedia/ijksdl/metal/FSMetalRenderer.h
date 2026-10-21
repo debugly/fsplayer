@@ -9,6 +9,8 @@
 @import MetalKit;
 #import "FSMetalShaderTypes.h"
 
+@class FSMetalPipelineMeta;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface FSMetalRenderer : NSObject
@@ -23,14 +25,13 @@ NS_ASSUME_NONNULL_BEGIN
 // Only has effect when the content is HDR (isHDR == YES).
 @property (nonatomic, assign) BOOL hdrDisplay;
 
-- (BOOL)isHDRContent;
 - (instancetype)initWithDevice:(id<MTLDevice>)device
               colorPixelFormat:(MTLPixelFormat)colorPixelFormat;
 
 - (BOOL)matchPixelBuffer:(CVPixelBufferRef)pixelBuffer;
 - (void)updateColorAdjustment:(vector_float4)c;
 
-- (BOOL)createRenderPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend;
+- (BOOL)createRenderPipelineIfNeed:(FSMetalPipelineMeta *)pipelineMeta blend:(BOOL)blend;
 - (void)uploadTextureWithEncoder:(id<MTLRenderCommandEncoder>)encoder
                         textures:(NSArray*)textures;
 @end
