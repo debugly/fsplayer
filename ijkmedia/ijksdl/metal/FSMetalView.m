@@ -280,12 +280,12 @@ typedef CGRect NSRect;
     }
     
     BOOL activeHDR = supportsHDR && _allowHDRDirectDisplay;
-    BOOL activeChanged = (self.hdrDirectDisplayActive == activeHDR);
+    BOOL activeReady = (self.hdrDirectDisplayActive == activeHDR);
     self.hdrDirectDisplayActive = activeHDR;
     
     [self.renderSnapshotLock unlock];
     
-    if (activeChanged) {
+    if (activeReady) {
         return;
     }
     
@@ -719,6 +719,14 @@ typedef CGRect NSRect;
                 piece.pixelBuffer = [self tilePixelBufferFromAVFrame:piece.avframe]; // +1 retained
             }
         }
+        
+        // tile-grid 必须先合成成单帧（BGRA），HDR 判定和显示管线都以最终显示的 buffer 为准。
+        [self.renderSnapshotLock lock];
+        BOOL composited = [self ensureTileGridComposited:attach];
+        [self.renderSnapshotLock unlock];
+        if (!composited) {
+            return NO;
+        }
     }
     
     // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did
@@ -762,35 +770,19 @@ typedef CGRect NSRect;
     
     self.drawingAttach = currentAttach;
 
-    // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
-    // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
-    // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
-    //
-    // HDR 判定用原始参考 buffer：普通帧用 videoPicture，tile-grid 用首个 tile 的像素缓冲。
-    BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
-    CVPixelBufferRef videoPicture = currentAttach.videoPicture;
-    if (!videoPicture && hasTileGrid) {
-        videoPicture = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
-    }
-
-    if (!videoPicture) {
+    if (!currentAttach.videoPicture) {
         return;
     }
 
 #if !TARGET_OS_TV
+    BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:currentAttach.videoPicture];
+    // 内部可能同步到主线程并再次获取 renderSnapshotLock，必须在锁外调用。
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:videoPicture];
         [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
 #endif
 
     [self.renderSnapshotLock lock];
-    // tile-grid 必须先合成成单帧（BGRA）再建管线：否则管线会按原始 tile 的像素格式
-    // 格式建立，但是采样合成后是 BGRA 纹理，chroma 缺失导致画面全绿。
-    if (hasTileGrid && ![self ensureTileGridComposited:currentAttach]) {
-        [self.renderSnapshotLock unlock];
-        return;
-    }
     // 用合成后的 videoPicture（tile-grid 为 BGRA，普通帧即原缓冲）建立显示管线。
     [self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha];
     if (currentAttach.subTexture) {
