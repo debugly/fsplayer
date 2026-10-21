@@ -11,19 +11,16 @@
 #import "FSMetalFBO.h"
 #import "FSMetalTextureUtils.h"
 #import "FSVideoRenderingProtocol.h"
+#import "../apple/ijk_cvpixelbuffer.h"
 #include "../ijksdl_log.h"
 
 @interface FSMetalTileGridPipeline ()
 {
     id<MTLDevice> _device;
-    // 上一次合成结果及其输入标识：旋转/刷新会重建 attach 但 tile 像素不变，
-    // 输入相同则直接复用缓存的纹理，避免每次渲染都重新合成/生成纹理导致内存暴涨。
+    // 最近一次合成结果，调用方将其交给 attach 持有；刷新直接复用 attach。
     CVPixelBufferRef _cachedComposite;     // 纹理的后备缓冲
     id<MTLTexture> _cachedTexture;         // 可直接采样显示的合成纹理
     NSArray *_cachedCVTextures;            // 对应的 CVMetalTextureRef 包装引用
-    NSArray<NSString *> *_cachedTileKey;
-    int _cachedW;
-    int _cachedH;
 }
 // tile 像素格式（YUV/NV12...）-> BGRA 的转换管线，像素格式变化时重建。
 @property (nonatomic, strong) FSMetalRenderer *renderer;
@@ -61,17 +58,6 @@
 - (CVPixelBufferRef)compositedPixelBuffer
 {
     return _cachedComposite;
-}
-
-// 用 tile 的 pixelBuffer 指针 + 几何位置作为本次合成输入的标识。
-// 指针相同意味着是同一块解码缓冲（像素必然一致）；不同则重新合成，无正确性风险。
-- (NSArray<NSString *> *)tileKeyForTiles:(NSArray<FSTilePiece *> *)tiles
-{
-    NSMutableArray<NSString *> *keys = [NSMutableArray arrayWithCapacity:tiles.count];
-    for (FSTilePiece *p in tiles) {
-        [keys addObject:[NSString stringWithFormat:@"%p:%d,%d,%d,%d", p.pixelBuffer, p.x, p.y, p.w, p.h]];
-    }
-    return keys;
 }
 
 // 一次性打印 tile 的颜色元数据，用于排查色差（range/matrix/transfer/colorspace）。
@@ -128,19 +114,20 @@
         return nil;
     }
 
+    // Only a new attach reaches composition; refreshAttach: reuses its existing texture.
+    for (FSTilePiece *piece in attach.tilePieces) {
+        if (!piece.pixelBuffer && piece.avframe) {
+            AVFrame *frame = piece.avframe;
+            if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+                CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
+                piece.pixelBuffer = pb ? CVPixelBufferRetain(pb) : NULL;
+            } else {
+                piece.pixelBuffer = FSCVPixelBufferCreateFromAVFrame(frame, NULL);
+            }
+        }
+        if (!piece.pixelBuffer) return nil;
+    }
     CVPixelBufferRef ref = ((FSTilePiece *)attach.tilePieces.firstObject).pixelBuffer;
-    if (!ref) {
-        return nil;
-    }
-
-    // 输入未变（典型如旋转/刷新只改显示变换，tile 像素不变）则直接复用缓存纹理，
-    // 不再重新合成、不再新建整张画布 IOSurface，避免内存随刷新次数累积。
-    NSArray<NSString *> *tileKey = [self tileKeyForTiles:attach.tilePieces];
-    if (_cachedTexture &&
-        _cachedW == canvasW && _cachedH == canvasH &&
-        [_cachedTileKey isEqualToArray:tileKey]) {
-        return _cachedTexture;
-    }
 
     [self logColorInfo:ref];
     
@@ -217,7 +204,7 @@
         return nil;
     }
 
-    // 缓存本次结果（纹理 + 后备缓冲 + 输入标识），供后续相同输入的刷新直接复用。
+    // 保存本次合成结果，供调用方交给 attach；替换时释放上次结果。
     if (_cachedComposite) {
         CVPixelBufferRelease(_cachedComposite);
     }
@@ -233,9 +220,6 @@
     _cachedComposite = CVPixelBufferRetain(composed);
     _cachedTexture = texture;
     _cachedCVTextures = cvTextures;
-    _cachedTileKey = tileKey;
-    _cachedW = canvasW;
-    _cachedH = canvasH;
 
     return texture;
 }

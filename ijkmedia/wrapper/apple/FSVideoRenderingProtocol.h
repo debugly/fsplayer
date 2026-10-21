@@ -186,6 +186,10 @@ typedef enum : NSUInteger {
 // display the overlay.
 - (BOOL)displayAttach:(FSOverlayAttach *)attach;
 
+// Redraw the retained video attach, updating its subtitle overlay without rebuilding video resources.
+// Returns NO if there is no retained video attach and displayAttach: must be retried.
+- (BOOL)refreshAttach:(nullable SDL_TextureOverlay *)overlay;
+
 #if !TARGET_OS_OSX
 - (UIImage *)snapshot;
 #endif
@@ -213,7 +217,9 @@ typedef enum : NSUInteger {
 @protocol FSVideoRenderingDelegate <NSObject>
 
 @optional
-//you can replace the video frame
+// You can replace the video frame. Input is borrowed; do not release it.
+// Return a borrowed buffer (the input is allowed), or NULL to omit the video image.
+// The renderer retains a replacement buffer; ownership is not transferred by this callback.
 - (CVPixelBufferRef _Nullable)videoRenderingWillDisplay:(id<FSVideoRenderingProtocol>_Nonnull)renderer videoFrame:(CVPixelBufferRef)videoFrame;
 
 @optional

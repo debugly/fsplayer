@@ -649,6 +649,25 @@ typedef CGRect NSRect;
     self.refreshCurrentPicBlock = block;
 }
 
+- (BOOL)refreshAttach:(SDL_TextureOverlay *)overlay
+{
+    [self.renderSnapshotLock lock];
+    FSOverlayAttach *attach = self.currentAttach;
+    if (!attach.videoPicture) {
+        [self.renderSnapshotLock unlock];
+        return NO;
+    }
+    if (attach.overlay != overlay) {
+        SDL_TextureOverlay *replacement = SDL_TextureOverlay_Retain(overlay);
+        SDL_TextureOverlay *previous = attach.overlay;
+        attach.overlay = replacement;
+        SDL_TextureOverlay_Release(&previous);
+    }
+    self.needsRedrawCurrentAttach = YES;
+    [self.renderSnapshotLock unlock];
+    return YES;
+}
+
 // Produce a +1 retained CVPixelBuffer from a decoded AVFrame. VideoToolbox frames
 // already carry the buffer in data[3] (zero copy, just retained); software frames are
 // converted via the shared FSCVPixelBufferCreateFromAVFrame, reusing a per-view pool
@@ -673,25 +692,6 @@ typedef CGRect NSRect;
     return FSCVPixelBufferCreateFromAVFrame(frame, pool);
 }
 
-// Produce a +1 retained CVPixelBuffer from a single HEIC tile's AVFrame. Same conversion as
-// -pixelBufferFromAVFrame: but WITHOUT the per-view pool: tiles vary in size within a grid (and
-// across grids), so pooling would thrash. VTB frames still zero-copy via data[3].
-// Returns NULL on unsupported formats. Caller owns the returned buffer.
-- (CVPixelBufferRef)tilePixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
-{
-    if (!frame) {
-        return NULL;
-    }
-    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
-        CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
-        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
-    }
-    if (frame->width <= 0 || frame->height <= 0) {
-        return NULL;
-    }
-    return FSCVPixelBufferCreateFromAVFrame(frame, NULL);
-}
-
 - (BOOL)displayAttach:(FSOverlayAttach *)attach
 {
     //call form (ff_vout thread)
@@ -699,34 +699,20 @@ typedef CGRect NSRect;
     attach.tag = self.previousTag + 1;
 
     // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
-    BOOL hasTiles = (attach.tilePieces.count > 0);
-    
-    if (!attach.avframe && !hasTiles) {
-        ALOGD("FSMetalView: displayAttach refresh frame\n");
+    if (attach.tilePieces.count > 0) {
         [self.renderSnapshotLock lock];
-        self.currentAttach = attach;
-        [self.renderSnapshotLock unlock];
-        return NO;
-    }
-    
-    // Convert each tile's AVFrame to a CVPixelBuffer here (render side), matching the
-    // single-frame path. The dispatch layer only carries AVFrames now; the tile-grid
-    // pipeline still consumes piece.pixelBuffer. Done once per attach (not per draw) so the
-    // buffer pointer is stable across refresh/rotate → FSMetalTileGridPipeline cache still hits.
-    if (hasTiles) {
-        for (FSTilePiece *piece in attach.tilePieces) {
-            if (!piece.pixelBuffer && piece.avframe) {
-                piece.pixelBuffer = [self tilePixelBufferFromAVFrame:piece.avframe]; // +1 retained
-            }
-        }
-        
-        // tile-grid 必须先合成成单帧（BGRA），HDR 判定和显示管线都以最终显示的 buffer 为准。
-        [self.renderSnapshotLock lock];
+        // 将 tile-grid 合成单帧（BGRA），处理完后 videoPicture 和 videoTextures 都会有值，并且释放 tilePieces
         BOOL composited = [self ensureTileGridComposited:attach];
         [self.renderSnapshotLock unlock];
         if (!composited) {
             return NO;
         }
+    } else if (!attach.avframe && !attach.videoPicture) {
+        ALOGD("FSMetalView: displayAttach nil frame\n");
+        [self.renderSnapshotLock lock];
+        self.currentAttach = nil;
+        [self.renderSnapshotLock unlock];
+        return NO;
     }
     
     // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did
@@ -747,11 +733,35 @@ typedef CGRect NSRect;
     }
 
     if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
-        attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
+        CVPixelBufferRef oldBuffer = attach.videoPicture;
+        CVPixelBufferRef newBuffer = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:oldBuffer];
+        if (newBuffer != oldBuffer) {
+            // Delegate returns a borrowed buffer. Retain before releasing the old one.
+            if (newBuffer) {
+                CVPixelBufferRetain(newBuffer);
+            }
+            attach.videoPicture = newBuffer;
+            // Tile-grid may already have textures for oldBuffer; regenerate them for the replacement.
+            attach.videoTextures = nil;
+            for (id item in attach.videoCVTextures) {
+                CFRelease((__bridge CVMetalTextureRef)item);
+            }
+            attach.videoCVTextures = nil;
+            CVPixelBufferRelease(oldBuffer);
+            if (newBuffer) {
+                attach.pixelW = (int)CVPixelBufferGetWidth(newBuffer);
+                attach.pixelH = (int)CVPixelBufferGetHeight(newBuffer);
+            }
+        }
     }
 
     if (self.preventDisplay) {
-        return YES;
+        // This attach was not retained; let the caller retry the initial submission.
+        return NO;
+    }
+
+    if (!attach.videoPicture) {
+        return NO;
     }
     
     [self.renderSnapshotLock lock];

@@ -47,6 +47,11 @@ struct SDL_VoutOverlay {
      * 普通单帧播放 is_tile_grid=0, 其余字段忽略。
      */
     int is_tile_grid;
+#ifdef __APPLE__
+    // Reset whenever decoded content is filled; refreshes reuse the renderer's attach.
+    int attach_displayed;
+    uint64_t attach_renderer_id;
+#endif
 //    int tile_canvas_w;
 //    int tile_canvas_h;
 #endif

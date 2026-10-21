@@ -122,6 +122,11 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
     if (!overlay || !frame)
         return -100;
 
+#if defined(__APPLE__) && IS_TILEGRID_HEIC_ENABLED
+    overlay->attach_displayed = 0;
+    overlay->attach_renderer_id = 0;
+#endif
+
 #if defined(__APPLE__)
     /* For VideoToolbox frames the CVPixelBuffer lives in data[3]; guard against
        frames that arrive with the right format but an empty buffer slot. */

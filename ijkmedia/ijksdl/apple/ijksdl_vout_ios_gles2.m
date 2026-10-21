@@ -114,7 +114,10 @@
 
 struct SDL_Vout_Opaque {
     __strong UIView<FSVideoRenderingProtocol> *gl_view;
+    uint64_t renderer_id;
 };
+
+static uint64_t next_renderer_id;
 
 static SDL_VoutOverlay *vout_create_overlay_l(int width, int height, int src_format, SDL_Vout *vout)
 {
@@ -166,6 +169,13 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
     /* HEIC tile grid 路径：把所有 tile 的 AVFrame 打包到 FSOverlayAttach.tilePieces，
        渲染侧（FSMetalView）再把每个 AVFrame 转成 CVPixelBuffer 后合成。 */
     if (overlay->is_tile_grid) {
+        //该rendering已经显示过一次了，就触发刷新
+        if (overlay->attach_displayed && overlay->attach_renderer_id == opaque->renderer_id &&
+            [gl_view respondsToSelector:@selector(refreshAttach:)] &&
+            [gl_view refreshAttach:sub_overlay]) {
+            return YES;
+        }
+        overlay->attach_displayed = 0;
         int count = SDL_VoutOverlay_GetTileCount(overlay);
         if (count <= 0) {
             ALOGE("vout_display_overlay_l: tile-grid overlay with 0 tiles\n");
@@ -205,7 +215,10 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         free(frames); free(xs); free(ys); free(ws); free(hs);
-        return [gl_view displayAttach:attach];
+        BOOL displayed = [gl_view displayAttach:attach];
+        overlay->attach_displayed = displayed;
+        overlay->attach_renderer_id = displayed ? opaque->renderer_id : 0;
+        return displayed;
     }
 #endif
     
@@ -263,6 +276,7 @@ static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoRenderingProto
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque->gl_view != view) {
         opaque->gl_view = view;
+        opaque->renderer_id = __atomic_add_fetch(&next_renderer_id, 1, __ATOMIC_RELAXED);
     }
 }
 
