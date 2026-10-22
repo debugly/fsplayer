@@ -57,14 +57,15 @@ fail:
     return NULL;
 }
 
-static void ijkmp_ios_set_glview_l(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView)
+static void ijkmp_ios_set_glview_l(IjkMediaPlayer *mp, UIView<FSVideoOutputProtocol>* glView)
 {
     assert(mp);
     assert(mp->ffplayer);
     assert(mp->ffplayer->vout);
     
     SDL_VoutIos_SetGLView(mp->ffplayer->vout, glView);
-    SDL_GPU *gpu = SDL_CreateGPU_WithContext(glView.context);
+    id context = [glView respondsToSelector:@selector(context)] ? [glView context] : nil;
+    SDL_GPU *gpu = context ? SDL_CreateGPU_WithContext(context) : NULL;
     if (gpu) {
         mp->ffplayer->gpu = gpu;
     } else {
@@ -91,7 +92,7 @@ static void ijkmp_ios_automatically_setup_audio_session_l(IjkMediaPlayer *mp, bo
     SDL_AoutSetAutomaticallySetupAudioSession(mp->ffplayer->aout, automaticallySetupAudioSession);
 }
 
-void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoRenderingProtocol>* glView)
+void ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoOutputProtocol>* glView)
 {
     assert(mp);
     MPTRACE("ijkmp_ios_set_view(glView=%p)\n", (__bridge void*)glView);

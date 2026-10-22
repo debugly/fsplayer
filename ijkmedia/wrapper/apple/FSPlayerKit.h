@@ -37,6 +37,7 @@
 #import <FSPlayer/FSMediaModule.h>
 #import <FSPlayer/FSNotificationManager.h>
 #import <FSPlayer/FSKVOController.h>
+#import <FSPlayer/FSVideoOutputProtocol.h>
 #import <FSPlayer/FSVideoRenderingProtocol.h>
 #import <FSPlayer/FSVideoRenderView.h>
 #import <FSPlayer/FSAudioRenderingProtocol.h>

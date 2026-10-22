@@ -61,7 +61,7 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 @implementation FSPlayer {
     IjkMediaPlayer *_mediaPlayer;
-    UIView<FSVideoRenderingProtocol>* _videoRendering;
+    UIView<FSVideoOutputProtocol>* _videoRendering;
     FSPlayerMessagePool *_msgPool;
 
     NSInteger _videoWidth;
@@ -121,7 +121,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         return;
     }
     __block FSHudCardView *hudCardView = player->_hudCardView;
-    __block UIView<FSVideoRenderingProtocol> *view = player->_view;
+    __block UIView<FSVideoOutputProtocol> *view = player->_view;
     __block NSTimer *playbackTimeNotifiTimer = player->_playbackTimeNotifiTimer;
     __block FSWeakHolder *weakHolder = player->_weakHolder;
     
@@ -195,7 +195,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)_initWithContent:(NSString *)content
                  options:(FSOptions *)options
-          videoRendering:(UIView <FSVideoRenderingProtocol> * _Nullable)videoRendering
+          videoRendering:(UIView <FSVideoOutputProtocol> * _Nullable)videoRendering
           audioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
     // init media resource
@@ -249,7 +249,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         
         // init hud
         _hudCardView = [[FSHudCardView alloc] initWithFrame:CGRectZero];
-        [_hudCardView appendTitle:[videoRendering name]];
+        [_hudCardView appendTitle:([videoRendering respondsToSelector:@selector(name)]
+                                  ? [videoRendering name] : NSStringFromClass([videoRendering class]))];
         self.shouldShowHudView = options.showHudView;
     } else {
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
@@ -310,7 +311,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions *)options
-               withGLView:(UIView<FSVideoRenderingProtocol> *)glView
+               withGLView:(UIView<FSVideoOutputProtocol> *)glView
 {
     NSString *filePath = nil;
     if ([aUrl isFileURL]) {
@@ -323,7 +324,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions *)options
-        withViewRendering:(UIView<FSVideoRenderingProtocol> *)videoRendering
+        withViewRendering:(UIView<FSVideoOutputProtocol> *)videoRendering
        withAudioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
     NSString *filePath = nil;
@@ -338,14 +339,14 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
 {
-    UIView<FSVideoRenderingProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+    UIView<FSVideoOutputProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
 
     return [self initWithContent:content options:options videoRendering:videoRendering];
 }
 
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
-       videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+       videoRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering
 {
     return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:nil];
 }
@@ -354,14 +355,14 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
               options:(FSOptions * _Nullable)options
        audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
 {
-    UIView<FSVideoRenderingProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+    UIView<FSVideoOutputProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
 
     return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:audioRendering];
 }
 
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
-        videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+        videoRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering
        audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
 {
     self = [super init];
@@ -400,7 +401,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         return;
 
     [self setScreenOn:_keepScreenOnWhilePlaying];
-    NSString *render = [self.view name];
+    NSString *render = [self.view respondsToSelector:@selector(name)]
+        ? [self.view name] : NSStringFromClass([self.view class]);
     [self setHudValue:render forKey:@"v-renderer"];
     
     if (self.content) {
@@ -907,7 +909,9 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 - (void)setScalingMode:(FSScalingMode) aScalingMode
 {
     FSScalingMode newScalingMode = aScalingMode;
-    self.view.scalingMode = aScalingMode;
+    if ([self.view respondsToSelector:@selector(setScalingMode:)]) {
+        ((UIView<FSVideoRenderingProtocol> *)self.view).scalingMode = aScalingMode;
+    }
     _scalingMode = newScalingMode;
 }
 

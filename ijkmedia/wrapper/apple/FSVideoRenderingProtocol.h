@@ -1,8 +1,6 @@
 /*
  * FSVideoRenderingProtocol.h
  *
- * Copyright (c) 2017 Bilibili
- * Copyright (c) 2017 raymond <raymondzheng1412@gmail.com>
  * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
  *
  * This file is part of FSPlayer.
@@ -25,17 +23,7 @@
 #ifndef FSVideoRenderingProtocol_h
 #define FSVideoRenderingProtocol_h
 
-#import <TargetConditionals.h>
-#if TARGET_OS_OSX
-#import <AppKit/AppKit.h>
-#import <CoreGraphics/CGImage.h>
-typedef NSFont UIFont;
-typedef NSColor UIColor;
-typedef NSImage UIImage;
-typedef NSView UIView;
-#else
-#import <UIKit/UIKit.h>
-#endif
+#import <FSPlayer/FSVideoOutputProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -44,54 +32,6 @@ typedef NS_ENUM(NSInteger, FSScalingMode) {
     FSScalingModeAspectFill, // Uniform scale until the movie fills the visible bounds. One dimension may have clipped contents
     FSScalingModeFill        // Non-uniform scale. Both render dimensions will exactly match the visible bounds
 };
-
-typedef struct SDL_TextureOverlay SDL_TextureOverlay;
-
-// HEIC tile grid: 单个 tile 的位置信息 + 帧数据。
-// avframe 由 dispatch 层从 overlay 克隆（owned）；pixelBuffer 由渲染器（FSMetalView）
-// 从 avframe 转换后填充并持有。
-@interface FSTilePiece : NSObject
-@property(nonatomic) struct AVFrame * _Nullable avframe;        // 持有 (owned, av_frame_free in dealloc)
-@property(nonatomic) CVPixelBufferRef _Nullable pixelBuffer;    // 持有 (owned, Retain/Release by this class)
-@property(nonatomic) int x;         // canvas 上左上角
-@property(nonatomic) int y;
-@property(nonatomic) int w;         // tile 尺寸
-@property(nonatomic) int h;
-@end
-
-@interface FSOverlayAttach : NSObject
-
-//{w,h} is video frame normal size not alignmetn,maybe not equal to {pixelW,pixelH}.
-@property(nonatomic) int w;
-@property(nonatomic) int h;
-//cvpixebuffer pixel memory size;
-@property(nonatomic) int pixelW;
-@property(nonatomic) int pixelH;
-
-@property(nonatomic) float fps;
-@property(nonatomic) int sarNum;
-@property(nonatomic) int sarDen;
-//degrees
-@property(nonatomic) int autoZRotate;
-
-@property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
-@property(nonatomic) NSArray * _Nullable videoTextures;
-@property(nonatomic) NSArray * _Nullable videoCVTextures;      // 对应的 CVMetalTextureRef 包装引用
-
-// Full decoded frame (av_frame_ref'd, owned; freed in dealloc). Carries side data
-// such as Dolby Vision RPU.
-// nil for renderers that only consume videoPicture (e.g. FSMetalView).
-@property(nonatomic) struct AVFrame * _Nullable avframe;
-
-// HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
-@property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
-
-@property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
-@property(nonatomic) id _Nullable subTexture;
-@property(nonatomic) long tag;
-
-- (BOOL)hasAlpha;
-@end
 
 static inline uint32_t fs_ass_color_to_int(UIColor *color) {
 #if TARGET_OS_OSX
@@ -141,7 +81,8 @@ typedef enum : NSUInteger {
 
 #define HDR_API_AVAILABLE API_AVAILABLE(macos(10.11), ios(16.0)) API_UNAVAILABLE(tvos, watchos)
 
-@protocol FSVideoRenderingProtocol <NSObject>
+/// Full rendering controls provided by FSMetalView.
+@protocol FSVideoRenderingProtocol <FSVideoOutputProtocol>
 
 @property(nullable, nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
 
@@ -169,23 +110,12 @@ typedef enum : NSUInteger {
 // refresh current video picture and subtitle (when player paused change video pic preference, you can invoke this method)
 - (void)setNeedsRefreshCurrentPic;
 
-// display the overlay.
-- (BOOL)displayAttach:(FSOverlayAttach *)attach;
-
-// Redraw the retained video attach, updating its subtitle overlay without rebuilding video resources.
-// Returns NO if there is no retained video attach and displayAttach: must be retried.
-- (BOOL)refreshAttach:(nullable SDL_TextureOverlay *)overlay;
-
 #if !TARGET_OS_OSX
 - (UIImage *)snapshot;
 #endif
 - (CGImageRef)snapshot:(FSSnapshotType)aType;
-- (NSString *)name;
 
 @optional;
-// GPU context used to build the subtitle SDL_GPU (e.g. FSMetalView returns its
-// MTLDevice).
-- (id)context;
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
 // 高斯模糊背景图片：替代默认纯色背景，填充无视频或黑边区域。传 nil 清除。
 @property(nonatomic, strong, nullable) UIImage *backgroundImage;
@@ -193,10 +123,6 @@ typedef enum : NSUInteger {
 @property(nonatomic) int backgroundBlurIterations;
 // 单次高斯模糊的 sigma（模糊半径），默认 30，值越大越模糊。
 @property(nonatomic) float backgroundBlurSigma;
-- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
-// Release rendering resources (Vulkan/Metal/GPU). Called when the player stops
-// and removes the view. Implementations must be safe to call multiple times.
-- (void)destroy;
 
 @end
 

@@ -101,7 +101,8 @@ typedef enum FSAudioChannel {
 //批量挂载不激活字幕；本地网络均可
 - (BOOL)loadSubtitlesOnly:(NSArray<NSURL*>*)urlArr;
 
-@property(nonatomic, readonly)  UIView <FSVideoRenderingProtocol>*view;
+// Full rendering controls require FSVideoRenderingProtocol conformance.
+@property(nonatomic, readonly) UIView<FSVideoOutputProtocol> *view;
 @property(nonatomic)            NSTimeInterval currentPlaybackTime;
 //音频额外延迟，供用户调整
 @property(nonatomic)            float currentAudioExtraDelay;

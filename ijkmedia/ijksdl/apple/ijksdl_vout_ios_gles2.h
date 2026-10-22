@@ -26,7 +26,7 @@
 #include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_gpu.h"
 
-#import "FSVideoRenderingProtocol.h"
+#import "FSVideoOutputProtocol.h"
 
 // Normalized Device Coordinates
 static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
@@ -77,6 +77,6 @@ static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSi
 }
 
 SDL_Vout *SDL_VoutIos_CreateForGLES2(void);
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view);
+void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view);
 SDL_GPU *SDL_CreateGPU_WithContext(id context);
 

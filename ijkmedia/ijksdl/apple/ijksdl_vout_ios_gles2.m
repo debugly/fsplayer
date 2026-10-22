@@ -113,7 +113,7 @@
 @end
 
 struct SDL_Vout_Opaque {
-    __strong UIView<FSVideoRenderingProtocol> *gl_view;
+    __strong UIView<FSVideoOutputProtocol> *gl_view;
     uint64_t renderer_id;
 };
 
@@ -151,7 +151,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
     // display geometry (frame->w/h) the renderer scales to;
 
     SDL_Vout_Opaque *opaque = vout->opaque;
-    UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
+    UIView<FSVideoOutputProtocol>* gl_view = opaque->gl_view;
     
     if (!gl_view) {
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
@@ -271,7 +271,7 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     return vout;
 }
 
-static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view)
+static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
 {
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque->gl_view != view) {
@@ -280,7 +280,7 @@ static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoRenderingProto
     }
 }
 
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view)
+void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
 {
     SDL_LockMutex(vout->mutex);
     SDL_VoutIos_SetGLView_l(vout, view);

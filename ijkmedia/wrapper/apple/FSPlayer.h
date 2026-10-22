@@ -25,7 +25,7 @@
 #import <FSPlayer/FSMediaPlayback.h>
 #import <FSPlayer/FSMonitor.h>
 #import <FSPlayer/FSOptions.h>
-#import <FSPlayer/FSVideoRenderingProtocol.h>
+#import <FSPlayer/FSVideoOutputProtocol.h>
 #import <FSPlayer/FSAudioRenderingProtocol.h>
 
 // media meta
@@ -107,11 +107,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions * _Nullable)options
-               withGLView:(UIView<FSVideoRenderingProtocol> * _Nullable)glView __deprecated_msg("Use -initWithContent:options:videoRendering instead");
+               withGLView:(UIView<FSVideoOutputProtocol> * _Nullable)glView __deprecated_msg("Use -initWithContent:options:videoRendering instead");
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions * _Nullable)options
-        withViewRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+        withViewRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering
        withAudioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering __deprecated_msg("Use -initWithContent:options:videoRendering:audioRendering instead");
 
 - (id)initWithContent:(NSString *)content
@@ -119,11 +119,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
-       videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering;
+       videoRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering;
 
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
-        videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+        videoRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering
        audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering;
 
 - (void)prepareToPlay;
