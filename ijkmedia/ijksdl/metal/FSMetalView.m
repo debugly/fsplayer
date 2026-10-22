@@ -70,7 +70,6 @@ typedef CGRect NSRect;
 
 @synthesize scalingMode = _scalingMode;
 // rotate preference
-@synthesize rotatePreference = _rotatePreference;
 @synthesize xRotateDegrees = _xRotateDegrees;
 @synthesize yRotateDegrees = _yRotateDegrees;
 @synthesize zRotateDegrees = _zRotateDegrees;
@@ -123,7 +122,6 @@ typedef CGRect NSRect;
 
 - (BOOL)prepareMetal
 {
-    _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
     _xRotateDegrees     = 0.0;
     _yRotateDegrees     = 0.0;
     _zRotateDegrees     = 0.0;
@@ -1172,33 +1170,6 @@ typedef CGRect NSRect;
 {
     if (_scalingMode != scalingMode) {
         _scalingMode = scalingMode;
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
-- (void)setRotatePreference:(FSRotatePreference)rotatePreference
-{
-    if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
-        _rotatePreference = rotatePreference;
-        
-        if (rotatePreference.type == FSRotateX) {
-            _xRotateDegrees = rotatePreference.degrees;
-            _yRotateDegrees = 0.0;
-            _zRotateDegrees = 0.0;
-        } else if (rotatePreference.type == FSRotateY) {
-            _xRotateDegrees = 0.0;
-            _yRotateDegrees = rotatePreference.degrees;
-            _zRotateDegrees = 0.0;
-        } else if (rotatePreference.type == FSRotateZ) {
-            _xRotateDegrees = 0.0;
-            _yRotateDegrees = 0.0;
-            _zRotateDegrees = rotatePreference.degrees;
-        } else if (rotatePreference.type == FSRotateNone) {
-            _xRotateDegrees = 0.0;
-            _yRotateDegrees = 0.0;
-            _zRotateDegrees = 0.0;
-        }
-        
         [self setNeedsRefreshCurrentPic];
     }
 }

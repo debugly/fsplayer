@@ -118,19 +118,6 @@ static inline UIColor * fs_ass_int_to_color(uint32_t rgba) {
     return [UIColor colorWithRed:r green:g blue:b alpha:a];
 }
 
-typedef enum _FSSDLRotateType {
-    FSRotateNone,
-    FSRotateX,
-    FSRotateY,
-    FSRotateZ
-} FSRotateType;
-
-typedef struct _FSSDLRotatePreference FSRotatePreference;
-struct _FSSDLRotatePreference {
-    FSRotateType type;
-    float degrees;
-};
-
 typedef struct _FSColorConvertPreference FSColorConvertPreference;
 struct _FSColorConvertPreference {
     float brightness;
@@ -163,7 +150,6 @@ typedef enum : NSUInteger {
 @property(nonatomic) CGFloat scaleFactor;
 #endif
 
-@property(nonatomic) FSRotatePreference rotatePreference __deprecated_msg("will be removed in future version");
 @property(nonatomic) float xRotateDegrees;
 @property(nonatomic) float yRotateDegrees;
 @property(nonatomic) float zRotateDegrees;
