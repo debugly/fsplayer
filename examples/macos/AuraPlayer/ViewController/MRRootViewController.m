@@ -982,12 +982,12 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
             settings.onHorizontalFlipChanged = ^(float degrees) {
                 __strongSelf__
-                self.player.view.yRotateDegrees = degrees;
+                self.renderingView.yRotateDegrees = degrees;
             };
 
             settings.onVerticalFlipChanged = ^(float degrees) {
                 __strongSelf__
-                self.player.view.xRotateDegrees = degrees;
+                self.renderingView.xRotateDegrees = degrees;
             };
             
             created = YES;
@@ -1181,6 +1181,14 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self toggleTitleBar:NO];
 }
 
+- (NSView <FSVideoRenderingProtocol> *)renderingView
+{
+    if ([self.player.view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        return (NSView <FSVideoRenderingProtocol> *)self.player.view;
+    }
+    return nil;
+}
+
 - (BOOL)performKeyEquivalent:(NSEvent *)event
 {
     if (event.modifierFlags & NSEventModifierFlagCommand) {
@@ -1198,25 +1206,25 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
             case kVK_ANSI_R:
             {
                 if (event.modifierFlags & NSEventModifierFlagOption) {
-                    float rotateDegrees = self.player.view.xRotateDegrees;
+                    float rotateDegrees = self.renderingView.xRotateDegrees;
                     if (++rotateDegrees >= 360) {
                         rotateDegrees = 0;
                     }
-                    self.player.view.xRotateDegrees = rotateDegrees;
+                    self.renderingView.xRotateDegrees = rotateDegrees;
                 } else if (event.modifierFlags & NSEventModifierFlagShift) {
-                    float rotateDegrees = self.player.view.yRotateDegrees;
+                    float rotateDegrees = self.renderingView.yRotateDegrees;
                     if (++rotateDegrees >= 360) {
                         rotateDegrees = 0;
                     }
-                    self.player.view.yRotateDegrees = rotateDegrees;
+                    self.renderingView.yRotateDegrees = rotateDegrees;
                 } else {
-                    float rotateDegrees = self.player.view.zRotateDegrees;
+                    float rotateDegrees = self.renderingView.zRotateDegrees;
                     if (++rotateDegrees >= 360) {
                         rotateDegrees = 0;
                     }
-                    self.player.view.zRotateDegrees = rotateDegrees;
+                    self.renderingView.zRotateDegrees = rotateDegrees;
                 }
-                NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.player.view.xRotateDegrees,(int)self.player.view.yRotateDegrees,(int)self.player.view.zRotateDegrees);
+                NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.renderingView.xRotateDegrees,(int)self.renderingView.yRotateDegrees,(int)self.renderingView.zRotateDegrees);
                 return YES;
             }
             case kVK_ANSI_S:
@@ -1702,7 +1710,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         
         self.player = [[FSPlayer alloc] initWithContent:urlStr options:options];
         
-        NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
+        NSView <FSVideoRenderingProtocol>*playerView = self.renderingView;
         playerView.frame = self.playerContainer.bounds;
         playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
@@ -2588,7 +2596,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     if (self.player) {
         NSLog(@"destroy play");
         [[NSNotificationCenter defaultCenter] removeObserver:self name:nil object:self.player];
-        [self.player.view removeFromSuperview];
+        [self.renderingView removeFromSuperview];
         [self.player pause];
         [self.player shutdown];
         self.player = nil;
@@ -2625,7 +2633,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)resetPreferenceEachPlay
 {
-    self.player.view.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
+    self.renderingView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
 
     [MRCocoaBindingUserDefault setValue:@(0.0) forKey:@"subtitle_delay"];
 
@@ -2765,12 +2773,12 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)applyBSC
 {
-    FSColorConvertPreference colorPreference = self.player.view.colorPreference;
+    FSColorConvertPreference colorPreference = self.renderingView.colorPreference;
     colorPreference.brightness = [MRCocoaBindingUserDefault color_adjust_brightness];
     colorPreference.saturation = [MRCocoaBindingUserDefault color_adjust_saturation];
     colorPreference.contrast   = [MRCocoaBindingUserDefault color_adjust_contrast];
     
-    self.player.view.colorPreference = colorPreference;
+    self.renderingView.colorPreference = colorPreference;
 }
 
 #pragma mark 播放器偏好设置
@@ -2795,7 +2803,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         dar_num = 1;
         dar_den = 1;
     }
-    self.player.view.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
+    self.renderingView.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
 }
 
 - (void)applyRotate
@@ -2811,7 +2819,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     } else if (rotate == 3) {
         zRotateDegrees = -270;
     }
-    self.player.view.zRotateDegrees = zRotateDegrees;
+    self.renderingView.zRotateDegrees = zRotateDegrees;
     NSLog(@"rotate z:%d", (int)zRotateDegrees);
 }
 
@@ -3048,7 +3056,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         BOOL allow = [MRCocoaBindingUserDefault open_hdr];
-        self.player.view.allowHDRDirectDisplay = allow;
+        self.renderingView.allowHDRDirectDisplay = allow;
     } forKey:@"open_hdr"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
@@ -3109,7 +3117,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)onCaptureShot
 {
-    CGImageRef img = [self.player.view snapshot:[MRCocoaBindingUserDefault snapshot_type]];
+    CGImageRef img = [self.renderingView snapshot:[MRCocoaBindingUserDefault snapshot_type]];
     if (img) {
         NSString *dir = [self caputeDirForCurrentPlayingUrl];
         NSString *fmt = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_format"];
