@@ -2,6 +2,7 @@ name: aura-macos
 # 给 macOS 的 Aura demo 单独发一个 release：tag 和 zip 文件名都叫 Aura-macos-<version>。
 # 通过 gh 读取远端 Aura-macos-X.Y.Z tag，取最高版本的补丁号 +1，并写入 App。
 # Aura demo 的版本独立于 FSPlayer 库的版本。
+# 更新 homebrew-aura 用部署密钥（secret: HOMEBREW_DEPLOY_KEY），不用 PAT。
 permissions:
   contents: write
 
@@ -55,24 +56,28 @@ jobs:
 
     # 内建 github.token 只能写 fsplayer；更新 tap 需要跨仓库凭据。
     # 提前检查，避免 Release 已发布后才发现 secret 缺失。
-    - name: Check Homebrew push token
+    # homebrew-aura 用「部署密钥」推送：GitHub 的 GITHUB_TOKEN 只作用于当前仓库，
+    # 而细粒度 PAT 必须逐个勾选仓库（之前就漏了 homebrew-aura，报 403 denied to debugly）。
+    # 部署密钥天然只对这一个仓库有写权限，不用再维护 PAT 的仓库列表。
+    - name: Check Homebrew deploy key
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
-        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        HOMEBREW_DEPLOY_KEY: ${{ secrets.HOMEBREW_DEPLOY_KEY }}
       run: |
         set -euo pipefail
-        if [[ -z "$GH_TOKEN" ]]; then
-          echo "::error::请在 Environments -> workflow 配置 WORKFLOW_TOKEN，并授予 debugly/homebrew-aura 的 Contents: write 权限"
+        if [[ -z "$HOMEBREW_DEPLOY_KEY" ]]; then
+          echo "::error::请在 Environments -> workflow 配置 HOMEBREW_DEPLOY_KEY（homebrew-aura 的写权限部署密钥私钥）"
           exit 1
         fi
-        # 显式只用当前 GH_TOKEN，避免继承 runner 上其它 credential helper。
+        KEY="$RUNNER_TEMP/homebrew-aura-deploy-key"
+        install -m 600 /dev/null "$KEY"
+        printf '%s\n' "$HOMEBREW_DEPLOY_KEY" > "$KEY"
+        export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
         TAP_DIR=$(mktemp -d "$RUNNER_TEMP/homebrew-aura.XXXXXX")
-        git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
-          clone --depth 1 https://github.com/debugly/homebrew-aura.git "$TAP_DIR"
-        # 即使没有新提交，push dry-run 也需要通过 receive-pack 的写权限检查。
-        # 检查失败就立即停止，不消耗完整构建时间，也不创建 Release。
-        git -C "$TAP_DIR" -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
-          push --dry-run origin HEAD
+        git clone --depth 1 git@github.com:debugly/homebrew-aura.git "$TAP_DIR"
+        # 即使没有新提交，push dry-run 也要通过 receive-pack 的写权限检查。
+        # 失败就立即停止，不消耗完整构建时间，也不创建 Release。
+        git -C "$TAP_DIR" push --dry-run origin HEAD
         echo "TAP_DIR=$TAP_DIR" >> "$GITHUB_ENV"
 
     - name: Install tools
@@ -190,9 +195,13 @@ jobs:
       id: homebrew
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
-        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        HOMEBREW_DEPLOY_KEY: ${{ secrets.HOMEBREW_DEPLOY_KEY }}
       run: |
         set -euo pipefail
+        KEY="$RUNNER_TEMP/homebrew-aura-deploy-key"
+        install -m 600 /dev/null "$KEY"
+        printf '%s\n' "$HOMEBREW_DEPLOY_KEY" > "$KEY"
+        export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
         # Calculate SHA256 of the release zip
         RELEASE_ZIP="dist/Aura-macos-${VERSION}.zip"
         SHA256=$(shasum -a 256 "$RELEASE_ZIP" | awk '{print $1}')
@@ -237,7 +246,7 @@ jobs:
           echo "No changes to formula"
         else
           git commit -m "chore: update aura to ${VERSION}"
-          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push
+          git push
           echo "Formula updated successfully"
         fi
 
