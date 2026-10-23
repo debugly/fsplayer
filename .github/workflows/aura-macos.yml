@@ -1,9 +1,14 @@
 name: aura-macos
 # 给 macOS 的 Aura demo 单独发一个 release：tag 和 zip 文件名都叫 Aura-macos-<version>。
-# 和 aura-apk.yml 同构，但版本号读 macOS demo target 的 MARKETING_VERSION（= .app 里的
-# CFBundleShortVersionString），不读 version.sh —— Aura demo 的版本独立于 FSPlayer 库的版本。
+# 通过 gh 读取远端 Aura-macos-X.Y.Z tag，取最高版本的补丁号 +1，并写入 App。
+# Aura demo 的版本独立于 FSPlayer 库的版本。
 permissions:
   contents: write
+
+# 所有分支共用版本序列，避免同时构建时选中同一个版本。
+concurrency:
+  group: aura-macos-release
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -66,6 +71,13 @@ jobs:
       run: |
         ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg8'
 
+    - name: Determine next version from GitHub tags
+      if: ${{ env.HAS_MACOS == '1' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        bash .github/scripts/next-aura-macos-version.sh "$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
+
     # AuraPlayer 通过 workspace 里的 FSPlayer.xcodeproj 交叉引用直接依赖 FSPlayer.framework，
     # xcodebuild 会一并把它编出来，不需要先跑 build-framework.sh。
     #
@@ -89,26 +101,24 @@ jobs:
           -scheme AuraPlayer \
           -configuration Release \
           -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+          MARKETING_VERSION="$VERSION" \
           ARCHS="$ARCH_LIST" ONLY_ACTIVE_ARCH=NO \
           CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
           build
 
-    # 版本号不硬编码，而是从编出来的 .app 里读 MARKETING_VERSION
-    - name: Read version from app
+    - name: Verify app version
       if: ${{ env.HAS_MACOS == '1' }}
       run: |
         APP="$RUNNER_TEMP/DerivedData/Build/Products/Release/AuraPlayer.app"
         test -d "$APP" || { echo "::error::$APP not found"; exit 1; }
-        VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")
-        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "TAG=Aura-macos-$VERSION" >> "$GITHUB_ENV"
-        echo "version=$VERSION  tag=Aura-macos-$VERSION"
+        APP_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")
+        test "$APP_VERSION" = "$VERSION" || { echo "::error::App version $APP_VERSION != $VERSION"; exit 1; }
+        echo "version=$VERSION  tag=$TAG"
 
     # 从上一个 Aura-macos tag 到当前 HEAD 的提交生成 changelog，写进 release notes
     - name: Generate changelog
       if: ${{ env.HAS_MACOS == '1' }}
       run: |
-        PREV_TAG=$(git tag --list 'Aura-macos-*' --sort=-creatordate | head -1)
         {
           echo "Aura demo app for macOS."
           echo ""
@@ -124,7 +134,6 @@ jobs:
             echo ""
           fi
         } > "$RUNNER_TEMP/release-notes.md"
-        echo "PREV_TAG=${PREV_TAG:-none}" >> "$GITHUB_ENV"
         echo "changelog written (${PREV_TAG:-no previous tag}..HEAD)"
 
     - name: Collect artifacts
