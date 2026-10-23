@@ -10,7 +10,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface MRRenderViewAuxProxy : NSView <FSVideoRenderingProtocol>
+@interface MRRenderViewAuxProxy : NSView <FSVideoOutputProtocol>
 
 - (void)addRenderView:(NSView<FSVideoRenderingProtocol> *)view;
 - (void)removeRenderView:(NSView<FSVideoRenderingProtocol> *)view;
