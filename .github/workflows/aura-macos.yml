@@ -244,4 +244,14 @@ jobs:
       if: ${{ failure() && steps.draft_release.outputs.created == 'true' && steps.homebrew.outcome == 'failure' }}
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release delete "$TAG" --yes --cleanup-tag
+      run: |
+        set -euo pipefail
+        # 草稿可能尚未创建 Git tag，--cleanup-tag 会在这种情况下报 HTTP 422。
+        # Release 和 tag 分开清理；只在 tag 确实存在时删除它。
+        gh release delete "$TAG" --yes
+        EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/${TAG}")
+        if [[ -n "$EXISTING_TAG" ]]; then
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}"
+        else
+          echo "Tag ${TAG} does not exist; release cleanup complete"
+        fi
