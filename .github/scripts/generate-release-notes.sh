@@ -20,15 +20,14 @@ if [[ -z "$VERSION" || -z "$TAG" || -z "$BASE_VERSION" ]]; then
   exit 1
 fi
 
-# 上一个正式版 tag，用来生成 Changelog 的 compare 链接。只收纯 semver 的 tag，
-# 按版本降序取第一个 —— beta tag 本身不是纯 semver，不在列表里。
-# 一个都没有就退回 HEAD~1，避免链接指向不存在的对比。
-PREV_TAG=$(git tag --list --sort=-v:refname \
-  | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" \
-  | sed -n '1p')
+# 只从当前分支可达的 FSPlayer 发布 tag 中选上一版，包含正式版和 beta。
+# 版本排序时正式版排在同版本 beta 后面；排除本次 tag，支持重新生成说明。
+# 用 awk 过滤，空列表也正常退出，让首次发布能进入下面的兜底逻辑。
+PREV_TAG=$(git -c versionsort.suffix=-beta- tag --merged HEAD --sort=-v:refname \
+  | awk -v current="$TAG" '$0 ~ /^[0-9]+\.[0-9]+\.[0-9]+(-beta-[0-9]+)?$/ && $0 != current { if (!found++) print }')
 if [[ -z "$PREV_TAG" ]]; then
-  echo "::warning::没有任何正式版 tag，Changelog 退回与上一个提交的对比"
-  PREV_TAG="HEAD~1"
+  echo "::warning::当前分支没有历史发布 tag，Changelog 退回提交对比"
+  PREV_TAG=$(git rev-parse --verify HEAD~1 2>/dev/null || git rev-parse HEAD)
 fi
 
 # 读 FFmpeg 实际是什么许可，写进 release 说明。
