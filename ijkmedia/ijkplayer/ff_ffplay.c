@@ -1699,9 +1699,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->height != cmp_h ||
         vp->format != src_frame->format) {
 
-        if (vp->width != cmp_w || vp->height != cmp_h)
-            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, cmp_w, cmp_h);
-
         vp->allocated = 0;
         vp->width = cmp_w;
         vp->height = cmp_h;
@@ -1721,6 +1718,11 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
 
     /* Display dims carried to the renderer (formerly SDL_VoutOverlay->w/h),
        refreshed every frame like the overlay's func_fill_frame did. */
+    // Report presentation geometry, not the padded allocation canvas. For HEIC
+    // tile grids these differ; the UI uses this size to calculate its aspect ratio.
+    // Also notify when only display geometry changes and the allocation is reused.
+    if (vp->disp_w != disp_w || vp->disp_h != disp_h)
+        ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, disp_w, disp_h);
     vp->disp_w = disp_w;
     vp->disp_h = disp_h;
     
