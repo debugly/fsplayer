@@ -1,5 +1,5 @@
 /*
- * ijksdl_aout_ios_audiounit.m
+ * ijksdl_aout_audiounit.m
  *
  * Copyright (c) 2013 Bilibili
  * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
@@ -22,7 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "ijksdl_aout_ios_audiounit.h"
+#include "ijksdl_aout_audiounit.h"
 
 #include <stdbool.h>
 #include <assert.h>

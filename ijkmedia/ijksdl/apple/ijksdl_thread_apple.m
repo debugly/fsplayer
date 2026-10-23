@@ -22,7 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "ijksdl_thread_ios.h"
+#import "ijksdl_thread_apple.h"
 #include "ijksdl/ijksdl_thread.h"
 
 static void *SDL_RunThread(void *data)

@@ -22,10 +22,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "ijksdl_vout_ios_gles2.h"
+#import "ijksdl_vout_metal.h"
 
 #include <assert.h>
-#include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_vout_internal.h"
 #include "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h"
 #include "ijkplayer/ff_subtitle_def.h"
@@ -83,7 +82,7 @@
 @end
 
 struct SDL_Vout_Opaque {
-    __strong UIView<FSVideoOutputProtocol> *gl_view;
+    __strong UIView<FSVideoOutputProtocol> *outputView;
     uint64_t renderer_id;
 };
 
@@ -109,7 +108,7 @@ static void vout_free_l(SDL_Vout *vout)
     
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque) {
-        opaque->gl_view = nil;
+        opaque->outputView = nil;
     }
     
     SDL_Vout_FreeInternal(vout);
@@ -121,7 +120,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
     // display geometry (frame->w/h) the renderer scales to;
 
     SDL_Vout_Opaque *opaque = vout->opaque;
-    UIView<FSVideoOutputProtocol>* gl_view = opaque->gl_view;
+    UIView<FSVideoOutputProtocol>* gl_view = opaque->outputView;
     
     if (!gl_view) {
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
@@ -218,7 +217,7 @@ static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_TextureO
     }
 }
 
-SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
+SDL_Vout *SDL_Vout_CreateForMetal(void)
 {
     SDL_Vout *vout = SDL_Vout_CreateInternal(sizeof(SDL_Vout_Opaque));
     if (!vout)
@@ -229,19 +228,19 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     return vout;
 }
 
-static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
+static void SDL_Vout_SetOutputView_l(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
 {
     SDL_Vout_Opaque *opaque = vout->opaque;
-    if (opaque->gl_view != view) {
-        opaque->gl_view = view;
+    if (opaque->outputView != view) {
+        opaque->outputView = view;
         opaque->renderer_id = __atomic_add_fetch(&next_renderer_id, 1, __ATOMIC_RELAXED);
     }
 }
 
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
+void SDL_Vout_SetOutputView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
 {
     SDL_LockMutex(vout->mutex);
-    SDL_VoutIos_SetGLView_l(vout, view);
+    SDL_Vout_SetOutputView_l(vout, view);
     SDL_UnlockMutex(vout->mutex);
 }
 

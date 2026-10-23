@@ -76,7 +76,7 @@ static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSi
     return CGRectZero;
 }
 
-SDL_Vout *SDL_VoutIos_CreateForGLES2(void);
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view);
+SDL_Vout *SDL_Vout_CreateForMetal(void);
+void SDL_Vout_SetOutputView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view);
 SDL_GPU *SDL_CreateGPU_WithContext(id context);
 

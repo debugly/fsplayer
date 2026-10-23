@@ -1,5 +1,5 @@
 /*
- * ffpipeline_ios.c
+ * ffpipeline_apple.c
  *
  * Copyright (c) 2014 Zhou Quan <zhouqicy@gmail.com>
  * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
@@ -21,10 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "ffpipeline_ios.h"
+#include "ffpipeline_apple.h"
 #include "ffpipenode_ffplay_vdec.h"
 #include "ff_ffplay.h"
-#import "ijksdl/apple/ijksdl_aout_ios_audiounit.h"
+#import "ijksdl/apple/ijksdl_aout_audiounit.h"
 
 struct FS_Pipeline_Opaque {
     FFPlayer    *ffp;

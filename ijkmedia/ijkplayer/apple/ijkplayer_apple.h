@@ -27,8 +27,8 @@
 #import "FSAudioRenderingProtocol.h"
 
 // ref_count is 1 after open
-IjkMediaPlayer *ijkmp_ios_create(int (*msg_loop)(void*));
+IjkMediaPlayer *ijkmp_apple_create(int (*msg_loop)(void*));
 
-void            ijkmp_ios_set_glview(IjkMediaPlayer *mp, UIView<FSVideoOutputProtocol>* glView);
-void            ijkmp_ios_set_audio_controller(IjkMediaPlayer *mp, id<FSAudioRenderingProtocol> audioRendering);
-void            ijkmp_ios_set_automatically_setup_audio_session(IjkMediaPlayer *mp, bool automaticallySetupAudioSession);
+void            ijkmp_apple_set_glview(IjkMediaPlayer *mp, UIView<FSVideoOutputProtocol>* glView);
+void            ijkmp_apple_set_audio_controller(IjkMediaPlayer *mp, id<FSAudioRenderingProtocol> audioRendering);
+void            ijkmp_apple_set_automatically_setup_audio_session(IjkMediaPlayer *mp, bool automaticallySetupAudioSession);

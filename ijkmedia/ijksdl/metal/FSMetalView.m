@@ -20,11 +20,11 @@
 #import "FSMetalPipelineMeta.h"
 #import "FSMetalBlurFilter.h"
 #import "FSMetalTileGridPipeline.h"
-#import "ijksdl_vout_ios_gles2.h"
 #import "FSMediaPlayback.h"
 #import "FSDisplayLinkWrapper.h"
 #import "FSMetalTextureUtils.h"
 #import "../apple/ijk_cvpixelbuffer.h"
+#import "ijksdl/ijksdl_gpu.h"
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 typedef CGRect NSRect;

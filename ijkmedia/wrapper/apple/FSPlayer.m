@@ -35,7 +35,7 @@
 #import <AVFoundation/AVFoundation.h>
 #endif
 
-#include "../ijkmedia/ijkplayer/apple/ijkplayer_ios.h"
+#include "../ijkmedia/ijkplayer/apple/ijkplayer_apple.h"
 #include "../ijkmedia/ijkplayer/ijkmeta.h"
 #include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 #include "ijksdl/apple/ijk_vout_common.h"
@@ -219,7 +219,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     _monitor = [[FSMonitor alloc] init];
 
     // init player
-    _mediaPlayer = ijkmp_ios_create(media_player_msg_loop);
+    _mediaPlayer = ijkmp_apple_create(media_player_msg_loop);
     _msgPool = [[FSPlayerMessagePool alloc] init];
     
     FSWeakHolder *weakHolder = [[FSWeakHolder alloc] init];
@@ -236,7 +236,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
     _view = _videoRendering = videoRendering;
     if (videoRendering) {
-        ijkmp_ios_set_glview(_mediaPlayer, videoRendering);
+        ijkmp_apple_set_glview(_mediaPlayer, videoRendering);
         __weak typeof(self) wself = self;
         if ([videoRendering respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
             [videoRendering registerRefreshCurrentPicObserver:^{
@@ -257,10 +257,10 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         [options setPlayerOptionIntValue:0 forKey:@"subtitle_mix"];
     }
     
-    ijkmp_ios_set_automatically_setup_audio_session(_mediaPlayer, options.automaticallySetupAudioSession);
+    ijkmp_apple_set_automatically_setup_audio_session(_mediaPlayer, options.automaticallySetupAudioSession);
     
     if (audioRendering) {
-        ijkmp_ios_set_audio_controller(_mediaPlayer, audioRendering);
+        ijkmp_apple_set_audio_controller(_mediaPlayer, audioRendering);
     }
     
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");

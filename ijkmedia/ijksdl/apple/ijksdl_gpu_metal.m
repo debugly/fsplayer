@@ -26,7 +26,7 @@
 #import "FSMetalSubtitlePipeline.h"
 #import "ijksdl_gpu.h"
 #include <libavutil/mem.h>
-#import "ijksdl_vout_ios_gles2.h"
+#import "ijksdl_vout_metal.h"
 
 typedef struct SDL_GPU_Opaque_Metal {
     id<MTLDevice>device;

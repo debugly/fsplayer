@@ -23,7 +23,9 @@
  */
 
 #import "FSOptions.h"
-#include "ijkplayer/apple/ijkplayer_ios.h"
+#include "ijkplayer/apple/ijkplayer_apple.h"
+#include "libavutil/dict.h"
+
 #define FS_DEFAULT_WHITELIST @"concat,http,tcp,https,crypto,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp"
 
 @implementation FSOptions {
