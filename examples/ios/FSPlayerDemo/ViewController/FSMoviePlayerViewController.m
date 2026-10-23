@@ -105,7 +105,11 @@
     self.player = [[FSPlayer alloc] initWithContent:self.url options:options];
     self.player.playbackLoop = 2;
     //设置代理，拿到当前渲染帧
-    [self.player.view setDisplayDelegate:self];
+    if ([self.player.view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        UIView<FSVideoRenderingProtocol>* renderingView = (UIView<FSVideoRenderingProtocol>*)self.player.view;
+        [renderingView setDisplayDelegate:self];
+    }
+    
     self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
     
