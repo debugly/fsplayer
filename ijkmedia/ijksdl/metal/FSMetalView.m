@@ -47,10 +47,15 @@ typedef CGRect NSRect;
 @property(nonatomic) BOOL hasAlpha;
 @property(nonatomic, readonly) id subTexture;
 - (instancetype)initWithSource:(FSOverlayAttach *)source;
+// Caller serializes preparation with rendering/snapshots; cache is borrowed.
+- (BOOL)prepareTexturesWithDevice:(id<MTLDevice>)device
+                     textureCache:(CVMetalTextureCacheRef)textureCache;
 @end
 
 @implementation FSMetalRenderFrame
-- (instancetype)initWithSource:(FSOverlayAttach *)source {
+
+- (instancetype)initWithSource:(FSOverlayAttach *)source
+{
     if ((self = [super init])) {
         _w = source.w;
         _h = source.h;
@@ -62,14 +67,38 @@ typedef CGRect NSRect;
     }
     return self;
 }
-- (id)subTexture {
+
+- (BOOL)prepareTexturesWithDevice:(id<MTLDevice>)device
+                     textureCache:(CVMetalTextureCacheRef)textureCache
+{
+    if (self.videoTextures.count > 0) {
+        return YES;
+    }
+    NSMutableArray *cvTextures = nil;
+    NSArray *textures = [FSMetalTextureUtils doGenerateTexture:self.videoPicture
+                                                  textureCache:textureCache
+                                                        device:device
+                                                 outCVTextures:&cvTextures];
+    if (textures.count == 0) {
+        return NO;
+    }
+    for (id item in self.videoCVTextures) CFRelease((__bridge CVMetalTextureRef)item);
+    self.videoCVTextures = cvTextures;
+    self.videoTextures = textures;
+    return YES;
+}
+
+- (id)subTexture
+{
     return self.overlay ? (__bridge id)self.overlay->getTexture(self.overlay) : nil;
 }
+
 - (void)dealloc {
     SDL_TextureOverlay_Release(&_overlay);
     if (_videoPicture) CVPixelBufferRelease(_videoPicture);
     for (id item in _videoCVTextures) CFRelease((__bridge CVMetalTextureRef)item);
 }
+
 @end
 
 @interface FSMetalView ()
@@ -857,12 +886,12 @@ end:
         return;
     }
 
-    FSMetalRenderFrame *currentAttach = self.drawingFrame;
+    FSMetalRenderFrame *currentFrame = self.drawingFrame;
 
     [self rebuildBackgroundTextureIfNeed];
 
     //Clean Background Color
-    if (!currentAttach.videoPicture) {
+    if (!currentFrame.videoPicture) {
         if (self.needCleanBackgroundColor) {
             id<MTLTexture> texture = drawable.texture;
 
@@ -887,24 +916,23 @@ end:
     }
     
     [self.renderSnapshotLock lock];
-    //generate textures (single-frame path)
-    if (!currentAttach.videoTextures) {
-        NSMutableArray *cvTextures = nil;
-        currentAttach.videoTextures = [FSMetalTextureUtils doGenerateTexture:currentAttach.videoPicture textureCache:self.pictureTextureCache device:self.device outCVTextures:&cvTextures];
-        currentAttach.videoCVTextures = cvTextures;
+
+    if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
+        [self.renderSnapshotLock unlock];
+        return;
     }
     
     if (self.displayDelegate && [self.displayDelegate respondsToSelector:@selector(videoRenderingDidDisplay:attach:)]) {
-        [self.displayDelegate videoRenderingDidDisplay:self attach:currentAttach];
+        [self.displayDelegate videoRenderingDidDisplay:self attach:currentFrame];
     }
     
     //draw textures
     CGSize drawableSize = self.drawableSize;
-    
-    CGSize ratio = [self computeNormalizedVerticesRatio:currentAttach drawableSize:drawableSize];
-    
+
+    CGSize ratio = [self computeNormalizedVerticesRatio:currentFrame drawableSize:drawableSize];
+
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-    
+
     // Obtain a renderPassDescriptor generated from the view's drawable textures.
     MTLRenderPassDescriptor *renderPassDescriptor = self.currentRenderPassDescriptor;
     //MTLRenderPassDescriptor描述一系列attachments的值，类似GL的FrameBuffer；同时也用来创建MTLRenderCommandEncoder
@@ -933,7 +961,7 @@ end:
     if (currentAttach.subTexture) {
         [self encodeSubtitle:renderEncoder
                 drawableSize:drawableSize
-                     texture:currentAttach.subTexture];
+                     texture:currentFrame.subTexture];
     }
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
@@ -941,14 +969,14 @@ end:
     // Extend the lifetime of currentAttach until the GPU finishes rendering.
     // This prevents the underlying CVPixelBuffer from being returned to the pool
     // and recycled/overwritten by the decoder too early, especially at high playback speeds.
-    __block FSMetalRenderFrame *keepAliveAttach = currentAttach;
+    __block FSMetalRenderFrame *keepAliveAttach = currentFrame;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buf) {
         keepAliveAttach = nil;
     }];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
-    self.previousTag = currentAttach.tag;
-    
+    self.previousTag = currentFrame.tag;
+
     [self.renderSnapshotLock unlock];
 }
 
@@ -958,8 +986,8 @@ end:
 {
     [self.renderSnapshotLock lock];
 
-    FSMetalRenderFrame *attach = self.currentFrame;
-    CVPixelBufferRef pixelBuffer = attach.videoPicture;
+    FSMetalRenderFrame *currentFrame = self.currentFrame;
+    CVPixelBufferRef pixelBuffer = currentFrame.videoPicture;
     if (!pixelBuffer) {
         [self.renderSnapshotLock unlock];
         return NULL;
@@ -968,19 +996,19 @@ end:
     if (!self.offscreenRendering) {
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
-    float width  = attach.w;
-    float height = attach.h;
+    float width  = currentFrame.w;
+    float height = currentFrame.h;
     
     //keep video AVRational
-    if (attach.sarNum > 0 && attach.sarDen > 0) {
-        width = 1.0 * attach.sarNum / attach.sarDen * width;
+    if (currentFrame.sarNum > 0 && currentFrame.sarDen > 0) {
+        width = 1.0 * currentFrame.sarNum / currentFrame.sarDen * width;
     }
     
     float darRatio = self.darPreference.ratio;
     
     int zDegrees = 0;
     zDegrees += (int)self.zRotateDegrees;
-    zDegrees += attach.autoZRotate;
+    zDegrees += currentFrame.autoZRotate;
     //when video's z rotate degrees is 90 odd multiple
     if (abs(zDegrees) / 90 % 2 == 1) {
         int tmp = width;
@@ -998,13 +1026,12 @@ end:
     }
     
     CGSize viewport = CGSizeMake(floorf(width), floorf(height));
-    
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+    if (![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
-    if (drawSub && attach.subTexture && ![self setupSubPipelineIfNeed]) {
+
+    if (drawSub && currentFrame.subTexture && ![self setupSubPipelineIfNeed]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -1018,8 +1045,8 @@ end:
         if (self.directDisplayHDRSupportted) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:attach.videoPicture];
-            if (![sdrPipeline createRenderPipelineIfNeed:meta blend:attach.hasAlpha]) {
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
+            if (![sdrPipeline createRenderPipelineIfNeed:meta blend:currentFrame.hasAlpha]) {
                 [self.renderSnapshotLock unlock];
                 return NULL;
             }
@@ -1033,22 +1060,16 @@ end:
 
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
-        
-        if (!attach.videoTextures) {
-            NSMutableArray *cvTextures = nil;
-            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:self.pictureTextureCache device:self.device outCVTextures:&cvTextures];
-            attach.videoCVTextures = cvTextures;
-        }
-        
-        [self encodePicture:attach
+
+        [self encodePicture:currentFrame
               renderEncoder:renderEncoder
                drawableSize:viewport
                       ratio:CGSizeMake(1.0, 1.0)];
-        
-        if (drawSub && attach.subTexture) {
+
+        if (drawSub && currentFrame.subTexture) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:viewport
-                         texture:attach.subTexture];
+                         texture:currentFrame.subTexture];
         }
     }];
     if (savedPipeline) {
@@ -1087,23 +1108,28 @@ end:
 {
     [self.renderSnapshotLock lock];
 
-    FSMetalRenderFrame *attach = self.currentFrame;
-    CVPixelBufferRef pixelBuffer = attach.videoPicture;
+    FSMetalRenderFrame *currentFrame = self.currentFrame;
+    CVPixelBufferRef pixelBuffer = currentFrame.videoPicture;
     if (!pixelBuffer) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
-    if (!self.offscreenRendering) {
-        self.offscreenRendering = [FSMetalOffscreenRendering alloc];
-    }
 
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+    if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
 
-    if (attach.subTexture && ![self setupSubPipelineIfNeed]) {
+    if (!self.offscreenRendering) {
+        self.offscreenRendering = [FSMetalOffscreenRendering alloc];
+    }
+
+    if (![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
+        [self.renderSnapshotLock unlock];
+        return NULL;
+    }
+
+    if (currentFrame.subTexture && ![self setupSubPipelineIfNeed]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -1116,8 +1142,8 @@ end:
         if (self.directDisplayHDRSupportted) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:attach.videoPicture];
-            if (![sdrPipeline createRenderPipelineIfNeed:meta  blend:attach.hasAlpha]) {
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
+            if (![sdrPipeline createRenderPipelineIfNeed:meta  blend:currentFrame.hasAlpha]) {
                 [self.renderSnapshotLock unlock];
                 return NULL;
             }
@@ -1132,21 +1158,16 @@ end:
     CGSize drawableSize = self.drawableSize;
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:drawableSize device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
-        if (!attach.videoTextures) {
-            NSMutableArray *cvTextures = nil;
-            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:self.pictureTextureCache device:self.device outCVTextures:&cvTextures];
-            attach.videoCVTextures = cvTextures;
-        }
-        CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:drawableSize];
-        [self encodePicture:attach
+        CGSize ratio = [self computeNormalizedVerticesRatio:currentFrame drawableSize:drawableSize];
+        [self encodePicture:currentFrame
               renderEncoder:renderEncoder
                drawableSize:drawableSize
                       ratio:ratio];
 
-        if (attach.subTexture) {
+        if (currentFrame.subTexture) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:drawableSize
-                         texture:attach.subTexture];
+                         texture:currentFrame.subTexture];
         }
     }];
     if (savedPipeline) {
