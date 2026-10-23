@@ -149,7 +149,7 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(id<FSVideoRenderFrame>)attach
 {
     //NSLog(@"当前帧：%@",attach);
 }

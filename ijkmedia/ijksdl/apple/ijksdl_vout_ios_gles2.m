@@ -36,10 +36,6 @@
 
 - (void)dealloc
 {
-    if (_pixelBuffer) {
-        CVPixelBufferRelease(_pixelBuffer);
-        _pixelBuffer = NULL;
-    }
     if (_avframe) {
         av_frame_free(&self->_avframe);
     }
@@ -61,37 +57,11 @@
 
 - (void)dealloc
 {
-    if (self.videoPicture) {
-        CVPixelBufferRelease(self.videoPicture);
-        self.videoPicture = NULL;
-    }
     if (self.avframe) {
         av_frame_free(&self->_avframe);
     }
-    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer
-    if (self.videoCVTextures) {
-        for (id item in self.videoCVTextures) {
-            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
-            if (texRef) {
-                CFRelease(texRef);
-            }
-        }
-        self.videoCVTextures = nil;
-    }
-    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer 与 cvTextures
-    self.tilePieces = nil;
-    self.subTexture = nil;
     if (self.overlay) {
         SDL_TextureOverlay_Release(&self->_overlay);
-    }
-}
-
-- (id)subTexture
-{
-    if (self.overlay) {
-        return (__bridge id)self.overlay->getTexture(self.overlay);
-    } else {
-        return nil;
     }
 }
 
@@ -187,19 +157,13 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         int *ws = (int *)calloc(count, sizeof(int));
         int *hs = (int *)calloc(count, sizeof(int));
         int got = SDL_VoutOverlay_GetTileAVFrames(overlay, frames, xs, ys, ws, hs, count);
-        int tile_canvas_w = 0,tile_canvas_h = 0;
-        SDL_VoutOverlay_GetTileCanvas(overlay, &tile_canvas_w, &tile_canvas_h);
         
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = frame->disp_w;
         attach.h = frame->disp_h;
-        attach.pixelW = tile_canvas_w;
-        attach.pixelH = tile_canvas_h;
-        attach.fps    = frame->fps;
         attach.sarNum = frame->sar.num;
         attach.sarDen = frame->sar.den;
         attach.autoZRotate = frame->auto_z_rotate_degrees;
-        attach.videoPicture = NULL;
 
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
@@ -231,12 +195,6 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         attach.w = frame->disp_w;
         attach.h = frame->disp_h;
 
-        // pixelW/H default to the frame's coded size; renderers that need the padded
-        // buffer dimensions (FSMetalView crop) overwrite these once they materialise
-        // the CVPixelBuffer.
-        attach.pixelW = av_frame->width;
-        attach.pixelH = av_frame->height;
-        attach.fps    = frame->fps;
         attach.sarNum = frame->sar.num;
         attach.sarDen = frame->sar.den;
         attach.autoZRotate = frame->auto_z_rotate_degrees;

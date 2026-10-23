@@ -40,11 +40,9 @@ NS_ASSUME_NONNULL_BEGIN
 typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 // HEIC tile grid: 单个 tile 的位置信息 + 帧数据。
-// avframe 由 dispatch 层从 overlay 克隆（owned）；pixelBuffer 由渲染器（FSMetalView）
-// 从 avframe 转换后填充并持有。
+// avframe 由 dispatch 层从 overlay 克隆（owned）；渲染器独立持有转换结果。
 @interface FSTilePiece : NSObject
 @property(nonatomic) struct AVFrame * _Nullable avframe;        // 持有 (owned, av_frame_free in dealloc)
-@property(nonatomic) CVPixelBufferRef _Nullable pixelBuffer;    // 持有 (owned, Retain/Release by this class)
 @property(nonatomic) int x;         // canvas 上左上角
 @property(nonatomic) int y;
 @property(nonatomic) int w;         // tile 尺寸
@@ -53,36 +51,28 @@ typedef struct SDL_TextureOverlay SDL_TextureOverlay;
 
 @interface FSOverlayAttach : NSObject
 
-//{w,h} is video frame normal size not alignmetn,maybe not equal to {pixelW,pixelH}.
+// Display dimensions resolved by the player (including tile-grid canvas metadata).
 @property(nonatomic) int w;
 @property(nonatomic) int h;
-//cvpixebuffer pixel memory size;
-@property(nonatomic) int pixelW;
-@property(nonatomic) int pixelH;
 
-@property(nonatomic) float fps;
+// Resolved by av_guess_sample_aspect_ratio (may differ from AVFrame SAR).
 @property(nonatomic) int sarNum;
 @property(nonatomic) int sarDen;
-//degrees
+// Player-resolved rotation, including stream metadata and configured override.
 @property(nonatomic) int autoZRotate;
-
-@property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
-@property(nonatomic) NSArray * _Nullable videoTextures;
-@property(nonatomic) NSArray * _Nullable videoCVTextures;      // 对应的 CVMetalTextureRef 包装引用
 
 // Full decoded frame (av_frame_ref'd, owned; freed in dealloc). Carries side data
 // such as Dolby Vision RPU.
-// nil for renderers that only consume videoPicture (e.g. FSMetalView).
+// Metal renderers derive their own CVPixelBuffer without modifying this input.
 @property(nonatomic) struct AVFrame * _Nullable avframe;
 
 // HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
 @property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
 
 @property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
-@property(nonatomic) id _Nullable subTexture;
-@property(nonatomic) long tag;
 
 - (BOOL)hasAlpha;
+
 @end
 
 /// Minimal video output contract consumed by FSPlayer and the Apple vout bridge.

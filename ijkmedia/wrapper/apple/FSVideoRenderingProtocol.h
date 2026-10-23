@@ -126,6 +126,17 @@ typedef enum : NSUInteger {
 
 @end
 
+/// Read-only display information supplied by a renderer. Does not retain decoded
+/// AVFrame or tile data; the concrete renderer owns its rendering resources.
+@protocol FSVideoRenderFrame <NSObject>
+@property(nonatomic, readonly) int w;
+@property(nonatomic, readonly) int h;
+@property(nonatomic, readonly) int sarNum;
+@property(nonatomic, readonly) int sarDen;
+@property(nonatomic, readonly) int autoZRotate;
+@property(nonatomic, readonly) BOOL hasAlpha;
+@end
+
 @protocol FSVideoRenderingDelegate <NSObject>
 
 @optional
@@ -135,7 +146,8 @@ typedef enum : NSUInteger {
 - (CVPixelBufferRef _Nullable)videoRenderingWillDisplay:(id<FSVideoRenderingProtocol>_Nonnull)renderer videoFrame:(CVPixelBufferRef)videoFrame;
 
 @optional
-- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach;
+// Display information belongs to the renderer; it contains no decoded frame data.
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(id<FSVideoRenderFrame>)attach;
 
 @end
 

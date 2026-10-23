@@ -17,13 +17,10 @@
 @interface FSMetalTileGridPipeline ()
 {
     id<MTLDevice> _device;
-    // 最近一次合成结果，调用方将其交给 attach 持有；刷新直接复用 attach。
-    CVPixelBufferRef _cachedComposite;     // 纹理的后备缓冲
-    id<MTLTexture> _cachedTexture;         // 可直接采样显示的合成纹理
-    NSArray *_cachedCVTextures;            // 对应的 CVMetalTextureRef 包装引用
+    FSSwPixelBufferPool _swPixelBufferPool; // Reused across software-decoded tiles.
+    // 最近一次合成结果；视图独立持有需要复用的资源。
+    FSMetalFBO *_compositedFBO; // 统一持有合成后的像素缓冲和纹理
 }
-// tile 像素格式（YUV/NV12...）-> BGRA 的转换管线，像素格式变化时重建。
-@property (nonatomic, strong) FSMetalRenderer *renderer;
 @end
 
 @implementation FSMetalTileGridPipeline
@@ -40,24 +37,12 @@
 
 - (void)dealloc
 {
-    if (_cachedComposite) {
-        CVPixelBufferRelease(_cachedComposite);
-        _cachedComposite = NULL;
-    }
-    if (_cachedCVTextures) {
-        for (id item in _cachedCVTextures) {
-            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
-            if (texRef) {
-                CFRelease(texRef);
-            }
-        }
-        _cachedCVTextures = nil;
-    }
+    FSSwPixelBufferPoolRelease(&_swPixelBufferPool);
 }
 
 - (CVPixelBufferRef)compositedPixelBuffer
 {
-    return _cachedComposite;
+    return [_compositedFBO pixelBuffer];
 }
 
 // 一次性打印 tile 的颜色元数据，用于排查色差（range/matrix/transfer/colorspace）。
@@ -83,80 +68,35 @@
           csName    ? [(__bridge NSString *)csName    UTF8String] : "(nil)");
 }
 
-- (BOOL)setupRendererIfNeed:(CVPixelBufferRef)refPixelBuffer hasAlpha:(BOOL)hasAlpha
-{
-    if (self.renderer && [self.renderer matchPixelBuffer:refPixelBuffer]) {
-        return YES;
-    }
-    // 目标是 BGRA FBO，所以 colorPixelFormat 固定为 BGRA8Unorm。
-    FSMetalRenderer *renderer = [[FSMetalRenderer alloc] initWithDevice:_device
-                                                      colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-    FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:refPixelBuffer];
-    if (![renderer createRenderPipelineIfNeed:meta blend:hasAlpha]) {
-        ALOGE("create tile grid renderer failed.");
-        return NO;
-    }
-    self.renderer = renderer;
-    return YES;
-}
-
-- (id<MTLTexture>)compositeTileGrid:(FSOverlayAttach *)attach
+- (id<MTLTexture>)compositeTileGrid:(NSArray<FSTilePiece *> *)tilePieces
+                            canvasW:(int)canvasW
+                            canvasH:(int)canvasH
                        textureCache:(CVMetalTextureCacheRef)textureCache
                        commandQueue:(id<MTLCommandQueue>)commandQueue
 {
-    if (attach.tilePieces.count == 0) {
+    if (tilePieces.count == 0 || canvasW <= 0 || canvasH <= 0) {
         return nil;
     }
 
-    int canvasW = attach.w;
-    int canvasH = attach.h;
-    if (canvasW <= 0 || canvasH <= 0) {
-        return nil;
-    }
-
-    // Only a new attach reaches composition; refreshAttach: reuses its existing texture.
-    for (FSTilePiece *piece in attach.tilePieces) {
-        if (!piece.pixelBuffer && piece.avframe) {
-            AVFrame *frame = piece.avframe;
-            if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
-                CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
-                piece.pixelBuffer = pb ? CVPixelBufferRetain(pb) : NULL;
-            } else {
-                piece.pixelBuffer = FSCVPixelBufferCreateFromAVFrame(frame, NULL);
-            }
-        }
-        if (!piece.pixelBuffer) return nil;
-    }
-    CVPixelBufferRef ref = ((FSTilePiece *)attach.tilePieces.firstObject).pixelBuffer;
-
-    [self logColorInfo:ref];
-    
-    if (![self setupRendererIfNeed:ref hasAlpha:attach.hasAlpha]) {
-        return nil;
-    }
-
-    // 每次合成独占一份 pixelBuffer，FBO 不复用，避免覆盖已缓存的画面。
-    FSMetalFBO *fbo = [[FSMetalFBO alloc] init:_device size:CGSizeMake(canvasW, canvasH)];
     id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+    FSMetalFBO *fbo = [[FSMetalFBO alloc] init:_device size:CGSizeMake(canvasW, canvasH)];
     id<MTLRenderCommandEncoder> encoder = [fbo createRenderEncoder:commandBuffer];
+
     if (!encoder) {
         return nil;
     }
 
-    // 合成阶段：不旋转、不调色、铺满整图、顶点不缩放（旋转/调色留给显示阶段作用于整张图）。
-    self.renderer.autoZRotateDegrees = 0;
-    self.renderer.xRotateDegrees = 0;
-    self.renderer.yRotateDegrees = 0;
-    self.renderer.zRotateDegrees = 0;
-    [self.renderer updateColorAdjustment:(vector_float4){1.0, 1.0, 1.0, 0.0}];
-    self.renderer.vertexRatio = CGSizeMake(1.0, 1.0);
-
     double display_w = canvasW;
     double display_h = canvasH;
 
-    // 渲染各 tile 到一张大图上，由于后续不会再渲染，所以中间过程无需缓存。
-    for (FSTilePiece *piece in attach.tilePieces) {
-        if (!piece.pixelBuffer || piece.w <= 0 || piece.h <= 0) continue;
+    // Keep converted tile buffers alive until GPU composition has completed.
+    __attribute__((objc_precise_lifetime)) NSMutableArray *pixelBuffers =
+        [NSMutableArray arrayWithCapacity:tilePieces.count];
+
+    FSMetalRenderer *renderer = nil;
+    // tile 像素格式（YUV/NV12...）-> BGRA
+    for (FSTilePiece *piece in tilePieces) {
+        if (piece.w <= 0 || piece.h <= 0) continue;
 
         // 边缘处理：位于最右/最下的 Tile 物理尺寸可能含 Padding，
         // 取实际显示区域并据此确定 Viewport 与纹理裁剪区域。
@@ -170,7 +110,34 @@
         }
         if (valid_w <= 0 || valid_h <= 0) continue;
 
-        NSArray *textures = [FSMetalTextureUtils doGenerateTexture:piece.pixelBuffer
+        AVFrame *frame = piece.avframe;
+        CVPixelBufferRef pixelBuffer = NULL;
+        if (frame && frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+            pixelBuffer = (CVPixelBufferRef)frame->data[3];
+            if (pixelBuffer) CVPixelBufferRetain(pixelBuffer);
+        } else if (frame) {
+            CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool,
+                                                                frame->width, frame->height, frame->format);
+            pixelBuffer = FSCVPixelBufferCreateFromAVFrame(frame, pool);
+        }
+        if (!pixelBuffer) {
+            [encoder endEncoding];
+            return nil;
+        }
+        [pixelBuffers addObject:(__bridge_transfer id)pixelBuffer];
+        if (!renderer) {
+            [self logColorInfo:pixelBuffer];
+            renderer = [[FSMetalRenderer alloc] initWithDevice:_device
+                                              colorPixelFormat:MTLPixelFormatBGRA8Unorm];
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:pixelBuffer];
+            if (![renderer createRenderPipelineIfNeed:meta blend:NO]) {
+                [encoder endEncoding];
+                return nil;
+            }
+            renderer.vertexRatio = CGSizeMake(1.0, 1.0);
+        }
+
+        NSArray *textures = [FSMetalTextureUtils doGenerateTexture:pixelBuffer
                                                       textureCache:textureCache
                                                             device:_device];
         if (!textures) continue;
@@ -187,39 +154,23 @@
         // textureCrop 为需要减去的百分比：比如 Tile 宽 512、有效 392，则剪掉 (512-392)/512。
         float cropX = (float)(piece.w - valid_w) / piece.w;
         float cropY = (float)(piece.h - valid_h) / piece.h;
-        self.renderer.textureCrop = CGSizeMake(cropX, cropY);
+        renderer.textureCrop = CGSizeMake(cropX, cropY);
 
         [encoder setViewport:tile_vp];
-        [self.renderer uploadTextureWithEncoder:encoder textures:textures];
+        [renderer uploadTextureWithEncoder:encoder textures:textures];
     }
     [encoder endEncoding];
     [commandBuffer commit];
     [commandBuffer waitUntilCompleted];
 
-    // 从合成后的 BGRA 缓冲生成一张可采样显示的纹理（与显示路径采样方式一致）。
-    CVPixelBufferRef composed = [fbo pixelBuffer];
-    NSMutableArray *cvTextures = nil;
-    id<MTLTexture> texture = [FSMetalTextureUtils doGenerateTexture:composed textureCache:textureCache device:_device outCVTextures:&cvTextures].firstObject;
+    // FBO 已持有合成后的 BGRA 纹理，直接复用，无需再次包装像素缓冲。
+    id<MTLTexture> texture = [fbo texture];
     if (!texture) {
         return nil;
     }
 
-    // 保存本次合成结果，供调用方交给 attach；替换时释放上次结果。
-    if (_cachedComposite) {
-        CVPixelBufferRelease(_cachedComposite);
-    }
-    if (_cachedCVTextures) {
-        for (id item in _cachedCVTextures) {
-            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
-            if (texRef) {
-                CFRelease(texRef);
-            }
-        }
-        _cachedCVTextures = nil;
-    }
-    _cachedComposite = CVPixelBufferRetain(composed);
-    _cachedTexture = texture;
-    _cachedCVTextures = cvTextures;
+    // 每次合成保留独立 FBO；旧显示帧由视图持有其像素缓冲和纹理。
+    _compositedFBO = fbo;
 
     return texture;
 }
