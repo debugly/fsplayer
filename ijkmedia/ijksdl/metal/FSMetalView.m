@@ -745,14 +745,13 @@ typedef CGRect NSRect;
         BOOL composited = [self ensureTileGridComposited:frame attach:source];
         [self.renderSnapshotLock unlock];
         if (!composited) {
-            return NO;
+            frame = nil;
+            goto end;
         }
     } else if (!source.avframe && !frame.videoPicture) {
         ALOGD("FSMetalView: displayAttach nil frame\n");
-        [self.renderSnapshotLock lock];
-        self.currentFrame = nil;
-        [self.renderSnapshotLock unlock];
-        return NO;
+        frame = nil;
+        goto end;
     }
     
     // Derive a per-view CVPixelBuffer from the source AVFrame.
@@ -796,14 +795,15 @@ typedef CGRect NSRect;
     }
 
     if (self.preventDisplay || !frame.videoPicture) {
-        return NO;
+        frame = nil;
+        goto end;
     }
-    
+
+end:
     [self.renderSnapshotLock lock];
     self.currentFrame = frame;
     [self.renderSnapshotLock unlock];
-    
-    return YES;
+    return frame != nil;
 }
 
 - (void)displayCurrentFrameWithTimestamp:(const CFTimeInterval)timestamp {
@@ -1097,7 +1097,7 @@ typedef CGRect NSRect;
     if (!self.offscreenRendering) {
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
-    
+
     if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return NULL;
