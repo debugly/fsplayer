@@ -60,10 +60,20 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
       run: |
+        set -euo pipefail
         if [[ -z "$GH_TOKEN" ]]; then
           echo "::error::请在 Environments -> workflow 配置 WORKFLOW_TOKEN，并授予 debugly/homebrew-aura 的 Contents: write 权限"
           exit 1
         fi
+        # 显式只用当前 GH_TOKEN，避免继承 runner 上其它 credential helper。
+        TAP_DIR=$(mktemp -d "$RUNNER_TEMP/homebrew-aura.XXXXXX")
+        git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+          clone --depth 1 https://github.com/debugly/homebrew-aura.git "$TAP_DIR"
+        # 即使没有新提交，push dry-run 也需要通过 receive-pack 的写权限检查。
+        # 检查失败就立即停止，不消耗完整构建时间，也不创建 Release。
+        git -C "$TAP_DIR" -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+          push --dry-run origin HEAD
+        echo "TAP_DIR=$TAP_DIR" >> "$GITHUB_ENV"
 
     - name: Install tools
       if: ${{ env.HAS_MACOS == '1' }}
@@ -212,9 +222,7 @@ jobs:
         sed -i "" "s/VERSION_PLACEHOLDER/${VERSION}/g; s/SHA256_PLACEHOLDER/${SHA256}/g" /tmp/aura.rb
         
         # Clone homebrew-aura, update formula, and push
-        TAP_DIR=$(mktemp -d "$RUNNER_TEMP/homebrew-aura.XXXXXX")
-        gh auth setup-git --hostname github.com
-        git clone --depth 1 https://github.com/debugly/homebrew-aura.git "$TAP_DIR"
+        # 复用构建前已完成推送认证检查的 checkout。
         cd "$TAP_DIR"
         mkdir -p Casks
         cp /tmp/aura.rb Casks/aura.rb
@@ -229,7 +237,7 @@ jobs:
           echo "No changes to formula"
         else
           git commit -m "chore: update aura to ${VERSION}"
-          git push
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push
           echo "Formula updated successfully"
         fi
 
