@@ -32,6 +32,8 @@ jobs:
   build:
     name: build-aura-macos
     runs-on: macos-26
+    # WORKFLOW_TOKEN 位于 Environments -> workflow，需要显式绑定才能读取。
+    environment: workflow
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -49,6 +51,18 @@ jobs:
         else
           echo "HAS_MACOS=0" >> "$GITHUB_ENV"
           echo "::notice::examples/macos/AuraPlayer.xcodeproj is not present on ${GITHUB_REF_NAME}, nothing to build"
+        fi
+
+    # 内建 github.token 只能写 fsplayer；更新 tap 需要跨仓库凭据。
+    # 提前检查，避免 Release 已发布后才发现 secret 缺失。
+    - name: Check Homebrew push token
+      if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
+      env:
+        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+      run: |
+        if [[ -z "$GH_TOKEN" ]]; then
+          echo "::error::请在 Environments -> workflow 配置 WORKFLOW_TOKEN，并授予 debugly/homebrew-aura 的 Contents: write 权限"
+          exit 1
         fi
 
     - name: Install tools
@@ -144,20 +158,31 @@ jobs:
         ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Aura-macos-${VERSION}.zip"
         ls -lh dist
 
-    - name: Upload Release Asset
+    - name: Create draft release
+      id: draft_release
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create "${TAG}" --target "${GITHUB_REF_NAME}" -t "Aura macOS ${VERSION}" \
+        set -euo pipefail
+        # 只允许使用新 tag，确保失败清理不会删除此前已有的 tag。
+        EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/${TAG}")
+        if [[ -n "$EXISTING_TAG" ]]; then
+          echo "::error::tag ${TAG} 已存在，停止发布"
+          exit 1
+        fi
+        gh release create "${TAG}" --draft --target "${GITHUB_SHA}" -t "Aura macOS ${VERSION}" \
           --notes-file "$RUNNER_TEMP/release-notes.md" \
           "dist/Aura-macos-${VERSION}.zip"
+        echo "created=true" >> "$GITHUB_OUTPUT"
 
     - name: Update Homebrew formula (homebrew-aura tap)
+      id: homebrew
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
-        GH_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
       run: |
+        set -euo pipefail
         # Calculate SHA256 of the release zip
         RELEASE_ZIP="dist/Aura-macos-${VERSION}.zip"
         SHA256=$(shasum -a 256 "$RELEASE_ZIP" | awk '{print $1}')
@@ -187,23 +212,36 @@ jobs:
         sed -i "" "s/VERSION_PLACEHOLDER/${VERSION}/g; s/SHA256_PLACEHOLDER/${SHA256}/g" /tmp/aura.rb
         
         # Clone homebrew-aura, update formula, and push
-        cd "$RUNNER_TEMP"
-        git clone --depth 1 https://github.com/debugly/homebrew-aura.git || true
-        cd homebrew-aura
+        TAP_DIR=$(mktemp -d "$RUNNER_TEMP/homebrew-aura.XXXXXX")
+        gh auth setup-git --hostname github.com
+        git clone --depth 1 https://github.com/debugly/homebrew-aura.git "$TAP_DIR"
+        cd "$TAP_DIR"
         mkdir -p Casks
         cp /tmp/aura.rb Casks/aura.rb
         
         # Configure git for push
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/debugly/homebrew-aura.git"
         
         # Commit and push if there are changes
-        if git diff --quiet Casks/aura.rb; then
+        git add Casks/aura.rb
+        if git diff --cached --quiet; then
           echo "No changes to formula"
         else
-          git add Casks/aura.rb
           git commit -m "chore: update aura to ${VERSION}"
           git push
           echo "Formula updated successfully"
         fi
+
+    - name: Publish release after Homebrew update
+      if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release edit "$TAG" --draft=false
+
+    # Homebrew 失败时保持 job 失败，同时撤销本次草稿及其 tag。
+    - name: Clean up release after Homebrew failure
+      if: ${{ failure() && steps.draft_release.outputs.created == 'true' && steps.homebrew.outcome == 'failure' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release delete "$TAG" --yes --cleanup-tag
