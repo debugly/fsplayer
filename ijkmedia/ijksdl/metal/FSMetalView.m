@@ -953,12 +953,12 @@ end:
         [self encodeBackground:renderEncoder drawableSize:drawableSize];
     }
     
-    [self encodePicture:currentAttach
+    [self encodePicture:currentFrame
           renderEncoder:renderEncoder
            drawableSize:drawableSize
                   ratio:ratio];
     
-    if (currentAttach.subTexture) {
+    if (currentFrame.subTexture) {
         [self encodeSubtitle:renderEncoder
                 drawableSize:drawableSize
                      texture:currentFrame.subTexture];
