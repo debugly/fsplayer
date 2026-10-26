@@ -237,11 +237,11 @@ jobs:
     # 触发它的仓库里有权限，dispatch fsplayer-spm 一律 403
     # （Resource not accessible by integration）。给本 workflow 加
     # permissions: actions: write 也没用，别再试那条路。
-    # 用部署密钥推一个 upgrade/<version> 的注记 tag 到 fsplayer-spm，由那边的
-    # workflow 接手。之所以不调 API：workflow_dispatch 需要 PAT（GITHUB_TOKEN 跨仓
-    # 必然 403），而部署密钥只对这一个仓库有写权限，不需要维护账号级 token。
-    # checksum 写进 tag message，源仓库算一次，接收端直接读。
-    - name: Trigger fsplayer-spm upgrade
+    # 和 homebrew-aura 一样：直接改文件、推 commit，spm 那边不跑任何 workflow。
+    # 这次发布对 spm 的唯一动作就是把 Package.swift 的 url/checksum 指到新版本，
+    # 再补一个版本 tag，SPM 就能解析。用部署密钥（只对这一个仓库有写权限），
+    # 不需要账号级 token，也不需要跨仓调 API。
+    - name: Update fsplayer-spm package
       env:
         SPM_DEPLOY_KEY: ${{ secrets.SPM_DEPLOY_KEY }}
       run: |
@@ -262,10 +262,32 @@ jobs:
 
         SPM_DIR=$(mktemp -d "$RUNNER_TEMP/fsplayer-spm.XXXXXX")
         git clone --depth 1 git@github.com:debugly/fsplayer-spm.git "$SPM_DIR"
-        git -C "$SPM_DIR" tag -a "upgrade/${VERSION}" -m "checksum=${CHECKSUM}"
-        # -f：万一上次的触发 tag 没被接收端删掉，重新指一次也不会失败。
-        git -C "$SPM_DIR" push -f origin "refs/tags/upgrade/${VERSION}"
-        echo "::notice::已推 upgrade/${VERSION}，触发 fsplayer-spm 的 upgrade"
+        cd "$SPM_DIR"
+
+        URL="https://github.com/debugly/fsplayer/releases/download/${VERSION}/FSPlayer.zip"
+        # -i.bak 而不是 -i ''：runner 上是 macOS，但这样在 Linux 上也能跑。
+        sed -i.bak "s|^[[:space:]]*url:.*|            url: \"$URL\",|g"  Package.swift
+        sed -i.bak "s|checksum:.*|checksum: \"$CHECKSUM\"|g"           Package.swift
+        rm -f Package.swift.bak
+
+        # 幂等：已经指向这个版本就不提交，重跑一次发布不会产生空 commit。
+        if git diff --quiet -- Package.swift; then
+          echo "::notice::Package.swift 已指向 $VERSION，跳过提交"
+        else
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add Package.swift
+          git commit -m "Update version to $VERSION"
+          git push origin HEAD:main
+        fi
+
+        # 版本 tag 是 SPM 解析版本的范围依据；已存在就不动，避免把发过的 tag 指到别处。
+        if git ls-remote --tags origin "refs/tags/${VERSION}" | grep -q .; then
+          echo "::notice::tag $VERSION 已存在，保持不动"
+        else
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION"
+        fi
 
     # 【临时禁用】发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret
     # （值不进仓库）：
