@@ -1,0 +1,29 @@
+FSPlayer
+
+Copyright (c) 2025 debugly <qianlongxu@gmail.com>
+https://github.com/debugly/fsplayer
+
+FSPlayer is distributed under the GNU Lesser General Public License,
+version 2.1 or (at your option) any later version (LGPL-2.1-or-later).
+The full license text is included as LICENSE in this distribution and as
+COPYING.LGPLv2.1 in the source repository. Copyright notices for individual
+files and their contributors are preserved in the corresponding source.
+
+FSPlayer uses FFmpeg and other third-party libraries. Those components
+retain their own copyrights and licenses; the FSPlayer license does not
+replace their license terms. See the release notes for the dependency
+versions and the FFmpeg license reported by the build.
+
+Source and build scripts:
+  https://github.com/debugly/fsplayer
+  https://github.com/debugly/MRFFToolChainBuildShell (FFToolChain submodule)
+
+Use the release tag corresponding to this binary distribution and the
+FFToolChain revision recorded by that tag to locate the build scripts and
+patches. README.md contains project and build information; CHANGELOG.md
+describes release changes.
+
+Redistributors must preserve applicable notices and comply with the LGPL,
+including the corresponding source and replacement/relinking requirements
+for their distribution method. Including this notice alone does not fulfill
+all of those requirements.

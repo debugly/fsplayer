@@ -99,16 +99,27 @@ jobs:
         ./examples/tvos/build-framework.sh
         ./examples/xcframewrok/make-xcframework.sh
 
-    # 每个平台的 xcframework 单独打一个 zip，连CHANGELOG/README/LICENSE 一起。
+    # 四个 ZIP 与 AAR 共用同一份许可证和分发说明。
+    # Android Java resources 会进入 AAR 内 classes.jar 的 META-INF/fsplayer/。
+    - name: Prepare Distribution Documents
+      run: |
+        set -euo pipefail
+        docs="android/fsplayer/src/main/resources/META-INF/fsplayer"
+        mkdir -p "$docs"
+        cp COPYING.LGPLv2.1 "$docs/LICENSE"
+        cp NOTICE README.md CHANGELOG.md "$docs/"
+
+    # 每个平台的 xcframework 单独打一个 zip，连 CHANGELOG/README/LICENSE/NOTICE 一起。
     - name: Package Apple Distribution
       run: |
+        set -euo pipefail
         package_dist() {
           local name="$1"
           local xcf_path="$2"
           local temp_dir="dist/${name}"
 
           mkdir -p "$temp_dir"
-          cp CHANGELOG.md README.md "$temp_dir/"
+          cp CHANGELOG.md README.md NOTICE "$temp_dir/"
           cp COPYING.LGPLv2.1 "$temp_dir/LICENSE"
           cp -pPR "$xcf_path" "$temp_dir/"
           (cd "$temp_dir" && zip -ryq "../${name}.zip" ./*)
@@ -131,16 +142,38 @@ jobs:
           -PabiFilters="arm64-v8a,armeabi-v7a" \
           --no-daemon --stacktrace
 
-    # AAR + 许可证，就是这次 release 里 Android 侧的全部资产。
+    # 许可证与说明已在 AAR 内，不再作为单独的 release 附件。
     - name: Collect AAR
       run: |
         set -euo pipefail
         mkdir -p dist
         cp android/fsplayer/build/outputs/aar/fsplayer-release.aar dist/fsplayer-release.aar
-        # LICENSE 必须跟着 release 一起发：库是 LGPL-2.1-or-later，源码里对应的
-        # 许可是 COPYING.LGPLv2.1，下游要重新分发就必须带上它。
-        cp COPYING.LGPLv2.1 dist/LICENSE
         ls -l dist
+
+    - name: Verify Distribution Documents
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        from io import BytesIO
+        from pathlib import Path
+        from zipfile import ZipFile
+
+        documents = {
+            "LICENSE": Path("COPYING.LGPLv2.1").read_bytes(),
+            **{name: Path(name).read_bytes() for name in ("NOTICE", "README.md", "CHANGELOG.md")},
+        }
+        for name in ("FSPlayer", "FSPlayer-iOS", "FSPlayer-macOS", "FSPlayer-tvOS"):
+            with ZipFile(f"dist/{name}.zip") as archive:
+                for document, expected in documents.items():
+                    if archive.read(document) != expected:
+                        raise RuntimeError(f"{name}.zip: incorrect {document}")
+        with ZipFile("dist/fsplayer-release.aar") as aar:
+            with ZipFile(BytesIO(aar.read("classes.jar"))) as classes:
+                for document, expected in documents.items():
+                    if classes.read(f"META-INF/fsplayer/{document}") != expected:
+                        raise RuntimeError(f"AAR: incorrect {document}")
+        print("Verified LICENSE, NOTICE, README.md and CHANGELOG.md in all five packages")
+        PY
 
     # 构建完成之后才定版本号。build.gradle 里的 versionName 只在
     # publishAndReleaseToMavenCentral 时用来决定 Maven 坐标，AAR 编译本身不需要；

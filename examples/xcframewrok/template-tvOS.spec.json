@@ -7,7 +7,7 @@
   "documentation_url": "https://github.com/debugly/fsplayer",
   "social_media_url": "https://github.com/debugly/fsplayer",
   "license": {
-    "type": "LGPL",
+    "type": "LGPL-2.1-or-later",
     "file": "FSPlayer-tvOS/LICENSE"
   },
   "authors": {

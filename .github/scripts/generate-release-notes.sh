@@ -221,6 +221,64 @@ ${third_party}
 \`\`\`ruby
 pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/${TAG}/FSPlayer.spec.json'
 \`\`\`
+
+### Swift Package Manager
+
+#### Xcode 工程
+
+1. 在 Xcode 中打开 App 工程，选择 **File → Add Package Dependencies…**。
+2. 输入仓库地址：\`https://github.com/debugly/fsplayer-spm.git\`。
+3. Dependency Rule 选择 **Exact Version**，填写 \`${VERSION}\`，点击 **Add Package**。
+4. 选择 **FSPlayer** 产品，在 **Add to Target** 中选择使用它的 App target，完成添加。
+5. 在 Swift 文件中通过 \`import FSPlayer\` 使用；Objective-C 文件使用 \`#import <FSPlayer/FSPlayer.h>\`。
+
+#### Package.swift
+
+在现有 Swift Package 的 \`Package.swift\` 中添加依赖，并关联到使用 FSPlayer 的 target（将 \`MyLibrary\` 替换为实际 target 名称）：
+
+\`\`\`swift
+// 合并到 Package(...) 的 dependencies 中
+.package(
+    url: "https://github.com/debugly/fsplayer-spm.git",
+    exact: "${VERSION}"
+)
+
+// 合并到 Package(...) 的 targets 中
+.target(
+    name: "MyLibrary",
+    dependencies: [
+        .product(name: "FSPlayer", package: "fsplayer-spm")
+    ]
+)
+\`\`\`
+
+普通 App 的 .xcodeproj 不会自动读取 Package.swift。
+
+### XcodeGen
+
+将以下配置合并到现有 \`project.yml\`，将 \`MyApp\` 替换为实际 App target 名称，保留已有的 target 配置：
+
+\`\`\`yaml
+packages:
+  FSPlayer:
+    url: https://github.com/debugly/fsplayer-spm.git
+    exactVersion: "${VERSION}"
+
+targets:
+  MyApp:
+    dependencies:
+      - package: FSPlayer
+        product: FSPlayer
+\`\`\`
+
+生成工程并解析依赖（将工程名替换为实际名称）：
+
+\`\`\`bash
+xcodegen generate
+xcodebuild -resolvePackageDependencies -project MyApp.xcodeproj
+\`\`\`
+
+集成后，Swift 代码通过 \`import FSPlayer\` 使用。SPM 仓库需先同步本次发布的 ${VERSION} 版本 tag。
 EOF
 }
 
