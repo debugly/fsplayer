@@ -246,10 +246,42 @@ static int packet_prepend_aud(AVPacket *pkt)
     return 0;
 }
 
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+/* Called only by the decoder thread, which owns the packet cache. */
+static int decoder_replay_cached_keyframe(Decoder *d)
+{
+    if (!d->avctx->hw_device_ctx || !d->kpkt_cache_has_keyframe ||
+        d->kpkt_cache_count == 0 || d->kpkt_replay_total > 0 || d->kpkt_restart_count >= 3)
+        return 0;
+
+    avcodec_flush_buffers(d->avctx);
+    if (d->bsf)
+        av_bsf_flush(d->bsf);
+    av_packet_unref(d->pkt);
+    d->packet_pending = 0;
+    d->replay_discard_through_pts = d->last_output_pts;
+    d->kpkt_replay_index = 0;
+    d->kpkt_replay_total = d->kpkt_cache_count;
+    d->kpkt_restart_count++;
+    av_log(d->avctx, AV_LOG_INFO, "replay %d cached video packets after pts=%" PRId64 "\n",
+           d->kpkt_replay_total, d->replay_discard_through_pts);
+    return 1;
+}
+#endif
+
 static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
     
     int status = 0;
     for (;;) {
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        // Consume the request atomically; cache inspection stays on this thread.
+        if (d->avctx->codec_type == AVMEDIA_TYPE_VIDEO && ffp->is &&
+            __atomic_exchange_n(&ffp->is->video_restart_from_keyframe_req, 0, memory_order_acq_rel)) {
+            if (d->queue->serial == d->pkt_serial)
+                decoder_replay_cached_keyframe(d);
+        }
+#endif
         
         if (d->queue->serial == d->pkt_serial) {
             
@@ -301,6 +333,21 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                             } else if (!ffp->decoder_reorder_pts) {
                                 frame->pts = frame->pkt_dts;
                             }
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                            if (d->replay_discard_through_pts != AV_NOPTS_VALUE &&
+                                (frame->pts == AV_NOPTS_VALUE || frame->pts <= d->replay_discard_through_pts)) {
+                                av_frame_unref(frame);
+                                continue;
+                            }
+                            if (d->replay_discard_through_pts != AV_NOPTS_VALUE)
+                                av_log(d->avctx, AV_LOG_INFO, "video replay caught up: previous=%" PRId64 " next=%" PRId64 "\n",
+                                       d->replay_discard_through_pts, frame->pts);
+                            d->replay_discard_through_pts = AV_NOPTS_VALUE;
+                            d->last_output_pts = frame->pts;
+                            d->hw_failed_count = 0;
+                            d->kpkt_restart_count = 0;
+#endif
                             
                             if (ffp->copy_hw_frame) {
                                 if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
@@ -354,12 +401,38 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
             }
         }
         
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        int pkt_from_queue = 0;
+#endif
         do {
             if (d->queue->nb_packets == 0)
                 SDL_CondSignal(d->empty_queue_cond);
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+            /* seek/flush 导致序列号变化时，放弃未完成的重放并清空关键帧缓存 */
+            if (d->kpkt_replay_total > 0 && d->queue->serial != d->pkt_serial) {
+                decoder_kpkt_cache_reset(d);
+            }
+#endif
+
             if (d->packet_pending) {
                 d->packet_pending = 0;
-            } else {
+            }
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+            else if (d->kpkt_replay_index < d->kpkt_replay_total) {
+                /* ijkplayer 式硬解恢复：重放缓存里从关键帧开始的封包 */
+                av_packet_unref(d->pkt);
+                if (av_packet_ref(d->pkt, &d->kpkt_cache[d->kpkt_replay_index]) < 0) {
+                    av_log(d->avctx, AV_LOG_ERROR, "failed to ref cached packet for replay\n");
+                    d->kpkt_replay_index = 0;
+                    d->kpkt_replay_total = 0;
+                    continue;
+                }
+                d->pkt_serial = d->queue->serial;
+                d->kpkt_replay_index++;
+            }
+#endif
+            else {
                 int old_serial = d->pkt_serial;
                 if (packet_queue_get_or_buffering(ffp, d->queue, d->pkt, &d->pkt_serial, &d->finished) < 0) {
                     status = -1;
@@ -372,14 +445,37 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                         av_bsf_flush(d->bsf);
                     d->finished = 0;
                     d->hw_failed_count = 0;
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                    d->kpkt_restart_count = 0;
+                    d->last_output_pts = AV_NOPTS_VALUE;
+                    d->replay_discard_through_pts = AV_NOPTS_VALUE;
+                    decoder_kpkt_cache_reset(d);
+#endif
                     d->next_pts = d->start_pts;
                     d->next_pts_tb = d->start_pts_tb;
                 }
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                pkt_from_queue = 1;
+#endif
             }
             if (d->queue->serial == d->pkt_serial)
                 break;
             av_packet_unref(d->pkt);
         } while (1);
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        /* 重放结束，回到正常取包流程 */
+        if (d->kpkt_replay_index >= d->kpkt_replay_total) {
+            d->kpkt_replay_index = 0;
+            d->kpkt_replay_total = 0;
+        }
+
+        /* 缓存最近关键帧之后的硬解封包，供硬解会话失效时重放 */
+        if (pkt_from_queue && d->avctx->hw_device_ctx
+            && d->avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+            decoder_kpkt_cache_append(d, d->pkt);
+        }
+#endif
 
         if (d->avctx->codec_type == AVMEDIA_TYPE_SUBTITLE) {
             int got_frame = 0;
@@ -455,9 +551,21 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     || send == AVERROR(EINVAL)) {
                     //Samsung Wonderland Two HDR UHD 4K HDR10.ts decode first frame return AVERROR_INVALIDDATA 
                     //hw accel decode failed greater than twice.
-                    if (d->avctx->hw_device_ctx && ++d->hw_failed_count > 2) {
-                        ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                    if (d->avctx->hw_device_ctx) {
+                        d->hw_failed_count++;
+                        // A stale VideoToolbox session may reject the first
+                        // replay packet. Retry from its keyframe immediately,
+                        // rather than feeding the rest of that GOP as P/B frames.
+                        d->kpkt_replay_index = 0;
+                        d->kpkt_replay_total = 0;
+                        if (!decoder_replay_cached_keyframe(d) && d->hw_failed_count > 2)
+                            ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
                     }
+#else
+                    if (d->avctx->hw_device_ctx && ++d->hw_failed_count > 2)
+                        ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
+#endif
                 } else if (send == AVERROR_PATCHWELCOME) {
                     //ffmpeg 4.0 can't decode tiff raw fmt.
                     VideoState *is = ffp->is;
@@ -602,6 +710,9 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
         decoder_abort(&is->viddec, &is->pictq);
         decoder_destroy(&is->viddec);
         ffpipenode_free_p(&ffp->node_vdec);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        __atomic_store_n(&is->video_restart_from_keyframe_req, 0, memory_order_release);
+#endif
         break;
     default:
         break;
@@ -5914,6 +6025,30 @@ int ffp_reload_video_stream(FFPlayer *ffp)
     }
     return 0;
 }
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+/*
+ * 请求视频硬解解码器从关键帧缓存重启（issue #68）。
+ *
+ * 用于 App 从后台回到前台等场景：iOS 会回收 VideoToolbox 会话，此时解码器
+ * 必须从关键帧重新开始解码。这里不给解码器做破坏性重建，只在 VideoState 上
+ * 置一个请求标志，由视频解码线程在处理下一个封包前自行 flush 并重放关键帧
+ * 缓存（decoder_decode_frame），从而立即恢复出图。
+ *
+ * 返回 1 表示已提交请求；缓存是否可用由解码线程判断，0 表示播放器不存在。
+ */
+int ffp_restart_video_decoder_from_keyframe(FFPlayer *ffp)
+{
+    VideoState *is = ffp ? ffp->is : NULL;
+    if (!is)
+        return 0;
+
+    // Do not read decoder-owned fields here. The decoder thread validates the
+    // cache when it consumes this request; no stream rebuild or seek is needed.
+    __atomic_store_n(&is->video_restart_from_keyframe_req, 1, memory_order_release);
+    return 1;
+}
+#endif
 
 float ffp_get_property_float(FFPlayer *ffp, int id, float default_value)
 {

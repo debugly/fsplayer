@@ -84,6 +84,9 @@ void      ffp_set_playback_rate(FFPlayer *ffp, float rate);
 void      ffp_set_playback_volume(FFPlayer *ffp, float volume);
 int       ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected);
 int       ffp_reload_video_stream(FFPlayer *ffp);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+int       ffp_restart_video_decoder_from_keyframe(FFPlayer *ffp);
+#endif
 
 float     ffp_get_property_float(FFPlayer *ffp, int id, float default_value);
 void      ffp_set_property_float(FFPlayer *ffp, int id, float value);

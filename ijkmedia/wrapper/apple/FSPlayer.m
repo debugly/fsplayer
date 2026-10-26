@@ -150,10 +150,14 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     AVAppAsyncStatistic _asyncStat;
     IjkIOAppCacheStatistic _cacheStat;
     FSHudCardView *_hudCardView;
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     FSNotificationManager *_notificationManager;
     BOOL _playingBeforeInterruption;
-    BOOL _pauseInBackground;
+    BOOL _pauseOnBackgroundAndResumeOnForeground;
+    BOOL _enteredBackground;
+    BOOL _appPlaybackSuspended;
+    BOOL _resumePlaybackOnForeground;
+    BOOL _resumePlaybackAfterPrepare;
 #endif
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
@@ -197,7 +201,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     __block NSTimer *playbackTimeNotifiTimer = player->_playbackTimeNotifiTimer;
     __block FSWeakHolder *weakHolder = player->_weakHolder;
     
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     [player unregisterApplicationObservers];
 #endif
     
@@ -345,8 +349,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     _keepScreenOnWhilePlaying = YES;
     [self setScreenOn:YES];
 
-#if TARGET_OS_IOS
-    _pauseInBackground = NO;
+#if TARGET_OS_IOS || TARGET_OS_TV
+    _pauseOnBackgroundAndResumeOnForeground = NO;
     /* Set audio session to mediaplayback */
     if (options.automaticallySetupAudioSession) {
         NSError *error = nil;
@@ -532,6 +536,12 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)play
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    if (_appPlaybackSuspended) {
+        _resumePlaybackOnForeground = YES;
+        return;
+    }
+#endif
     if (!_mediaPlayer)
         return;
 
@@ -543,6 +553,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)pause
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    _resumePlaybackOnForeground = NO;
+    _resumePlaybackAfterPrepare = NO;
+    _playingBeforeInterruption = NO;
+#endif
     if (!_mediaPlayer)
         return;
 
@@ -551,6 +566,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)stop
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    _resumePlaybackOnForeground = NO;
+    _resumePlaybackAfterPrepare = NO;
+    _playingBeforeInterruption = NO;
+#endif
     if (!_mediaPlayer)
         return;
 
@@ -1708,6 +1728,14 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self createPlaybackTimeNotifiTimerIfNeed];
             
             _isPreparedToPlay = YES;
+#if TARGET_OS_IOS || TARGET_OS_TV
+            // The foreground notification can arrive while prepare is still
+            // running, when ijkmp_start would reject the request.
+            if (_resumePlaybackAfterPrepare && !_appPlaybackSuspended && self.shouldAutoplay) {
+                _resumePlaybackAfterPrepare = NO;
+                [self play];
+            }
+#endif
             
             [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_PREPARED];
             
@@ -2364,7 +2392,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     return YES;
 }
 
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
 #pragma mark app state changed
 
 - (void)registerApplicationObserversWithOptions:(FSOptions *)options
@@ -2384,6 +2412,11 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     [_notificationManager addObserver:self
                              selector:@selector(applicationDidEnterBackground)
                                  name:UIApplicationDidEnterBackgroundNotification
+                               object:nil];
+
+    [_notificationManager addObserver:self
+                             selector:@selector(applicationDidBecomeActive)
+                                 name:UIApplicationDidBecomeActiveNotification
                                object:nil];
 
     [_notificationManager addObserver:self
@@ -2412,7 +2445,11 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
                     _playingBeforeInterruption = YES;
                     break;
             }
-            [self pause];
+            if (_appPlaybackSuspended)
+                _playingBeforeInterruption = _resumePlaybackOnForeground;
+            // Preserve lifecycle resume intent during a system audio interruption.
+            if (_mediaPlayer)
+                ijkmp_pause(_mediaPlayer);
             @try {
                 [[AVAudioSession sharedInstance] setActive:NO error:nil];
             } @catch (NSException *exception) {
@@ -2433,34 +2470,62 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillResignActive
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_pauseInBackground) {
-            [self pause];
-        }
-    });
+    if (!_pauseOnBackgroundAndResumeOnForeground || _appPlaybackSuspended)
+        return;
+
+    _appPlaybackSuspended = YES;
+    _resumePlaybackOnForeground = self.isPlaying || (!self.isPreparedToPlay && self.shouldAutoplay);
+    self.shouldAutoplay = NO;
+    // Bypass the public pause method: this pause preserves the user's play intent.
+    if (_mediaPlayer)
+        ijkmp_pause(_mediaPlayer);
+    av_log(NULL, AV_LOG_INFO, "app lifecycle: paused player=%p time=%.3f resume=%d\n",
+           _mediaPlayer, self.currentPlaybackTime, _resumePlaybackOnForeground);
 }
 
 - (void)applicationDidEnterBackground
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_pauseInBackground) {
-            [self pause];
-        }
-    });
+    _enteredBackground = YES;
+    [self applicationWillResignActive];
+}
+
+- (void)applicationDidBecomeActive
+{
+    BOOL wasInBackground = _enteredBackground;
+    _enteredBackground = NO;
+    if (!_appPlaybackSuspended)
+        return;
+
+    _appPlaybackSuspended = NO;
+    BOOL resume = _resumePlaybackOnForeground;
+    _resumePlaybackOnForeground = NO;
+    if (!resume || !_mediaPlayer)
+        return;
+
+    // Queue recovery before resuming. Keep the player, clocks and displayed frame;
+    // rebuilding the stream and seeking here can skip frames or clear the picture.
+    if (wasInBackground)
+        ijkmp_restart_video_decoder_from_keyframe(_mediaPlayer);
+    self.shouldAutoplay = YES;
+    av_log(NULL, AV_LOG_INFO, "app lifecycle: resuming player=%p time=%.3f\n",
+           _mediaPlayer, self.currentPlaybackTime);
+    _resumePlaybackAfterPrepare = !self.isPreparedToPlay;
+    if (!_resumePlaybackAfterPrepare)
+        [self play];
 }
 
 - (void)applicationWillTerminate
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_pauseInBackground) {
-            [self pause];
-        }
-    });
+    [self applicationWillResignActive];
 }
 
-- (void)setPauseInBackground:(BOOL)pause
+- (void)autoResumeOnForeground:(BOOL)enabled
 {
-    _pauseInBackground = pause;
+    _pauseOnBackgroundAndResumeOnForeground = enabled;
+    if (enabled && [UIApplication sharedApplication].applicationState != UIApplicationStateActive)
+        [self applicationWillResignActive];
+    else if (!enabled && _appPlaybackSuspended)
+        [self applicationDidBecomeActive];
 }
 
 #endif

@@ -24,6 +24,7 @@
 #include "ff_ffplay_def.h"
 #include "ff_packet_list.h"
 #include "ff_frame_queue.h"
+#include "libavutil/mem.h"
 
 int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond) 
 {
@@ -35,6 +36,10 @@ int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond
     d->queue = queue;
     d->empty_queue_cond = empty_queue_cond;
     d->start_pts = AV_NOPTS_VALUE;
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+    d->last_output_pts = AV_NOPTS_VALUE;
+    d->replay_discard_through_pts = AV_NOPTS_VALUE;
+#endif
     d->pkt_serial = 1;
     d->first_frame_decoded_time = SDL_GetTickHR();
     d->first_frame_decoded = 0;
@@ -62,10 +67,14 @@ int decoder_start(Decoder *d, int (*fn)(void *), void *arg, const char *name)
 void decoder_destroy(Decoder *d)
 {
     av_bsf_free(&d->bsf);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+    decoder_kpkt_cache_reset(d);
+    av_freep(&d->kpkt_cache);
+    d->kpkt_cache_capacity = 0;
+#endif
     av_packet_free(&d->pkt);
     avcodec_free_context(&d->avctx);
 }
-
 
 /*
  * 把 avctx->extradata 从 AVCC（MP4 的 avcC 记录）换成等价的 Annex-B
@@ -208,6 +217,64 @@ int decoder_bsf_init(Decoder *d, AVCodecContext *avctx, AVStream *st)
            filter->name, d->bsf_insert_aud);
     return 0;
 }
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+/*
+ * 关键帧封包缓存（issue #68）
+ *
+ * 硬解（VideoToolbox）会话失效时（例如 iOS App 进入后台后系统回收会话），
+ * 解码器必须从关键帧重新开始解码；而封包队列里的下一帧往往是 P/B 帧，
+ * 会被丢弃，直到 demuxer 送来下一个关键帧为止，画面因此卡顿数秒。
+ *
+ * 这里缓存最近一个关键帧之后的全部视频封包，硬解失败时直接从缓存里的关键帧
+ * 重放，立即恢复出图。做法对应 ijkplayer IJKVideoToolBoxAsync.m 中的
+ * m_buffer_packet / DuplicatePkt / ResetPktBuffer 逻辑。
+ */
+#define FFP_KPKT_CACHE_CAPACITY 300
+
+void decoder_kpkt_cache_reset(Decoder *d)
+{
+    if (!d)
+        return;
+    if (d->kpkt_cache) {
+        for (int i = 0; i < d->kpkt_cache_count; i++)
+            av_packet_unref(&d->kpkt_cache[i]);
+    }
+    d->kpkt_cache_count = 0;
+    d->kpkt_cache_bytes = 0;
+    d->kpkt_cache_has_keyframe = 0;
+    d->kpkt_replay_index = 0;
+    d->kpkt_replay_total = 0;
+}
+
+void decoder_kpkt_cache_append(Decoder *d, const AVPacket *pkt)
+{
+    if (!d || !pkt || !pkt->data || pkt->size <= 0)
+        return;
+
+    if (!d->kpkt_cache) {
+        d->kpkt_cache = av_calloc(FFP_KPKT_CACHE_CAPACITY, sizeof(AVPacket));
+        if (!d->kpkt_cache)
+            return;
+        d->kpkt_cache_capacity = FFP_KPKT_CACHE_CAPACITY;
+    }
+
+    if (pkt->flags & AV_PKT_FLAG_KEY) {
+        /* 新的 GOP：缓存从当前关键帧重新开始 */
+        decoder_kpkt_cache_reset(d);
+        d->kpkt_cache_has_keyframe = 1;
+    } else if (d->kpkt_cache_count >= d->kpkt_cache_capacity) {
+        /* 缓存已满仍未等到下一个关键帧：放弃重放能力，退回“等待关键帧”的旧行为 */
+        av_log(NULL, AV_LOG_WARNING, "kpkt cache overflow, disable hw decoder keyframe replay\n");
+        decoder_kpkt_cache_reset(d);
+        return;
+    }
+
+    av_packet_ref(&d->kpkt_cache[d->kpkt_cache_count], pkt);
+    d->kpkt_cache_bytes += pkt->size;
+    d->kpkt_cache_count++;
+}
+#endif
 
 void decoder_abort(Decoder *d, FrameQueue *fq)
 {

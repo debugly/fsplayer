@@ -90,8 +90,11 @@ typedef enum FSAudioChannel {
 - (void)shutdown;
 //YES:sync,NO:async
 - (void)shutdownSync:(BOOL)sync;
-#if TARGET_OS_IOS
-- (void)setPauseInBackground:(BOOL)pause;
+#if TARGET_OS_IOS || TARGET_OS_TV
+/// Default NO. Pause before the app becomes inactive and resume when active again,
+/// only if playback was requested before suspension. Keeps the same player and
+/// playback position; manually paused playback stays paused. Call on the main thread.
+- (void)autoResumeOnForeground:(BOOL)enabled;
 #endif
 //PS:外挂字幕，最多可挂载512个。
 //挂载并激活字幕；本地网络均可

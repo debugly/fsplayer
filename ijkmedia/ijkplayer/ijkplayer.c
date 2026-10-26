@@ -228,6 +228,20 @@ int ijkmp_reload_video_stream(IjkMediaPlayer *mp)
     return ret;
 }
 
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+int ijkmp_restart_video_decoder_from_keyframe(IjkMediaPlayer *mp)
+{
+    assert(mp);
+
+    MPTRACE("%s()\n", __func__);
+    pthread_mutex_lock(&mp->mutex);
+    int ret = ffp_restart_video_decoder_from_keyframe(mp->ffplayer);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("%s()=%d\n", __func__, ret);
+    return ret;
+}
+#endif
+
 float ijkmp_get_property_float(IjkMediaPlayer *mp, int id, float default_value)
 {
     assert(mp);

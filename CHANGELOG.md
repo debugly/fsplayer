@@ -3,6 +3,8 @@
 - fix HEVC hardware decoding on android by enabling all mediacodec decoders instead of only h264
 - rm deprecated rotatePreference property
 - add FSVideoOutputProtocol new protocol
+- replace setPauseInBackground with autoResumeOnForeground
+- improve VideoToolbox foreground recovery on iOS and tvOS by replaying cached keyframe packets and filtering previously decoded frames, fix #68
 
 ## tag 1.1.1
 

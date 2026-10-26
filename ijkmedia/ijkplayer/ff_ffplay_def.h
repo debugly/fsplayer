@@ -30,6 +30,7 @@
  */
 
 #include "config.h"
+#include "ff_hwdec_recovery.h"
 #include <inttypes.h>
 #include <math.h>
 #include <limits.h>
@@ -263,6 +264,30 @@ typedef struct Decoder {
     Uint64 start_seek_time;
     
     int hw_failed_count;
+    
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+    /**
+     * ijkplayer 式关键帧封包缓存（issue #68）。
+     *
+     * 硬解（VideoToolbox）会话被系统回收（例如 App 进入后台再回到前台）后，
+     * 解码器必须从关键帧重新开始解码；而封包队列里的下一帧往往是 P/B 帧，
+     * 会被解码器丢弃，直到 demuxer 送来下一个关键帧为止，画面因此卡顿数秒。
+     *
+     * 这里缓存最近一个关键帧之后的全部视频封包，硬解失败时直接从缓存里的
+     * 关键帧重放，立即恢复出图（对应 ijkplayer IJKVideoToolBoxAsync.m 中
+     * m_buffer_packet / recovery_drop_packet 的做法）。
+     */
+    AVPacket *kpkt_cache;           /* 从关键帧开始的封包缓存 */
+    int       kpkt_cache_count;
+    int       kpkt_cache_capacity;
+    int       kpkt_cache_bytes;
+    int       kpkt_cache_has_keyframe;
+    int       kpkt_replay_index;    /* < kpkt_replay_total 时处于重放态 */
+    int       kpkt_replay_total;
+    int64_t   last_output_pts;     /* Last video frame delivered; never present replayed frames again. */
+    int64_t   replay_discard_through_pts;
+    int       kpkt_restart_count;   /* 连续重启次数，成功出图后清零 */
+#endif
 } Decoder;
 
 typedef struct FFSubtitle FFSubtitle;
@@ -275,6 +300,9 @@ typedef struct VideoState {
     int force_refresh_sub_changed;//changed sub prefercence or close sub.
     int force_refresh_pic;//changed sub prefercence or close sub.
     int force_refresh;
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+    int video_restart_from_keyframe_req;//外部请求视频硬解从关键帧缓存重启（issue #68）
+#endif
     int paused;
     int last_paused;
     int queue_attachments_req;
@@ -832,5 +860,11 @@ int decoder_bsf_init(Decoder *d, AVCodecContext *avctx, AVStream *st);
 int decoder_extradata_annexb(AVCodecContext *avctx, AVStream *st);
 void decoder_destroy(Decoder *d);
 void decoder_abort(Decoder *d, FrameQueue *fq);
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+/* 关键帧封包缓存（issue #68）：硬解会话失效后从最近的关键帧重放 */
+void decoder_kpkt_cache_reset(Decoder *d);
+void decoder_kpkt_cache_append(Decoder *d, const AVPacket *pkt);
+#endif
 
 #endif
