@@ -1,34 +1,25 @@
 {
-  "//": "Mock feed for the vertical swipe demo. Swap this file (or point FSVerticalFeedStore.remoteURLString at a URL) to change rooms without touching view code. Keys are read leniently: roomId/roomid/rid, streamUrl/url/playUrl, coverUrl/cover/pic, tint (hex RRGGBB).",
-  "currentRoomId": "apple-16x9-540p",
+  "//": "Mock feed for the vertical swipe demo. Swap this file (or point FSVerticalFeedStore.remoteURLString at a URL) to change rooms without touching view code. Keys are read leniently: streamUrl/url/playUrl, coverUrl/cover/pic, tint (hex RRGGBB).",
   "items": [
     {
-      "roomId": "apple-16x9-540p",
-      "title": "Apple bipbop 960x540",
-      "anchor": "16x9-gear3",
+      "title": "视频来自于网络，仅用于测试",
       "tint": "1F6FB2",
-      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear3/prog_index.m3u8"
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200f720000bmac6u8ghl0qbhjj7o7g.mp4"
     },
     {
-      "roomId": "apple-16x9-360p",
-      "title": "Apple bipbop 640x360",
-      "anchor": "16x9-gear2",
+      "title": "视频来自于网络，仅用于测试",
       "tint": "B03A6B",
-      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear2/prog_index.m3u8"
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200f720000bmbttlspg62fkbq3gbc0.mp4"
     },
     {
-      "roomId": "apple-4x3-480p",
-      "title": "Apple bipbop 4:3 640x480",
-      "anchor": "4x3-gear2",
+      "title": "视频来自于网络，仅用于测试",
       "tint": "1E8449",
-      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8"
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200f8d0000bmfohns81ukki0an78o0.mp4"
     },
     {
-      "roomId": "apple-4x3-300p",
-      "title": "Apple bipbop 4:3 400x300",
-      "anchor": "4x3-gear1",
+      "title": "视频来自于网络，仅用于测试",
       "tint": "B9770E",
-      "streamUrl": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8"
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200fc40000bmfg3ie8qbl2qj2m5sug.mp4"
     }
   ]
 }

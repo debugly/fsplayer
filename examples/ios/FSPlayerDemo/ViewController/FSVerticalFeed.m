@@ -25,20 +25,16 @@ static NSString *const kFSVerticalFeedErrorDomain = @"FSVerticalFeed";
         return nil;
     }
 
-    NSString *roomId = [self stringIn:dict forKeys:@[@"roomId", @"roomid", @"rid"]];
     NSString *url = [self stringIn:dict forKeys:@[@"streamUrl", @"url", @"playUrl"]];
 
-    // Both are required: without an id the room cannot be identified when
-    // swiping, and without a url there is nothing to play.
-    if (roomId.length == 0 || url.length == 0) {
+    // A stream URL is required for playback.
+    if (url.length == 0) {
         return nil;
     }
 
     FSVerticalFeedItem *item = [[FSVerticalFeedItem alloc] init];
-    item.roomId = roomId;
     item.streamUrl = url;
     item.title = [self stringIn:dict forKeys:@[@"title"]];
-    item.anchor = [self stringIn:dict forKeys:@[@"anchor", @"nickname", @"name"]];
     item.coverUrl = [self stringIn:dict forKeys:@[@"coverUrl", @"cover", @"pic"]];
 
     id tint = dict[@"tint"];
@@ -60,7 +56,7 @@ static NSString *const kFSVerticalFeedErrorDomain = @"FSVerticalFeed";
         if ([value isKindOfClass:[NSString class]] && [value length] > 0) {
             return value;
         }
-        // Numbers arrive as NSNumber from JSON; room ids are often numeric.
+        // Accept numeric metadata as strings as well.
         if ([value isKindOfClass:[NSNumber class]]) {
             return [value stringValue];
         }
@@ -72,46 +68,20 @@ static NSString *const kFSVerticalFeedErrorDomain = @"FSVerticalFeed";
 
 @implementation FSVerticalFeedPage
 
-- (instancetype)initWithItems:(NSArray<FSVerticalFeedItem *> *)items
-               currentRoomId:(NSString *)currentRoomId {
-    self = [super init];
-    if (self) {
-        _items = [items copy];
-        _currentRoomId = [currentRoomId copy];
-    }
-    return self;
-}
-
-- (NSInteger)indexOfRoomId:(NSString *)roomId {
-    __block NSInteger found = -1;
-    [self.items enumerateObjectsUsingBlock:^(FSVerticalFeedItem *item, NSUInteger idx, BOOL *stop) {
-        if ([item.roomId isEqualToString:roomId]) {
-            found = (NSInteger)idx;
-            *stop = YES;
-        }
-    }];
-    return found;
-}
-
-- (FSVerticalFeedItem *)itemForRoomId:(NSString *)roomId {
-    NSInteger idx = [self indexOfRoomId:roomId];
-    return idx >= 0 ? self.items[(NSUInteger)idx] : nil;
-}
-
-- (FSVerticalFeedItem *)itemAfterRoomId:(NSString *)roomId {
-    NSInteger idx = [self indexOfRoomId:roomId];
-    if (idx < 0 || idx + 1 >= (NSInteger)self.items.count) {
+- (FSVerticalFeedItem *)itemAfterItem:(FSVerticalFeedItem *)item {
+    NSUInteger index = [self.items indexOfObjectIdenticalTo:item];
+    if (index == NSNotFound || index + 1 >= self.items.count) {
         return nil;
     }
-    return self.items[(NSUInteger)(idx + 1)];
+    return self.items[index + 1];
 }
 
-- (FSVerticalFeedItem *)itemBeforeRoomId:(NSString *)roomId {
-    NSInteger idx = [self indexOfRoomId:roomId];
-    if (idx <= 0) {
+- (FSVerticalFeedItem *)itemBeforeItem:(FSVerticalFeedItem *)item {
+    NSUInteger index = [self.items indexOfObjectIdenticalTo:item];
+    if (index == NSNotFound || index == 0) {
         return nil;
     }
-    return self.items[(NSUInteger)(idx - 1)];
+    return self.items[index - 1];
 }
 
 + (instancetype)pageWithData:(NSData *)data error:(NSError **)error {
@@ -160,19 +130,14 @@ static NSString *const kFSVerticalFeedErrorDomain = @"FSVerticalFeed";
             *error = [NSError errorWithDomain:kFSVerticalFeedErrorDomain
                                          code:4
                                      userInfo:@{NSLocalizedDescriptionKey:
-                                                    @"every feed entry lacked a roomId or streamUrl"}];
+                                                    @"every feed entry lacked a streamUrl"}];
         }
         return nil;
     }
 
-    // A missing currentRoomId is not fatal: fall back to the first entry so the
-    // demo still has somewhere to start.
-    NSString *current = root[@"currentRoomId"];
-    if (![current isKindOfClass:[NSString class]] || current.length == 0) {
-        current = items.firstObject.roomId;
-    }
-
-    return [[self alloc] initWithItems:items currentRoomId:current];
+    FSVerticalFeedPage *page = [[self alloc] init];
+    page.items = items;
+    return page;
 }
 
 @end
@@ -196,7 +161,7 @@ static NSString *const kFSVerticalFeedErrorDomain = @"FSVerticalFeed";
     return self;
 }
 
-- (FSVerticalFeedPage *)loadPageForRoomId:(NSString *)roomId error:(NSError **)error {
+- (FSVerticalFeedPage *)loadPageWithError:(NSError **)error {
     NSData *data = nil;
 
     if (self.remoteURLString.length > 0) {
@@ -219,14 +184,7 @@ static NSString *const kFSVerticalFeedErrorDomain = @"FSVerticalFeed";
         data = [NSData dataWithContentsOfURL:resource options:0 error:error];
     }
 
-    // The requested room only decides where playback starts; the neighbour
-    // lookup is done by room id against the loaded items, so a feed that does
-    // not mention the requested room still works.
-    FSVerticalFeedPage *page = [FSVerticalFeedPage pageWithData:data error:error];
-    if (page && roomId.length > 0 && [page itemForRoomId:roomId]) {
-        page.currentRoomId = roomId;
-    }
-    return page;
+    return [FSVerticalFeedPage pageWithData:data error:error];
 }
 
 @end

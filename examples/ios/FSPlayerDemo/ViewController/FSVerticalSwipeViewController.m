@@ -46,13 +46,15 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 
 @property(nonatomic, strong) id<FSMediaPlayback> player;
 
-/// Title/room overlay, kept above the pan view so it does not slide away.
+/// Overlay controls, kept above the pan view so they do not slide away.
 @property(nonatomic, strong) UILabel *titleLabel;
-@property(nonatomic, strong) UILabel *roomLabel;
 @property(nonatomic, strong) UILabel *hintLabel;
+@property(nonatomic, strong) UIButton *playPauseButton;
 
 @property(nonatomic, assign) CGPoint panStartCenter;
 @property(nonatomic, assign) BOOL isSwitching;
+@property(nonatomic, assign) BOOL playbackSuspended;
+@property(nonatomic, assign) BOOL resumePlaybackWhenActive;
 
 @end
 
@@ -68,6 +70,15 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 
     [self buildSubviews];
 
+    self.playbackSuspended = [UIApplication sharedApplication].applicationState != UIApplicationStateActive;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(applicationWillResignActive:)
+                                                 name:UIApplicationWillResignActiveNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(applicationDidBecomeActive:)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
     [self loadFeedAndPlay];
 
     // Debug aids, driven by launch arguments so the interaction can be checked
@@ -112,7 +123,7 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
             NSLog(@"FSVertical auto-swipe %lu done, now %@",
-                  (unsigned long)next, self.currentItem.roomId);
+                  (unsigned long)next, self.currentItem.title);
             [self runAutomatedSwipes:remaining - 1 from:next];
         });
     });
@@ -124,6 +135,34 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     if (self.isMovingFromParentViewController) {
         [self teardownPlayer];
     }
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)applicationWillResignActive:(NSNotification *)notification {
+    if (self.playbackSuspended) {
+        return;
+    }
+    self.playbackSuspended = YES;
+    self.resumePlaybackWhenActive = [self.player isPlaying] ||
+        (self.player && !self.player.isPreparedToPlay && self.player.shouldAutoplay);
+    // Also prevent a pending prepare from starting playback in the background.
+    self.player.shouldAutoplay = NO;
+    [self.player pause];
+    [self updatePlaybackButton];
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    self.playbackSuspended = NO;
+    BOOL resume = self.resumePlaybackWhenActive;
+    self.resumePlaybackWhenActive = NO;
+    if (resume && self.player) {
+        self.player.shouldAutoplay = YES;
+        [self.player play];
+    }
+    [self updatePlaybackButton];
 }
 
 #pragma mark - Subviews
@@ -167,11 +206,6 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     self.titleLabel.font = [UIFont boldSystemFontOfSize:17];
     self.titleLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
 
-    self.roomLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 88, bounds.size.width - 32, 20)];
-    self.roomLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.75];
-    self.roomLabel.font = [UIFont systemFontOfSize:13];
-    self.roomLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-
     self.hintLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, bounds.size.height - 72,
                                                                bounds.size.width, 20)];
     self.hintLabel.text = @"Swipe up / down to change room";
@@ -180,10 +214,26 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     self.hintLabel.font = [UIFont systemFontOfSize:13];
     self.hintLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
 
-    // Above the pan view so the labels stay put while the video slides.
+    // Above the pan view so the overlay stays put while the video slides.
     [self.view addSubview:self.titleLabel];
-    [self.view addSubview:self.roomLabel];
     [self.view addSubview:self.hintLabel];
+
+    self.playPauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.playPauseButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.playPauseButton.tintColor = [UIColor whiteColor];
+    self.playPauseButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    self.playPauseButton.layer.cornerRadius = 22;
+    self.playPauseButton.titleLabel.font = [UIFont boldSystemFontOfSize:16];
+    [self.playPauseButton addTarget:self action:@selector(togglePlayback)
+                  forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.playPauseButton];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.playPauseButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.playPauseButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-88],
+        [self.playPauseButton.widthAnchor constraintEqualToConstant:112],
+        [self.playPauseButton.heightAnchor constraintEqualToConstant:44],
+    ]];
+    [self updatePlaybackButton];
 }
 
 #pragma mark - Feed
@@ -191,15 +241,9 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 - (void)loadFeedAndPlay {
     __weak __typeof(self) weakSelf = self;
 
-    // Always start at the feed's first room. Remembering the last one meant a
-    // second run began mid-list, and swiping up from the end of the feed just
-    // bounced back.
-    NSString *roomId = nil;
-
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *error = nil;
-        FSVerticalFeedPage *page = [[FSVerticalFeedStore sharedStore] loadPageForRoomId:roomId
-                                                                                   error:&error];
+        FSVerticalFeedPage *page = [[FSVerticalFeedStore sharedStore] loadPageWithError:&error];
 
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong __typeof(weakSelf) self = weakSelf;
@@ -213,7 +257,7 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
             }
 
             self.page = page;
-            [self playItem:[page itemForRoomId:page.currentRoomId]];
+            [self playItem:page.items.firstObject];
         });
     });
 }
@@ -233,14 +277,13 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
         return;
     }
 
-    if ([item.roomId isEqualToString:self.currentItem.roomId] && self.player) {
+    if (item == self.currentItem && self.player) {
         return;
     }
 
     self.currentItem = item;
 
-    self.titleLabel.text = item.title.length > 0 ? item.title : item.roomId;
-    self.roomLabel.text = [NSString stringWithFormat:@"room: %@", item.roomId];
+    self.titleLabel.text = item.title.length > 0 ? item.title : @"Untitled";
     self.hintLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.6];
     self.hintLabel.text = @"Swipe up / down to change room";
 
@@ -253,7 +296,8 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     options.currentPlaybackTimeNotificationInterval = 0.5;
 
     FSPlayer *player = [[FSPlayer alloc] initWithContent:item.streamUrl options:options];
-    player.shouldAutoplay = YES;
+    player.shouldAutoplay = !self.playbackSuspended;
+    self.resumePlaybackWhenActive = self.playbackSuspended;
     player.scalingMode = FSScalingModeAspectFit;
 
     player.view.frame = self.panView.bounds;
@@ -261,17 +305,55 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     [self.panView addSubview:player.view];
 
     self.player = player;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(playbackStateDidChange:)
+                                                 name:FSPlayerPlaybackStateDidChangeNotification
+                                               object:player];
     [player prepareToPlay];
+    [self updatePlaybackButton];
+}
+
+- (void)togglePlayback {
+    if (self.playbackSuspended) {
+        return;
+    }
+    if ([self.player isPlaying]) {
+        self.player.shouldAutoplay = NO;
+        [self.player pause];
+    } else {
+        self.player.shouldAutoplay = YES;
+        [self.player play];
+    }
+    [self updatePlaybackButton];
+}
+
+- (void)playbackStateDidChange:(NSNotification *)notification {
+    if (notification.object == self.player) {
+        [self updatePlaybackButton];
+    }
+}
+
+- (void)updatePlaybackButton {
+    BOOL playing = [self.player isPlaying];
+    NSString *title = playing ? @"Pause" : @"Play";
+    [self.playPauseButton setTitle:title forState:UIControlStateNormal];
+    self.playPauseButton.accessibilityLabel = title;
+    self.playPauseButton.enabled = self.player != nil && !self.playbackSuspended;
 }
 
 - (void)teardownPlayer {
+    self.resumePlaybackWhenActive = NO;
     if (!self.player) {
         return;
     }
 
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:FSPlayerPlaybackStateDidChangeNotification
+                                                  object:self.player];
     [self.player stop];
     [self.player.view removeFromSuperview];
     self.player = nil;
+    [self updatePlaybackButton];
 }
 
 #pragma mark - Backdrop
@@ -427,12 +509,12 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 }
 
 - (void)switchToNextRoom {
-    [self switchRoomWithItem:[self.page itemAfterRoomId:self.currentItem.roomId]
+    [self switchRoomWithItem:[self.page itemAfterItem:self.currentItem]
                    direction:FSPanDirectionUp];
 }
 
 - (void)switchToPreviousRoom {
-    [self switchRoomWithItem:[self.page itemBeforeRoomId:self.currentItem.roomId]
+    [self switchRoomWithItem:[self.page itemBeforeItem:self.currentItem]
                    direction:FSPanDirectionDown];
 }
 

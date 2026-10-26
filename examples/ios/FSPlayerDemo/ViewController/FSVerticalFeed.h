@@ -18,13 +18,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// One entry in the feed. `roomId` is the identity used when swiping;
-/// `streamUrl` is what FSPlayer plays.
+/// One entry in the feed. `streamUrl` is what FSPlayer plays.
 @interface FSVerticalFeedItem : NSObject
 
-@property(nonatomic, copy) NSString *roomId;
 @property(nonatomic, copy) NSString *title;
-@property(nonatomic, copy) NSString *anchor;
 @property(nonatomic, strong, nullable) UIColor *tintColor;
 @property(nonatomic, copy) NSString *streamUrl;
 
@@ -36,20 +33,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-/// A page of the feed plus the ids of the neighbours of `currentRoomId`.
-///
-/// The shape mirrors what a real live service returns: it answers "what is
-/// before and after the room you are in", not "give me a list". That is what
-/// lets the demo switch rooms on a swipe without fetching the whole feed.
+/// An ordered page of feed entries. Playback starts at the first entry.
 @interface FSVerticalFeedPage : NSObject
 
-@property(nonatomic, copy) NSString *currentRoomId;
 @property(nonatomic, copy) NSArray<FSVerticalFeedItem *> *items;
 
-/// The item after `currentRoomId`, or nil when the feed ends.
-- (nullable FSVerticalFeedItem *)itemAfterRoomId:(NSString *)roomId;
-- (nullable FSVerticalFeedItem *)itemBeforeRoomId:(NSString *)roomId;
-- (nullable FSVerticalFeedItem *)itemForRoomId:(NSString *)roomId;
+/// Adjacent entries, or nil at the beginning/end of the feed.
+- (nullable FSVerticalFeedItem *)itemAfterItem:(FSVerticalFeedItem *)item;
+- (nullable FSVerticalFeedItem *)itemBeforeItem:(FSVerticalFeedItem *)item;
 
 + (nullable FSVerticalFeedPage *)pageWithData:(NSData *)data
                                        error:(NSError **)error;
@@ -71,8 +62,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Blocking; call off the main thread. Returns nil and fills `error` on
 /// failure.
-- (nullable FSVerticalFeedPage *)loadPageForRoomId:(NSString *)roomId
-                                             error:(NSError **)error;
+- (nullable FSVerticalFeedPage *)loadPageWithError:(NSError **)error;
 
 @end
 
