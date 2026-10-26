@@ -54,7 +54,6 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 @property(nonatomic, assign) CGPoint panStartCenter;
 @property(nonatomic, assign) BOOL isSwitching;
 @property(nonatomic, assign) BOOL playbackSuspended;
-@property(nonatomic, assign) BOOL resumePlaybackWhenActive;
 
 @end
 
@@ -146,22 +145,11 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
         return;
     }
     self.playbackSuspended = YES;
-    self.resumePlaybackWhenActive = [self.player isPlaying] ||
-        (self.player && !self.player.isPreparedToPlay && self.player.shouldAutoplay);
-    // Also prevent a pending prepare from starting playback in the background.
-    self.player.shouldAutoplay = NO;
-    [self.player pause];
     [self updatePlaybackButton];
 }
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
     self.playbackSuspended = NO;
-    BOOL resume = self.resumePlaybackWhenActive;
-    self.resumePlaybackWhenActive = NO;
-    if (resume && self.player) {
-        self.player.shouldAutoplay = YES;
-        [self.player play];
-    }
     [self updatePlaybackButton];
 }
 
@@ -256,6 +244,12 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
                 return;
             }
 
+            // Optional local fixture for repeatable device lifecycle checks.
+            if ([[NSProcessInfo processInfo].arguments containsObject:@"-FSVerticalLocalTestVideo"]) {
+                NSString *path = [[NSBundle mainBundle] pathForResource:@"lifecycle-test" ofType:@"mp4"];
+                if (path.length > 0)
+                    page.items.firstObject.streamUrl = path;
+            }
             self.page = page;
             [self playItem:page.items.firstObject];
         });
@@ -296,8 +290,7 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
     options.currentPlaybackTimeNotificationInterval = 0.5;
 
     FSPlayer *player = [[FSPlayer alloc] initWithContent:item.streamUrl options:options];
-    player.shouldAutoplay = !self.playbackSuspended;
-    self.resumePlaybackWhenActive = self.playbackSuspended;
+    [player autoResumeOnForeground:YES];
     player.scalingMode = FSScalingModeAspectFit;
 
     player.view.frame = self.panView.bounds;
@@ -342,7 +335,6 @@ typedef NS_ENUM(NSInteger, FSPanDirection) {
 }
 
 - (void)teardownPlayer {
-    self.resumePlaybackWhenActive = NO;
     if (!self.player) {
         return;
     }

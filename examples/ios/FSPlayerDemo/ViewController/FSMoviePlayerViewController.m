@@ -112,7 +112,8 @@
     
     self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
-    
+    //自动恢复
+    [self.player autoResumeOnForeground:YES];
     FSSubtitlePreference p = self.player.subtitlePreference;
     p.PrimaryColour = 16776960;
     self.player.subtitlePreference = p;
