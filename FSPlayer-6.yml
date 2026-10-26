@@ -25,6 +25,7 @@ targets:
           - "ijksdl/ios/*.*"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
+          - "ijksoundtouch/**/*.*"
       - path: ijkmedia/ijkplayer/ff_subtitle_preference.h
         headerVisibility: public
       - path: ijkmedia/wrapper/apple
@@ -127,6 +128,7 @@ targets:
           - "ijksdl/mac/*.*"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
+          - "ijksoundtouch/**/*.*"
       - path: ijkmedia/ijkplayer/ff_subtitle_preference.h
         headerVisibility: public
       - path: ijkmedia/wrapper/apple
@@ -229,6 +231,7 @@ targets:
           - "ijksdl/mac/*.*"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
+          - "ijksoundtouch/**/*.*"
       - path: ijkmedia/ijkplayer/ff_subtitle_preference.h
         headerVisibility: public
       - path: ijkmedia/wrapper/apple
