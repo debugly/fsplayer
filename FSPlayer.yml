@@ -34,7 +34,7 @@ targets:
       MARKETING_VERSION: 1.1.2
       DEFINES_MODULE: YES
       CLANG_WARN_DOCUMENTATION_COMMENTS: NO
-      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-macos.modulemap"
+      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module.modulemap"
       MY_PROJECT_DIR: "${MY_PROJECT_DIR}"
       SWIFT_INCLUDE_PATHS:
         - "${MY_PROJECT_DIR}/ijkmedia/wrapper/apple"
@@ -140,7 +140,7 @@ targets:
       MARKETING_VERSION: 1.1.2
       DEFINES_MODULE: YES
       CLANG_WARN_DOCUMENTATION_COMMENTS: NO
-      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-ios.modulemap"
+      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module.modulemap"
       SWIFT_INCLUDE_PATHS:
         - "${MY_PROJECT_DIR}/ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES
@@ -243,7 +243,7 @@ targets:
       MARKETING_VERSION: 1.1.2
       DEFINES_MODULE: YES
       CLANG_WARN_DOCUMENTATION_COMMENTS: NO
-      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module-tvos.modulemap"
+      MODULEMAP_FILE: "${MY_PROJECT_DIR}/module.modulemap"
       SWIFT_INCLUDE_PATHS:
         - "${MY_PROJECT_DIR}/ijkmedia/wrapper/apple"
       GENERATE_INFOPLIST_FILE: YES

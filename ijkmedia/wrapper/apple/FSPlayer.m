@@ -25,7 +25,6 @@
 #import "FSPlayer.h"
 #import "FSMetalView.h"
 #import "FSHudCardView.h"
-#import "FSPlayerDef.h"
 #import "FSMediaPlayback.h"
 #import "FSMediaModule.h"
 #import "FSNotificationManager.h"
@@ -39,6 +38,7 @@
 #include "../ijkmedia/ijkplayer/ijkmeta.h"
 #include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 #include "ijksdl/apple/ijk_vout_common.h"
+#include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 
 static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
@@ -56,6 +56,78 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @interface FSPlayer()
 
 @property (nonatomic, copy) NSString *content;
+
+@end
+
+
+@interface FSPlayerMessage : NSObject
+
+@property (nonatomic, assign) AVMessage *msg;
+
+@end
+
+@implementation FSPlayerMessage
+{
+@public
+    AVMessage m_msg;
+}
+
+- (AVMessage *)msg
+{
+    return &m_msg;
+}
+
+@end
+
+@interface FSPlayerMessagePool : NSObject
+
+- (FSPlayerMessagePool *)init;
+- (FSPlayerMessage *) obtain;
+- (void) recycle:(FSPlayerMessage *)msg;
+
+@end
+
+@implementation FSPlayerMessagePool{
+    NSMutableArray *_array;
+}
+
+- (FSPlayerMessagePool *)init
+{
+    self = [super init];
+    if (self) {
+        _array = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (FSPlayerMessage *) obtain
+{
+    FSPlayerMessage *msg = nil;
+
+    @synchronized(self) {
+        NSUInteger count = [_array count];
+        if (count > 0) {
+            msg = [_array objectAtIndex:count - 1];
+            [_array removeLastObject];
+        }
+    }
+
+    if (!msg)
+        msg = [[FSPlayerMessage alloc] init];
+
+    return msg;
+}
+
+- (void) recycle:(FSPlayerMessage *)msg
+{
+    if (!msg)
+        return;
+    msg_free_res(msg.msg);
+    @synchronized(self) {
+        if ([_array count] <= 10)
+            [_array addObject:msg];
+    }
+}
 
 @end
 
