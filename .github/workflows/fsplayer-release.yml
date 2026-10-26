@@ -237,26 +237,35 @@ jobs:
     # 触发它的仓库里有权限，dispatch fsplayer-spm 一律 403
     # （Resource not accessible by integration）。给本 workflow 加
     # permissions: actions: write 也没用，别再试那条路。
+    # 用部署密钥推一个 upgrade/<version> 的注记 tag 到 fsplayer-spm，由那边的
+    # workflow 接手。之所以不调 API：workflow_dispatch 需要 PAT（GITHUB_TOKEN 跨仓
+    # 必然 403），而部署密钥只对这一个仓库有写权限，不需要维护账号级 token。
+    # checksum 写进 tag message，源仓库算一次，接收端直接读。
     - name: Trigger fsplayer-spm upgrade
       env:
-        GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        SPM_DEPLOY_KEY: ${{ secrets.SPM_DEPLOY_KEY }}
       run: |
         set -euo pipefail
-        if [[ -z "${GH_TOKEN}" ]]; then
-          echo "::error::secret WORKFLOW_TOKEN 未配置，无法触发 fsplayer-spm 的 upgrade"
-          echo "::error::需要在 debugly/fsplayer 仓库添加该 secret，并授予 fsplayer-spm 的 Actions: write"
+        if [[ -z "$SPM_DEPLOY_KEY" ]]; then
+          echo "::error::请在 Environments -> fsplayer-maven 配置 SPM_DEPLOY_KEY（fsplayer-spm 的写权限部署密钥私钥）"
           exit 1
         fi
         set -a; source release-constants.env; set +a
 
-        # 计算 FSPlayer.zip 的校验和，触发 fsplayer-spm upgrade workflow
         CHECKSUM=$(swift package compute-checksum dist/FSPlayer.zip)
         echo "::notice::FSPlayer.zip 校验和：${CHECKSUM}"
-        echo "::notice::触发 fsplayer-spm upgrade workflow，版本号：${VERSION}"
-        gh workflow run upgrade-with-checksum.yml \
-          --repo debugly/fsplayer-spm \
-          -f version="$VERSION" \
-          -f checksum="$CHECKSUM"
+
+        KEY="$RUNNER_TEMP/spm-deploy-key"
+        install -m 600 /dev/null "$KEY"
+        printf '%s\n' "$SPM_DEPLOY_KEY" > "$KEY"
+        export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+        SPM_DIR=$(mktemp -d "$RUNNER_TEMP/fsplayer-spm.XXXXXX")
+        git clone --depth 1 git@github.com:debugly/fsplayer-spm.git "$SPM_DIR"
+        git -C "$SPM_DIR" tag -a "upgrade/${VERSION}" -m "checksum=${CHECKSUM}"
+        # -f：万一上次的触发 tag 没被接收端删掉，重新指一次也不会失败。
+        git -C "$SPM_DIR" push -f origin "refs/tags/upgrade/${VERSION}"
+        echo "::notice::已推 upgrade/${VERSION}，触发 fsplayer-spm 的 upgrade"
 
     # 【临时禁用】发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret
     # （值不进仓库）：

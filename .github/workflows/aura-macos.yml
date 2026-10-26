@@ -33,7 +33,7 @@ jobs:
   build:
     name: build-aura-macos
     runs-on: macos-26
-    # WORKFLOW_TOKEN 位于 Environments -> workflow，需要显式绑定才能读取。
+    # HOMEBREW_DEPLOY_KEY 位于 Environments -> workflow，需要显式绑定才能读取。
     environment: workflow
     steps:
     - name: Checkout
