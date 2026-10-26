@@ -1181,6 +1181,27 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self toggleTitleBar:NO];
 }
 
+- (void)applyBackgroundBlurInView:(NSView *)view image:(NSImage *)image
+{
+    if ([view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        NSView<FSVideoRenderingProtocol> *renderer = (NSView<FSVideoRenderingProtocol> *)view;
+        renderer.backgroundBlurIterations = 3;
+        renderer.backgroundBlurSigma = 30.0;
+        renderer.backgroundImage = image;
+    }
+    for (NSView *subview in view.subviews) {
+        [self applyBackgroundBlurInView:subview image:image];
+    }
+}
+
+- (void)applyBackgroundBlurSetting
+{
+    NSImage *image = [MRCocoaBindingUserDefault boolForKey:@"background_blur_enabled"]
+        ? [NSImage imageNamed:@"demo-bg"] : nil;
+    [self applyBackgroundBlurInView:self.player.view image:image];
+    [self applyBackgroundBlurInView:self.extraRenderWindow.contentView image:image];
+}
+
 - (NSView <FSVideoRenderingProtocol> *)renderingView
 {
     if ([self.player.view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
@@ -1672,9 +1693,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
         [videoAux addSubview:playerView];
         
-        playerView.backgroundBlurIterations = 3;
-        playerView.backgroundBlurSigma = 30.0;
-        playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
         [playerView setDisplayDelegate:self];
         
         // Setup second render view in independent window
@@ -1715,12 +1733,11 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
         [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
-        playerView.backgroundBlurIterations = 3;
-        playerView.backgroundBlurSigma = 30.0;
-        playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
         [playerView setDisplayDelegate:self];
     }
     
+    [self applyBackgroundBlurSetting];
+
     float speed = [MRCocoaBindingUserDefault playback_speed];
     if (speed <= 0.0) speed = 1.0;
     self.player.playbackRate = speed;
@@ -3058,6 +3075,11 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         BOOL allow = [MRCocoaBindingUserDefault open_hdr];
         self.renderingView.allowHDRDirectDisplay = allow;
     } forKey:@"open_hdr"];
+
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
+        __strongSelf__
+        [self applyBackgroundBlurSetting];
+    } forKey:@"background_blur_enabled"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__

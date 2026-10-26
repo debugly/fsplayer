@@ -1032,6 +1032,14 @@ static NSButton *MRCreateSwitch(void) {
 
     // Section 3: Player Settings
     [self.moreDocView addArrangedSubview:[self createSectionHeaderWithTitle:@"播放器设置"]];
+
+    NSButton *backgroundBlurToggle = MRCreateSwitch();
+    [backgroundBlurToggle bind:@"value"
+                      toObject:[NSUserDefaultsController sharedUserDefaultsController]
+                   withKeyPath:@"values.background_blur_enabled"
+                       options:nil];
+    [self.moreDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"高斯模糊背景:"
+                                                               checkbox:backgroundBlurToggle]];
     
     // Playback History Row with NSSwitch
     NSView *historyRow = [[NSView alloc] init];
