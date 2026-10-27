@@ -122,6 +122,10 @@ typedef CGRect NSRect;
 #endif
 @property (nonatomic, strong) FSDisplayLinkWrapper *displayLinkWrapper;
 @property (atomic, assign) long previousTag;
+// YES when the current display supports EDR/HDR and HDR content is rendered natively
+// (no tone-mapping to SDR). Updated automatically when the display changes.
+// HDR direct display is unavailable on tvOS
+@property(nonatomic, readonly) BOOL directDisplayHDRSupported HDR_API_AVAILABLE;
 // Whether the current display supports EDR/HDR and we have switched to HDR rendering mode.
 @property (nonatomic, assign) BOOL hdrDirectDisplayActive HDR_API_AVAILABLE;
 // 高斯模糊背景：复用字幕管线（BGRA/DIRECT）把模糊后的纹理铺满整个视图。
@@ -157,7 +161,6 @@ typedef CGRect NSRect;
 #if TARGET_OS_IOS
 @synthesize scaleFactor = _scaleFactor;
 #endif
-@synthesize directDisplayHDRSupportted = _directDisplayHDRSupportted;
 @synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
 
 @synthesize displayDelegate = _displayDelegate;
@@ -347,8 +350,8 @@ typedef CGRect NSRect;
     [self.renderSnapshotLock lock];
     BOOL supportsHDR = _screenSupportsHDR && isHDRContent;
     
-    if (supportsHDR != self.directDisplayHDRSupportted) {
-        _directDisplayHDRSupportted = supportsHDR;
+    if (supportsHDR != self.directDisplayHDRSupported) {
+        _directDisplayHDRSupported = supportsHDR;
         ALOGI("content and display support HDR: %d", supportsHDR);
     }
     
@@ -1050,7 +1053,7 @@ end:
     FSMetalRenderer *savedPipeline = nil;
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
-        if (self.directDisplayHDRSupportted) {
+        if (self.directDisplayHDRSupported) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
             FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
@@ -1147,7 +1150,7 @@ end:
     FSMetalRenderer *savedPipeline = nil;
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
-        if (self.directDisplayHDRSupportted) {
+        if (self.directDisplayHDRSupported) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
             FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
