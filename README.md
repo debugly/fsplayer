@@ -85,13 +85,13 @@ Latest additions
 - [x] Playable &amp; seekable when audio ends before video
 - [x] Video filters with software deinterlacing
 - [x] Synchronous destroy (async by default)
+- [x] Transparent video and transparent background (uncovered areas show the views underneath)
 
 Under investigation
 
 - [ ] AV1 hardware decode (stable on most, some files still crash)
 - [ ] Live playback / timeshift
 - [ ] Variable playback rate with pitch correction
-- [ ] Transparent video
 - [ ] Picture-in-picture
 
 ## Build environment
