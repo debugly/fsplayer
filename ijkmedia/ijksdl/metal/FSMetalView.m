@@ -130,6 +130,10 @@ typedef CGRect NSRect;
 @property (atomic, strong) id<MTLTexture> backgroundTexture;
 @property (atomic, assign) BOOL needRebuildBackgroundTexture;
 @property (nonatomic, assign) BOOL screenSupportsHDR;
+@property (nonatomic) MTLClearColor requestedBackgroundColor;
+@property (atomic) BOOL automaticBackgroundTransparencyActive;
+@property (atomic) BOOL backgroundTransparencyApplied;
+@property (nonatomic) BOOL picturePipelineHasAlpha;
 @end
 
 @implementation FSMetalView
@@ -590,7 +594,7 @@ typedef CGRect NSRect;
     }
     
     if (self.picturePipeline) {
-        if ([self.picturePipeline matchPixelBuffer:pixelBuffer]) {
+        if ([self.picturePipeline matchPixelBuffer:pixelBuffer] && self.picturePipelineHasAlpha == blend) {
             return YES;
         }
         ALOGI("pixel format not match,need rebuild pipeline");
@@ -611,6 +615,7 @@ typedef CGRect NSRect;
     }
     self.pipelineMeta = meta;
     self.picturePipeline = picturePipeline;
+    self.picturePipelineHasAlpha = blend;
     return picturePipeline != nil;
 }
 
@@ -847,6 +852,9 @@ end:
     [self.renderSnapshotLock unlock];
 
     self.drawingFrame = currentAttach;
+
+    // Layer/view changes must happen on the main thread, outside renderSnapshotLock.
+    [self updateBackgroundTransparencyForFrame:currentAttach force:NO];
 
     if (!currentAttach.videoPicture) {
         return;
@@ -1253,9 +1261,68 @@ end:
 
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b
 {
-    self.clearColor = (MTLClearColor){r/255.0, g/255.0, b/255.0, 1.0f};
-    self.needCleanBackgroundColor = YES;
+    [self setBackgroundColor:r g:g b:b transparent:NO];
+}
+
+- (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b transparent:(BOOL)transparent
+{
+    [self.renderSnapshotLock lock];
+    _requestedBackgroundColor = (MTLClearColor){r/255.0, g/255.0, b/255.0, transparent ? 0.0 : 1.0};
+    FSMetalRenderFrame *frame = self.currentFrame;
+    [self.renderSnapshotLock unlock];
+    [self updateBackgroundTransparencyForFrame:frame force:YES];
     [self setNeedsRefreshCurrentPic];
+}
+
+- (void)setAutoTransparentBackgroundColor:(BOOL)enabled
+{
+    [self.renderSnapshotLock lock];
+    BOOL changed = _autoTransparentBackgroundColor != enabled;
+    _autoTransparentBackgroundColor = enabled;
+    FSMetalRenderFrame *frame = self.currentFrame;
+    [self.renderSnapshotLock unlock];
+    if (!changed) return;
+    [self updateBackgroundTransparencyForFrame:frame force:NO];
+    [self setNeedsRefreshCurrentPic];
+}
+
+- (void)updateBackgroundTransparencyForFrame:(FSMetalRenderFrame *)frame force:(BOOL)force
+{
+    [self.renderSnapshotLock lock];
+    BOOL automatic = _autoTransparentBackgroundColor && frame.hasAlpha;
+    BOOL transparent = _requestedBackgroundColor.alpha == 0.0 || automatic;
+    BOOL unchanged = self.automaticBackgroundTransparencyActive == automatic &&
+                     self.backgroundTransparencyApplied == transparent;
+    [self.renderSnapshotLock unlock];
+    if (!force && unchanged) return;
+
+    void (^update)(void) = ^{
+        [self.renderSnapshotLock lock];
+        // Recheck settings in case the caller changed them while the render thread waited.
+        BOOL autoTransparent = self->_autoTransparentBackgroundColor && frame.hasAlpha;
+        MTLClearColor color = self->_requestedBackgroundColor;
+        BOOL isTransparent = color.alpha == 0.0 || autoTransparent;
+        // Transparent drawables use premultiplied alpha: RGB must also be zero.
+        color = isTransparent ? (MTLClearColor){0.0, 0.0, 0.0, 0.0} : color;
+        color.alpha = isTransparent ? 0.0 : 1.0;
+        self.clearColor = color;
+        self.automaticBackgroundTransparencyActive = autoTransparent;
+        self.backgroundTransparencyApplied = isTransparent;
+        self.needCleanBackgroundColor = YES;
+        [self.renderSnapshotLock unlock];
+
+        self.layer.opaque = !isTransparent;
+#if !TARGET_OS_OSX
+        self.opaque = !isTransparent;
+        self.backgroundColor = isTransparent ? UIColor.clearColor :
+            [UIColor colorWithRed:color.red green:color.green blue:color.blue alpha:1.0];
+#endif
+    };
+    if ([NSThread isMainThread]) {
+        update();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), update);
+    }
 }
 
 - (void)setBackgroundImage:(UIImage *)backgroundImage

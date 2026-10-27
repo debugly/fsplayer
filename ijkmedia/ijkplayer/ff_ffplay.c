@@ -1490,6 +1490,12 @@ static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFram
     #if defined(__ANDROID__)
         overlay_format = SDL_FCC_YV12;
     #elif defined(__APPLE__)
+        // 源帧是否带 alpha（webm/VP9 的 yuva420p、ProRes4444 的 yuva444p10、qtrle 的 argb、
+        // rawvideo 的 yuva* 等）。这类帧要转 32BGRA，Metal 侧 bgraFragmentShader 会把 alpha
+        // 透传，再配合 attach.hasAlpha 打开的混合即可显示「透明视频」；落到 default 分支会被
+        // 转成 NV12，alpha 直接丢掉（issue #56）。
+        const AVPixFmtDescriptor *src_alpha_pfd = av_pix_fmt_desc_get(src_format);
+        const int src_has_alpha = src_alpha_pfd && (src_alpha_pfd->flags & AV_PIX_FMT_FLAG_ALPHA);
     #if TARGET_OS_OSX
         if (src_format == AV_PIX_FMT_UYVY422) {
             overlay_format = SDL_FCC_UYVY;
@@ -1497,61 +1503,70 @@ static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFram
             overlay_format = SDL_FCC_YUV2;
         } else
     #endif
-    // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
-    #if TARGET_CPU_ARM64
-        if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
-            overlay_format = SDL_FCC_J420;
-        } else if (src_format == AV_PIX_FMT_YUV420P) {
-            overlay_format = SDL_FCC_I420;
-        } else if (src_format == AV_PIX_FMT_YUVJ420P) {
-            overlay_format = SDL_FCC_J420;
-        } else if (src_format == AV_PIX_FMT_YUV420P10) {
-            overlay_format = SDL_FCC_P010;
-        } else if (src_format == AV_PIX_FMT_YUV422P10) {
-            overlay_format = SDL_FCC_P010;
-        } else if (src_format == AV_PIX_FMT_YUV444P10) {
-            overlay_format = SDL_FCC_P010;
-        } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
-            overlay_format = SDL_FCC_P416;
-        } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
-            overlay_format = SDL_FCC_P216;
-        } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
-            overlay_format = SDL_FCC_AYUV64;
+        // 带 alpha 的帧统一走 32BGRA：BGRA/BGR0/ARGB/0RGB 已有各自的直通通路，
+        // YUVA444P16/AYUV64 走 AYUV64，其余（yuva420p/yuva444p10/12/16 ...）在这里改道。
+        if (src_has_alpha &&
+            src_format != AV_PIX_FMT_ARGB && src_format != AV_PIX_FMT_0RGB &&
+            src_format != AV_PIX_FMT_BGRA && src_format != AV_PIX_FMT_BGR0 &&
+            src_format != AV_PIX_FMT_YUVA444P16 && src_format != AV_PIX_FMT_AYUV64) {
+            overlay_format = SDL_FCC_BGRA;
         } else
-    #endif
-        {
-            const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
-            if (pfd->nb_components > 0) {
-                if (pfd->comp[0].depth == 10) {
-                    overlay_format = SDL_FCC_P010;
-                } else {
-                    overlay_format = SDL_FCC_NV12;
-                    switch (src_format) {
-                        case AV_PIX_FMT_BGRA:
-                            overlay_format = SDL_FCC_BGRA;
-                            break;
-                        case AV_PIX_FMT_BGR0:
-                            overlay_format = SDL_FCC_BGR0;
-                            break;
-                        case AV_PIX_FMT_ARGB: {
-                            overlay_format = SDL_FCC_ARGB;
-                            break;
-                        }
-                        case AV_PIX_FMT_0RGB: {
-                            overlay_format = SDL_FCC_0RGB;
-                            break;
-                        }
-                        default: {
-                            if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+        // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
+        #if TARGET_CPU_ARM64
+            if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
+                overlay_format = SDL_FCC_J420;
+            } else if (src_format == AV_PIX_FMT_YUV420P) {
+                overlay_format = SDL_FCC_I420;
+            } else if (src_format == AV_PIX_FMT_YUVJ420P) {
+                overlay_format = SDL_FCC_J420;
+            } else if (src_format == AV_PIX_FMT_YUV420P10) {
+                overlay_format = SDL_FCC_P010;
+            } else if (src_format == AV_PIX_FMT_YUV422P10) {
+                overlay_format = SDL_FCC_P010;
+            } else if (src_format == AV_PIX_FMT_YUV444P10) {
+                overlay_format = SDL_FCC_P010;
+            } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
+                overlay_format = SDL_FCC_P416;
+            } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
+                overlay_format = SDL_FCC_P216;
+            } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
+                overlay_format = SDL_FCC_AYUV64;
+            } else
+        #endif
+            {
+                const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
+                if (pfd->nb_components > 0) {
+                    if (pfd->comp[0].depth == 10) {
+                        overlay_format = SDL_FCC_P010;
+                    } else {
+                        switch (src_format) {
+                            case AV_PIX_FMT_BGRA:
                                 overlay_format = SDL_FCC_BGRA;
+                                break;
+                            case AV_PIX_FMT_BGR0:
+                                overlay_format = SDL_FCC_BGR0;
+                                break;
+                            case AV_PIX_FMT_ARGB: {
+                                overlay_format = SDL_FCC_ARGB;
+                                break;
                             }
-                            break;
+                            case AV_PIX_FMT_0RGB: {
+                                overlay_format = SDL_FCC_0RGB;
+                                break;
+                            }
+                            default: {
+                                if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+                                    overlay_format = SDL_FCC_BGR0;
+                                } else {
+                                    overlay_format = SDL_FCC_NV12;
+                                }
+                                break;
+                            }
                         }
                     }
                 }
             }
-        }
-    #endif
+        #endif
         //
         vout->overlay_format = overlay_format;
     }

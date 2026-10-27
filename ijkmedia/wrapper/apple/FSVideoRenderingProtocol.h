@@ -116,8 +116,16 @@ typedef enum : NSUInteger {
 - (CGImageRef)snapshot:(FSSnapshotType)aType;
 
 @optional;
+//控制背景色
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
-// 高斯模糊背景图片：替代默认纯色背景，填充无视频或黑边区域。传 nil 清除。
+// transparent == YES 时背景完全透明，无视频区域和视频透明区域均可透出底层视图。
+// transparent == NO 时使用不透明背景，与上面三个参数的方法等价。
+- (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b transparent:(BOOL)transparent;
+/// 默认 NO。开启后，带 alpha 的视频帧自动使用透明背景，backgroundImage 仍正常绘制。
+/// 普通视频或关闭此选项时将渲染 setBackgroundColor 设置的颜色与透明状态。
+/// 只控制渲染视图；父视图和窗口的透明状态由调用者设置。
+@property (nonatomic) BOOL autoTransparentBackgroundColor;
+// 高斯模糊背景图片：替代默认纯色背景，只有需要填充黑边区域时才绘制。传 nil 清除。
 @property(nonatomic, strong, nullable) UIImage *backgroundImage;
 // 生成高斯模糊的迭代次数，默认 3，推荐 2~4。
 @property(nonatomic) int backgroundBlurIterations;
