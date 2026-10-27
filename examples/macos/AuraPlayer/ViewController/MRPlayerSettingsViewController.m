@@ -1040,6 +1040,15 @@ static NSButton *MRCreateSwitch(void) {
                        options:nil];
     [self.moreDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"高斯模糊背景:"
                                                                checkbox:backgroundBlurToggle]];
+
+    NSButton *transparentToggle = MRCreateSwitch();
+    transparentToggle.toolTip = @"设置播放器背景、父视图和窗口为透明，高斯模糊背景独立控制";
+    [transparentToggle bind:@"value"
+                   toObject:[NSUserDefaultsController sharedUserDefaultsController]
+                withKeyPath:@"values.player_transparent"
+                    options:nil];
+    [self.moreDocView addArrangedSubview:[self createCheckboxRowWithLabel:@"播放器透明:"
+                                                               checkbox:transparentToggle]];
     
     // Playback History Row with NSSwitch
     NSView *historyRow = [[NSView alloc] init];

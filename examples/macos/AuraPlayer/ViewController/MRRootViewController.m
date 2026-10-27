@@ -369,6 +369,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)viewDidAppear {
     [super viewDidAppear];
+    [self applyPlayerBackgroundSettings];
     if (self.view.window) {
         self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
     }
@@ -1181,6 +1182,26 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self toggleTitleBar:NO];
 }
 
+- (void)superViewAndWindowsApplyTransparency:(BOOL)transparent fromView:(NSView *)view
+{
+    NSColor *color = transparent ? NSColor.clearColor : NSColor.blackColor;
+    NSWindow *window = view.window;
+    // Stop at the content view; AppKit manages the window frame and its controls.
+    for (NSView *ancestor = view; ancestor; ancestor = ancestor.superview) {
+        ancestor.wantsLayer = YES;
+        ancestor.layer.backgroundColor = color.CGColor;
+        ancestor.layer.opaque = !transparent;
+        ancestor.needsDisplay = YES;
+        if (ancestor == window.contentView) break;
+    }
+    window.opaque = !transparent;
+    window.backgroundColor = color;
+    // A transparent window's shadow follows its content alpha, outlining blurred edges.
+    window.hasShadow = !transparent;
+    window.titlebarAppearsTransparent = YES;
+    [window invalidateShadow];
+}
+
 - (void)applyBackgroundBlurInView:(NSView *)view image:(NSImage *)image
 {
     if ([view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
@@ -1194,12 +1215,40 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
 }
 
-- (void)applyBackgroundBlurSetting
+- (void)applyPlayerBackgroundBlurSetting
 {
-    NSImage *image = [MRCocoaBindingUserDefault boolForKey:@"background_blur_enabled"]
-        ? [NSImage imageNamed:@"demo-bg"] : nil;
+    BOOL blur = [MRCocoaBindingUserDefault boolForKey:@"background_blur_enabled"];
+    NSImage *image = blur ? [NSImage imageNamed:@"demo-bg"] : nil;
     [self applyBackgroundBlurInView:self.player.view image:image];
     [self applyBackgroundBlurInView:self.extraRenderWindow.contentView image:image];
+}
+
+- (void)videoRenderingViewApplyTransparency:(BOOL)transparent inView:(NSView *)view
+{
+    if ([view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        NSView<FSVideoRenderingProtocol> *renderer = (NSView<FSVideoRenderingProtocol> *)view;
+        [renderer setBackgroundColor:0 g:0 b:0 transparent:transparent];
+        [self superViewAndWindowsApplyTransparency:transparent fromView:view.superview];
+        return;
+    }
+    for (NSView *subview in view.subviews) {
+        [self videoRenderingViewApplyTransparency:transparent inView:subview];
+    }
+}
+
+- (void)applyPlayerTransparencySetting
+{
+    BOOL transparent = [MRCocoaBindingUserDefault boolForKey:@"player_transparent"];
+    [self superViewAndWindowsApplyTransparency:transparent fromView:self.playerContainer];
+    [self videoRenderingViewApplyTransparency:transparent inView:self.player.view];
+    [self superViewAndWindowsApplyTransparency:transparent fromView:self.extraRenderWindow.contentView];
+    [self videoRenderingViewApplyTransparency:transparent inView:self.extraRenderWindow.contentView];
+}
+
+- (void)applyPlayerBackgroundSettings
+{
+    [self applyPlayerBackgroundBlurSetting];
+    [self applyPlayerTransparencySetting];
 }
 
 - (NSView <FSVideoRenderingProtocol> *)renderingView
@@ -1694,6 +1743,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [videoAux addSubview:playerView];
         
         [playerView setDisplayDelegate:self];
+        render1.autoTransparentBackgroundColor = YES;
+        render2.autoTransparentBackgroundColor = YES;
         
         // Setup second render view in independent window
         if (!self.extraRenderWindow) {
@@ -1734,9 +1785,10 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
         [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
         [playerView setDisplayDelegate:self];
+        playerView.autoTransparentBackgroundColor = YES;
     }
     
-    [self applyBackgroundBlurSetting];
+    [self applyPlayerBackgroundSettings];
 
     float speed = [MRCocoaBindingUserDefault playback_speed];
     if (speed <= 0.0) speed = 1.0;
@@ -3078,8 +3130,13 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
-        [self applyBackgroundBlurSetting];
+        [self applyPlayerBackgroundBlurSetting];
     } forKey:@"background_blur_enabled"];
+
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
+        __strongSelf__
+        [self applyPlayerTransparencySetting];
+    } forKey:@"player_transparent"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
