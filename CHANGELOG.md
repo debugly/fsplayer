@@ -6,6 +6,7 @@
 - replace setPauseInBackground with autoResumeOnForeground
 - improve VideoToolbox foreground recovery on iOS and tvOS by replaying cached keyframe packets and filtering previously decoded frames, fix #68
 - support transparent video and transparent background color, fix #56
+- auto enable av1 videotoolbox hwaccel
 
 ## tag 1.1.1
 

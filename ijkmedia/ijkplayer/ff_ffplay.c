@@ -3710,8 +3710,36 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         case AVMEDIA_TYPE_VIDEO   : forced_codec_name = ffp->video_codec_name; break;
         default: break;
     }
-    if (forced_codec_name)
+
+#ifdef __APPLE__
+    int use_hwaccel = 0;
+    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO && !(st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
+        ALOGI("videotoolbox hwaccel switch:%s\n",ffp->videotoolbox_hwaccel ? "on" : "off");
+        if (ffp->videotoolbox_hwaccel) {
+            use_hwaccel = 1;
+        }
+    }
+    
+    int is_videotoolbox_supported_av1(void);
+    //AV1软解解码器是 libdav1d，在硬件支持的情况下启用硬解 av1 解码器，否则强制改回软解
+    if (use_hwaccel && avctx->codec_type == AVMEDIA_TYPE_VIDEO
+        && avctx->codec_id == AV_CODEC_ID_AV1) {
+        if (is_videotoolbox_supported_av1()) {
+            if (forced_codec_name == NULL || strlen(forced_codec_name) == 0) {
+                forced_codec_name = "av1";
+            }
+        } else {
+            use_hwaccel = 0;
+            ALOGI("device not support av1 hwaccel.\n");
+        }
+    }
+#endif
+    
+    if (forced_codec_name) {
+        ALOGI("force codec use '%s'\n", forced_codec_name);
         codec = avcodec_find_decoder_by_name(forced_codec_name);
+    }
+        
     if (!codec) {
         if (forced_codec_name) av_log(NULL, AV_LOG_WARNING,
                                       "No codec could be found with name '%s'\n", forced_codec_name);
@@ -3767,27 +3795,24 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         av_dict_set_int(&opts, "lowres", stream_lowres, 0);
     
 #ifdef __APPLE__
-    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO && !(st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
-        ALOGI("videotoolbox hwaccel switch:%s\n",ffp->videotoolbox_hwaccel ? "on" : "off");
-        if (ffp->videotoolbox_hwaccel) {
-            enum AVHWDeviceType type = av_hwdevice_find_type_by_name("videotoolbox");
-            const AVCodecHWConfig *config = NULL;
-            for (int i = 0;; i++) {
-                const AVCodecHWConfig *node = avcodec_get_hw_config(codec, i);
-                if (!node) {
-                    ALOGE("avdec %s does not support device type %s.\n",
-                            codec->name, av_hwdevice_get_type_name(type));
-                    break;
-                }
-                if (node->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX && node->device_type == type) {
-                    config = node;
-                    break;
-                }
+    if (use_hwaccel) {
+        enum AVHWDeviceType type = av_hwdevice_find_type_by_name("videotoolbox");
+        const AVCodecHWConfig *config = NULL;
+        for (int i = 0;; i++) {
+            const AVCodecHWConfig *node = avcodec_get_hw_config(codec, i);
+            if (!node) {
+                ALOGE("avdec %s does not support device type %s.\n",
+                      codec->name, av_hwdevice_get_type_name(type));
+                break;
             }
-            
-            if (config && hw_decoder_init(avctx, config) == 0) {
-                ALOGI("try use videotoolbox accel\n");
+            if (node->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX && node->device_type == type) {
+                config = node;
+                break;
             }
+        }
+        
+        if (config && hw_decoder_init(avctx, config) == 0) {
+            ALOGI("try use videotoolbox accel\n");
         }
     }
 #endif

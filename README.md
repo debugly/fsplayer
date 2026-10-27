@@ -16,7 +16,7 @@ FSPlayer keeps the same architecture you know, and moves the stack forward:
 |                                      | ijkplayer                                     | FSPlayer                                          |
 | ------------------------------------ | --------------------------------------------- | ------------------------------------------------- |
 | **Maintenance**                      | Stalled — last release 2018, last commit 2021 | Active — updated monthly                          |
-| **FFmpeg**                           | 4.0                                    | **8.1.2**                                         |
+| **FFmpeg**                           | 4.0                                           | **8.1.2**                                         |
 | **Platforms**                        | Android, iOS                                  | Android, iOS, macOS, tvOS,                        |
 | **Video output**                     | OpenGL ES 2.0                                 | **Metal** (iOS/macOS/tvOS) · **Vulkan** (Android) |
 | **4K / HDR / HDR10+ / Dolby Vision** | ✗                                             | **✓**                                             |
@@ -86,10 +86,10 @@ Latest additions
 - [x] Video filters with software deinterlacing
 - [x] Synchronous destroy (async by default)
 - [x] Transparent video and transparent background (uncovered areas show the views underneath)
+- [x] AV1 hardware decode
 
 Under investigation
 
-- [ ] AV1 hardware decode (stable on most, some files still crash)
 - [ ] Live playback / timeshift
 - [ ] Variable playback rate with pitch correction
 - [ ] Picture-in-picture
@@ -101,12 +101,12 @@ Under investigation
 - Android NDK 27.3
 
 
-| Minimum platform     | Architectures                               |
-| -------------------- | ------------------------------------------- |
-| iOS 12.0             | arm64, arm64\_simulator, x86\_64\_simulator |
-| macOS 10.14 (Intel), 11.0 (Apple Silicon) | arm64, x86\_64         |
-| tvOS 12.0            | arm64, arm64\_simulator, x86\_64\_simulator |
-| Android 7.0 (API 24) | arm64-v8a, armeabi-v7a                       |
+| Minimum platform                          | Architectures                               |
+| ----------------------------------------- | ------------------------------------------- |
+| iOS 12.0                                  | arm64, arm64\_simulator, x86\_64\_simulator |
+| macOS 10.14 (Intel), 11.0 (Apple Silicon) | arm64, x86\_64                              |
+| tvOS 12.0                                 | arm64, arm64\_simulator, x86\_64\_simulator |
+| Android 7.0 (API 24)                      | arm64-v8a, armeabi-v7a                      |
 
 
 ## Changelog
