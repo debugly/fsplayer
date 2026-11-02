@@ -37,11 +37,25 @@ echo "[download] install 平台: ${PLATFORMS[*]}"
 # ---- 编译（用假产物代替）----
 mkdir -p dist
 for n in FSPlayer FSPlayer-iOS FSPlayer-macOS FSPlayer-tvOS; do
-  mkdir -p "dist/$n"; cp COPYING.LGPLv2.1 "dist/$n/LICENSE"; echo fake > "dist/$n/x"
+  mkdir -p "dist/$n"
+  cp COPYING.LGPLv2.1 "dist/$n/LICENSE"
+  cp NOTICE README.md CHANGELOG.md "dist/$n/"
+  echo fake > "dist/$n/x"
   (cd "dist/$n" && zip -rq "../$n.zip" ./*); rm -rf "dist/$n"
 done
-cp COPYING.LGPLv2.1 dist/LICENSE
-echo fake-aar > dist/fsplayer-release.aar
+python3 - <<'PY'
+from io import BytesIO
+from pathlib import Path
+from zipfile import ZipFile
+
+classes = BytesIO()
+with ZipFile(classes, "w") as archive:
+    for name, source in {"LICENSE": "COPYING.LGPLv2.1", "NOTICE": "NOTICE",
+                         "README.md": "README.md", "CHANGELOG.md": "CHANGELOG.md"}.items():
+        archive.writestr(f"META-INF/fsplayer/{name}", Path(source).read_bytes())
+with ZipFile("dist/fsplayer-release.aar", "w") as aar:
+    aar.writestr("classes.jar", classes.getvalue())
+PY
 
 # ---- Determine Version ----
 .github/scripts/prepare-release-version.sh "$BETA" >/dev/null

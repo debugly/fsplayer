@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,7 +26,7 @@
 #include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_gpu.h"
 
-#import "FSVideoRenderingProtocol.h"
+#import "FSVideoOutputProtocol.h"
 
 // Normalized Device Coordinates
 static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSize viewport)
@@ -76,7 +76,7 @@ static inline CGRect FSSDL_make_metal_NDC(SDL_Rectangle frame, float scale, CGSi
     return CGRectZero;
 }
 
-SDL_Vout *SDL_VoutIos_CreateForGLES2(void);
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view);
+SDL_Vout *SDL_Vout_CreateForMetal(void);
+void SDL_Vout_SetOutputView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view);
 SDL_GPU *SDL_CreateGPU_WithContext(id context);
 

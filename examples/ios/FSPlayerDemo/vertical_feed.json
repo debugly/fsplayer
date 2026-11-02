@@ -1,0 +1,25 @@
+{
+  "//": "Mock feed for the vertical swipe demo. Swap this file (or point FSVerticalFeedStore.remoteURLString at a URL) to change rooms without touching view code. Keys are read leniently: streamUrl/url/playUrl, coverUrl/cover/pic, tint (hex RRGGBB).",
+  "items": [
+    {
+      "title": "视频来自于网络，仅用于测试",
+      "tint": "1F6FB2",
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200f720000bmac6u8ghl0qbhjj7o7g.mp4"
+    },
+    {
+      "title": "视频来自于网络，仅用于测试",
+      "tint": "B03A6B",
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200f720000bmbttlspg62fkbq3gbc0.mp4"
+    },
+    {
+      "title": "视频来自于网络，仅用于测试",
+      "tint": "1E8449",
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200f8d0000bmfohns81ukki0an78o0.mp4"
+    },
+    {
+      "title": "视频来自于网络，仅用于测试",
+      "tint": "B9770E",
+      "streamUrl": "https://objectstorage.ap-tokyo-1.oraclecloud.com/n/nr2brdzclpnq/b/bucket-20261026-1424/o/v0200fc40000bmfg3ie8qbl2qj2m5sug.mp4"
+    }
+  ]
+}

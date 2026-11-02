@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,6 +26,7 @@
 #define FSPLAYER_ANDROID__IJKPLAYER_H
 
 #include <stdbool.h>
+#include "ff_hwdec_recovery.h"
 #include "ff_ffmsg_queue.h"
 
 #include "ijkmeta.h"
@@ -173,6 +174,9 @@ void            ijkmp_set_playback_volume(IjkMediaPlayer *mp, float rate);
 
 int             ijkmp_set_stream_selected(IjkMediaPlayer *mp, int stream, int selected);
 int             ijkmp_reload_video_stream(IjkMediaPlayer *mp);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+int             ijkmp_restart_video_decoder_from_keyframe(IjkMediaPlayer *mp);
+#endif
 
 float           ijkmp_get_property_float(IjkMediaPlayer *mp, int id, float default_value);
 void            ijkmp_set_property_float(IjkMediaPlayer *mp, int id, float value);

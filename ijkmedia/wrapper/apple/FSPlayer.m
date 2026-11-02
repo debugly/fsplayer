@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,7 +25,6 @@
 #import "FSPlayer.h"
 #import "FSMetalView.h"
 #import "FSHudCardView.h"
-#import "FSPlayerDef.h"
 #import "FSMediaPlayback.h"
 #import "FSMediaModule.h"
 #import "FSNotificationManager.h"
@@ -35,10 +34,11 @@
 #import <AVFoundation/AVFoundation.h>
 #endif
 
-#include "../ijkmedia/ijkplayer/apple/ijkplayer_ios.h"
+#include "../ijkmedia/ijkplayer/apple/ijkplayer_apple.h"
 #include "../ijkmedia/ijkplayer/ijkmeta.h"
 #include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 #include "ijksdl/apple/ijk_vout_common.h"
+#include "../ijkmedia/ijkplayer/ff_ffmsg_queue.h"
 
 static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
@@ -59,9 +59,81 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 
 @end
 
+
+@interface FSPlayerMessage : NSObject
+
+@property (nonatomic, assign) AVMessage *msg;
+
+@end
+
+@implementation FSPlayerMessage
+{
+@public
+    AVMessage m_msg;
+}
+
+- (AVMessage *)msg
+{
+    return &m_msg;
+}
+
+@end
+
+@interface FSPlayerMessagePool : NSObject
+
+- (FSPlayerMessagePool *)init;
+- (FSPlayerMessage *) obtain;
+- (void) recycle:(FSPlayerMessage *)msg;
+
+@end
+
+@implementation FSPlayerMessagePool{
+    NSMutableArray *_array;
+}
+
+- (FSPlayerMessagePool *)init
+{
+    self = [super init];
+    if (self) {
+        _array = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (FSPlayerMessage *) obtain
+{
+    FSPlayerMessage *msg = nil;
+
+    @synchronized(self) {
+        NSUInteger count = [_array count];
+        if (count > 0) {
+            msg = [_array objectAtIndex:count - 1];
+            [_array removeLastObject];
+        }
+    }
+
+    if (!msg)
+        msg = [[FSPlayerMessage alloc] init];
+
+    return msg;
+}
+
+- (void) recycle:(FSPlayerMessage *)msg
+{
+    if (!msg)
+        return;
+    msg_free_res(msg.msg);
+    @synchronized(self) {
+        if ([_array count] <= 10)
+            [_array addObject:msg];
+    }
+}
+
+@end
+
 @implementation FSPlayer {
     IjkMediaPlayer *_mediaPlayer;
-    UIView<FSVideoRenderingProtocol>* _videoRendering;
+    UIView<FSVideoOutputProtocol>* _videoRendering;
     FSPlayerMessagePool *_msgPool;
 
     NSInteger _videoWidth;
@@ -78,10 +150,14 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     AVAppAsyncStatistic _asyncStat;
     IjkIOAppCacheStatistic _cacheStat;
     FSHudCardView *_hudCardView;
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     FSNotificationManager *_notificationManager;
     BOOL _playingBeforeInterruption;
-    BOOL _pauseInBackground;
+    BOOL _pauseOnBackgroundAndResumeOnForeground;
+    BOOL _enteredBackground;
+    BOOL _appPlaybackSuspended;
+    BOOL _resumePlaybackOnForeground;
+    BOOL _resumePlaybackAfterPrepare;
 #endif
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
@@ -121,11 +197,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         return;
     }
     __block FSHudCardView *hudCardView = player->_hudCardView;
-    __block UIView<FSVideoRenderingProtocol> *view = player->_view;
+    __block UIView<FSVideoOutputProtocol> *view = player->_view;
     __block NSTimer *playbackTimeNotifiTimer = player->_playbackTimeNotifiTimer;
     __block FSWeakHolder *weakHolder = player->_weakHolder;
     
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
     [player unregisterApplicationObservers];
 #endif
     
@@ -195,7 +271,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)_initWithContent:(NSString *)content
                  options:(FSOptions *)options
-          videoRendering:(UIView <FSVideoRenderingProtocol> * _Nullable)videoRendering
+          videoRendering:(UIView <FSVideoOutputProtocol> * _Nullable)videoRendering
           audioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
     // init media resource
@@ -219,7 +295,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     _monitor = [[FSMonitor alloc] init];
 
     // init player
-    _mediaPlayer = ijkmp_ios_create(media_player_msg_loop);
+    _mediaPlayer = ijkmp_apple_create(media_player_msg_loop);
     _msgPool = [[FSPlayerMessagePool alloc] init];
     
     FSWeakHolder *weakHolder = [[FSWeakHolder alloc] init];
@@ -236,7 +312,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
     _view = _videoRendering = videoRendering;
     if (videoRendering) {
-        ijkmp_ios_set_glview(_mediaPlayer, videoRendering);
+        ijkmp_apple_set_glview(_mediaPlayer, videoRendering);
         __weak typeof(self) wself = self;
         if ([videoRendering respondsToSelector:@selector(registerRefreshCurrentPicObserver:)]) {
             [videoRendering registerRefreshCurrentPicObserver:^{
@@ -249,17 +325,18 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         
         // init hud
         _hudCardView = [[FSHudCardView alloc] initWithFrame:CGRectZero];
-        [_hudCardView appendTitle:[videoRendering name]];
+        [_hudCardView appendTitle:([videoRendering respondsToSelector:@selector(name)]
+                                  ? [videoRendering name] : NSStringFromClass([videoRendering class]))];
         self.shouldShowHudView = options.showHudView;
     } else {
         [options setPlayerOptionIntValue:1 forKey:@"display_disable"];
         [options setPlayerOptionIntValue:0 forKey:@"subtitle_mix"];
     }
     
-    ijkmp_ios_set_automatically_setup_audio_session(_mediaPlayer, options.automaticallySetupAudioSession);
+    ijkmp_apple_set_automatically_setup_audio_session(_mediaPlayer, options.automaticallySetupAudioSession);
     
     if (audioRendering) {
-        ijkmp_ios_set_audio_controller(_mediaPlayer, audioRendering);
+        ijkmp_apple_set_audio_controller(_mediaPlayer, audioRendering);
     }
     
     ijkmp_set_option(_mediaPlayer, FSMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
@@ -272,8 +349,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
     _keepScreenOnWhilePlaying = YES;
     [self setScreenOn:YES];
 
-#if TARGET_OS_IOS
-    _pauseInBackground = NO;
+#if TARGET_OS_IOS || TARGET_OS_TV
+    _pauseOnBackgroundAndResumeOnForeground = NO;
     /* Set audio session to mediaplayback */
     if (options.automaticallySetupAudioSession) {
         NSError *error = nil;
@@ -310,7 +387,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions *)options
-               withGLView:(UIView<FSVideoRenderingProtocol> *)glView
+               withGLView:(UIView<FSVideoOutputProtocol> *)glView
 {
     NSString *filePath = nil;
     if ([aUrl isFileURL]) {
@@ -323,7 +400,7 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (id)initWithMoreContent:(NSURL *)aUrl
               withOptions:(FSOptions *)options
-        withViewRendering:(UIView<FSVideoRenderingProtocol> *)videoRendering
+        withViewRendering:(UIView<FSVideoOutputProtocol> *)videoRendering
        withAudioRendering:(id<FSAudioRenderingProtocol>)audioRendering
 {
     NSString *filePath = nil;
@@ -338,14 +415,14 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
 {
-    UIView<FSVideoRenderingProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+    UIView<FSVideoOutputProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
 
     return [self initWithContent:content options:options videoRendering:videoRendering];
 }
 
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
-       videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+       videoRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering
 {
     return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:nil];
 }
@@ -354,14 +431,14 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
               options:(FSOptions * _Nullable)options
        audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
 {
-    UIView<FSVideoRenderingProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
+    UIView<FSVideoOutputProtocol> *videoRendering = [[FSMetalView alloc] initWithFrame:CGRectZero];
 
     return [self initWithContent:content options:options videoRendering:videoRendering audioRendering:audioRendering];
 }
 
 - (id)initWithContent:(NSString *)content
               options:(FSOptions * _Nullable)options
-        videoRendering:(UIView<FSVideoRenderingProtocol> * _Nullable)videoRendering
+        videoRendering:(UIView<FSVideoOutputProtocol> * _Nullable)videoRendering
        audioRendering:(id<FSAudioRenderingProtocol> _Nullable)audioRendering
 {
     self = [super init];
@@ -400,7 +477,8 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         return;
 
     [self setScreenOn:_keepScreenOnWhilePlaying];
-    NSString *render = [self.view name];
+    NSString *render = [self.view respondsToSelector:@selector(name)]
+        ? [self.view name] : NSStringFromClass([self.view class]);
     [self setHudValue:render forKey:@"v-renderer"];
     
     if (self.content) {
@@ -458,6 +536,12 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)play
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    if (_appPlaybackSuspended) {
+        _resumePlaybackOnForeground = YES;
+        return;
+    }
+#endif
     if (!_mediaPlayer)
         return;
 
@@ -469,6 +553,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)pause
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    _resumePlaybackOnForeground = NO;
+    _resumePlaybackAfterPrepare = NO;
+    _playingBeforeInterruption = NO;
+#endif
     if (!_mediaPlayer)
         return;
 
@@ -477,6 +566,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
 - (void)stop
 {
+#if TARGET_OS_IOS || TARGET_OS_TV
+    _resumePlaybackOnForeground = NO;
+    _resumePlaybackAfterPrepare = NO;
+    _playingBeforeInterruption = NO;
+#endif
     if (!_mediaPlayer)
         return;
 
@@ -907,7 +1001,9 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
 - (void)setScalingMode:(FSScalingMode) aScalingMode
 {
     FSScalingMode newScalingMode = aScalingMode;
-    self.view.scalingMode = aScalingMode;
+    if ([self.view respondsToSelector:@selector(setScalingMode:)]) {
+        ((UIView<FSVideoRenderingProtocol> *)self.view).scalingMode = aScalingMode;
+    }
     _scalingMode = newScalingMode;
 }
 
@@ -1632,6 +1728,14 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self createPlaybackTimeNotifiTimerIfNeed];
             
             _isPreparedToPlay = YES;
+#if TARGET_OS_IOS || TARGET_OS_TV
+            // The foreground notification can arrive while prepare is still
+            // running, when ijkmp_start would reject the request.
+            if (_resumePlaybackAfterPrepare && !_appPlaybackSuspended && self.shouldAutoplay) {
+                _resumePlaybackAfterPrepare = NO;
+                [self play];
+            }
+#endif
             
             [self updateAndNotifyPlaybackScheduleWithState:MP_STATE_PREPARED];
             
@@ -2288,7 +2392,7 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     return YES;
 }
 
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_TV
 #pragma mark app state changed
 
 - (void)registerApplicationObserversWithOptions:(FSOptions *)options
@@ -2308,6 +2412,11 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
     [_notificationManager addObserver:self
                              selector:@selector(applicationDidEnterBackground)
                                  name:UIApplicationDidEnterBackgroundNotification
+                               object:nil];
+
+    [_notificationManager addObserver:self
+                             selector:@selector(applicationDidBecomeActive)
+                                 name:UIApplicationDidBecomeActiveNotification
                                object:nil];
 
     [_notificationManager addObserver:self
@@ -2336,7 +2445,11 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
                     _playingBeforeInterruption = YES;
                     break;
             }
-            [self pause];
+            if (_appPlaybackSuspended)
+                _playingBeforeInterruption = _resumePlaybackOnForeground;
+            // Preserve lifecycle resume intent during a system audio interruption.
+            if (_mediaPlayer)
+                ijkmp_pause(_mediaPlayer);
             @try {
                 [[AVAudioSession sharedInstance] setActive:NO error:nil];
             } @catch (NSException *exception) {
@@ -2357,34 +2470,62 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillResignActive
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_pauseInBackground) {
-            [self pause];
-        }
-    });
+    if (!_pauseOnBackgroundAndResumeOnForeground || _appPlaybackSuspended)
+        return;
+
+    _appPlaybackSuspended = YES;
+    _resumePlaybackOnForeground = self.isPlaying || (!self.isPreparedToPlay && self.shouldAutoplay);
+    self.shouldAutoplay = NO;
+    // Bypass the public pause method: this pause preserves the user's play intent.
+    if (_mediaPlayer)
+        ijkmp_pause(_mediaPlayer);
+    av_log(NULL, AV_LOG_INFO, "app lifecycle: paused player=%p time=%.3f resume=%d\n",
+           _mediaPlayer, self.currentPlaybackTime, _resumePlaybackOnForeground);
 }
 
 - (void)applicationDidEnterBackground
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_pauseInBackground) {
-            [self pause];
-        }
-    });
+    _enteredBackground = YES;
+    [self applicationWillResignActive];
+}
+
+- (void)applicationDidBecomeActive
+{
+    BOOL wasInBackground = _enteredBackground;
+    _enteredBackground = NO;
+    if (!_appPlaybackSuspended)
+        return;
+
+    _appPlaybackSuspended = NO;
+    BOOL resume = _resumePlaybackOnForeground;
+    _resumePlaybackOnForeground = NO;
+    if (!resume || !_mediaPlayer)
+        return;
+
+    // Queue recovery before resuming. Keep the player, clocks and displayed frame;
+    // rebuilding the stream and seeking here can skip frames or clear the picture.
+    if (wasInBackground)
+        ijkmp_restart_video_decoder_from_keyframe(_mediaPlayer);
+    self.shouldAutoplay = YES;
+    av_log(NULL, AV_LOG_INFO, "app lifecycle: resuming player=%p time=%.3f\n",
+           _mediaPlayer, self.currentPlaybackTime);
+    _resumePlaybackAfterPrepare = !self.isPreparedToPlay;
+    if (!_resumePlaybackAfterPrepare)
+        [self play];
 }
 
 - (void)applicationWillTerminate
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_pauseInBackground) {
-            [self pause];
-        }
-    });
+    [self applicationWillResignActive];
 }
 
-- (void)setPauseInBackground:(BOOL)pause
+- (void)autoResumeOnForeground:(BOOL)enabled
 {
-    _pauseInBackground = pause;
+    _pauseOnBackgroundAndResumeOnForeground = enabled;
+    if (enabled && [UIApplication sharedApplication].applicationState != UIApplicationStateActive)
+        [self applicationWillResignActive];
+    else if (!enabled && _appPlaybackSuspended)
+        [self applicationDidBecomeActive];
 }
 
 #endif

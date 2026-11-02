@@ -47,25 +47,18 @@
     return self;
 }
 
-- (BOOL)isHDRContent
-{
-    return self.pipelineMeta.hdrContent;
-}
-
 - (BOOL)matchPixelBuffer:(CVPixelBufferRef)pixelBuffer
 {
     return [self.pipelineMeta metaMatchedCVPixelbuffer:pixelBuffer];
 }
 
-- (BOOL)createRenderPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend
+- (BOOL)createRenderPipelineIfNeed:(FSMetalPipelineMeta *)pipelineMeta blend:(BOOL)blend
 {
     if (self.renderPipeline) {
         return YES;
     }
     
-    if (!self.pipelineMeta) {
-        self.pipelineMeta = [FSMetalPipelineMeta createWithCVPixelbuffer:pixelBuffer];
-    }
+    self.pipelineMeta = pipelineMeta;
     
     if (!self.pipelineMeta) {
         return NO;

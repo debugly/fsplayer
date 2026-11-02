@@ -17,21 +17,14 @@
  */
 
 #import "FSAppDelegate.h"
-#import "FSDemoMainViewController.h"
 
 @implementation FSAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    
-    UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:[[FSDemoMainViewController alloc] init]];
-    
-    self.viewController = navigationController;
-    self.window.rootViewController = self.viewController;
-
-    [self.window makeKeyAndVisible];
-    
+    // The window is built by FSSceneDelegate. iOS 27 terminates an app that
+    // creates its window here instead (NoSceneLifecycleAdoption), so this
+    // method only exists to keep the launch hook.
     return YES;
 }
 

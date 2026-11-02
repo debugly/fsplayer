@@ -1,8 +1,6 @@
 /*
  * FSVideoRenderingProtocol.h
  *
- * Copyright (c) 2017 Bilibili
- * Copyright (c) 2017 raymond <raymondzheng1412@gmail.com>
  * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
  *
  * This file is part of FSPlayer.
@@ -10,7 +8,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,17 +23,7 @@
 #ifndef FSVideoRenderingProtocol_h
 #define FSVideoRenderingProtocol_h
 
-#import <TargetConditionals.h>
-#if TARGET_OS_OSX
-#import <AppKit/AppKit.h>
-#import <CoreGraphics/CGImage.h>
-typedef NSFont UIFont;
-typedef NSColor UIColor;
-typedef NSImage UIImage;
-typedef NSView UIView;
-#else
-#import <UIKit/UIKit.h>
-#endif
+#import <FSPlayer/FSVideoOutputProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -44,54 +32,6 @@ typedef NS_ENUM(NSInteger, FSScalingMode) {
     FSScalingModeAspectFill, // Uniform scale until the movie fills the visible bounds. One dimension may have clipped contents
     FSScalingModeFill        // Non-uniform scale. Both render dimensions will exactly match the visible bounds
 };
-
-typedef struct SDL_TextureOverlay SDL_TextureOverlay;
-
-// HEIC tile grid: 单个 tile 的位置信息 + 帧数据。
-// avframe 由 dispatch 层从 overlay 克隆（owned）；pixelBuffer 由渲染器（FSMetalView）
-// 从 avframe 转换后填充并持有。
-@interface FSTilePiece : NSObject
-@property(nonatomic) struct AVFrame * _Nullable avframe;        // 持有 (owned, av_frame_free in dealloc)
-@property(nonatomic) CVPixelBufferRef _Nullable pixelBuffer;    // 持有 (owned, Retain/Release by this class)
-@property(nonatomic) int x;         // canvas 上左上角
-@property(nonatomic) int y;
-@property(nonatomic) int w;         // tile 尺寸
-@property(nonatomic) int h;
-@end
-
-@interface FSOverlayAttach : NSObject
-
-//{w,h} is video frame normal size not alignmetn,maybe not equal to {pixelW,pixelH}.
-@property(nonatomic) int w;
-@property(nonatomic) int h;
-//cvpixebuffer pixel memory size;
-@property(nonatomic) int pixelW;
-@property(nonatomic) int pixelH;
-
-@property(nonatomic) float fps;
-@property(nonatomic) int sarNum;
-@property(nonatomic) int sarDen;
-//degrees
-@property(nonatomic) int autoZRotate;
-
-@property(nonatomic) CVPixelBufferRef _Nullable videoPicture;
-@property(nonatomic) NSArray * _Nullable videoTextures;
-@property(nonatomic) NSArray * _Nullable videoCVTextures;      // 对应的 CVMetalTextureRef 包装引用
-
-// Full decoded frame (av_frame_ref'd, owned; freed in dealloc). Carries side data
-// such as Dolby Vision RPU.
-// nil for renderers that only consume videoPicture (e.g. FSMetalView).
-@property(nonatomic) struct AVFrame * _Nullable avframe;
-
-// HEIC tile grid：非空时表示此帧是多 tile 合成，渲染器需要按 tilePieces 的位置信息拼图。
-@property(nonatomic) NSArray<FSTilePiece *> * _Nullable tilePieces;
-
-@property(nonatomic) SDL_TextureOverlay * _Nullable overlay;
-@property(nonatomic) id _Nullable subTexture;
-@property(nonatomic) long tag;
-
-- (BOOL)hasAlpha;
-@end
 
 static inline uint32_t fs_ass_color_to_int(UIColor *color) {
 #if TARGET_OS_OSX
@@ -118,19 +58,6 @@ static inline UIColor * fs_ass_int_to_color(uint32_t rgba) {
     return [UIColor colorWithRed:r green:g blue:b alpha:a];
 }
 
-typedef enum _FSSDLRotateType {
-    FSRotateNone,
-    FSRotateX,
-    FSRotateY,
-    FSRotateZ
-} FSRotateType;
-
-typedef struct _FSSDLRotatePreference FSRotatePreference;
-struct _FSSDLRotatePreference {
-    FSRotateType type;
-    float degrees;
-};
-
 typedef struct _FSColorConvertPreference FSColorConvertPreference;
 struct _FSColorConvertPreference {
     float brightness;
@@ -154,7 +81,8 @@ typedef enum : NSUInteger {
 
 #define HDR_API_AVAILABLE API_AVAILABLE(macos(10.11), ios(16.0)) API_UNAVAILABLE(tvos, watchos)
 
-@protocol FSVideoRenderingProtocol <NSObject>
+/// Full rendering controls provided by FSMetalView.
+@protocol FSVideoRenderingProtocol <FSVideoOutputProtocol>
 
 @property(nullable, nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
 
@@ -163,7 +91,6 @@ typedef enum : NSUInteger {
 @property(nonatomic) CGFloat scaleFactor;
 #endif
 
-@property(nonatomic) FSRotatePreference rotatePreference __deprecated_msg("will be removed in future version");
 @property(nonatomic) float xRotateDegrees;
 @property(nonatomic) float yRotateDegrees;
 @property(nonatomic) float zRotateDegrees;
@@ -173,51 +100,58 @@ typedef enum : NSUInteger {
 @property(nonatomic) FSDARPreference darPreference;
 // not render picture and subtitle,but holder overlay content.
 @property(atomic) BOOL preventDisplay;
-// YES when the current display supports EDR/HDR and HDR content is rendered natively
-// (no tone-mapping to SDR). Updated automatically when the display changes.
-// HDR direct display is unavailable on tvOS
-@property(nonatomic, readonly) BOOL directDisplayHDRSupportted HDR_API_AVAILABLE;
 // Controls whether HDR direct rendering is permitted at all.
 // Default YES. Set to NO to always tone-map HDR content to SDR regardless of display capability.
 @property(nonatomic) BOOL allowHDRDirectDisplay HDR_API_AVAILABLE;
 // refresh current video picture and subtitle (when player paused change video pic preference, you can invoke this method)
 - (void)setNeedsRefreshCurrentPic;
 
-// display the overlay.
-- (BOOL)displayAttach:(FSOverlayAttach *)attach;
-
 #if !TARGET_OS_OSX
 - (UIImage *)snapshot;
 #endif
 - (CGImageRef)snapshot:(FSSnapshotType)aType;
-- (NSString *)name;
 
 @optional;
-// GPU context used to build the subtitle SDL_GPU (e.g. FSMetalView returns its
-// MTLDevice).
-- (id)context;
+//控制背景色
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b;
-// 高斯模糊背景图片：替代默认纯色背景，填充无视频或黑边区域。传 nil 清除。
+// transparent == YES 时背景完全透明，无视频区域和视频透明区域均可透出底层视图。
+// transparent == NO 时使用不透明背景，与上面三个参数的方法等价。
+- (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b transparent:(BOOL)transparent;
+/// 默认 NO。开启后，带 alpha 的视频帧自动使用透明背景，backgroundImage 仍正常绘制。
+/// 普通视频或关闭此选项时将渲染 setBackgroundColor 设置的颜色与透明状态。
+/// 只控制渲染视图；父视图和窗口的透明状态由调用者设置。
+@property (nonatomic) BOOL autoTransparentBackgroundColor;
+// 高斯模糊背景图片：替代默认纯色背景，只有需要填充黑边区域时才绘制。传 nil 清除。
 @property(nonatomic, strong, nullable) UIImage *backgroundImage;
 // 生成高斯模糊的迭代次数，默认 3，推荐 2~4。
 @property(nonatomic) int backgroundBlurIterations;
 // 单次高斯模糊的 sigma（模糊半径），默认 30，值越大越模糊。
 @property(nonatomic) float backgroundBlurSigma;
-- (void)registerRefreshCurrentPicObserver:(nullable dispatch_block_t)block;
-// Release rendering resources (Vulkan/Metal/GPU). Called when the player stops
-// and removes the view. Implementations must be safe to call multiple times.
-- (void)destroy;
 
+@end
+
+/// Read-only display information supplied by a renderer. Does not retain decoded
+/// AVFrame or tile data; the concrete renderer owns its rendering resources.
+@protocol FSVideoRenderFrame <NSObject>
+@property(nonatomic, readonly) int w;
+@property(nonatomic, readonly) int h;
+@property(nonatomic, readonly) int sarNum;
+@property(nonatomic, readonly) int sarDen;
+@property(nonatomic, readonly) int autoZRotate;
+@property(nonatomic, readonly) BOOL hasAlpha;
 @end
 
 @protocol FSVideoRenderingDelegate <NSObject>
 
 @optional
-//you can replace the video frame
+// You can replace the video frame. Input is borrowed; do not release it.
+// Return a borrowed buffer (the input is allowed), or NULL to omit the video image.
+// The renderer retains a replacement buffer; ownership is not transferred by this callback.
 - (CVPixelBufferRef _Nullable)videoRenderingWillDisplay:(id<FSVideoRenderingProtocol>_Nonnull)renderer videoFrame:(CVPixelBufferRef)videoFrame;
 
 @optional
-- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach;
+// Display information belongs to the renderer; it contains no decoded frame data.
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(id<FSVideoRenderFrame>)attach;
 
 @end
 

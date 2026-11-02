@@ -20,28 +20,100 @@
 #import "FSMetalPipelineMeta.h"
 #import "FSMetalBlurFilter.h"
 #import "FSMetalTileGridPipeline.h"
-#import "ijksdl_vout_ios_gles2.h"
 #import "FSMediaPlayback.h"
 #import "FSDisplayLinkWrapper.h"
 #import "FSMetalTextureUtils.h"
 #import "../apple/ijk_cvpixelbuffer.h"
+#import "ijksdl/ijksdl_gpu.h"
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 typedef CGRect NSRect;
 #endif
+
+// 每个 FSMetalView 独立持有转换结果和绘制状态；不持有原始输入 attach。
+@interface FSMetalRenderFrame : NSObject <FSVideoRenderFrame>
+@property(nonatomic) CVPixelBufferRef videoPicture; // owned
+@property(nonatomic, strong) NSArray *videoTextures;
+@property(nonatomic, strong) NSArray *videoCVTextures; // owns +1 CVMetalTexture refs
+@property(nonatomic) SDL_TextureOverlay *overlay; // owned
+@property(nonatomic) int pixelW;
+@property(nonatomic) int pixelH;
+@property(nonatomic) long tag;
+@property(nonatomic) int w;
+@property(nonatomic) int h;
+@property(nonatomic) int sarNum;
+@property(nonatomic) int sarDen;
+@property(nonatomic) int autoZRotate;
+@property(nonatomic) BOOL hasAlpha;
+@property(nonatomic, readonly) id subTexture;
+- (instancetype)initWithSource:(FSOverlayAttach *)source;
+// Caller serializes preparation with rendering/snapshots; cache is borrowed.
+- (BOOL)prepareTexturesWithDevice:(id<MTLDevice>)device
+                     textureCache:(CVMetalTextureCacheRef)textureCache;
+@end
+
+@implementation FSMetalRenderFrame
+
+- (instancetype)initWithSource:(FSOverlayAttach *)source
+{
+    if ((self = [super init])) {
+        _w = source.w;
+        _h = source.h;
+        _sarNum = source.sarNum;
+        _sarDen = source.sarDen;
+        _autoZRotate = source.autoZRotate;
+        _hasAlpha = source.hasAlpha;
+        _overlay = SDL_TextureOverlay_Retain(source.overlay);
+    }
+    return self;
+}
+
+- (BOOL)prepareTexturesWithDevice:(id<MTLDevice>)device
+                     textureCache:(CVMetalTextureCacheRef)textureCache
+{
+    if (self.videoTextures.count > 0) {
+        return YES;
+    }
+    NSMutableArray *cvTextures = nil;
+    NSArray *textures = [FSMetalTextureUtils doGenerateTexture:self.videoPicture
+                                                  textureCache:textureCache
+                                                        device:device
+                                                 outCVTextures:&cvTextures];
+    if (textures.count == 0) {
+        return NO;
+    }
+    for (id item in self.videoCVTextures) CFRelease((__bridge CVMetalTextureRef)item);
+    self.videoCVTextures = cvTextures;
+    self.videoTextures = textures;
+    return YES;
+}
+
+- (id)subTexture
+{
+    return self.overlay ? (__bridge id)self.overlay->getTexture(self.overlay) : nil;
+}
+
+- (void)dealloc {
+    SDL_TextureOverlay_Release(&_overlay);
+    if (_videoPicture) CVPixelBufferRelease(_videoPicture);
+    for (id item in _videoCVTextures) CFRelease((__bridge CVMetalTextureRef)item);
+}
+
+@end
 
 @interface FSMetalView ()
 
 // The command queue used to pass commands to the device.
 @property (nonatomic, strong) id<MTLCommandQueue>commandQueue;
 @property (nonatomic, assign) CVMetalTextureCacheRef pictureTextureCache;
+@property (nonatomic, strong) FSMetalPipelineMeta *pipelineMeta;
 @property (atomic, strong) FSMetalRenderer *picturePipeline;
-// HEIC tile-grid 合成管线：把多个 tile 合成成一张完整画面缓存到 attach。
+// HEIC tile-grid 合成管线：结果缓存于本视图的 FSMetalRenderFrame。
 @property (atomic, strong) FSMetalTileGridPipeline *tileGridPipeline;
 @property (atomic, strong) FSMetalSubtitlePipeline *subPipeline;
 @property (nonatomic, strong) FSMetalOffscreenRendering *offscreenRendering;
-@property (atomic, strong) FSOverlayAttach *currentAttach;
-@property (nonatomic, strong) FSOverlayAttach *drawingAttach;
+@property (atomic, strong) FSMetalRenderFrame *currentFrame;
+@property (nonatomic, strong) FSMetalRenderFrame *drawingFrame;
 @property (atomic, strong) NSLock *renderSnapshotLock;
 @property (assign) BOOL needCleanBackgroundColor;
 @property (nonatomic, copy) dispatch_block_t refreshCurrentPicBlock;
@@ -50,6 +122,10 @@ typedef CGRect NSRect;
 #endif
 @property (nonatomic, strong) FSDisplayLinkWrapper *displayLinkWrapper;
 @property (atomic, assign) long previousTag;
+// YES when the current display supports EDR/HDR and HDR content is rendered natively
+// (no tone-mapping to SDR). Updated automatically when the display changes.
+// HDR direct display is unavailable on tvOS
+@property(nonatomic, readonly) BOOL directDisplayHDRSupported HDR_API_AVAILABLE;
 // Whether the current display supports EDR/HDR and we have switched to HDR rendering mode.
 @property (nonatomic, assign) BOOL hdrDirectDisplayActive HDR_API_AVAILABLE;
 // 高斯模糊背景：复用字幕管线（BGRA/DIRECT）把模糊后的纹理铺满整个视图。
@@ -58,6 +134,10 @@ typedef CGRect NSRect;
 @property (atomic, strong) id<MTLTexture> backgroundTexture;
 @property (atomic, assign) BOOL needRebuildBackgroundTexture;
 @property (nonatomic, assign) BOOL screenSupportsHDR;
+@property (nonatomic) MTLClearColor requestedBackgroundColor;
+@property (atomic) BOOL automaticBackgroundTransparencyActive;
+@property (atomic) BOOL backgroundTransparencyApplied;
+@property (nonatomic) BOOL picturePipelineHasAlpha;
 @end
 
 @implementation FSMetalView
@@ -69,7 +149,6 @@ typedef CGRect NSRect;
 
 @synthesize scalingMode = _scalingMode;
 // rotate preference
-@synthesize rotatePreference = _rotatePreference;
 @synthesize xRotateDegrees = _xRotateDegrees;
 @synthesize yRotateDegrees = _yRotateDegrees;
 @synthesize zRotateDegrees = _zRotateDegrees;
@@ -82,7 +161,6 @@ typedef CGRect NSRect;
 #if TARGET_OS_IOS
 @synthesize scaleFactor = _scaleFactor;
 #endif
-@synthesize directDisplayHDRSupportted = _directDisplayHDRSupportted;
 @synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
 
 @synthesize displayDelegate = _displayDelegate;
@@ -101,8 +179,8 @@ typedef CGRect NSRect;
     // 的对象必须在 CFRelease(cache) 之前先释放，否则纹理 finalize 时会回调进已释放的
     // cache，造成崩溃。ARC 默认在 dealloc 方法体结束后才释放 strong ivar，太晚了，
     // 因此这里显式提前置空。
-    _currentAttach = nil;
-    _drawingAttach = nil;
+    _currentFrame = nil;
+    _drawingFrame = nil;
     _tileGridPipeline = nil;
     _picturePipeline = nil;
     _subPipeline = nil;
@@ -122,7 +200,6 @@ typedef CGRect NSRect;
 
 - (BOOL)prepareMetal
 {
-    _rotatePreference   = (FSRotatePreference){FSRotateNone, 0.0};
     _xRotateDegrees     = 0.0;
     _yRotateDegrees     = 0.0;
     _zRotateDegrees     = 0.0;
@@ -214,7 +291,7 @@ typedef CGRect NSRect;
         // 否则切换播放源销毁 view 时，线程退出 drain 的纹理会回调进正在被主线程
         // CFRelease 的 textureCache，造成并发释放崩溃（bufferBackingNotInUse @ 0x0）。
         @autoreleasepool {
-            [self displayAttachWithTimestamp:timestamp];
+            [self displayCurrentFrameWithTimestamp:timestamp];
         }
     }];
 #if TARGET_OS_OSX
@@ -273,18 +350,18 @@ typedef CGRect NSRect;
     [self.renderSnapshotLock lock];
     BOOL supportsHDR = _screenSupportsHDR && isHDRContent;
     
-    if (supportsHDR != self.directDisplayHDRSupportted) {
-        _directDisplayHDRSupportted = supportsHDR;
+    if (supportsHDR != self.directDisplayHDRSupported) {
+        _directDisplayHDRSupported = supportsHDR;
         ALOGI("content and display support HDR: %d", supportsHDR);
     }
     
     BOOL activeHDR = supportsHDR && _allowHDRDirectDisplay;
-    BOOL activeChanged = (self.hdrDirectDisplayActive == activeHDR);
+    BOOL activeReady = (self.hdrDirectDisplayActive == activeHDR);
     self.hdrDirectDisplayActive = activeHDR;
     
     [self.renderSnapshotLock unlock];
     
-    if (activeChanged) {
+    if (activeReady) {
         return;
     }
     
@@ -340,15 +417,11 @@ typedef CGRect NSRect;
     BOOL displaySupportsHDR = [self currentDisplaySupportsHDR];
     [self.renderSnapshotLock lock];
     _screenSupportsHDR = displaySupportsHDR;
-    if (self.picturePipeline) {
-        BOOL isHDRContent = [self.picturePipeline isHDRContent];
-        [self.renderSnapshotLock unlock];
-        
-        if (@available(iOS 16.0, macOS 10.11, *)) {
-            [self updateHDRDisplayModeForHDRContent:isHDRContent];
-        }
-    } else {
-        [self.renderSnapshotLock unlock];
+    BOOL isHDRContent = [self.pipelineMeta hdrContent];
+    [self.renderSnapshotLock unlock];
+    
+    if (@available(iOS 16.0, macOS 10.11, *)) {
+        [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
 #endif
 }
@@ -374,24 +447,24 @@ typedef CGRect NSRect;
     [self setNeedsRefreshCurrentPic];
 }
 
-- (CGSize)computeNormalizedVerticesRatio:(FSOverlayAttach *)attach drawableSize:(CGSize)drawableSize
+- (CGSize)computeNormalizedVerticesRatio:(FSMetalRenderFrame *)frame drawableSize:(CGSize)drawableSize
 {
     if (_scalingMode == FSScalingModeFill) {
         return CGSizeMake(1.0, 1.0);
     }
-    
-    int frameWidth = attach.w;
-    int frameHeight = attach.h;
-    
+
+    int frameWidth = frame.w;
+    int frameHeight = frame.h;
+
     //keep video AVRational
-    if (attach.sarNum > 0 && attach.sarDen > 0) {
-        frameWidth = 1.0 * attach.sarNum / attach.sarDen * frameWidth;
+    if (frame.sarNum > 0 && frame.sarDen > 0) {
+        frameWidth = 1.0 * frame.sarNum / frame.sarDen * frameWidth;
     }
     
     int zDegrees = 0;
     zDegrees += (int)self.zRotateDegrees;
-    zDegrees += attach.autoZRotate;
-    
+    zDegrees += frame.autoZRotate;
+
     float darRatio = self.darPreference.ratio;
     
     //when video's z rotate degrees is 90 odd multiple
@@ -408,7 +481,7 @@ typedef CGRect NSRect;
     
     //apply user dar
     if (darRatio > 0.001) {
-        if (1.0 * attach.w / attach.h > darRatio) {
+        if (1.0 * frame.w / frame.h > darRatio) {
             frameHeight = frameWidth * 1.0 / darRatio;
         } else {
             frameWidth = frameHeight * darRatio;
@@ -524,7 +597,7 @@ typedef CGRect NSRect;
     }
     
     if (self.picturePipeline) {
-        if ([self.picturePipeline matchPixelBuffer:pixelBuffer]) {
+        if ([self.picturePipeline matchPixelBuffer:pixelBuffer] && self.picturePipelineHasAlpha == blend) {
             return YES;
         }
         ALOGI("pixel format not match,need rebuild pipeline");
@@ -536,18 +609,20 @@ typedef CGRect NSRect;
         picturePipeline.hdrDisplay = self.hdrDirectDisplayActive;
     }
 #endif
-    BOOL created = [picturePipeline createRenderPipelineIfNeed:pixelBuffer blend:blend];
+    FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:pixelBuffer];
+    BOOL created = [picturePipeline createRenderPipelineIfNeed:meta blend:blend];
 
     if (!created) {
         ALOGE("create RenderPipeline failed.");
         picturePipeline = nil;
     }
-
+    self.pipelineMeta = meta;
     self.picturePipeline = picturePipeline;
+    self.picturePipelineHasAlpha = blend;
     return picturePipeline != nil;
 }
 
-- (void)encodePicture:(FSOverlayAttach *)attach
+- (void)encodePicture:(FSMetalRenderFrame *)frame
         renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
          drawableSize:(CGSize)drawableSize
                 ratio:(CGSize)ratio
@@ -559,7 +634,7 @@ typedef CGRect NSRect;
         // Fallback on earlier versions
     }
 #endif
-    self.picturePipeline.autoZRotateDegrees = attach.autoZRotate;
+    self.picturePipeline.autoZRotateDegrees = frame.autoZRotate;
     self.picturePipeline.xRotateDegrees = self.xRotateDegrees;
     self.picturePipeline.yRotateDegrees = self.yRotateDegrees;
     self.picturePipeline.zRotateDegrees = self.zRotateDegrees;
@@ -567,14 +642,13 @@ typedef CGRect NSRect;
     bool applyAdjust = _colorPreference.brightness != 1.0 || _colorPreference.saturation != 1.0 || _colorPreference.contrast != 1.0;
     [self.picturePipeline updateColorAdjustment:(vector_float4){_colorPreference.brightness,_colorPreference.saturation,_colorPreference.contrast,applyAdjust ? 1.0 : 0.0}];
     self.picturePipeline.vertexRatio = ratio;
-    
-    self.picturePipeline.textureCrop = CGSizeMake(1.0 * (attach.pixelW - attach.w) / attach.pixelW, 1.0 * (attach.pixelH - attach.h) / attach.pixelH);
-    
+    self.picturePipeline.textureCrop = CGSizeMake(1.0 * (frame.pixelW - frame.w) / frame.pixelW, 1.0 * (frame.pixelH - frame.h) / frame.pixelH);
+
     // Set the region of the drawable to draw into.
     [renderEncoder setViewport:(MTLViewport){0.0, 0.0, drawableSize.width, drawableSize.height, -1.0, 1.0}];
     //upload textures
     [self.picturePipeline uploadTextureWithEncoder:renderEncoder
-                                          textures:attach.videoTextures];
+                                          textures:frame.videoTextures];
 }
 
 - (void)encodeSubtitle:(id<MTLRenderCommandEncoder>)renderEncoder
@@ -602,13 +676,13 @@ typedef CGRect NSRect;
     [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
 }
 
-// 合成成一张 BGRA 纹理并缓存到 attach 上，转成普通单帧。
+// 合成成一张 BGRA 纹理，由当前视图的 FSMetalRenderFrame 持有。
 // 合成交给 FSMetalTileGridPipeline；之后旋转/缩放/调色/快照都走单帧路径作用于整张图，
-// 避免逐 tile 旋转导致画面错乱。合成只做一次：完成后 tilePieces 置空、videoPicture 被填充。
+// 避免逐 tile 旋转导致画面错乱；输入 tilePieces 保持不变。
 // 注意：必须在持有 renderSnapshotLock 时调用（与显示/快照共用纹理缓存，需串行）。
-- (BOOL)ensureTileGridComposited:(FSOverlayAttach *)attach
+- (BOOL)ensureTileGridComposited:(FSMetalRenderFrame *)frame attach:(FSOverlayAttach *)attach
 {
-    if (attach.tilePieces.count == 0) {
+    if (frame.videoPicture || attach.tilePieces.count == 0) {
         // 已合成过，或本就不是 tile-grid。
         return YES;
     }
@@ -618,7 +692,9 @@ typedef CGRect NSRect;
     }
 
     // 合成（或命中缓存）后直接拿到可显示的纹理，不再每帧重新生成纹理。
-    id<MTLTexture> texture = [self.tileGridPipeline compositeTileGrid:attach
+    id<MTLTexture> texture = [self.tileGridPipeline compositeTileGrid:attach.tilePieces
+                                                              canvasW:attach.w
+                                                              canvasH:attach.h
                                                          textureCache:self.pictureTextureCache
                                                          commandQueue:self.commandQueue];
     if (!texture) {
@@ -627,11 +703,10 @@ typedef CGRect NSRect;
 
     // 转成普通单帧：直接用合成纹理；videoPicture 仅用于建立 BGRA 显示管线（按像素格式选 shader）。
     // 合成结果即显示尺寸，pixelW/H 与 w/h 相等（采样时无需裁剪）。
-    attach.videoTextures = @[texture];
-    attach.videoPicture = CVPixelBufferRetain(self.tileGridPipeline.compositedPixelBuffer); // 由 attach dealloc 释放
-    attach.pixelW = attach.w;
-    attach.pixelH = attach.h;
-    attach.tilePieces = nil; // 释放各 tile 的 pixelBuffer
+    frame.videoTextures = @[texture];
+    frame.videoPicture = CVPixelBufferRetain(self.tileGridPipeline.compositedPixelBuffer); // 由 FSMetalRenderFrame dealloc 释放
+    frame.pixelW = frame.w;
+    frame.pixelH = frame.h;
     return YES;
 }
 
@@ -649,6 +724,24 @@ typedef CGRect NSRect;
 - (void)registerRefreshCurrentPicObserver:(dispatch_block_t)block
 {
     self.refreshCurrentPicBlock = block;
+}
+
+- (BOOL)refreshAttach:(SDL_TextureOverlay *)overlay
+{
+    [self.renderSnapshotLock lock];
+    FSMetalRenderFrame *frame = self.currentFrame;
+    if (!frame.videoPicture) {
+        [self.renderSnapshotLock unlock];
+        return NO;
+    }
+    if (frame.overlay != overlay) {
+        SDL_TextureOverlay *replacement = SDL_TextureOverlay_Retain(overlay);
+        SDL_TextureOverlay *previous = frame.overlay;
+        frame.overlay = replacement;
+        SDL_TextureOverlay_Release(&previous);
+    }
+    [self.renderSnapshotLock unlock];
+    return YES;
 }
 
 // Produce a +1 retained CVPixelBuffer from a decoded AVFrame. VideoToolbox frames
@@ -675,124 +768,110 @@ typedef CGRect NSRect;
     return FSCVPixelBufferCreateFromAVFrame(frame, pool);
 }
 
-// Produce a +1 retained CVPixelBuffer from a single HEIC tile's AVFrame. Same conversion as
-// -pixelBufferFromAVFrame: but WITHOUT the per-view pool: tiles vary in size within a grid (and
-// across grids), so pooling would thrash. VTB frames still zero-copy via data[3].
-// Returns NULL on unsupported formats. Caller owns the returned buffer.
-- (CVPixelBufferRef)tilePixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
+- (BOOL)displayAttach:(FSOverlayAttach *)source
 {
-    if (!frame) {
-        return NULL;
-    }
-    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
-        CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
-        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
-    }
-    if (frame->width <= 0 || frame->height <= 0) {
-        return NULL;
-    }
-    return FSCVPixelBufferCreateFromAVFrame(frame, NULL);
-}
-
-- (BOOL)displayAttach:(FSOverlayAttach *)attach
-{
+    FSMetalRenderFrame *frame = [[FSMetalRenderFrame alloc] initWithSource:source];
     //call form (ff_vout thread)
 
-    attach.tag = self.previousTag + 1;
+    frame.tag = self.previousTag + 1;
 
     // HEIC tile-grid 模式允许 videoPicture 为 nil，只要 tilePieces 非空
-    BOOL hasTiles = (attach.tilePieces.count > 0);
-    
-    if (!attach.avframe && !hasTiles) {
-        ALOGD("FSMetalView: displayAttach refresh frame\n");
+    if (source.tilePieces.count > 0) {
         [self.renderSnapshotLock lock];
-        self.currentAttach = attach;
+        // 将 tile-grid 合成单帧（BGRA），转换结果仅保存在本视图的 FSMetalRenderFrame。
+        BOOL composited = [self ensureTileGridComposited:frame attach:source];
         [self.renderSnapshotLock unlock];
-        return NO;
-    }
-    
-    // Convert each tile's AVFrame to a CVPixelBuffer here (render side), matching the
-    // single-frame path. The dispatch layer only carries AVFrames now; the tile-grid
-    // pipeline still consumes piece.pixelBuffer. Done once per attach (not per draw) so the
-    // buffer pointer is stable across refresh/rotate → FSMetalTileGridPipeline cache still hits.
-    if (hasTiles) {
-        for (FSTilePiece *piece in attach.tilePieces) {
-            if (!piece.pixelBuffer && piece.avframe) {
-                piece.pixelBuffer = [self tilePixelBufferFromAVFrame:piece.avframe]; // +1 retained
-            }
+        if (!composited) {
+            frame = nil;
+            goto end;
         }
+    } else if (!source.avframe && !frame.videoPicture) {
+        ALOGD("FSMetalView: displayAttach nil frame\n");
+        frame = nil;
+        goto end;
     }
     
-    // Derive the CVPixelBuffer from the decoded AVFrame when the dispatch layer did
-    // not attach one (AVFrame-passthrough path). VideoToolbox frames wrap the pixel
+    // Derive a per-view CVPixelBuffer from the source AVFrame.
+    // VideoToolbox frames wrap the pixel
     // buffer in data[3]; software frames are converted (planes copied, color/DoVi
     // side data stamped as CVBuffer attachments) so the rest of the Metal pipeline —
     // texture cache, colorspace detection, snapshots — keeps working unchanged.
-    if (!attach.videoPicture && attach.avframe) {
-        CVPixelBufferRef pb = [self pixelBufferFromAVFrame:attach.avframe];
+    if (!frame.videoPicture && source.avframe) {
+        CVPixelBufferRef pb = [self pixelBufferFromAVFrame:source.avframe];
         if (pb) {
-            attach.videoPicture = pb; // +1 retained; balanced by FSOverlayAttach dealloc
+            frame.videoPicture = pb; // +1 retained; balanced by FSMetalRenderFrame dealloc
             // Derive pixelW/H from the actual buffer, not frame->width: VideoToolbox
             // buffers are padded to coded width, and the crop calc in the picture
             // pipeline needs the buffer's real (padded) dimensions.
-            attach.pixelW = (int)CVPixelBufferGetWidth(pb);
-            attach.pixelH = (int)CVPixelBufferGetHeight(pb);
+            frame.pixelW = (int)CVPixelBufferGetWidth(pb);
+            frame.pixelH = (int)CVPixelBufferGetHeight(pb);
         }
     }
 
-    if (self.displayDelegate && attach.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
-        attach.videoPicture = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:attach.videoPicture];
+    if (self.displayDelegate && frame.videoPicture && [self.displayDelegate respondsToSelector:@selector(videoRenderingWillDisplay:videoFrame:)]) {
+        CVPixelBufferRef oldBuffer = frame.videoPicture;
+        CVPixelBufferRef newBuffer = [self.displayDelegate videoRenderingWillDisplay:self videoFrame:oldBuffer];
+        if (newBuffer != oldBuffer) {
+            // Delegate returns a borrowed buffer. Retain before releasing the old one.
+            if (newBuffer) {
+                CVPixelBufferRetain(newBuffer);
+            }
+            frame.videoPicture = newBuffer;
+            // Tile-grid may already have textures for oldBuffer; regenerate them for the replacement.
+            frame.videoTextures = nil;
+            for (id item in frame.videoCVTextures) {
+                CFRelease((__bridge CVMetalTextureRef)item);
+            }
+            frame.videoCVTextures = nil;
+            CVPixelBufferRelease(oldBuffer);
+            if (newBuffer) {
+                frame.pixelW = (int)CVPixelBufferGetWidth(newBuffer);
+                frame.pixelH = (int)CVPixelBufferGetHeight(newBuffer);
+            }
+        }
     }
 
-    if (self.preventDisplay) {
-        return YES;
+    if (self.preventDisplay || !frame.videoPicture) {
+        frame = nil;
+        goto end;
     }
-    
+
+end:
     [self.renderSnapshotLock lock];
-    self.currentAttach = attach;
+    self.currentFrame = frame;
     [self.renderSnapshotLock unlock];
-    
-    return YES;
+    return frame != nil;
 }
 
-- (void)displayAttachWithTimestamp:(const CFTimeInterval)timestamp {
-    FSOverlayAttach *currentAttach = self.currentAttach;
+- (void)displayCurrentFrameWithTimestamp:(const CFTimeInterval)timestamp {
+    [self.renderSnapshotLock lock];
+    FSMetalRenderFrame *currentAttach = self.currentFrame;
 
     if (!currentAttach || currentAttach.tag == self.previousTag) {
+        [self.renderSnapshotLock unlock];
         return;
     }
-    
-    self.drawingAttach = currentAttach;
 
-    // Set colorPixelFormat (and build the pipeline) BEFORE [self draw] acquires the Metal
-    // drawable. currentDrawable uses the current CAMetalLayer pixelFormat; if colorPixelFormat
-    // changes after the drawable is acquired, pipeline and drawable formats diverge → crash.
-    //
-    // HDR 判定用原始参考 buffer：普通帧用 videoPicture，tile-grid 用首个 tile 的像素缓冲。
-    BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
-    CVPixelBufferRef videoPicture = currentAttach.videoPicture;
-    if (!videoPicture && hasTileGrid) {
-        videoPicture = ((FSTilePiece *)currentAttach.tilePieces.firstObject).pixelBuffer;
-    }
+    [self.renderSnapshotLock unlock];
 
-    if (!videoPicture) {
+    self.drawingFrame = currentAttach;
+
+    // Layer/view changes must happen on the main thread, outside renderSnapshotLock.
+    [self updateBackgroundTransparencyForFrame:currentAttach force:NO];
+
+    if (!currentAttach.videoPicture) {
         return;
     }
 
 #if !TARGET_OS_TV
+    BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:currentAttach.videoPicture];
+    // 内部可能同步到主线程并再次获取 renderSnapshotLock，必须在锁外调用。
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:videoPicture];
         [self updateHDRDisplayModeForHDRContent:isHDRContent];
     }
 #endif
 
     [self.renderSnapshotLock lock];
-    // tile-grid 必须先合成成单帧（BGRA）再建管线：否则管线会按原始 tile 的像素格式
-    // 格式建立，但是采样合成后是 BGRA 纹理，chroma 缺失导致画面全绿。
-    if (hasTileGrid && ![self ensureTileGridComposited:currentAttach]) {
-        [self.renderSnapshotLock unlock];
-        return;
-    }
     // 用合成后的 videoPicture（tile-grid 为 BGRA，普通帧即原缓冲）建立显示管线。
     [self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha];
     if (currentAttach.subTexture) {
@@ -817,14 +896,13 @@ typedef CGRect NSRect;
     if (!drawable) {
         return;
     }
-    
-    FSOverlayAttach *currentAttach = self.drawingAttach;
-    BOOL hasTileGrid = (currentAttach.tilePieces.count > 0);
+
+    FSMetalRenderFrame *currentFrame = self.drawingFrame;
 
     [self rebuildBackgroundTextureIfNeed];
 
     //Clean Background Color
-    if (!currentAttach.videoPicture && !hasTileGrid) {
+    if (!currentFrame.videoPicture) {
         if (self.needCleanBackgroundColor) {
             id<MTLTexture> texture = drawable.texture;
 
@@ -849,33 +927,23 @@ typedef CGRect NSRect;
     }
     
     [self.renderSnapshotLock lock];
-    self.drawingAttach = nil;
 
-    // tile-grid 先合成成单帧并缓存到 attach（只做一次），之后统一走单帧路径，
-    // 旋转/缩放作用于整张合成图，避免逐 tile 旋转错乱。
-    if (hasTileGrid && ![self ensureTileGridComposited:currentAttach]) {
+    if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
         [self.renderSnapshotLock unlock];
         return;
     }
     
-    //generate textures (single-frame path)
-    if (!currentAttach.videoTextures) {
-        NSMutableArray *cvTextures = nil;
-        currentAttach.videoTextures = [FSMetalTextureUtils doGenerateTexture:currentAttach.videoPicture textureCache:self.pictureTextureCache device:self.device outCVTextures:&cvTextures];
-        currentAttach.videoCVTextures = cvTextures;
-    }
-    
     if (self.displayDelegate && [self.displayDelegate respondsToSelector:@selector(videoRenderingDidDisplay:attach:)]) {
-        [self.displayDelegate videoRenderingDidDisplay:self attach:currentAttach];
+        [self.displayDelegate videoRenderingDidDisplay:self attach:currentFrame];
     }
     
     //draw textures
     CGSize drawableSize = self.drawableSize;
-    
-    CGSize ratio = [self computeNormalizedVerticesRatio:currentAttach drawableSize:drawableSize];
-    
+
+    CGSize ratio = [self computeNormalizedVerticesRatio:currentFrame drawableSize:drawableSize];
+
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-    
+
     // Obtain a renderPassDescriptor generated from the view's drawable textures.
     MTLRenderPassDescriptor *renderPassDescriptor = self.currentRenderPassDescriptor;
     //MTLRenderPassDescriptor描述一系列attachments的值，类似GL的FrameBuffer；同时也用来创建MTLRenderCommandEncoder
@@ -896,15 +964,15 @@ typedef CGRect NSRect;
         [self encodeBackground:renderEncoder drawableSize:drawableSize];
     }
     
-    [self encodePicture:currentAttach
+    [self encodePicture:currentFrame
           renderEncoder:renderEncoder
            drawableSize:drawableSize
                   ratio:ratio];
     
-    if (currentAttach.subTexture) {
+    if (currentFrame.subTexture) {
         [self encodeSubtitle:renderEncoder
                 drawableSize:drawableSize
-                     texture:currentAttach.subTexture];
+                     texture:currentFrame.subTexture];
     }
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
@@ -912,14 +980,14 @@ typedef CGRect NSRect;
     // Extend the lifetime of currentAttach until the GPU finishes rendering.
     // This prevents the underlying CVPixelBuffer from being returned to the pool
     // and recycled/overwritten by the decoder too early, especially at high playback speeds.
-    __block FSOverlayAttach *keepAliveAttach = currentAttach;
+    __block FSMetalRenderFrame *keepAliveAttach = currentFrame;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buf) {
         keepAliveAttach = nil;
     }];
     // Finalize rendering here & push the command buffer to the GPU.
     [commandBuffer commit];
-    self.previousTag = currentAttach.tag;
-    
+    self.previousTag = currentFrame.tag;
+
     [self.renderSnapshotLock unlock];
 }
 
@@ -928,11 +996,10 @@ typedef CGRect NSRect;
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
 {
     [self.renderSnapshotLock lock];
-    
-    FSOverlayAttach *attach = self.currentAttach;
-    BOOL hasTileGrid = (attach.tilePieces.count > 0);
-    CVPixelBufferRef pixelBuffer = attach.videoPicture;
-    if (!pixelBuffer && !hasTileGrid) {
+
+    FSMetalRenderFrame *currentFrame = self.currentFrame;
+    CVPixelBufferRef pixelBuffer = currentFrame.videoPicture;
+    if (!pixelBuffer) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -940,26 +1007,19 @@ typedef CGRect NSRect;
     if (!self.offscreenRendering) {
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
-    
-    // tile-grid 先合成成单帧并缓存到 attach，之后统一走单帧路径。
-    if (hasTileGrid && ![self ensureTileGridComposited:attach]) {
-        [self.renderSnapshotLock unlock];
-        return NULL;
-    }
-    
-    float width  = attach.w;
-    float height = attach.h;
+    float width  = currentFrame.w;
+    float height = currentFrame.h;
     
     //keep video AVRational
-    if (attach.sarNum > 0 && attach.sarDen > 0) {
-        width = 1.0 * attach.sarNum / attach.sarDen * width;
+    if (currentFrame.sarNum > 0 && currentFrame.sarDen > 0) {
+        width = 1.0 * currentFrame.sarNum / currentFrame.sarDen * width;
     }
     
     float darRatio = self.darPreference.ratio;
     
     int zDegrees = 0;
     zDegrees += (int)self.zRotateDegrees;
-    zDegrees += attach.autoZRotate;
+    zDegrees += currentFrame.autoZRotate;
     //when video's z rotate degrees is 90 odd multiple
     if (abs(zDegrees) / 90 % 2 == 1) {
         int tmp = width;
@@ -977,13 +1037,12 @@ typedef CGRect NSRect;
     }
     
     CGSize viewport = CGSizeMake(floorf(width), floorf(height));
-    
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+    if (![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
-    if (drawSub && attach.subTexture && ![self setupSubPipelineIfNeed]) {
+
+    if (drawSub && currentFrame.subTexture && ![self setupSubPipelineIfNeed]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -994,13 +1053,15 @@ typedef CGRect NSRect;
     FSMetalRenderer *savedPipeline = nil;
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
-        if (self.directDisplayHDRSupportted) {
+        if (self.directDisplayHDRSupported) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            if (![sdrPipeline createRenderPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
+            if (![sdrPipeline createRenderPipelineIfNeed:meta blend:currentFrame.hasAlpha]) {
                 [self.renderSnapshotLock unlock];
                 return NULL;
             }
+            self.pipelineMeta = meta;
             self.picturePipeline = sdrPipeline;
         }
     } else {
@@ -1010,22 +1071,16 @@ typedef CGRect NSRect;
 
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
-        
-        if (!attach.videoTextures) {
-            NSMutableArray *cvTextures = nil;
-            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:self.pictureTextureCache device:self.device outCVTextures:&cvTextures];
-            attach.videoCVTextures = cvTextures;
-        }
-        
-        [self encodePicture:attach
+
+        [self encodePicture:currentFrame
               renderEncoder:renderEncoder
                drawableSize:viewport
                       ratio:CGSizeMake(1.0, 1.0)];
-        
-        if (drawSub && attach.subTexture) {
+
+        if (drawSub && currentFrame.subTexture) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:viewport
-                         texture:attach.subTexture];
+                         texture:currentFrame.subTexture];
         }
     }];
     if (savedPipeline) {
@@ -1036,7 +1091,7 @@ typedef CGRect NSRect;
 }
 
 //not support heic tile grid
-- (CGImageRef)_snapshotOrigin:(FSOverlayAttach *)attach
+- (CGImageRef)_snapshotOrigin:(FSMetalRenderFrame *)attach
 {
     if (!attach.videoPicture) {
         return NULL;
@@ -1063,31 +1118,29 @@ typedef CGRect NSRect;
 - (CGImageRef)_snapshotScreen
 {
     [self.renderSnapshotLock lock];
-    
-    FSOverlayAttach *attach = self.currentAttach;
-    BOOL hasTileGrid = (attach.tilePieces.count > 0);
-    CVPixelBufferRef pixelBuffer = attach.videoPicture;
-    if (!pixelBuffer && !hasTileGrid) {
-        [self.renderSnapshotLock unlock];
-        return NULL;
-    }
-    
-    if (!self.offscreenRendering) {
-        self.offscreenRendering = [FSMetalOffscreenRendering alloc];
-    }
-    
-    // tile-grid 先合成成单帧并缓存到 attach，之后统一走单帧路径。
-    if (hasTileGrid && ![self ensureTileGridComposited:attach]) {
-        [self.renderSnapshotLock unlock];
-        return NULL;
-    }
-    
-    if (![self setupPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+
+    FSMetalRenderFrame *currentFrame = self.currentFrame;
+    CVPixelBufferRef pixelBuffer = currentFrame.videoPicture;
+    if (!pixelBuffer) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
 
-    if (attach.subTexture && ![self setupSubPipelineIfNeed]) {
+    if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
+        [self.renderSnapshotLock unlock];
+        return NULL;
+    }
+
+    if (!self.offscreenRendering) {
+        self.offscreenRendering = [FSMetalOffscreenRendering alloc];
+    }
+
+    if (![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
+        [self.renderSnapshotLock unlock];
+        return NULL;
+    }
+
+    if (currentFrame.subTexture && ![self setupSubPipelineIfNeed]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
@@ -1097,13 +1150,15 @@ typedef CGRect NSRect;
     FSMetalRenderer *savedPipeline = nil;
 #if !TARGET_OS_TV
     if (@available(iOS 16.0, *)) {
-        if (self.directDisplayHDRSupportted) {
+        if (self.directDisplayHDRSupported) {
             savedPipeline = self.picturePipeline;
             FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            if (![sdrPipeline createRenderPipelineIfNeed:attach.videoPicture blend:attach.hasAlpha]) {
+            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
+            if (![sdrPipeline createRenderPipelineIfNeed:meta  blend:currentFrame.hasAlpha]) {
                 [self.renderSnapshotLock unlock];
                 return NULL;
             }
+            self.pipelineMeta = meta;
             self.picturePipeline = sdrPipeline;
         }
     } else {
@@ -1114,21 +1169,16 @@ typedef CGRect NSRect;
     CGSize drawableSize = self.drawableSize;
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:drawableSize device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
-        if (!attach.videoTextures) {
-            NSMutableArray *cvTextures = nil;
-            attach.videoTextures = [FSMetalTextureUtils doGenerateTexture:attach.videoPicture textureCache:self.pictureTextureCache device:self.device outCVTextures:&cvTextures];
-            attach.videoCVTextures = cvTextures;
-        }
-        CGSize ratio = [self computeNormalizedVerticesRatio:attach drawableSize:drawableSize];
-        [self encodePicture:attach
+        CGSize ratio = [self computeNormalizedVerticesRatio:currentFrame drawableSize:drawableSize];
+        [self encodePicture:currentFrame
               renderEncoder:renderEncoder
                drawableSize:drawableSize
                       ratio:ratio];
 
-        if (attach.subTexture) {
+        if (currentFrame.subTexture) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:drawableSize
-                         texture:attach.subTexture];
+                         texture:currentFrame.subTexture];
         }
     }];
     if (savedPipeline) {
@@ -1142,7 +1192,7 @@ typedef CGRect NSRect;
 {
     switch (aType) {
         case FSSnapshotTypeOrigin:
-            return [self _snapshotOrigin:self.currentAttach];
+            return [self _snapshotOrigin:self.currentFrame];
         case FSSnapshotTypeScreen:
             return [self _snapshotScreen];
         case FSSnapshotTypeEffect_Origin:
@@ -1168,33 +1218,6 @@ typedef CGRect NSRect;
 {
     if (_scalingMode != scalingMode) {
         _scalingMode = scalingMode;
-        [self setNeedsRefreshCurrentPic];
-    }
-}
-
-- (void)setRotatePreference:(FSRotatePreference)rotatePreference
-{
-    if (_rotatePreference.type != rotatePreference.type || _rotatePreference.degrees != rotatePreference.degrees) {
-        _rotatePreference = rotatePreference;
-        
-        if (rotatePreference.type == FSRotateX) {
-            _xRotateDegrees = rotatePreference.degrees;
-            _yRotateDegrees = 0.0;
-            _zRotateDegrees = 0.0;
-        } else if (rotatePreference.type == FSRotateY) {
-            _xRotateDegrees = 0.0;
-            _yRotateDegrees = rotatePreference.degrees;
-            _zRotateDegrees = 0.0;
-        } else if (rotatePreference.type == FSRotateZ) {
-            _xRotateDegrees = 0.0;
-            _yRotateDegrees = 0.0;
-            _zRotateDegrees = rotatePreference.degrees;
-        } else if (rotatePreference.type == FSRotateNone) {
-            _xRotateDegrees = 0.0;
-            _yRotateDegrees = 0.0;
-            _zRotateDegrees = 0.0;
-        }
-        
         [self setNeedsRefreshCurrentPic];
     }
 }
@@ -1241,9 +1264,68 @@ typedef CGRect NSRect;
 
 - (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b
 {
-    self.clearColor = (MTLClearColor){r/255.0, g/255.0, b/255.0, 1.0f};
-    self.needCleanBackgroundColor = YES;
+    [self setBackgroundColor:r g:g b:b transparent:NO];
+}
+
+- (void)setBackgroundColor:(uint8_t)r g:(uint8_t)g b:(uint8_t)b transparent:(BOOL)transparent
+{
+    [self.renderSnapshotLock lock];
+    _requestedBackgroundColor = (MTLClearColor){r/255.0, g/255.0, b/255.0, transparent ? 0.0 : 1.0};
+    FSMetalRenderFrame *frame = self.currentFrame;
+    [self.renderSnapshotLock unlock];
+    [self updateBackgroundTransparencyForFrame:frame force:YES];
     [self setNeedsRefreshCurrentPic];
+}
+
+- (void)setAutoTransparentBackgroundColor:(BOOL)enabled
+{
+    [self.renderSnapshotLock lock];
+    BOOL changed = _autoTransparentBackgroundColor != enabled;
+    _autoTransparentBackgroundColor = enabled;
+    FSMetalRenderFrame *frame = self.currentFrame;
+    [self.renderSnapshotLock unlock];
+    if (!changed) return;
+    [self updateBackgroundTransparencyForFrame:frame force:NO];
+    [self setNeedsRefreshCurrentPic];
+}
+
+- (void)updateBackgroundTransparencyForFrame:(FSMetalRenderFrame *)frame force:(BOOL)force
+{
+    [self.renderSnapshotLock lock];
+    BOOL automatic = _autoTransparentBackgroundColor && frame.hasAlpha;
+    BOOL transparent = _requestedBackgroundColor.alpha == 0.0 || automatic;
+    BOOL unchanged = self.automaticBackgroundTransparencyActive == automatic &&
+                     self.backgroundTransparencyApplied == transparent;
+    [self.renderSnapshotLock unlock];
+    if (!force && unchanged) return;
+
+    void (^update)(void) = ^{
+        [self.renderSnapshotLock lock];
+        // Recheck settings in case the caller changed them while the render thread waited.
+        BOOL autoTransparent = self->_autoTransparentBackgroundColor && frame.hasAlpha;
+        MTLClearColor color = self->_requestedBackgroundColor;
+        BOOL isTransparent = color.alpha == 0.0 || autoTransparent;
+        // Transparent drawables use premultiplied alpha: RGB must also be zero.
+        color = isTransparent ? (MTLClearColor){0.0, 0.0, 0.0, 0.0} : color;
+        color.alpha = isTransparent ? 0.0 : 1.0;
+        self.clearColor = color;
+        self.automaticBackgroundTransparencyActive = autoTransparent;
+        self.backgroundTransparencyApplied = isTransparent;
+        self.needCleanBackgroundColor = YES;
+        [self.renderSnapshotLock unlock];
+
+        self.layer.opaque = !isTransparent;
+#if !TARGET_OS_OSX
+        self.opaque = !isTransparent;
+        self.backgroundColor = isTransparent ? UIColor.clearColor :
+            [UIColor colorWithRed:color.red green:color.green blue:color.blue alpha:1.0];
+#endif
+    };
+    if ([NSThread isMainThread]) {
+        update();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), update);
+    }
 }
 
 - (void)setBackgroundImage:(UIImage *)backgroundImage

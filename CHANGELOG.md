@@ -1,8 +1,18 @@
+## tag 1.1.2
+
+- fix HEVC hardware decoding on android by enabling all mediacodec decoders instead of only h264
+- rm deprecated rotatePreference property
+- add FSVideoOutputProtocol new protocol
+- replace setPauseInBackground with autoResumeOnForeground
+- improve VideoToolbox foreground recovery on iOS and tvOS by replaying cached keyframe packets and filtering previously decoded frames, fix #68
+- support transparent video and transparent background color, fix #56
+- auto enable av1 videotoolbox hwaccel
+
 ## tag 1.1.1
 
-- support setting the smb2 protocol timeout via the rw_timeout option, fix #31
+- support setting the smb2 protocol timeout via the rw\_timeout option, fix #31
 - fix HEIC tile-grid green tint
-- refactor: vout output avframe instead of CVPixelBuffer,SDL_VoutOverlay aggregates the AVFrames of the tile grid pieces
+- refactor: vout output avframe instead of CVPixelBuffer,SDL\_VoutOverlay aggregates the AVFrames of the tile grid pieces
 
 ## tag 1.1.0
 

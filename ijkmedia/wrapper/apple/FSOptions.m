@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,7 +23,9 @@
  */
 
 #import "FSOptions.h"
-#include "ijkplayer/apple/ijkplayer_ios.h"
+#include "ijkplayer/apple/ijkplayer_apple.h"
+#include "libavutil/dict.h"
+
 #define FS_DEFAULT_WHITELIST @"concat,http,tcp,https,crypto,tls,file,bluray,smb2,dvd,rtmp,rtsp,rtp,srtp,udp"
 
 @implementation FSOptions {

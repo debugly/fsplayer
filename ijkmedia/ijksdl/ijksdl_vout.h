@@ -11,7 +11,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -47,6 +47,11 @@ struct SDL_VoutOverlay {
      * 普通单帧播放 is_tile_grid=0, 其余字段忽略。
      */
     int is_tile_grid;
+#ifdef __APPLE__
+    // Reset whenever decoded content is filled; refreshes reuse the renderer's attach.
+    int attach_displayed;
+    uint64_t attach_renderer_id;
+#endif
 //    int tile_canvas_w;
 //    int tile_canvas_h;
 #endif

@@ -369,6 +369,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)viewDidAppear {
     [super viewDidAppear];
+    [self applyPlayerBackgroundSettings];
     if (self.view.window) {
         self.view.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
     }
@@ -982,12 +983,12 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
             settings.onHorizontalFlipChanged = ^(float degrees) {
                 __strongSelf__
-                self.player.view.yRotateDegrees = degrees;
+                self.renderingView.yRotateDegrees = degrees;
             };
 
             settings.onVerticalFlipChanged = ^(float degrees) {
                 __strongSelf__
-                self.player.view.xRotateDegrees = degrees;
+                self.renderingView.xRotateDegrees = degrees;
             };
             
             created = YES;
@@ -1181,6 +1182,83 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self toggleTitleBar:NO];
 }
 
+- (void)superViewAndWindowsApplyTransparency:(BOOL)transparent fromView:(NSView *)view
+{
+    NSColor *color = transparent ? NSColor.clearColor : NSColor.blackColor;
+    NSWindow *window = view.window;
+    // Stop at the content view; AppKit manages the window frame and its controls.
+    for (NSView *ancestor = view; ancestor; ancestor = ancestor.superview) {
+        ancestor.wantsLayer = YES;
+        ancestor.layer.backgroundColor = color.CGColor;
+        ancestor.layer.opaque = !transparent;
+        ancestor.needsDisplay = YES;
+        if (ancestor == window.contentView) break;
+    }
+    window.opaque = !transparent;
+    window.backgroundColor = color;
+    // A transparent window's shadow follows its content alpha, outlining blurred edges.
+    window.hasShadow = !transparent;
+    window.titlebarAppearsTransparent = YES;
+    [window invalidateShadow];
+}
+
+- (void)applyBackgroundBlurInView:(NSView *)view image:(NSImage *)image
+{
+    if ([view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        NSView<FSVideoRenderingProtocol> *renderer = (NSView<FSVideoRenderingProtocol> *)view;
+        renderer.backgroundBlurIterations = 3;
+        renderer.backgroundBlurSigma = 30.0;
+        renderer.backgroundImage = image;
+    }
+    for (NSView *subview in view.subviews) {
+        [self applyBackgroundBlurInView:subview image:image];
+    }
+}
+
+- (void)applyPlayerBackgroundBlurSetting
+{
+    BOOL blur = [MRCocoaBindingUserDefault boolForKey:@"background_blur_enabled"];
+    NSImage *image = blur ? [NSImage imageNamed:@"demo-bg"] : nil;
+    [self applyBackgroundBlurInView:self.player.view image:image];
+    [self applyBackgroundBlurInView:self.extraRenderWindow.contentView image:image];
+}
+
+- (void)videoRenderingViewApplyTransparency:(BOOL)transparent inView:(NSView *)view
+{
+    if ([view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        NSView<FSVideoRenderingProtocol> *renderer = (NSView<FSVideoRenderingProtocol> *)view;
+        [renderer setBackgroundColor:0 g:0 b:0 transparent:transparent];
+        [self superViewAndWindowsApplyTransparency:transparent fromView:view.superview];
+        return;
+    }
+    for (NSView *subview in view.subviews) {
+        [self videoRenderingViewApplyTransparency:transparent inView:subview];
+    }
+}
+
+- (void)applyPlayerTransparencySetting
+{
+    BOOL transparent = [MRCocoaBindingUserDefault boolForKey:@"player_transparent"];
+    [self superViewAndWindowsApplyTransparency:transparent fromView:self.playerContainer];
+    [self videoRenderingViewApplyTransparency:transparent inView:self.player.view];
+    [self superViewAndWindowsApplyTransparency:transparent fromView:self.extraRenderWindow.contentView];
+    [self videoRenderingViewApplyTransparency:transparent inView:self.extraRenderWindow.contentView];
+}
+
+- (void)applyPlayerBackgroundSettings
+{
+    [self applyPlayerBackgroundBlurSetting];
+    [self applyPlayerTransparencySetting];
+}
+
+- (NSView <FSVideoRenderingProtocol> *)renderingView
+{
+    if ([self.player.view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        return (NSView <FSVideoRenderingProtocol> *)self.player.view;
+    }
+    return nil;
+}
+
 - (BOOL)performKeyEquivalent:(NSEvent *)event
 {
     if (event.modifierFlags & NSEventModifierFlagCommand) {
@@ -1198,25 +1276,25 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
             case kVK_ANSI_R:
             {
                 if (event.modifierFlags & NSEventModifierFlagOption) {
-                    float rotateDegrees = self.player.view.xRotateDegrees;
+                    float rotateDegrees = self.renderingView.xRotateDegrees;
                     if (++rotateDegrees >= 360) {
                         rotateDegrees = 0;
                     }
-                    self.player.view.xRotateDegrees = rotateDegrees;
+                    self.renderingView.xRotateDegrees = rotateDegrees;
                 } else if (event.modifierFlags & NSEventModifierFlagShift) {
-                    float rotateDegrees = self.player.view.yRotateDegrees;
+                    float rotateDegrees = self.renderingView.yRotateDegrees;
                     if (++rotateDegrees >= 360) {
                         rotateDegrees = 0;
                     }
-                    self.player.view.yRotateDegrees = rotateDegrees;
+                    self.renderingView.yRotateDegrees = rotateDegrees;
                 } else {
-                    float rotateDegrees = self.player.view.zRotateDegrees;
+                    float rotateDegrees = self.renderingView.zRotateDegrees;
                     if (++rotateDegrees >= 360) {
                         rotateDegrees = 0;
                     }
-                    self.player.view.zRotateDegrees = rotateDegrees;
+                    self.renderingView.zRotateDegrees = rotateDegrees;
                 }
-                NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.player.view.xRotateDegrees,(int)self.player.view.yRotateDegrees,(int)self.player.view.zRotateDegrees);
+                NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.renderingView.xRotateDegrees,(int)self.renderingView.yRotateDegrees,(int)self.renderingView.zRotateDegrees);
                 return YES;
             }
             case kVK_ANSI_S:
@@ -1664,10 +1742,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
         [videoAux addSubview:playerView];
         
-        playerView.backgroundBlurIterations = 3;
-        playerView.backgroundBlurSigma = 30.0;
-        playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
         [playerView setDisplayDelegate:self];
+        render1.autoTransparentBackgroundColor = YES;
+        render2.autoTransparentBackgroundColor = YES;
         
         // Setup second render view in independent window
         if (!self.extraRenderWindow) {
@@ -1702,17 +1779,17 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         
         self.player = [[FSPlayer alloc] initWithContent:urlStr options:options];
         
-        NSView <FSVideoRenderingProtocol>*playerView = self.player.view;
+        NSView <FSVideoRenderingProtocol>*playerView = self.renderingView;
         playerView.frame = self.playerContainer.bounds;
         playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         playerView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
         [self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
-        playerView.backgroundBlurIterations = 3;
-        playerView.backgroundBlurSigma = 30.0;
-        playerView.backgroundImage = [NSImage imageNamed:@"demo-bg"];
         [playerView setDisplayDelegate:self];
+        playerView.autoTransparentBackgroundColor = YES;
     }
     
+    [self applyPlayerBackgroundSettings];
+
     float speed = [MRCocoaBindingUserDefault playback_speed];
     if (speed <= 0.0) speed = 1.0;
     self.player.playbackRate = speed;
@@ -2588,7 +2665,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     if (self.player) {
         NSLog(@"destroy play");
         [[NSNotificationCenter defaultCenter] removeObserver:self name:nil object:self.player];
-        [self.player.view removeFromSuperview];
+        [self.renderingView removeFromSuperview];
         [self.player pause];
         [self.player shutdown];
         self.player = nil;
@@ -2625,7 +2702,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)resetPreferenceEachPlay
 {
-    self.player.view.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
+    self.renderingView.allowHDRDirectDisplay = [MRCocoaBindingUserDefault open_hdr];
 
     [MRCocoaBindingUserDefault setValue:@(0.0) forKey:@"subtitle_delay"];
 
@@ -2765,12 +2842,12 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)applyBSC
 {
-    FSColorConvertPreference colorPreference = self.player.view.colorPreference;
+    FSColorConvertPreference colorPreference = self.renderingView.colorPreference;
     colorPreference.brightness = [MRCocoaBindingUserDefault color_adjust_brightness];
     colorPreference.saturation = [MRCocoaBindingUserDefault color_adjust_saturation];
     colorPreference.contrast   = [MRCocoaBindingUserDefault color_adjust_contrast];
     
-    self.player.view.colorPreference = colorPreference;
+    self.renderingView.colorPreference = colorPreference;
 }
 
 #pragma mark 播放器偏好设置
@@ -2795,7 +2872,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         dar_num = 1;
         dar_den = 1;
     }
-    self.player.view.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
+    self.renderingView.darPreference = (FSDARPreference){1.0 * dar_num/dar_den};
 }
 
 - (void)applyRotate
@@ -2811,7 +2888,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     } else if (rotate == 3) {
         zRotateDegrees = -270;
     }
-    self.player.view.zRotateDegrees = zRotateDegrees;
+    self.renderingView.zRotateDegrees = zRotateDegrees;
     NSLog(@"rotate z:%d", (int)zRotateDegrees);
 }
 
@@ -3048,8 +3125,18 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
         BOOL allow = [MRCocoaBindingUserDefault open_hdr];
-        self.player.view.allowHDRDirectDisplay = allow;
+        self.renderingView.allowHDRDirectDisplay = allow;
     } forKey:@"open_hdr"];
+
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
+        __strongSelf__
+        [self applyPlayerBackgroundBlurSetting];
+    } forKey:@"background_blur_enabled"];
+
+    [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
+        __strongSelf__
+        [self applyPlayerTransparencySetting];
+    } forKey:@"player_transparent"];
 
     [[MRCocoaBindingUserDefault sharedDefault] onChange:^(id _Nonnull v, BOOL * _Nonnull r) {
         __strongSelf__
@@ -3109,7 +3196,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 
 - (void)onCaptureShot
 {
-    CGImageRef img = [self.player.view snapshot:[MRCocoaBindingUserDefault snapshot_type]];
+    CGImageRef img = [self.renderingView snapshot:[MRCocoaBindingUserDefault snapshot_type]];
     if (img) {
         NSString *dir = [self caputeDirForCurrentPlayingUrl];
         NSString *fmt = [[NSUserDefaults standardUserDefaults] stringForKey:@"snapshot_format"];

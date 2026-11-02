@@ -91,13 +91,13 @@ FSPlayer 保留了你熟悉的 ijkplayer 大部分架构，同时应用了更加
 - [x] 软硬解切换不需要重启播放器
 - [x] 开启视频滤镜，软解支持反交错
 - [x] 同步销毁播放器（默认异步）
+- [x] 支持透明视频和透明背景（无视频区域透出底层视图）
+- [x] 自动开启 AV1 硬解
 
 调研中
 
-- [ ] AV1 可以硬解，但个别视频会崩溃
 - [ ] 直播回放
 - [ ] 音视频可变速变调
-- [ ] 支持透明视频
 - [ ] 画中画
 
 如果之前使用的 ijkplayer，可以轻松迁移到 fsplayer，请参考 [迁移指南](./doc/migration.md) 。
@@ -109,12 +109,12 @@ FSPlayer 保留了你熟悉的 ijkplayer 大部分架构，同时应用了更加
 - Android NDK 27.3
 
 
-| 最低支持平台              | 架构                                        |
-| ------------------- | ----------------------------------------- |
-| iOS 12.0            | arm64、arm64\_simulator、x86\_64\_simulator |
-| macOS 10.14         | arm64、x86\_64                             |
-| tvOS 12.0           | arm64、arm64\_simulator、x86\_64\_simulator |
-| Android 7.0（API 24） | arm64-v8a、armeabi-v7a                     |
+| 最低支持平台                                 | 架构                                        |
+| -------------------------------------- | ----------------------------------------- |
+| iOS 12.0                               | arm64、arm64\_simulator、x86\_64\_simulator |
+| macOS 10.14（Intel）、11.0（Apple Silicon） | arm64、x86\_64                             |
+| tvOS 12.0                              | arm64、arm64\_simulator、x86\_64\_simulator |
+| Android 7.0（API 24）                    | arm64-v8a、armeabi-v7a                     |
 
 
 ## 更新记录
@@ -129,14 +129,14 @@ FSPlayer 完全免费，使用 [LGPLv2.1+](./COPYING.LGPLv2.1) 许可协议发�
 - 通过 Cocoapods 集成:
 
 ```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.1/FSPlayer.spec.json'
+pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.2/FSPlayer.spec.json'
 ```
 
 - Android（Gradle，Maven Central）：
 
 ```groovy
 dependencies {
-    implementation 'io.github.debugly:fsplayer:1.1.1'
+    implementation 'io.github.debugly:fsplayer:1.1.2'
 }
 ```
 

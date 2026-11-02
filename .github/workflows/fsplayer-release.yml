@@ -22,19 +22,25 @@ on:
 jobs:
   build:
     name: build-and-publish
-    runs-on: macos-15
+    runs-on: macos-26
     # 发布用的凭据（Portal token + GPG）放在这个 environment 里，job 不声明就读不到
     # secrets.MAVEN_CENTRAL_*/GPG_*。
     environment: fsplayer-maven
+    # GH_TOKEN 要在 job 上给，Determine Version 那步要靠它跑 gh release list
+    # 来算 beta 序号；runner 上没有 gh 的 keyring 凭据，缺了这个 token 时
+    # next-beta-version.sh 会直接失败（它刻意不做兜底，见那里的注释）。
+    env:
+      GH_TOKEN: ${{ github.token }}
 
     steps:
     - name: Checkout
       uses: actions/checkout@v7
       with:
         submodules: recursive
-        # 完整历史 + tag：release notes 里的 Changelog 行要按版本号找出上一个
-        # 正式版 tag 来生成 compare 链接，默认的浅克隆拿不到 tag。
+        # 完整历史 + tag：Changelog 使用当前分支可达的最新发布 tag（含 beta）。
+        # 默认的浅克隆无法正确判断 tag 的分支归属。
         fetch-depth: 0
+        fetch-tags: true
 
     - name: Set up JDK 17
       uses: actions/setup-java@v6
@@ -93,16 +99,27 @@ jobs:
         ./examples/tvos/build-framework.sh
         ./examples/xcframewrok/make-xcframework.sh
 
-    # 每个平台的 xcframework 单独打一个 zip，连CHANGELOG/README/LICENSE 一起。
+    # 四个 ZIP 与 AAR 共用同一份许可证和分发说明。
+    # Android Java resources 会进入 AAR 内 classes.jar 的 META-INF/fsplayer/。
+    - name: Prepare Distribution Documents
+      run: |
+        set -euo pipefail
+        docs="android/fsplayer/src/main/resources/META-INF/fsplayer"
+        mkdir -p "$docs"
+        cp COPYING.LGPLv2.1 "$docs/LICENSE"
+        cp NOTICE README.md CHANGELOG.md "$docs/"
+
+    # 每个平台的 xcframework 单独打一个 zip，连 CHANGELOG/README/LICENSE/NOTICE 一起。
     - name: Package Apple Distribution
       run: |
+        set -euo pipefail
         package_dist() {
           local name="$1"
           local xcf_path="$2"
           local temp_dir="dist/${name}"
 
           mkdir -p "$temp_dir"
-          cp CHANGELOG.md README.md "$temp_dir/"
+          cp CHANGELOG.md README.md NOTICE "$temp_dir/"
           cp COPYING.LGPLv2.1 "$temp_dir/LICENSE"
           cp -pPR "$xcf_path" "$temp_dir/"
           (cd "$temp_dir" && zip -ryq "../${name}.zip" ./*)
@@ -125,16 +142,38 @@ jobs:
           -PabiFilters="arm64-v8a,armeabi-v7a" \
           --no-daemon --stacktrace
 
-    # AAR + 许可证，就是这次 release 里 Android 侧的全部资产。
+    # 许可证与说明已在 AAR 内，不再作为单独的 release 附件。
     - name: Collect AAR
       run: |
         set -euo pipefail
         mkdir -p dist
         cp android/fsplayer/build/outputs/aar/fsplayer-release.aar dist/fsplayer-release.aar
-        # LICENSE 必须跟着 release 一起发：库是 LGPL-2.1-or-later，源码里对应的
-        # 许可是 COPYING.LGPLv2.1，下游要重新分发就必须带上它。
-        cp COPYING.LGPLv2.1 dist/LICENSE
         ls -l dist
+
+    - name: Verify Distribution Documents
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        from io import BytesIO
+        from pathlib import Path
+        from zipfile import ZipFile
+
+        documents = {
+            "LICENSE": Path("COPYING.LGPLv2.1").read_bytes(),
+            **{name: Path(name).read_bytes() for name in ("NOTICE", "README.md", "CHANGELOG.md")},
+        }
+        for name in ("FSPlayer", "FSPlayer-iOS", "FSPlayer-macOS", "FSPlayer-tvOS"):
+            with ZipFile(f"dist/{name}.zip") as archive:
+                for document, expected in documents.items():
+                    if archive.read(document) != expected:
+                        raise RuntimeError(f"{name}.zip: incorrect {document}")
+        with ZipFile("dist/fsplayer-release.aar") as aar:
+            with ZipFile(BytesIO(aar.read("classes.jar"))) as classes:
+                for document, expected in documents.items():
+                    if classes.read(f"META-INF/fsplayer/{document}") != expected:
+                        raise RuntimeError(f"AAR: incorrect {document}")
+        print("Verified LICENSE, NOTICE, README.md and CHANGELOG.md in all five packages")
+        PY
 
     # 构建完成之后才定版本号。build.gradle 里的 versionName 只在
     # publishAndReleaseToMavenCentral 时用来决定 Maven 坐标，AAR 编译本身不需要；
@@ -180,8 +219,6 @@ jobs:
     # 同名 tag 已存在就直接失败，这是故意的：Maven 坐标一旦被占用就再也换不了，
     # 覆盖掉别人刚发的产物属于不可逆的事故。想要新版本就重新 dispatch，序号会自增。
     - name: Publish Release
-      env:
-        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         set -a; source release-constants.env; set +a
@@ -196,34 +233,101 @@ jobs:
         gh release create "$TAG" --target "$GITHUB_REF_NAME" \
           --title "FSPlayer ${TAG}" --notes-file release-notes.md "${ASSETS[@]}"
 
-    # 发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret（值不进仓库）：
-    #   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD = Portal 生成的 user token
-    #   GPG_PRIVATE_KEY（ASCII-armored 私钥）/ GPG_PASSPHRASE
-    # 用 publishAndReleaseToMavenCentral 而不是 publishToMavenCentral：后者只上传成
-    # 「待发布部署」，还得去 Portal 手动点一次 Release 才真正对外可见。
-    - name: Publish to Maven Central
+    # 跨仓库 dispatch 必须用 PAT / GitHub App token：内建的 github.token 只在
+    # 触发它的仓库里有权限，dispatch fsplayer-spm 一律 403
+    # （Resource not accessible by integration）。给本 workflow 加
+    # permissions: actions: write 也没用，别再试那条路。
+    # 和 homebrew-aura 一样：直接改文件、推 commit，spm 那边不跑任何 workflow。
+    # 这次发布对 spm 的唯一动作就是把 Package.swift 的 url/checksum 指到新版本，
+    # 再补一个版本 tag，SPM 就能解析。用部署密钥（只对这一个仓库有写权限），
+    # 不需要账号级 token，也不需要跨仓调 API。
+    - name: Update fsplayer-spm package
       env:
-        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
-        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
+        SPM_DEPLOY_KEY: ${{ secrets.SPM_DEPLOY_KEY }}
       run: |
         set -euo pipefail
-        for k in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
-                 ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
-          if [[ -z "${!k}" ]]; then
-            echo "::error::$k is empty - add the MAVEN_CENTRAL_*/GPG_* repository secrets first"
-            exit 1
-          fi
-        done
+        if [[ -z "$SPM_DEPLOY_KEY" ]]; then
+          echo "::error::请在 Environments -> fsplayer-maven 配置 SPM_DEPLOY_KEY（fsplayer-spm 的写权限部署密钥私钥）"
+          exit 1
+        fi
         set -a; source release-constants.env; set +a
-        chmod +x android/gradlew
-        cd android
-        ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
-          -PabiFilters="arm64-v8a,armeabi-v7a" \
-          -PversionName="$VERSION" \
-          --no-daemon --stacktrace
-        echo "::notice::fsplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"
+
+        CHECKSUM=$(swift package compute-checksum dist/FSPlayer.zip)
+        echo "::notice::FSPlayer.zip 校验和：${CHECKSUM}"
+
+        KEY="$RUNNER_TEMP/spm-deploy-key"
+        install -m 600 /dev/null "$KEY"
+        printf '%s\n' "$SPM_DEPLOY_KEY" > "$KEY"
+        export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+        SPM_DIR=$(mktemp -d "$RUNNER_TEMP/fsplayer-spm.XXXXXX")
+        git clone --depth 1 git@github.com:debugly/fsplayer-spm.git "$SPM_DIR"
+        cd "$SPM_DIR"
+
+        URL="https://github.com/debugly/fsplayer/releases/download/${VERSION}/FSPlayer.zip"
+        # -i.bak 而不是 -i ''：runner 上是 macOS，但这样在 Linux 上也能跑。
+        sed -i.bak "s|^[[:space:]]*url:.*|            url: \"$URL\",|g"  Package.swift
+        sed -i.bak "s|checksum:.*|checksum: \"$CHECKSUM\"|g"           Package.swift
+        rm -f Package.swift.bak
+
+        # 幂等：已经指向这个版本就不提交，重跑一次发布不会产生空 commit。
+        if git diff --quiet -- Package.swift; then
+          echo "::notice::Package.swift 已指向 $VERSION，跳过提交"
+        else
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add Package.swift
+          git commit -m "Update version to $VERSION"
+          git push origin HEAD:main
+        fi
+
+        # 版本 tag 是 SPM 解析版本的范围依据；已存在就不动，避免把发过的 tag 指到别处。
+        if git ls-remote --tags origin "refs/tags/${VERSION}" | grep -q .; then
+          echo "::notice::tag $VERSION 已存在，保持不动"
+        else
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION"
+        fi
+
+    # 【临时禁用】发布 AAR 到 Maven Central（Central Portal）。需要 4 个 secret
+    # （值不进仓库）：
+    #   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD = Portal 生成的 user token
+    #   GPG_PRIVATE_KEY（ASCII-armored 私钥）/ GPG_PASSPHRASE
+    #
+    # 暂时注释掉整个 step，只保留下面这行 notice，方便先验证 GitHub Release
+    # 这一侧的产物和版本号是对的。Central 的坐标一旦发布就撤不回来（禁止同坐标
+    # 覆盖），所以在 CI 链路完全跑通之前不往那里发。
+    #
+    # 恢复时把这段注释去掉、删掉 notice 即可，脚本本身不用改。
+    - name: Publish to Maven Central
+      run: |
+        set -euo pipefail
+        set -a; source release-constants.env; set +a
+        echo "::notice::Publish to Maven Central 已临时禁用；本次版本为 io.github.debugly:fsplayer:${VERSION}（未发布到 Central）"
+    # 下面是原实现，恢复时整段取消注释：
+    #
+    #   env:
+    #     ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+    #     ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+    #     ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+    #     ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
+    #   run: |
+    #     set -euo pipefail
+    #     for k in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
+    #              ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
+    #       if [[ -z "${!k}" ]]; then
+    #         echo "::error::$k is empty - add the MAVEN_CENTRAL_*/GPG_* repository secrets first"
+    #         exit 1
+    #       fi
+    #     done
+    #     set -a; source release-constants.env; set +a
+    #     chmod +x android/gradlew
+    #     cd android
+    #     ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
+    #       -PabiFilters="arm64-v8a,armeabi-v7a" \
+    #       -PversionName="$VERSION" \
+    #       --no-daemon --stacktrace
+    #     echo "::notice::fsplayer:${VERSION} 已发布到 Maven Central，同步通常需要几分钟"
 
     # artifact 是给 CI 自查用的（run 页面底部，需要登录 GitHub 才能下载）。
     - name: Upload artifacts

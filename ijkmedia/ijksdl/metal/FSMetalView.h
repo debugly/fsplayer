@@ -13,6 +13,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FSMetalView : MTKView <FSVideoRenderingProtocol>
 
+/// 默认 NO。开启后，带 alpha 的视频帧自动使用透明背景，backgroundImage 仍正常绘制。
+/// 普通视频或关闭此选项时将渲染 setBackgroundColor 设置的颜色与透明状态。
+/// 只控制渲染视图；父视图和窗口的透明状态由调用者设置。
+@property (nonatomic) BOOL autoTransparentBackgroundColor;
+
 /// 高斯模糊背景图片。设置后，没有视频画面或视频按比例缩放留出黑边时，
 /// 会用这张图片的高斯模糊结果填充背景，替代默认的纯色（黑色）背景。
 /// 传 nil 清除，恢复纯色背景。

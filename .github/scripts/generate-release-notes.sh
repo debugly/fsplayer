@@ -20,15 +20,14 @@ if [[ -z "$VERSION" || -z "$TAG" || -z "$BASE_VERSION" ]]; then
   exit 1
 fi
 
-# 上一个正式版 tag，用来生成 Changelog 的 compare 链接。只收纯 semver 的 tag，
-# 按版本降序取第一个 —— beta tag 本身不是纯 semver，不在列表里。
-# 一个都没有就退回 HEAD~1，避免链接指向不存在的对比。
-PREV_TAG=$(git tag --list --sort=-v:refname \
-  | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" \
-  | sed -n '1p')
+# 只从当前分支可达的 FSPlayer 发布 tag 中选上一版，包含正式版和 beta。
+# 版本排序时正式版排在同版本 beta 后面；排除本次 tag，支持重新生成说明。
+# 用 awk 过滤，空列表也正常退出，让首次发布能进入下面的兜底逻辑。
+PREV_TAG=$(git -c versionsort.suffix=-beta- tag --merged HEAD --sort=-v:refname \
+  | awk -v current="$TAG" '$0 ~ /^[0-9]+\.[0-9]+\.[0-9]+(-beta-[0-9]+)?$/ && $0 != current { if (!found++) print }')
 if [[ -z "$PREV_TAG" ]]; then
-  echo "::warning::没有任何正式版 tag，Changelog 退回与上一个提交的对比"
-  PREV_TAG="HEAD~1"
+  echo "::warning::当前分支没有历史发布 tag，Changelog 退回提交对比"
+  PREV_TAG=$(git rev-parse --verify HEAD~1 2>/dev/null || git rev-parse HEAD)
 fi
 
 # 读 FFmpeg 实际是什么许可，写进 release 说明。
@@ -93,7 +92,7 @@ ffmpeg_version() {
 # install -l 'ass ffmpeg' 只会拉 ffmpeg 真正依赖的库，所以这个目录就是这次发布
 # 的确切内容。目录不存在或为空都要失败：静默发一条空的 third-party 比没有更糟。
 #
-# list_lib_names 输出原始目录名（一行一个，排序后），join_names 负责拼成顿号串。
+# list_lib_names 输出原始目录名（一行一个，排序后），join_names 负责生成链接并拼成顿号串。
 # 用法: list_lib_names <platform-dir>
 list_lib_names() {
   local dir="$1"
@@ -108,49 +107,67 @@ list_lib_names() {
     | LC_ALL=C sort
 }
 
-# 用数组 join 而不是 out="${out:+$out、}$n"：bash 会把 ${out:...} 里的「out、」
-# 整体当变量名，全角顿号被吞掉，结果只剩最后一个库。
-join_names() {
-  local out=() n
-  while IFS= read -r n; do
-    # ffmpeg 目录换成带版本号的名字，具体版本从配置里读
-    if [[ "$n" == "ffmpeg" ]]; then
-      n=$(ffmpeg_version) || return 1
+# 参照 FFToolChain 的 generate_dependency_notes，读取各平台的预编译发布 tag。
+# 在子 shell 中加载配置，避免库配置里的 export 污染发布脚本的环境。
+dependency_tag() {
+  local name="$1" platform="$2"
+  local cfg="FFToolChain/configs/libs/${name}.sh"
+  local key="PRE_COMPILE_TAG_$(printf '%s' "$platform" | tr '[:lower:]' '[:upper:]')"
+  if [[ ! -f "$cfg" ]]; then
+    echo "::warning::找不到 ${cfg}，${name} 不生成链接" >&2
+    return 0
+  fi
+  (
+    # 上游配置允许通过未设置的环境变量选择镜像，不适用 nounset。
+    set +u
+    unset "$key"
+    source "$cfg" || exit 1
+    if [[ -z "${!key}" ]]; then
+      echo "::warning::${cfg} 未配置 ${key}，${name} 不生成链接" >&2
     fi
-    out+=("$n")
+    printf '%s' "${!key}"
+  )
+}
+
+# 用数组 join 保留库之间的顿号。链接显示库名，FFmpeg 保留原有的版本号。
+# 用法: join_names <names> <platform>
+join_names() {
+  local out=() n label tag
+  while IFS= read -r n; do
+    [[ -n "$n" ]] || continue
+    tag=$(dependency_tag "$n" "$2") || return 1
+    label="$n"
+    if [[ "$n" == "ffmpeg" ]]; then
+      label=$(ffmpeg_version) || return 1
+    fi
+    if [[ -n "$tag" ]]; then
+      label="[${label}](https://github.com/debugly/MRFFToolChainBuildShell/releases/tag/${tag})"
+    fi
+    out+=("$label")
   done <<< "$1"
   local IFS=、
   printf '%s' "${out[*]}"
 }
 
-# Apple 侧的 third-party 行。
-# 三个平台装的依赖常常一致，那就一行写完；但 install 是按平台分别跑的，依赖可能
-# 不一样（比如只有 iOS 需要某个库）。所以先比对：三个目录相同就一行输出，不同就
-# 每个平台一行——合并去重会列出这个 xcframework 里根本没用到的库，比写错更糟。
+# Apple 三个平台的库名和 tag 都相同时合并，否则按平台分别列出。
 list_third_party_apple() {
   local base="FFToolChain/build/product"
   local ios="" macos="" tvos=""
 
-  local dir names
-  for dir in ios macos tvos; do
-    names=$(list_lib_names "$base/$dir/universal") || return 1
-    if [[ "$dir" == "ios" ]]; then ios="$names"
-    elif [[ "$dir" == "macos" ]]; then macos="$names"
-    else tvos="$names"; fi
+  local platform names links
+  for platform in ios macos tvos; do
+    names=$(list_lib_names "$base/$platform/universal") || return 1
+    links=$(join_names "$names" "$platform") || return 1
+    if [[ "$platform" == "ios" ]]; then ios="$links"
+    elif [[ "$platform" == "macos" ]]; then macos="$links"
+    else tvos="$links"; fi
   done
 
-  # join_names 可能因为读不到 FFmpeg 版本而失败，先算进变量再判断，不要留在
-  # printf 的参数里——那样非零退出码传不出去。
-  local merged ios_tp macos_tp tvos_tp
-  merged=$(join_names "$(printf '%s\n' "$ios" "$macos" "$tvos" | LC_ALL=C sort -u)") || return 1
   if [[ "$ios" == "$macos" && "$macos" == "$tvos" ]]; then
-    printf -- '- third-party: %s' "$merged"
+    printf -- '- third-party: %s' "$ios"
   else
-    ios_tp=$(join_names "$ios") || return 1
-    macos_tp=$(join_names "$macos") || return 1
-    tvos_tp=$(join_names "$tvos") || return 1
     printf -- '- iOS third-party: %s\n- macOS third-party: %s\n- tvOS third-party: %s' \
-      "$ios_tp" "$macos_tp" "$tvos_tp"
+      "$ios" "$macos" "$tvos"
   fi
 }
 
@@ -170,7 +187,7 @@ android_section() {
 
   local third_party license
   third_party=$(list_lib_names FFToolChain/build/product/android/universal) || return 1
-  third_party=$(join_names "$third_party") || return 1
+  third_party=$(join_names "$third_party" android) || return 1
   license=$(ffmpeg_license FFToolChain/build/product/android/universal)
 
   cat <<EOF
@@ -222,6 +239,64 @@ ${third_party}
 \`\`\`ruby
 pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/${TAG}/FSPlayer.spec.json'
 \`\`\`
+
+### Swift Package Manager
+
+#### Xcode 工程
+
+1. 在 Xcode 中打开 App 工程，选择 **File → Add Package Dependencies…**。
+2. 输入仓库地址：\`https://github.com/debugly/fsplayer-spm.git\`。
+3. Dependency Rule 选择 **Exact Version**，填写 \`${VERSION}\`，点击 **Add Package**。
+4. 选择 **FSPlayer** 产品，在 **Add to Target** 中选择使用它的 App target，完成添加。
+5. 在 Swift 文件中通过 \`import FSPlayer\` 使用；Objective-C 文件使用 \`#import <FSPlayer/FSPlayer.h>\`。
+
+#### Package.swift
+
+在现有 Swift Package 的 \`Package.swift\` 中添加依赖，并关联到使用 FSPlayer 的 target（将 \`MyLibrary\` 替换为实际 target 名称）：
+
+\`\`\`swift
+// 合并到 Package(...) 的 dependencies 中
+.package(
+    url: "https://github.com/debugly/fsplayer-spm.git",
+    exact: "${VERSION}"
+)
+
+// 合并到 Package(...) 的 targets 中
+.target(
+    name: "MyLibrary",
+    dependencies: [
+        .product(name: "FSPlayer", package: "fsplayer-spm")
+    ]
+)
+\`\`\`
+
+普通 App 的 .xcodeproj 不会自动读取 Package.swift。
+
+### XcodeGen
+
+将以下配置合并到现有 \`project.yml\`，将 \`MyApp\` 替换为实际 App target 名称，保留已有的 target 配置：
+
+\`\`\`yaml
+packages:
+  FSPlayer:
+    url: https://github.com/debugly/fsplayer-spm.git
+    exactVersion: "${VERSION}"
+
+targets:
+  MyApp:
+    dependencies:
+      - package: FSPlayer
+        product: FSPlayer
+\`\`\`
+
+生成工程并解析依赖（将工程名替换为实际名称）：
+
+\`\`\`bash
+xcodegen generate
+xcodebuild -resolvePackageDependencies -project MyApp.xcodeproj
+\`\`\`
+
+集成后，Swift 代码通过 \`import FSPlayer\` 使用。SPM 仓库需先同步本次发布的 ${VERSION} 版本 tag。
 EOF
 }
 

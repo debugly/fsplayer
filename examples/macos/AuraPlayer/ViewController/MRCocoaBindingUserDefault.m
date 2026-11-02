@@ -126,6 +126,8 @@ static NSColor *MRUnarchiveColor(NSData *data) {
         @"lock_screen_ratio" : @(1),
         @"play_from_history" : @(1),
         @"multi_renderer_enabled" : @(0),
+        @"background_blur_enabled" : @(1),
+        @"player_transparent" : @(0),
         @"deinterlace" : @(0),
         
         @"open_gzip" : @(1),

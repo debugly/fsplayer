@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -466,7 +466,17 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
                 AVDictionaryEntry *lang = av_dict_get(st->metadata, FSM_KEY_LANGUAGE, NULL, AV_DICT_IGNORE_SUFFIX);
                 if (lang && lang->value)
                     ijkmeta_set_string_l(stream_meta, FSM_KEY_LANGUAGE, lang->value);
+                
                 AVDictionaryEntry *title = av_dict_get(st->metadata, FSM_KEY_TITLE, NULL, AV_DICT_IGNORE_SUFFIX);
+                
+                if (!title || !title->value) {
+                    title = av_dict_get(st->metadata, "name", NULL, AV_DICT_IGNORE_SUFFIX);
+                }
+                
+                if (!title || !title->value) {
+                    title = av_dict_get(st->metadata, "handler_name", NULL, AV_DICT_IGNORE_SUFFIX);
+                }
+                
                 if (title && title->value)
                     ijkmeta_set_string_l(stream_meta, FSM_KEY_TITLE, title->value);
                 break;

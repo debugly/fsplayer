@@ -35,6 +35,7 @@
     AVCaptureDeviceInput *_videoInput;
     AVCaptureVideoPreviewLayer *_previewLayer;
     BOOL _running;
+    BOOL _showingBarcodeAlert;
     AVCaptureMetadataOutput *_metadataOutput;
 }
 
@@ -82,6 +83,12 @@
     [self startRunning];
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    _previewLayer.frame = _previewView.bounds;
+    [self setupCaptureOrientation];
+}
+
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
@@ -124,10 +131,16 @@
 }
 
 - (void)setupCaptureOrientation {
-    if([_previewLayer.connection isVideoOrientationSupported]) {
+    if ([_previewLayer.connection isVideoOrientationSupported]) {
+        UIInterfaceOrientation interfaceOrientation = UIInterfaceOrientationUnknown;
+        if (@available(iOS 13.0, *)) {
+            interfaceOrientation = self.view.window.windowScene.interfaceOrientation;
+        } else {
+            interfaceOrientation = [UIApplication sharedApplication].statusBarOrientation;
+        }
         AVCaptureVideoOrientation orientation;
-        
-        switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+
+        switch (interfaceOrientation) {
             case UIInterfaceOrientationLandscapeLeft:
                 orientation = AVCaptureVideoOrientationLandscapeLeft;
                 break;
@@ -135,9 +148,14 @@
             case UIInterfaceOrientationLandscapeRight:
                 orientation = AVCaptureVideoOrientationLandscapeRight;
                 break;
-                
+
+            case UIInterfaceOrientationPortraitUpsideDown:
+                orientation = AVCaptureVideoOrientationPortraitUpsideDown;
+                break;
+
             default:
-                orientation = AVCaptureVideoOrientationLandscapeLeft;
+                // A portrait scanner must not use the landscape sensor orientation.
+                orientation = AVCaptureVideoOrientationPortrait;
                 break;
         }
         
@@ -146,7 +164,7 @@
 }
 
 - (void)startRunning {
-    if (_running) return;
+    if (_running || _showingBarcodeAlert) return;
     [_captureSession startRunning];
     _metadataOutput.metadataObjectTypes = @[AVMetadataObjectTypeQRCode];//_metadataOutput.availableMetadataObjectTypes;
 
@@ -182,6 +200,7 @@ didOutputMetadataObjects:(NSArray *)metadataObjects
              for(NSString * str in self.allowedBarcodeTypes) {
                  if([barcode.getBarcodeType isEqualToString:str]) {
                      [self validBarcodeFound:barcode];
+                     *stop = YES;
                      return;
                  }
              }
@@ -189,31 +208,45 @@ didOutputMetadataObjects:(NSArray *)metadataObjects
      }];
 }
 
-- (void) validBarcodeFound:(Barcode *)barcode {
+- (void)validBarcodeFound:(Barcode *)barcode {
+    // Capture callbacks already queued before stopRunning may still arrive.
+    if (_showingBarcodeAlert || self.presentedViewController || !self.view.window) {
+        return;
+    }
+    _showingBarcodeAlert = YES;
     [self stopRunning];
     [self showBarcodeAlert:barcode];
 }
 
-- (void) showBarcodeAlert:(Barcode *)barcode {
-    UIAlertView *message = [[UIAlertView alloc] initWithTitle:nil
-                                                      message:[barcode getBarcodeData]
-                                                     delegate:self
-                                            cancelButtonTitle:@"Scan Again"
-                                            otherButtonTitles:@"Play", nil];
-    
-    [message show];
-}
-
-- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
-    if(buttonIndex == alertView.cancelButtonIndex) {
+- (void)showBarcodeAlert:(Barcode *)barcode {
+    NSString *url = [barcode.getBarcodeData copy];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil
+                                                                 message:url
+                                                          preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"Scan Again"
+                                             style:UIAlertActionStyleCancel
+                                           handler:^(UIAlertAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self->_showingBarcodeAlert = NO;
         [self startRunning];
-    } else {
-        NSString *url = alertView.message;
-        
-        [FSVideoViewController presentFromViewController:self withTitle:[NSString stringWithFormat:@"URL: %@", url] URL:url completion:^{
-            [self.navigationController popViewControllerAnimated:NO];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Play"
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(UIAlertAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        // Finish dismissing the alert before presenting the video controller.
+        [self dismissViewControllerAnimated:YES completion:^{
+            [FSVideoViewController presentFromViewController:self
+                                                  withTitle:[NSString stringWithFormat:@"URL: %@", url]
+                                                        URL:url completion:^{
+                [self.navigationController popViewControllerAnimated:NO];
+            }];
         }];
-    }
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 @end

@@ -11,7 +11,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -121,6 +121,11 @@ static int func_fill_frame(SDL_VoutOverlay *overlay, const AVFrame *frame)
 {
     if (!overlay || !frame)
         return -100;
+
+#if defined(__APPLE__) && IS_TILEGRID_HEIC_ENABLED
+    overlay->attach_displayed = 0;
+    overlay->attach_renderer_id = 0;
+#endif
 
 #if defined(__APPLE__)
     /* For VideoToolbox frames the CVPixelBuffer lives in data[3]; guard against

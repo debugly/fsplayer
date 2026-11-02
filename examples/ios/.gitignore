@@ -1,3 +1,6 @@
 xcuserdata
 xcshareddata
 *.xccheckout
+
+# xcodebuild with BUILD_DIR= produces this next to the sources
+Debug-iphonesimulator/

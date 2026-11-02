@@ -105,10 +105,15 @@
     self.player = [[FSPlayer alloc] initWithContent:self.url options:options];
     self.player.playbackLoop = 2;
     //设置代理，拿到当前渲染帧
-    [self.player.view setDisplayDelegate:self];
+    if ([self.player.view conformsToProtocol:@protocol(FSVideoRenderingProtocol)]) {
+        UIView<FSVideoRenderingProtocol>* renderingView = (UIView<FSVideoRenderingProtocol>*)self.player.view;
+        [renderingView setDisplayDelegate:self];
+    }
+    
     self.player.scalingMode = FSScalingModeAspectFit;
     self.player.shouldAutoplay = YES;
-    
+    //自动恢复
+    [self.player autoResumeOnForeground:YES];
     FSSubtitlePreference p = self.player.subtitlePreference;
     p.PrimaryColour = 16776960;
     self.player.subtitlePreference = p;
@@ -149,7 +154,7 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(FSOverlayAttach *)attach
+- (void)videoRenderingDidDisplay:(id<FSVideoRenderingProtocol>)renderer attach:(id<FSVideoRenderFrame>)attach
 {
     //NSLog(@"当前帧：%@",attach);
 }

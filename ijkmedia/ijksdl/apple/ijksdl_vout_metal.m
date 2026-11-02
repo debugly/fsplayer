@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,10 +22,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#import "ijksdl_vout_ios_gles2.h"
+#import "ijksdl_vout_metal.h"
 
 #include <assert.h>
-#include "ijksdl/ijksdl_vout.h"
 #include "ijksdl/ijksdl_vout_internal.h"
 #include "ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h"
 #include "ijkplayer/ff_subtitle_def.h"
@@ -36,10 +35,6 @@
 
 - (void)dealloc
 {
-    if (_pixelBuffer) {
-        CVPixelBufferRelease(_pixelBuffer);
-        _pixelBuffer = NULL;
-    }
     if (_avframe) {
         av_frame_free(&self->_avframe);
     }
@@ -61,37 +56,11 @@
 
 - (void)dealloc
 {
-    if (self.videoPicture) {
-        CVPixelBufferRelease(self.videoPicture);
-        self.videoPicture = NULL;
-    }
     if (self.avframe) {
         av_frame_free(&self->_avframe);
     }
-    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer
-    if (self.videoCVTextures) {
-        for (id item in self.videoCVTextures) {
-            CVMetalTextureRef texRef = (__bridge CVMetalTextureRef)item;
-            if (texRef) {
-                CFRelease(texRef);
-            }
-        }
-        self.videoCVTextures = nil;
-    }
-    // FSTilePiece 内部 dealloc 自动释放其 pixelBuffer 与 cvTextures
-    self.tilePieces = nil;
-    self.subTexture = nil;
     if (self.overlay) {
         SDL_TextureOverlay_Release(&self->_overlay);
-    }
-}
-
-- (id)subTexture
-{
-    if (self.overlay) {
-        return (__bridge id)self.overlay->getTexture(self.overlay);
-    } else {
-        return nil;
     }
 }
 
@@ -113,8 +82,11 @@
 @end
 
 struct SDL_Vout_Opaque {
-    __strong UIView<FSVideoRenderingProtocol> *gl_view;
+    __strong UIView<FSVideoOutputProtocol> *outputView;
+    uint64_t renderer_id;
 };
+
+static uint64_t next_renderer_id;
 
 static SDL_VoutOverlay *vout_create_overlay_l(int width, int height, int src_format, SDL_Vout *vout)
 {
@@ -136,7 +108,7 @@ static void vout_free_l(SDL_Vout *vout)
     
     SDL_Vout_Opaque *opaque = vout->opaque;
     if (opaque) {
-        opaque->gl_view = nil;
+        opaque->outputView = nil;
     }
     
     SDL_Vout_FreeInternal(vout);
@@ -148,7 +120,7 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
     // display geometry (frame->w/h) the renderer scales to;
 
     SDL_Vout_Opaque *opaque = vout->opaque;
-    UIView<FSVideoRenderingProtocol>* gl_view = opaque->gl_view;
+    UIView<FSVideoOutputProtocol>* gl_view = opaque->outputView;
     
     if (!gl_view) {
         ALOGE("vout_display_overlay_l: NULL gl_view\n");
@@ -166,6 +138,13 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
     /* HEIC tile grid 路径：把所有 tile 的 AVFrame 打包到 FSOverlayAttach.tilePieces，
        渲染侧（FSMetalView）再把每个 AVFrame 转成 CVPixelBuffer 后合成。 */
     if (overlay->is_tile_grid) {
+        //该rendering已经显示过一次了，就触发刷新
+        if (overlay->attach_displayed && overlay->attach_renderer_id == opaque->renderer_id &&
+            [gl_view respondsToSelector:@selector(refreshAttach:)] &&
+            [gl_view refreshAttach:sub_overlay]) {
+            return YES;
+        }
+        overlay->attach_displayed = 0;
         int count = SDL_VoutOverlay_GetTileCount(overlay);
         if (count <= 0) {
             ALOGE("vout_display_overlay_l: tile-grid overlay with 0 tiles\n");
@@ -177,19 +156,13 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         int *ws = (int *)calloc(count, sizeof(int));
         int *hs = (int *)calloc(count, sizeof(int));
         int got = SDL_VoutOverlay_GetTileAVFrames(overlay, frames, xs, ys, ws, hs, count);
-        int tile_canvas_w = 0,tile_canvas_h = 0;
-        SDL_VoutOverlay_GetTileCanvas(overlay, &tile_canvas_w, &tile_canvas_h);
         
         FSOverlayAttach *attach = [[FSOverlayAttach alloc] init];
         attach.w = frame->disp_w;
         attach.h = frame->disp_h;
-        attach.pixelW = tile_canvas_w;
-        attach.pixelH = tile_canvas_h;
-        attach.fps    = frame->fps;
         attach.sarNum = frame->sar.num;
         attach.sarDen = frame->sar.den;
         attach.autoZRotate = frame->auto_z_rotate_degrees;
-        attach.videoPicture = NULL;
 
         NSMutableArray<FSTilePiece *> *pieces = [NSMutableArray arrayWithCapacity:got];
         for (int i = 0; i < got; i++) {
@@ -205,7 +178,10 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         attach.tilePieces = pieces;
         attach.overlay = SDL_TextureOverlay_Retain(sub_overlay);
         free(frames); free(xs); free(ys); free(ws); free(hs);
-        return [gl_view displayAttach:attach];
+        BOOL displayed = [gl_view displayAttach:attach];
+        overlay->attach_displayed = displayed;
+        overlay->attach_renderer_id = displayed ? opaque->renderer_id : 0;
+        return displayed;
     }
 #endif
     
@@ -218,12 +194,6 @@ static int vout_display_overlay_l(SDL_Vout *vout, const Frame *frame, SDL_Textur
         attach.w = frame->disp_w;
         attach.h = frame->disp_h;
 
-        // pixelW/H default to the frame's coded size; renderers that need the padded
-        // buffer dimensions (FSMetalView crop) overwrite these once they materialise
-        // the CVPixelBuffer.
-        attach.pixelW = av_frame->width;
-        attach.pixelH = av_frame->height;
-        attach.fps    = frame->fps;
         attach.sarNum = frame->sar.num;
         attach.sarDen = frame->sar.den;
         attach.autoZRotate = frame->auto_z_rotate_degrees;
@@ -247,7 +217,7 @@ static int vout_display_overlay(SDL_Vout *vout, const Frame *frame, SDL_TextureO
     }
 }
 
-SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
+SDL_Vout *SDL_Vout_CreateForMetal(void)
 {
     SDL_Vout *vout = SDL_Vout_CreateInternal(sizeof(SDL_Vout_Opaque));
     if (!vout)
@@ -258,18 +228,19 @@ SDL_Vout *SDL_VoutIos_CreateForGLES2(void)
     return vout;
 }
 
-static void SDL_VoutIos_SetGLView_l(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view)
+static void SDL_Vout_SetOutputView_l(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
 {
     SDL_Vout_Opaque *opaque = vout->opaque;
-    if (opaque->gl_view != view) {
-        opaque->gl_view = view;
+    if (opaque->outputView != view) {
+        opaque->outputView = view;
+        opaque->renderer_id = __atomic_add_fetch(&next_renderer_id, 1, __ATOMIC_RELAXED);
     }
 }
 
-void SDL_VoutIos_SetGLView(SDL_Vout *vout, UIView<FSVideoRenderingProtocol>* view)
+void SDL_Vout_SetOutputView(SDL_Vout *vout, UIView<FSVideoOutputProtocol>* view)
 {
     SDL_LockMutex(vout->mutex);
-    SDL_VoutIos_SetGLView_l(vout, view);
+    SDL_Vout_SetOutputView_l(vout, view);
     SDL_UnlockMutex(vout->mutex);
 }
 

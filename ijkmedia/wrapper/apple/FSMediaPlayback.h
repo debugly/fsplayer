@@ -10,7 +10,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -90,8 +90,11 @@ typedef enum FSAudioChannel {
 - (void)shutdown;
 //YES:sync,NO:async
 - (void)shutdownSync:(BOOL)sync;
-#if TARGET_OS_IOS
-- (void)setPauseInBackground:(BOOL)pause;
+#if TARGET_OS_IOS || TARGET_OS_TV
+/// Default NO. Pause before the app becomes inactive and resume when active again,
+/// only if playback was requested before suspension. Keeps the same player and
+/// playback position; manually paused playback stays paused. Call on the main thread.
+- (void)autoResumeOnForeground:(BOOL)enabled;
 #endif
 //PS:外挂字幕，最多可挂载512个。
 //挂载并激活字幕；本地网络均可
@@ -101,7 +104,8 @@ typedef enum FSAudioChannel {
 //批量挂载不激活字幕；本地网络均可
 - (BOOL)loadSubtitlesOnly:(NSArray<NSURL*>*)urlArr;
 
-@property(nonatomic, readonly)  UIView <FSVideoRenderingProtocol>*view;
+// Full rendering controls require FSVideoRenderingProtocol conformance.
+@property(nonatomic, readonly) UIView<FSVideoOutputProtocol> *view;
 @property(nonatomic)            NSTimeInterval currentPlaybackTime;
 //音频额外延迟，供用户调整
 @property(nonatomic)            float currentAudioExtraDelay;

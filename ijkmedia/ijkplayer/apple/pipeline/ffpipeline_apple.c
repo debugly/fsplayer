@@ -1,5 +1,5 @@
 /*
- * ffpipeline_ios.c
+ * ffpipeline_apple.c
  *
  * Copyright (c) 2014 Zhou Quan <zhouqicy@gmail.com>
  * Copyright (c) 2019 debugly <qianlongxu@gmail.com>
@@ -9,7 +9,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,10 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "ffpipeline_ios.h"
+#include "ffpipeline_apple.h"
 #include "ffpipenode_ffplay_vdec.h"
 #include "ff_ffplay.h"
-#import "ijksdl/apple/ijksdl_aout_ios_audiounit.h"
+#import "ijksdl/apple/ijksdl_aout_audiounit.h"
 
 struct FS_Pipeline_Opaque {
     FFPlayer    *ffp;

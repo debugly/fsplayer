@@ -9,7 +9,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -246,10 +246,42 @@ static int packet_prepend_aud(AVPacket *pkt)
     return 0;
 }
 
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+/* Called only by the decoder thread, which owns the packet cache. */
+static int decoder_replay_cached_keyframe(Decoder *d)
+{
+    if (!d->avctx->hw_device_ctx || !d->kpkt_cache_has_keyframe ||
+        d->kpkt_cache_count == 0 || d->kpkt_replay_total > 0 || d->kpkt_restart_count >= 3)
+        return 0;
+
+    avcodec_flush_buffers(d->avctx);
+    if (d->bsf)
+        av_bsf_flush(d->bsf);
+    av_packet_unref(d->pkt);
+    d->packet_pending = 0;
+    d->replay_discard_through_pts = d->last_output_pts;
+    d->kpkt_replay_index = 0;
+    d->kpkt_replay_total = d->kpkt_cache_count;
+    d->kpkt_restart_count++;
+    av_log(d->avctx, AV_LOG_INFO, "replay %d cached video packets after pts=%" PRId64 "\n",
+           d->kpkt_replay_total, d->replay_discard_through_pts);
+    return 1;
+}
+#endif
+
 static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
     
     int status = 0;
     for (;;) {
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        // Consume the request atomically; cache inspection stays on this thread.
+        if (d->avctx->codec_type == AVMEDIA_TYPE_VIDEO && ffp->is &&
+            __atomic_exchange_n(&ffp->is->video_restart_from_keyframe_req, 0, memory_order_acq_rel)) {
+            if (d->queue->serial == d->pkt_serial)
+                decoder_replay_cached_keyframe(d);
+        }
+#endif
         
         if (d->queue->serial == d->pkt_serial) {
             
@@ -301,6 +333,21 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                             } else if (!ffp->decoder_reorder_pts) {
                                 frame->pts = frame->pkt_dts;
                             }
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                            if (d->replay_discard_through_pts != AV_NOPTS_VALUE &&
+                                (frame->pts == AV_NOPTS_VALUE || frame->pts <= d->replay_discard_through_pts)) {
+                                av_frame_unref(frame);
+                                continue;
+                            }
+                            if (d->replay_discard_through_pts != AV_NOPTS_VALUE)
+                                av_log(d->avctx, AV_LOG_INFO, "video replay caught up: previous=%" PRId64 " next=%" PRId64 "\n",
+                                       d->replay_discard_through_pts, frame->pts);
+                            d->replay_discard_through_pts = AV_NOPTS_VALUE;
+                            d->last_output_pts = frame->pts;
+                            d->hw_failed_count = 0;
+                            d->kpkt_restart_count = 0;
+#endif
                             
                             if (ffp->copy_hw_frame) {
                                 if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
@@ -354,12 +401,38 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
             }
         }
         
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        int pkt_from_queue = 0;
+#endif
         do {
             if (d->queue->nb_packets == 0)
                 SDL_CondSignal(d->empty_queue_cond);
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+            /* seek/flush 导致序列号变化时，放弃未完成的重放并清空关键帧缓存 */
+            if (d->kpkt_replay_total > 0 && d->queue->serial != d->pkt_serial) {
+                decoder_kpkt_cache_reset(d);
+            }
+#endif
+
             if (d->packet_pending) {
                 d->packet_pending = 0;
-            } else {
+            }
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+            else if (d->kpkt_replay_index < d->kpkt_replay_total) {
+                /* ijkplayer 式硬解恢复：重放缓存里从关键帧开始的封包 */
+                av_packet_unref(d->pkt);
+                if (av_packet_ref(d->pkt, &d->kpkt_cache[d->kpkt_replay_index]) < 0) {
+                    av_log(d->avctx, AV_LOG_ERROR, "failed to ref cached packet for replay\n");
+                    d->kpkt_replay_index = 0;
+                    d->kpkt_replay_total = 0;
+                    continue;
+                }
+                d->pkt_serial = d->queue->serial;
+                d->kpkt_replay_index++;
+            }
+#endif
+            else {
                 int old_serial = d->pkt_serial;
                 if (packet_queue_get_or_buffering(ffp, d->queue, d->pkt, &d->pkt_serial, &d->finished) < 0) {
                     status = -1;
@@ -372,14 +445,37 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                         av_bsf_flush(d->bsf);
                     d->finished = 0;
                     d->hw_failed_count = 0;
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                    d->kpkt_restart_count = 0;
+                    d->last_output_pts = AV_NOPTS_VALUE;
+                    d->replay_discard_through_pts = AV_NOPTS_VALUE;
+                    decoder_kpkt_cache_reset(d);
+#endif
                     d->next_pts = d->start_pts;
                     d->next_pts_tb = d->start_pts_tb;
                 }
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                pkt_from_queue = 1;
+#endif
             }
             if (d->queue->serial == d->pkt_serial)
                 break;
             av_packet_unref(d->pkt);
         } while (1);
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        /* 重放结束，回到正常取包流程 */
+        if (d->kpkt_replay_index >= d->kpkt_replay_total) {
+            d->kpkt_replay_index = 0;
+            d->kpkt_replay_total = 0;
+        }
+
+        /* 缓存最近关键帧之后的硬解封包，供硬解会话失效时重放 */
+        if (pkt_from_queue && d->avctx->hw_device_ctx
+            && d->avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+            decoder_kpkt_cache_append(d, d->pkt);
+        }
+#endif
 
         if (d->avctx->codec_type == AVMEDIA_TYPE_SUBTITLE) {
             int got_frame = 0;
@@ -455,9 +551,21 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     || send == AVERROR(EINVAL)) {
                     //Samsung Wonderland Two HDR UHD 4K HDR10.ts decode first frame return AVERROR_INVALIDDATA 
                     //hw accel decode failed greater than twice.
-                    if (d->avctx->hw_device_ctx && ++d->hw_failed_count > 2) {
-                        ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+                    if (d->avctx->hw_device_ctx) {
+                        d->hw_failed_count++;
+                        // A stale VideoToolbox session may reject the first
+                        // replay packet. Retry from its keyframe immediately,
+                        // rather than feeding the rest of that GOP as P/B frames.
+                        d->kpkt_replay_index = 0;
+                        d->kpkt_replay_total = 0;
+                        if (!decoder_replay_cached_keyframe(d) && d->hw_failed_count > 2)
+                            ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
                     }
+#else
+                    if (d->avctx->hw_device_ctx && ++d->hw_failed_count > 2)
+                        ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
+#endif
                 } else if (send == AVERROR_PATCHWELCOME) {
                     //ffmpeg 4.0 can't decode tiff raw fmt.
                     VideoState *is = ffp->is;
@@ -602,6 +710,9 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
         decoder_abort(&is->viddec, &is->pictq);
         decoder_destroy(&is->viddec);
         ffpipenode_free_p(&ffp->node_vdec);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+        __atomic_store_n(&is->video_restart_from_keyframe_req, 0, memory_order_release);
+#endif
         break;
     default:
         break;
@@ -1379,6 +1490,12 @@ static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFram
     #if defined(__ANDROID__)
         overlay_format = SDL_FCC_YV12;
     #elif defined(__APPLE__)
+        // 源帧是否带 alpha（webm/VP9 的 yuva420p、ProRes4444 的 yuva444p10、qtrle 的 argb、
+        // rawvideo 的 yuva* 等）。这类帧要转 32BGRA，Metal 侧 bgraFragmentShader 会把 alpha
+        // 透传，再配合 attach.hasAlpha 打开的混合即可显示「透明视频」；落到 default 分支会被
+        // 转成 NV12，alpha 直接丢掉（issue #56）。
+        const AVPixFmtDescriptor *src_alpha_pfd = av_pix_fmt_desc_get(src_format);
+        const int src_has_alpha = src_alpha_pfd && (src_alpha_pfd->flags & AV_PIX_FMT_FLAG_ALPHA);
     #if TARGET_OS_OSX
         if (src_format == AV_PIX_FMT_UYVY422) {
             overlay_format = SDL_FCC_UYVY;
@@ -1386,61 +1503,70 @@ static int convert_frame_format(SDL_Vout *vout, AVFrame *src_frame, const AVFram
             overlay_format = SDL_FCC_YUV2;
         } else
     #endif
-    // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
-    #if TARGET_CPU_ARM64
-        if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
-            overlay_format = SDL_FCC_J420;
-        } else if (src_format == AV_PIX_FMT_YUV420P) {
-            overlay_format = SDL_FCC_I420;
-        } else if (src_format == AV_PIX_FMT_YUVJ420P) {
-            overlay_format = SDL_FCC_J420;
-        } else if (src_format == AV_PIX_FMT_YUV420P10) {
-            overlay_format = SDL_FCC_P010;
-        } else if (src_format == AV_PIX_FMT_YUV422P10) {
-            overlay_format = SDL_FCC_P010;
-        } else if (src_format == AV_PIX_FMT_YUV444P10) {
-            overlay_format = SDL_FCC_P010;
-        } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
-            overlay_format = SDL_FCC_P416;
-        } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
-            overlay_format = SDL_FCC_P216;
-        } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
-            overlay_format = SDL_FCC_AYUV64;
+        // 带 alpha 的帧统一走 32BGRA：BGRA/BGR0/ARGB/0RGB 已有各自的直通通路，
+        // YUVA444P16/AYUV64 走 AYUV64，其余（yuva420p/yuva444p10/12/16 ...）在这里改道。
+        if (src_has_alpha &&
+            src_format != AV_PIX_FMT_ARGB && src_format != AV_PIX_FMT_0RGB &&
+            src_format != AV_PIX_FMT_BGRA && src_format != AV_PIX_FMT_BGR0 &&
+            src_format != AV_PIX_FMT_YUVA444P16 && src_format != AV_PIX_FMT_AYUV64) {
+            overlay_format = SDL_FCC_BGRA;
         } else
-    #endif
-        {
-            const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
-            if (pfd->nb_components > 0) {
-                if (pfd->comp[0].depth == 10) {
-                    overlay_format = SDL_FCC_P010;
-                } else {
-                    overlay_format = SDL_FCC_NV12;
-                    switch (src_format) {
-                        case AV_PIX_FMT_BGRA:
-                            overlay_format = SDL_FCC_BGRA;
-                            break;
-                        case AV_PIX_FMT_BGR0:
-                            overlay_format = SDL_FCC_BGR0;
-                            break;
-                        case AV_PIX_FMT_ARGB: {
-                            overlay_format = SDL_FCC_ARGB;
-                            break;
-                        }
-                        case AV_PIX_FMT_0RGB: {
-                            overlay_format = SDL_FCC_0RGB;
-                            break;
-                        }
-                        default: {
-                            if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+        // avoid Metal display garbage color when render 3 texture on Intel Iris Graphics；intel 10.14 has the bug,some higher os hasn't
+        #if TARGET_CPU_ARM64
+            if (src_format == AV_PIX_FMT_YUV420P && src_frame->color_range == AVCOL_RANGE_JPEG) {
+                overlay_format = SDL_FCC_J420;
+            } else if (src_format == AV_PIX_FMT_YUV420P) {
+                overlay_format = SDL_FCC_I420;
+            } else if (src_format == AV_PIX_FMT_YUVJ420P) {
+                overlay_format = SDL_FCC_J420;
+            } else if (src_format == AV_PIX_FMT_YUV420P10) {
+                overlay_format = SDL_FCC_P010;
+            } else if (src_format == AV_PIX_FMT_YUV422P10) {
+                overlay_format = SDL_FCC_P010;
+            } else if (src_format == AV_PIX_FMT_YUV444P10) {
+                overlay_format = SDL_FCC_P010;
+            } else if (src_format == AV_PIX_FMT_YUV444P16 || src_format == AV_PIX_FMT_P416) {
+                overlay_format = SDL_FCC_P416;
+            } else if (src_format == AV_PIX_FMT_YUV422P16 || src_format == AV_PIX_FMT_P216) {
+                overlay_format = SDL_FCC_P216;
+            } else if (src_format == AV_PIX_FMT_YUVA444P16 || src_format == AV_PIX_FMT_AYUV64) {
+                overlay_format = SDL_FCC_AYUV64;
+            } else
+        #endif
+            {
+                const AVPixFmtDescriptor *pfd = av_pix_fmt_desc_get(src_format);
+                if (pfd->nb_components > 0) {
+                    if (pfd->comp[0].depth == 10) {
+                        overlay_format = SDL_FCC_P010;
+                    } else {
+                        switch (src_format) {
+                            case AV_PIX_FMT_BGRA:
                                 overlay_format = SDL_FCC_BGRA;
+                                break;
+                            case AV_PIX_FMT_BGR0:
+                                overlay_format = SDL_FCC_BGR0;
+                                break;
+                            case AV_PIX_FMT_ARGB: {
+                                overlay_format = SDL_FCC_ARGB;
+                                break;
                             }
-                            break;
+                            case AV_PIX_FMT_0RGB: {
+                                overlay_format = SDL_FCC_0RGB;
+                                break;
+                            }
+                            default: {
+                                if (pfd->flags & AV_PIX_FMT_FLAG_RGB) {
+                                    overlay_format = SDL_FCC_BGR0;
+                                } else {
+                                    overlay_format = SDL_FCC_NV12;
+                                }
+                                break;
+                            }
                         }
                     }
                 }
             }
-        }
-    #endif
+        #endif
         //
         vout->overlay_format = overlay_format;
     }
@@ -1699,9 +1825,6 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
         vp->height != cmp_h ||
         vp->format != src_frame->format) {
 
-        if (vp->width != cmp_w || vp->height != cmp_h)
-            ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, cmp_w, cmp_h);
-
         vp->allocated = 0;
         vp->width = cmp_w;
         vp->height = cmp_h;
@@ -1721,6 +1844,11 @@ static int queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double d
 
     /* Display dims carried to the renderer (formerly SDL_VoutOverlay->w/h),
        refreshed every frame like the overlay's func_fill_frame did. */
+    // Report presentation geometry, not the padded allocation canvas. For HEIC
+    // tile grids these differ; the UI uses this size to calculate its aspect ratio.
+    // Also notify when only display geometry changes and the allocation is reused.
+    if (vp->disp_w != disp_w || vp->disp_h != disp_h)
+        ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, disp_w, disp_h);
     vp->disp_w = disp_w;
     vp->disp_h = disp_h;
     
@@ -3238,21 +3366,20 @@ static int audio_open(FFPlayer *opaque, AVChannelLayout *wanted_channel_layout, 
 }
 
 #ifdef __APPLE__
-static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
-                                        const enum AVPixelFormat *pix_fmts)
-{
-    const enum AVPixelFormat supported_fmts[] = {AV_PIX_FMT_VIDEOTOOLBOX,AV_PIX_FMT_NV12,AV_PIX_FMT_YUV420P,AV_PIX_FMT_UYVY422,AV_PIX_FMT_ARGB,AV_PIX_FMT_0RGB,AV_PIX_FMT_BGRA,AV_PIX_FMT_BGR0};
-    
-    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
-        for (int i = 0; i < sizeof(supported_fmts) / sizeof(enum AVPixelFormat); i++) {
-            if (*p == supported_fmts[i])
-                return *p;
-        }
-    }
-    
-    return AV_PIX_FMT_NONE;
-}
-
+//static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
+//                                        const enum AVPixelFormat *pix_fmts)
+//{
+//    const enum AVPixelFormat supported_fmts[] = {AV_PIX_FMT_VIDEOTOOLBOX,AV_PIX_FMT_NV12,AV_PIX_FMT_YUV420P,AV_PIX_FMT_UYVY422,AV_PIX_FMT_ARGB,AV_PIX_FMT_0RGB,AV_PIX_FMT_BGRA,AV_PIX_FMT_BGR0};
+//    
+//    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+//        for (int i = 0; i < sizeof(supported_fmts) / sizeof(enum AVPixelFormat); i++) {
+//            if (*p == supported_fmts[i])
+//                return *p;
+//        }
+//    }
+//    
+//    return AV_PIX_FMT_NONE;
+//}
 
 static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) {
     int err = 0;
@@ -3583,8 +3710,36 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         case AVMEDIA_TYPE_VIDEO   : forced_codec_name = ffp->video_codec_name; break;
         default: break;
     }
-    if (forced_codec_name)
+
+#ifdef __APPLE__
+    int use_hwaccel = 0;
+    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO && !(st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
+        ALOGI("videotoolbox hwaccel switch:%s\n",ffp->videotoolbox_hwaccel ? "on" : "off");
+        if (ffp->videotoolbox_hwaccel) {
+            use_hwaccel = 1;
+        }
+    }
+    
+    int is_videotoolbox_supported_av1(void);
+    //AV1软解解码器是 libdav1d，在硬件支持的情况下启用硬解 av1 解码器，否则强制改回软解
+    if (use_hwaccel && avctx->codec_type == AVMEDIA_TYPE_VIDEO
+        && avctx->codec_id == AV_CODEC_ID_AV1) {
+        if (is_videotoolbox_supported_av1()) {
+            if (forced_codec_name == NULL || strlen(forced_codec_name) == 0) {
+                forced_codec_name = "av1";
+            }
+        } else {
+            use_hwaccel = 0;
+            ALOGI("device not support av1 hwaccel.\n");
+        }
+    }
+#endif
+    
+    if (forced_codec_name) {
+        ALOGI("force codec use '%s'\n", forced_codec_name);
         codec = avcodec_find_decoder_by_name(forced_codec_name);
+    }
+        
     if (!codec) {
         if (forced_codec_name) av_log(NULL, AV_LOG_WARNING,
                                       "No codec could be found with name '%s'\n", forced_codec_name);
@@ -3640,27 +3795,24 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         av_dict_set_int(&opts, "lowres", stream_lowres, 0);
     
 #ifdef __APPLE__
-    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO && !(st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
-        ALOGI("videotoolbox hwaccel switch:%s\n",ffp->videotoolbox_hwaccel ? "on" : "off");
-        if (ffp->videotoolbox_hwaccel) {
-            enum AVHWDeviceType type = av_hwdevice_find_type_by_name("videotoolbox");
-            const AVCodecHWConfig *config = NULL;
-            for (int i = 0;; i++) {
-                const AVCodecHWConfig *node = avcodec_get_hw_config(codec, i);
-                if (!node) {
-                    ALOGE("avdec %s does not support device type %s.\n",
-                            codec->name, av_hwdevice_get_type_name(type));
-                    break;
-                }
-                if (node->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX && node->device_type == type) {
-                    config = node;
-                    break;
-                }
+    if (use_hwaccel) {
+        enum AVHWDeviceType type = av_hwdevice_find_type_by_name("videotoolbox");
+        const AVCodecHWConfig *config = NULL;
+        for (int i = 0;; i++) {
+            const AVCodecHWConfig *node = avcodec_get_hw_config(codec, i);
+            if (!node) {
+                ALOGE("avdec %s does not support device type %s.\n",
+                      codec->name, av_hwdevice_get_type_name(type));
+                break;
             }
-            
-            if (config && hw_decoder_init(avctx, config) == 0) {
-                ALOGI("try use videotoolbox accel\n");
+            if (node->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX && node->device_type == type) {
+                config = node;
+                break;
             }
+        }
+        
+        if (config && hw_decoder_init(avctx, config) == 0) {
+            ALOGI("try use videotoolbox accel\n");
         }
     }
 #endif
@@ -5913,6 +6065,30 @@ int ffp_reload_video_stream(FFPlayer *ffp)
     }
     return 0;
 }
+
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+/*
+ * 请求视频硬解解码器从关键帧缓存重启（issue #68）。
+ *
+ * 用于 App 从后台回到前台等场景：iOS 会回收 VideoToolbox 会话，此时解码器
+ * 必须从关键帧重新开始解码。这里不给解码器做破坏性重建，只在 VideoState 上
+ * 置一个请求标志，由视频解码线程在处理下一个封包前自行 flush 并重放关键帧
+ * 缓存（decoder_decode_frame），从而立即恢复出图。
+ *
+ * 返回 1 表示已提交请求；缓存是否可用由解码线程判断，0 表示播放器不存在。
+ */
+int ffp_restart_video_decoder_from_keyframe(FFPlayer *ffp)
+{
+    VideoState *is = ffp ? ffp->is : NULL;
+    if (!is)
+        return 0;
+
+    // Do not read decoder-owned fields here. The decoder thread validates the
+    // cache when it consumes this request; no stream rebuild or seek is needed.
+    __atomic_store_n(&is->video_restart_from_keyframe_req, 1, memory_order_release);
+    return 1;
+}
+#endif
 
 float ffp_get_property_float(FFPlayer *ffp, int id, float default_value)
 {

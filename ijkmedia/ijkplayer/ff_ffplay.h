@@ -11,7 +11,7 @@
  * FSPlayer is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2.1 of the License, or (at your option) any later version.
  *
  * FSPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -84,6 +84,9 @@ void      ffp_set_playback_rate(FFPlayer *ffp, float rate);
 void      ffp_set_playback_volume(FFPlayer *ffp, float volume);
 int       ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected);
 int       ffp_reload_video_stream(FFPlayer *ffp);
+#if FFP_APPLE_MOBILE_HWDEC_RECOVERY
+int       ffp_restart_video_decoder_from_keyframe(FFPlayer *ffp);
+#endif
 
 float     ffp_get_property_float(FFPlayer *ffp, int id, float default_value);
 void      ffp_set_property_float(FFPlayer *ffp, int id, float value);
