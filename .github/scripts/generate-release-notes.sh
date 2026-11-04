@@ -75,38 +75,6 @@ ffmpeg_license() {
   printf '%s' "$spdx"
 }
 
-# FFTmpeg 的版本号，从 configs/libs/ffmpeg.sh 里读。那个文件是滚动别名（当前指向
-# 8.1.2），升级 FFmpeg 时它会跟着改，这里读到的版本也就自动跟着变。
-ffmpeg_version() {
-  local cfg="FFToolChain/configs/libs/ffmpeg.sh"
-  local v
-  v=$(sed -n "s/^export GIT_REPO_VERSION=//p" "$cfg" | head -1 | tr -d "'\"")
-  if [[ -z "$v" ]]; then
-    echo "::error::无法从 ${cfg} 读取 FFmpeg 版本" >&2
-    return 1
-  fi
-  printf 'FFmpeg %s' "$v"
-}
-
-# 从 FFToolChain 的产物目录里读出实际参与构建的三方库，而不是写死一份清单。
-# install -l 'ass ffmpeg' 只会拉 ffmpeg 真正依赖的库，所以这个目录就是这次发布
-# 的确切内容。目录不存在或为空都要失败：静默发一条空的 third-party 比没有更糟。
-#
-# list_lib_names 输出原始目录名（一行一个，排序后），join_names 负责生成链接并拼成顿号串。
-# 用法: list_lib_names <platform-dir>
-list_lib_names() {
-  local dir="$1"
-  if [[ ! -d "$dir" ]]; then
-    echo "::error::找不到 ${dir}，无法列出三方库" >&2
-    return 1
-  fi
-
-  # __MACOSX 是 macOS 压缩时产生的元数据目录，不是库。
-  find "$dir" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; \
-    | grep -v '^__MACOSX$' \
-    | LC_ALL=C sort
-}
-
 # 参照 FFToolChain 的 generate_dependency_notes，读取各平台的预编译发布 tag。
 # 在子 shell 中加载配置，避免库配置里的 export 污染发布脚本的环境。
 dependency_tag() {
@@ -114,8 +82,8 @@ dependency_tag() {
   local cfg="FFToolChain/configs/libs/${name}.sh"
   local key="PRE_COMPILE_TAG_$(printf '%s' "$platform" | tr '[:lower:]' '[:upper:]')"
   if [[ ! -f "$cfg" ]]; then
-    echo "::warning::找不到 ${cfg}，${name} 不生成链接" >&2
-    return 0
+    echo "::error::找不到 ${cfg}，无法读取 ${name} 的发布 tag" >&2
+    return 1
   fi
   (
     # 上游配置允许通过未设置的环境变量选择镜像，不适用 nounset。
@@ -123,41 +91,33 @@ dependency_tag() {
     unset "$key"
     source "$cfg" || exit 1
     if [[ -z "${!key}" ]]; then
-      echo "::warning::${cfg} 未配置 ${key}，${name} 不生成链接" >&2
+      echo "::error::${cfg} 未配置 ${key}，无法读取 ${name} 的发布 tag" >&2
+      exit 1
     fi
     printf '%s' "${!key}"
   )
 }
 
-# 用数组 join 保留库之间的顿号。链接显示库名，FFmpeg 保留原有的版本号。
-# 用法: join_names <names> <platform>
-join_names() {
-  local out=() n label tag
-  while IFS= read -r n; do
-    [[ -n "$n" ]] || continue
-    tag=$(dependency_tag "$n" "$2") || return 1
-    label="$n"
-    if [[ "$n" == "ffmpeg" ]]; then
-      label=$(ffmpeg_version) || return 1
-    fi
-    if [[ -n "$tag" ]]; then
-      label="[${label}](https://github.com/debugly/MRFFToolChainBuildShell/releases/tag/${tag})"
-    fi
-    out+=("$label")
-  done <<< "$1"
+# 发布说明只列 ass 和 ffmpeg，链接文字使用该平台的预编译 tag。
+# 用法: list_third_party <platform>
+list_third_party() {
+  local platform="$1" name tag
+  local links=()
+  for name in ass ffmpeg; do
+    tag=$(dependency_tag "$name" "$platform") || return 1
+    links+=("[${tag}](https://github.com/debugly/MRFFToolChainBuildShell/releases/tag/${tag})")
+  done
   local IFS=、
-  printf '%s' "${out[*]}"
+  printf '%s' "${links[*]}"
 }
 
-# Apple 三个平台的库名和 tag 都相同时合并，否则按平台分别列出。
+# Apple 三个平台的 tag 都相同时合并，否则按平台分别列出。
 list_third_party_apple() {
-  local base="FFToolChain/build/product"
   local ios="" macos="" tvos=""
 
-  local platform names links
+  local platform links
   for platform in ios macos tvos; do
-    names=$(list_lib_names "$base/$platform/universal") || return 1
-    links=$(join_names "$names" "$platform") || return 1
+    links=$(list_third_party "$platform") || return 1
     if [[ "$platform" == "ios" ]]; then ios="$links"
     elif [[ "$platform" == "macos" ]]; then macos="$links"
     else tvos="$links"; fi
@@ -186,8 +146,7 @@ android_section() {
   fi
 
   local third_party license
-  third_party=$(list_lib_names FFToolChain/build/product/android/universal) || return 1
-  third_party=$(join_names "$third_party" android) || return 1
+  third_party=$(list_third_party android) || return 1
   license=$(ffmpeg_license FFToolChain/build/product/android/universal)
 
   cat <<EOF
@@ -337,7 +296,7 @@ changelog_section() {
 }
 
 # 两个函数都直接输出而不是写文件，所以 set -e 能管到失败：任一环节出错
-# （读不到 third-party、FFmpeg 版本、Maven 坐标）都会停在这里，不会发出半份说明。
+# （读不到三方库的 tag 或 Maven 坐标）都会停在这里，不会发出半份说明。
 # 组装顺序：changelog 在最前（两个平台共用的改动），Apple 和 Android 各一段。
 {
   CHANGELOG_EMITTED=
