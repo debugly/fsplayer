@@ -4,7 +4,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-VERSION_NAME=1.1.2
+VERSION_NAME=1.1.3
 VERSION_TARGET=$1
 
 echo "alter version to $VERSION_NAME"
