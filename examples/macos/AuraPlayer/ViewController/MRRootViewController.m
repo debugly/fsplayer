@@ -1363,15 +1363,6 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
             }
                 break;
         }
-    } else if (event.modifierFlags & NSEventModifierFlagOption) {
-        switch ([event keyCode]) {
-            case kVK_ANSI_S:
-            {
-                //loop exchange subtitles
-#warning TODO exchangeToNextSubtitle
-            }
-                break;
-        }
     }  else {
         switch ([event keyCode]) {
             case kVK_RightArrow:
@@ -2179,9 +2170,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         return;
     }
     [self destroyPlayer];
-#warning 根据地址，动态修改
     BOOL isLive = [urlStr hasPrefix:@"rtmp"] || [urlStr hasPrefix:@"rtsp"];
-//    isLive = NO;
     [self perpareFSPlayer:urlStr hwaccel:[self preferHW] isLive:isLive];
     // Use metadata title if available, otherwise fall back to lastPathComponent
     NSString *metaTitle = self.playlistMeta[urlStr][@"title"];
@@ -2247,19 +2236,19 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     }
     //不解析了，路径里可能包含 #33.mp3，原本#是编码的%23，走了下面的逻辑就导致解码了
     return [url absoluteString];
-    NSURLComponents *comp = [[NSURLComponents alloc] initWithURL:url resolvingAgainstBaseURL:NO];
-    NSString *scheme = comp.scheme ?: @"file";
-    NSString *host = comp.host ?: @"";
-    NSString *port = comp.port ? [NSString stringWithFormat:@":%@", comp.port] : @"";
-
-    NSString *auth = @"";
-    if (comp.user || comp.password) {
-        auth = [NSString stringWithFormat:@"%@:%@@", comp.user ?: @"", comp.password ?: @""];
-    }
-    NSString *decodedPath = [comp path];
-    NSString *query = [comp query] ? [NSString stringWithFormat:@"?%@", comp.query] : @"";
-    NSString *fragment = [comp fragment] ? [NSString stringWithFormat:@"#%@", comp.fragment] : @"";
-    return [NSString stringWithFormat:@"%@://%@%@%@%@%@%@", scheme, auth, host, port, decodedPath,query,fragment];
+//    NSURLComponents *comp = [[NSURLComponents alloc] initWithURL:url resolvingAgainstBaseURL:NO];
+//    NSString *scheme = comp.scheme ?: @"file";
+//    NSString *host = comp.host ?: @"";
+//    NSString *port = comp.port ? [NSString stringWithFormat:@":%@", comp.port] : @"";
+//
+//    NSString *auth = @"";
+//    if (comp.user || comp.password) {
+//        auth = [NSString stringWithFormat:@"%@:%@@", comp.user ?: @"", comp.password ?: @""];
+//    }
+//    NSString *decodedPath = [comp path];
+//    NSString *query = [comp query] ? [NSString stringWithFormat:@"?%@", comp.query] : @"";
+//    NSString *fragment = [comp fragment] ? [NSString stringWithFormat:@"#%@", comp.fragment] : @"";
+//    return [NSString stringWithFormat:@"%@://%@%@%@%@%@%@", scheme, auth, host, port, decodedPath,query,fragment];
 }
 
 - (void)appendToPlayList:(NSArray *)bookmarkArr append:(BOOL)append
