@@ -27,6 +27,8 @@
 @property(atomic, retain) id<FSMediaPlayback> player;
 
 - (id)initWithURL:(NSString *)url;
+// Takes ownership of the app's temporary movie copy and removes it after use.
+- (instancetype)initWithTemporaryMovieURL:(NSURL *)movieURL;
 
 + (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSString *)url completion:(void(^)(void))completion;
 

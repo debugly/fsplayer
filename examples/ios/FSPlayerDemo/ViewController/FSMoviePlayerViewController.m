@@ -24,12 +24,17 @@
 
 @interface FSVideoViewController ()<FSVideoRenderingDelegate>
 
+@property(nonatomic,strong) NSURL *temporaryMovieURL;
+
 @end
 
 @implementation FSVideoViewController
 
 - (void)dealloc
 {
+    if (_temporaryMovieURL) {
+        [[NSFileManager defaultManager] removeItemAtURL:_temporaryMovieURL error:NULL];
+    }
 }
 
 + (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSString *)url completion:(void (^)(void))completion {
@@ -46,6 +51,14 @@
     self = [self initWithNibName:@"FSMoviePlayerViewController" bundle:nil];
     if (self) {
         self.url = url;
+    }
+    return self;
+}
+
+- (instancetype)initWithTemporaryMovieURL:(NSURL *)movieURL {
+    self = [self initWithURL:movieURL.path];
+    if (self) {
+        _temporaryMovieURL = movieURL;
     }
     return self;
 }
@@ -138,7 +151,8 @@
     
     id<FSMediaPlayback> player = self.player;
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
-        [player shutdown];
+        // Keep the controller and its temporary file alive until playback shuts down.
+        [player shutdownSync:self.temporaryMovieURL != nil];
     });
     [self removeMovieNotificationObservers];
 }

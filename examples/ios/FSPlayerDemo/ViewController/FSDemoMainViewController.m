@@ -212,19 +212,37 @@
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info
 {
-    NSString *mediaType = [info objectForKey: UIImagePickerControllerMediaType];
-    NSString *moviePath;
-
-    // Handle a movied picked from a photo album
-    if (CFStringCompare ((CFStringRef) mediaType, kUTTypeMovie, 0)
-        == kCFCompareEqualTo) {
-
-        moviePath = [[info objectForKey:
-                                UIImagePickerControllerMediaURL] path];
+    NSURL *sourceURL = info[UIImagePickerControllerMediaURL];
+    NSURL *movieURL = nil;
+    NSError *copyError = nil;
+    if (sourceURL.isFileURL) {
+        NSString *filename = [NSUUID UUID].UUIDString;
+        if (sourceURL.pathExtension.length > 0) {
+            filename = [filename stringByAppendingPathExtension:sourceURL.pathExtension];
+        }
+        NSURL *destinationURL = [[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES]
+                                 URLByAppendingPathComponent:filename isDirectory:NO];
+        // Import the movie while the picker's file is still available.
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        if ([fileManager copyItemAtURL:sourceURL toURL:destinationURL error:&copyError]) {
+            movieURL = destinationURL;
+        } else {
+            [fileManager removeItemAtURL:destinationURL error:NULL];
+        }
     }
 
-    [self dismissViewControllerAnimated:YES completion:^(void){
-        [self.navigationController pushViewController:[[FSVideoViewController alloc]   initWithURL:moviePath] animated:YES];
+    [picker dismissViewControllerAnimated:YES completion:^{
+        if (movieURL) {
+            FSVideoViewController *player = [[FSVideoViewController alloc] initWithTemporaryMovieURL:movieURL];
+            [self.navigationController pushViewController:player animated:YES];
+        } else {
+            NSString *message = copyError.localizedDescription ?: @"The selected movie is unavailable.";
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Could Not Open Movie"
+                                                                           message:message
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        }
     }];
 }
 
