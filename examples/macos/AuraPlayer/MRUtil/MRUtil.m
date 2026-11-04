@@ -7,9 +7,6 @@
 
 #import "MRUtil.h"
 #import <ImageIO/ImageIO.h>
-#if TARGET_OS_IOS
-#import <MobileCoreServices/MobileCoreServices.h>
-#endif
 
 @implementation MRUtil
 
@@ -107,24 +104,25 @@
 
 + (BOOL)saveImageToFile:(CGImageRef)img path:(NSString *)imgPath
 {
+    // ImageIO accepts UTI strings directly, including on older systems.
     CFStringRef imageUTType = NULL;
     NSString *fileType = [[imgPath pathExtension] lowercaseString];
     if ([fileType isEqualToString:@"jpg"] || [fileType isEqualToString:@"jpeg"]) {
-        imageUTType = kUTTypeJPEG;
+        imageUTType = CFSTR("public.jpeg");
     } else if ([fileType isEqualToString:@"png"]) {
-        imageUTType = kUTTypePNG;
+        imageUTType = CFSTR("public.png");
     } else if ([fileType isEqualToString:@"tiff"]) {
-        imageUTType = kUTTypeTIFF;
+        imageUTType = CFSTR("public.tiff");
     } else if ([fileType isEqualToString:@"bmp"]) {
-        imageUTType = kUTTypeBMP;
+        imageUTType = CFSTR("com.microsoft.bmp");
     } else if ([fileType isEqualToString:@"gif"]) {
-        imageUTType = kUTTypeGIF;
+        imageUTType = CFSTR("com.compuserve.gif");
     } else if ([fileType isEqualToString:@"pdf"]) {
-        imageUTType = kUTTypePDF;
+        imageUTType = CFSTR("com.adobe.pdf");
     }
     
     if (imageUTType == NULL) {
-        imageUTType = kUTTypePNG;
+        imageUTType = CFSTR("public.png");
     }
 
     CFStringRef key = kCGImageDestinationLossyCompressionQuality;
