@@ -14,6 +14,7 @@
 		8261A9D4B1BEADE34876988B /* FSVerticalSwipeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 95D10D175AD56EDA729C616C /* FSVerticalSwipeViewController.m */; };
 		C969F9192DCB053B00EB31DF /* FSPlayer-iOS.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; };
 		C969F91A2DCB053B00EB31DF /* FSPlayer-iOS.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C9B4B1B9309B08D1006F7488 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C9B4B1B8309B08D1006F7488 /* Assets.xcassets */; };
 		C9CC8BD12D91434300D768BC /* FSAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD02D91434300D768BC /* FSAppDelegate.m */; };
 		C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BEB2D91438F00D768BC /* FSQRCodeScanViewController.xib */; };
 		C9CC8BEE2D91438F00D768BC /* FSDemoMainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = C9CC8BDE2D91438F00D768BC /* FSDemoMainViewController.xib */; };
@@ -30,14 +31,8 @@
 		C9CC8BFA2D91438F00D768BC /* FSDemoHistory.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BD62D91438F00D768BC /* FSDemoHistory.m */; };
 		C9CC8BFB2D91438F00D768BC /* FSDemoMainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CC8BDD2D91438F00D768BC /* FSDemoMainViewController.m */; };
 		DC8C3DD4AB281F11EE1EB0DC /* FSSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = D29DE69D16C547DFA26AE54F /* FSSceneDelegate.m */; };
-		E67323A71B69E6F800CB9036 /* AppIcons.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323A51B69E6F800CB9036 /* AppIcons.xcassets */; };
-		E67323A81B69E6F800CB9036 /* LaunchImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */; };
-		E67323AC1B69E76100CB9036 /* MoviePlayerImages.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */; };
 		E6903F0A17EAF70200CFD954 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E6903F0817EAF70200CFD954 /* InfoPlist.strings */; };
 		E6903F0C17EAF70200CFD954 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = E6903F0B17EAF70200CFD954 /* main.m */; };
-		E6903F1217EAF70200CFD954 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1117EAF70200CFD954 /* Default.png */; };
-		E6903F1417EAF70200CFD954 /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1317EAF70200CFD954 /* Default@2x.png */; };
-		E6903F1617EAF70200CFD954 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E6903F1517EAF70200CFD954 /* Default-568h@2x.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +87,7 @@
 		667C42EDB24A9A0F66AD8600 /* UIImage+FSImageEffects.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "UIImage+FSImageEffects.h"; sourceTree = "<group>"; };
 		6E1F2AAD0E0CF1216EF9E853 /* vertical_feed.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = vertical_feed.json; sourceTree = "<group>"; };
 		95D10D175AD56EDA729C616C /* FSVerticalSwipeViewController.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = FSVerticalSwipeViewController.m; sourceTree = "<group>"; };
+		C9B4B1B8309B08D1006F7488 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FSAppDelegate.h; sourceTree = "<group>"; };
 		C9CC8BD02D91434300D768BC /* FSAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FSAppDelegate.m; sourceTree = "<group>"; };
 		C9CC8BD22D91438F00D768BC /* Barcode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Barcode.h; sourceTree = "<group>"; };
@@ -124,16 +120,10 @@
 		DFF5D7B51322A822043DDC24 /* FSVerticalFeed.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = FSVerticalFeed.h; sourceTree = "<group>"; };
 		E2B4D2621AE46F93048FBEF6 /* FSVerticalSwipeViewController.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = FSVerticalSwipeViewController.h; sourceTree = "<group>"; };
 		E6166C9B17EDA4A20006B956 /* FSPlayerDemo.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FSPlayerDemo.pch; sourceTree = "<group>"; };
-		E67323A51B69E6F800CB9036 /* AppIcons.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = AppIcons.xcassets; sourceTree = "<group>"; };
-		E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = LaunchImages.xcassets; sourceTree = "<group>"; };
-		E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = MoviePlayerImages.xcassets; sourceTree = "<group>"; };
 		E6903EFC17EAF70200CFD954 /* FSPlayerDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FSPlayerDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E6903F0717EAF70200CFD954 /* FSPlayerDemo-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FSPlayerDemo-Info.plist"; sourceTree = "<group>"; };
 		E6903F0917EAF70200CFD954 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		E6903F0B17EAF70200CFD954 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		E6903F1117EAF70200CFD954 /* Default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Default.png; sourceTree = "<group>"; };
-		E6903F1317EAF70200CFD954 /* Default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default@2x.png"; sourceTree = "<group>"; };
-		E6903F1517EAF70200CFD954 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,7 +142,7 @@
 			isa = PBXGroup;
 			children = (
 				1B1684372DC3B91900A1BA88 /* FSPlayer-iOS.framework */,
-				1B1684392DC3B91900A1BA88 /* FSPlayer.framework */,
+				1B1684392DC3B91900A1BA88 /* FSPlayer-macOS.framework */,
 				1B1684832DC5034400A1BA88 /* FSPlayer-tvOS.framework */,
 			);
 			name = Products;
@@ -202,16 +192,6 @@
 			path = ViewController;
 			sourceTree = "<group>";
 		};
-		E67323A01B69E6B800CB9036 /* XCAssets */ = {
-			isa = PBXGroup;
-			children = (
-				E67323A51B69E6F800CB9036 /* AppIcons.xcassets */,
-				E67323A61B69E6F800CB9036 /* LaunchImages.xcassets */,
-				E67323AB1B69E76100CB9036 /* MoviePlayerImages.xcassets */,
-			);
-			path = XCAssets;
-			sourceTree = "<group>";
-		};
 		E6903EF317EAF70200CFD954 = {
 			isa = PBXGroup;
 			children = (
@@ -236,7 +216,6 @@
 				C9CC8BCF2D91434300D768BC /* FSAppDelegate.h */,
 				C9CC8BD02D91434300D768BC /* FSAppDelegate.m */,
 				C9CC8BEC2D91438F00D768BC /* ViewController */,
-				E67323A01B69E6B800CB9036 /* XCAssets */,
 				E6903F0617EAF70200CFD954 /* Supporting Files */,
 				6E1F2AAD0E0CF1216EF9E853 /* vertical_feed.json */,
 				DE44A9C3F48284A9E4B83AAB /* FSSceneDelegate.h */,
@@ -251,11 +230,9 @@
 				E6903F0717EAF70200CFD954 /* FSPlayerDemo-Info.plist */,
 				E6903F0817EAF70200CFD954 /* InfoPlist.strings */,
 				E6903F0B17EAF70200CFD954 /* main.m */,
-				E6903F1117EAF70200CFD954 /* Default.png */,
-				E6903F1317EAF70200CFD954 /* Default@2x.png */,
-				E6903F1517EAF70200CFD954 /* Default-568h@2x.png */,
 				E6166C9B17EDA4A20006B956 /* FSPlayerDemo.pch */,
 				55E809E51B145B55003E98A5 /* LaunchScreen.xib */,
+				C9B4B1B8309B08D1006F7488 /* Assets.xcassets */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -331,7 +308,7 @@
 			remoteRef = 1B1684362DC3B91900A1BA88 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		1B1684392DC3B91900A1BA88 /* FSPlayer.framework */ = {
+		1B1684392DC3B91900A1BA88 /* FSPlayer-macOS.framework */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.framework;
 			name = "FSPlayer-macOS.framework";
@@ -355,18 +332,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				E6903F0A17EAF70200CFD954 /* InfoPlist.strings in Resources */,
-				E67323AC1B69E76100CB9036 /* MoviePlayerImages.xcassets in Resources */,
-				E6903F1217EAF70200CFD954 /* Default.png in Resources */,
 				C9CC8BED2D91438F00D768BC /* FSQRCodeScanViewController.xib in Resources */,
+				C9B4B1B9309B08D1006F7488 /* Assets.xcassets in Resources */,
 				C9CC8BEE2D91438F00D768BC /* FSDemoMainViewController.xib in Resources */,
 				C9CC8BEF2D91438F00D768BC /* FSDemoSampleViewController.xib in Resources */,
 				C9CC8BF02D91438F00D768BC /* FSMoviePlayerViewController.xib in Resources */,
 				C9CC8BF12D91438F00D768BC /* FSDemoInputURLViewController.xib in Resources */,
-				E6903F1417EAF70200CFD954 /* Default@2x.png in Resources */,
-				E6903F1617EAF70200CFD954 /* Default-568h@2x.png in Resources */,
-				E67323A71B69E6F800CB9036 /* AppIcons.xcassets in Resources */,
 				55E809E61B145B55003E98A5 /* LaunchScreen.xib in Resources */,
-				E67323A81B69E6F800CB9036 /* LaunchImages.xcassets in Resources */,
 				2E564E8DB21FF8F05988A0C8 /* vertical_feed.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -535,7 +507,7 @@
 				GCC_PREFIX_HEADER = FSPlayerDemo/FSPlayerDemo.pch;
 				INFOPLIST_FILE = "FSPlayerDemo/FSPlayerDemo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = FSPlayer;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(LD_RUNPATH_SEARCH_PATHS_$(IS_MACCATALYST))",
 					"@executable_path/Frameworks",
@@ -571,7 +543,7 @@
 				GCC_PREFIX_HEADER = FSPlayerDemo/FSPlayerDemo.pch;
 				INFOPLIST_FILE = "FSPlayerDemo/FSPlayerDemo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = FSPlayer;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(LD_RUNPATH_SEARCH_PATHS_$(IS_MACCATALYST))",
 					"@executable_path/Frameworks",

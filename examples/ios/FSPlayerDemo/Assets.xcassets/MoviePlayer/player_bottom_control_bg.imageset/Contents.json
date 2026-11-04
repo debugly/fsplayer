@@ -1,13 +1,13 @@
 {
   "images" : [
     {
+      "filename" : "player_bottom_control_bg.png",
       "idiom" : "universal",
-      "filename" : "player_top_control_bg.png",
       "scale" : "1x"
     },
     {
+      "filename" : "player_bottom_control_bg@2x.png",
       "idiom" : "universal",
-      "filename" : "player_top_control_bg@2x.png",
       "scale" : "2x"
     },
     {
@@ -16,7 +16,7 @@
     }
   ],
   "info" : {
-    "version" : 1,
-    "author" : "xcode"
+    "author" : "xcode",
+    "version" : 1
   }
 }
