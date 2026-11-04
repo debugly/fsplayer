@@ -18,6 +18,10 @@
 
 @implementation FSDemoHistoryItem
 
++ (BOOL)supportsSecureCoding {
+    return YES;
+}
+
 - (void)encodeWithCoder:(NSCoder *)aCoder {
     [aCoder encodeObject:self.url forKey:@"url"];
     [aCoder encodeObject:self.title forKey:@"title"];
@@ -26,8 +30,8 @@
 - (instancetype)initWithCoder:(NSCoder *)coder {
     self = [super init];
     if (self) {
-        self.title = [coder decodeObjectForKey:@"title"];
-        self.url = [coder decodeObjectForKey:@"url"];
+        self.title = [coder decodeObjectOfClass:[NSString class] forKey:@"title"];
+        self.url = [coder decodeObjectOfClass:[NSString class] forKey:@"url"];
     }
     return self;
 }
@@ -55,9 +59,22 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _list = [NSKeyedUnarchiver unarchiveObjectWithFile:[self dbfilePath]];
-        if (nil == _list)
-            _list = [NSMutableArray array];
+        _list = [NSMutableArray array];
+        NSData *data = [NSData dataWithContentsOfFile:[self dbfilePath]];
+        if (data) {
+            NSSet *classes = [NSSet setWithObjects:[NSArray class], [FSDemoHistoryItem class], nil];
+            NSError *error = nil;
+            id history = [NSKeyedUnarchiver unarchivedObjectOfClasses:classes fromData:data error:&error];
+            if ([history isKindOfClass:[NSArray class]]) {
+                for (id item in history) {
+                    if ([item isKindOfClass:[FSDemoHistoryItem class]]) {
+                        [_list addObject:item];
+                    }
+                }
+            } else if (error) {
+                NSLog(@"Could not read playback history: %@", error);
+            }
+        }
     }
     return self;
 }
@@ -73,10 +90,18 @@
     return _list;
 }
 
+- (void)saveHistory {
+    NSError *error = nil;
+    NSData *data = [NSKeyedArchiver archivedDataWithRootObject:_list requiringSecureCoding:YES error:&error];
+    if (!data || ![data writeToFile:[self dbfilePath] options:NSDataWritingAtomic error:&error]) {
+        NSLog(@"Could not save playback history: %@", error);
+    }
+}
+
 - (void)removeAtIndex:(NSUInteger)index {
     [_list removeObjectAtIndex:index];
     
-    [NSKeyedArchiver archiveRootObject:_list toFile:[self dbfilePath]];
+    [self saveHistory];
 }
 
 - (void)add:(FSDemoHistoryItem *)item {
@@ -95,7 +120,7 @@
     
     [_list insertObject:item atIndex:0];
     
-    [NSKeyedArchiver archiveRootObject:_list toFile:[self dbfilePath]];
+    [self saveHistory];
 }
 
 @end

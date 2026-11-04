@@ -16,7 +16,7 @@
 
 #import <Foundation/Foundation.h>
 
-@interface FSDemoHistoryItem : NSObject <NSCoding>
+@interface FSDemoHistoryItem : NSObject <NSSecureCoding>
 
 @property(nonatomic,strong) NSString *title;
 @property(nonatomic,strong) NSString *url;
