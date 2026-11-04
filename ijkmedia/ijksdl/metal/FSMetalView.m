@@ -426,6 +426,7 @@ typedef CGRect NSRect;
 #endif
 }
 
+#if !TARGET_OS_TV
 - (BOOL)allowHDRDirectDisplay HDR_API_AVAILABLE {
     [self.renderSnapshotLock lock];
     BOOL value = _allowHDRDirectDisplay;
@@ -446,6 +447,7 @@ typedef CGRect NSRect;
     [self updateHDRDisplayMode];
     [self setNeedsRefreshCurrentPic];
 }
+#endif
 
 - (CGSize)computeNormalizedVerticesRatio:(FSMetalRenderFrame *)frame drawableSize:(CGSize)drawableSize
 {

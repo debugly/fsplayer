@@ -48,7 +48,7 @@
     //开启硬解
     [options setPlayerOptionIntValue:isVideoToolBox forKey:@"videotoolbox_hwaccel"];
 
-    self.player = [[FSPlayer alloc] initWithContentURL:[NSURL URLWithString:kURL] withOptions:options];
+    self.player = [[FSPlayer alloc] initWithContent:kURL options:options];
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
 //    self.player.view.frame = CGRectMake(0, 0, 414, 232);
