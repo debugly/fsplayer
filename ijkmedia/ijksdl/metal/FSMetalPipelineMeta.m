@@ -66,7 +66,7 @@
 
     FSYUV2RGBColorMatrixType colorMatrixType = FSYUV2RGBColorMatrixNone;
     if (needConvertColor) {
-        CFStringRef colorMatrix = CVBufferGetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, NULL);
+        CFStringRef colorMatrix = FSMetalCopyBufferAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey);
         if (colorMatrix) {
             if (CFStringCompare(colorMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2, 0) == kCFCompareEqualTo) {
                 colorMatrixType = FSYUV2RGBColorMatrixBT709;
@@ -75,6 +75,7 @@
             } else if (CFStringCompare(colorMatrix, kCVImageBufferYCbCrMatrix_ITU_R_2020, 0) == kCFCompareEqualTo) {
                 colorMatrixType = FSYUV2RGBColorMatrixBT2020;
             }
+            CFRelease(colorMatrix);
         }
         if (colorMatrixType == FSYUV2RGBColorMatrixNone) {
             colorMatrixType = FSYUV2RGBColorMatrixBT709;
@@ -103,15 +104,16 @@
         meta.hdrContent = YES;
         
         FSColorTransferFunc tf;
-        CFStringRef transferFuntion = CVBufferGetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, NULL);
-        if (transferFuntion) {
-            if (CFStringCompare(transferFuntion, FS_TransferFunction_ITU_R_2100_HLG, 0) == kCFCompareEqualTo) {
+        CFStringRef transferFunction = FSMetalCopyBufferAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey);
+        if (transferFunction) {
+            if (CFStringCompare(transferFunction, FS_TransferFunction_ITU_R_2100_HLG, 0) == kCFCompareEqualTo) {
                 tf = FSColorTransferFuncHLG;
-            } else if (CFStringCompare(transferFuntion, FS_TransferFunction_SMPTE_ST_2084_PQ, 0) == kCFCompareEqualTo || CFStringCompare(transferFuntion, FS_TransferFunction_SMPTE_ST_428_1, 0) == kCFCompareEqualTo) {
+            } else if (CFStringCompare(transferFunction, FS_TransferFunction_SMPTE_ST_2084_PQ, 0) == kCFCompareEqualTo || CFStringCompare(transferFunction, FS_TransferFunction_SMPTE_ST_428_1, 0) == kCFCompareEqualTo) {
                 tf = FSColorTransferFuncPQ;
             } else {
                 tf = FSColorTransferFuncLINEAR;
             }
+            CFRelease(transferFunction);
         } else {
             tf = FSColorTransferFuncLINEAR;
         }
@@ -124,9 +126,11 @@
 + (BOOL)isHDRContentWithPixelBuffer:(CVPixelBufferRef)pixelBuffer
 {
     if (!pixelBuffer) { return NO; }
-    CFStringRef colorMatrix = CVBufferGetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, NULL);
+    CFStringRef colorMatrix = FSMetalCopyBufferAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey);
     if (!colorMatrix) { return NO; }
-    return CFStringCompare(colorMatrix, kCVImageBufferYCbCrMatrix_ITU_R_2020, 0) == kCFCompareEqualTo;
+    BOOL isHDR = CFStringCompare(colorMatrix, kCVImageBufferYCbCrMatrix_ITU_R_2020, 0) == kCFCompareEqualTo;
+    CFRelease(colorMatrix);
+    return isHDR;
 }
 
 - (NSString *)description:(BOOL)displayHDR

@@ -11,6 +11,20 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+static inline CFTypeRef _Nullable FSMetalCopyBufferAttachment(CVBufferRef buffer, CFStringRef key) CF_RETURNS_RETAINED
+{
+    if (@available(macOS 12.0, iOS 15.0, tvOS 15.0, *)) {
+        return CVBufferCopyAttachment(buffer, key, NULL);
+    }
+
+    // Older systems only provide the borrowed attachment API.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    CFTypeRef attachment = CVBufferGetAttachment(buffer, key, NULL);
+#pragma clang diagnostic pop
+    return attachment ? CFRetain(attachment) : NULL;
+}
+
 @interface FSMetalPipelineMeta : NSObject
 
 @property (nonatomic) BOOL hdrContent;

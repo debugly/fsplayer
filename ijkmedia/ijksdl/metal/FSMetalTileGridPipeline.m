@@ -53,11 +53,11 @@
     fcc[0] = (fmt >> 24) & 0xFF; fcc[1] = (fmt >> 16) & 0xFF;
     fcc[2] = (fmt >> 8) & 0xFF;  fcc[3] = fmt & 0xFF;
 
-    CFStringRef matrix    = CVBufferGetAttachment(pb, kCVImageBufferYCbCrMatrixKey, NULL);
-    CFStringRef primaries = CVBufferGetAttachment(pb, kCVImageBufferColorPrimariesKey, NULL);
-    CFStringRef transfer  = CVBufferGetAttachment(pb, kCVImageBufferTransferFunctionKey, NULL);
+    CFStringRef matrix    = FSMetalCopyBufferAttachment(pb, kCVImageBufferYCbCrMatrixKey);
+    CFStringRef primaries = FSMetalCopyBufferAttachment(pb, kCVImageBufferColorPrimariesKey);
+    CFStringRef transfer  = FSMetalCopyBufferAttachment(pb, kCVImageBufferTransferFunctionKey);
     // CVImageBufferGetColorSpace 仅 macOS 可用；iOS 上 colorspace 以 attachment 形式存放。
-    CGColorSpaceRef cs    = (CGColorSpaceRef)CVBufferGetAttachment(pb, kCVImageBufferCGColorSpaceKey, NULL);
+    CGColorSpaceRef cs    = (CGColorSpaceRef)FSMetalCopyBufferAttachment(pb, kCVImageBufferCGColorSpaceKey);
     CFStringRef csName    = cs ? CGColorSpaceGetName(cs) : NULL;
 
     ALOGD("HEIC TileGrid fmt=%s(0x%08x) matrix=%s primaries=%s transfer=%s colorspace=%s\n",
@@ -66,6 +66,10 @@
           primaries ? [(__bridge NSString *)primaries UTF8String] : "(nil)",
           transfer  ? [(__bridge NSString *)transfer  UTF8String] : "(nil)",
           csName    ? [(__bridge NSString *)csName    UTF8String] : "(nil)");
+    if (matrix) CFRelease(matrix);
+    if (primaries) CFRelease(primaries);
+    if (transfer) CFRelease(transfer);
+    if (cs) CGColorSpaceRelease(cs);
 }
 
 - (id<MTLTexture>)compositeTileGrid:(NSArray<FSTilePiece *> *)tilePieces
