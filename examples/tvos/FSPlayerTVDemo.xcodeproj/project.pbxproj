@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1B16844A2DC4B33200A1BA88 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B1684492DC4B33200A1BA88 /* AppDelegate.m */; };
+		68B78F1B2EDB000100A534AC /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 68B78F1A2EDB000100A534AC /* SceneDelegate.m */; };
 		1B16844D2DC4B33300A1BA88 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B16844C2DC4B33300A1BA88 /* ViewController.m */; };
 		1B1684502DC4B33300A1BA88 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1B16844E2DC4B33300A1BA88 /* Main.storyboard */; };
 		1B1684522DC4B33400A1BA88 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B1684512DC4B33400A1BA88 /* Assets.xcassets */; };
@@ -66,6 +67,7 @@
 		1B1684452DC4B33200A1BA88 /* FSPlayerTVDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FSPlayerTVDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B1684482DC4B33200A1BA88 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		1B1684492DC4B33200A1BA88 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		68B78F1A2EDB000100A534AC /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 		1B16844B2DC4B33200A1BA88 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
 		1B16844C2DC4B33300A1BA88 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
 		1B16844F2DC4B33300A1BA88 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 			children = (
 				1B1684482DC4B33200A1BA88 /* AppDelegate.h */,
 				1B1684492DC4B33200A1BA88 /* AppDelegate.m */,
+				68B78F1A2EDB000100A534AC /* SceneDelegate.m */,
 				1B16844B2DC4B33200A1BA88 /* ViewController.h */,
 				1B16844C2DC4B33300A1BA88 /* ViewController.m */,
 				1B16844E2DC4B33300A1BA88 /* Main.storyboard */,
@@ -245,6 +248,7 @@
 				1B16844D2DC4B33300A1BA88 /* ViewController.m in Sources */,
 				1B1684572DC4B33400A1BA88 /* main.m in Sources */,
 				1B16844A2DC4B33200A1BA88 /* AppDelegate.m in Sources */,
+				68B78F1B2EDB000100A534AC /* SceneDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -399,8 +403,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 96C96H28CU;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FSPlayerTVDemo/Info.plist;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -423,8 +427,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 96C96H28CU;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FSPlayerTVDemo/Info.plist;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
