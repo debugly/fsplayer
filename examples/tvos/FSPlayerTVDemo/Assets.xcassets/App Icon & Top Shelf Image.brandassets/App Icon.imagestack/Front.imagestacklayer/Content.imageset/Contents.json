@@ -1,10 +1,24 @@
 {
   "images" : [
     {
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "3x"
+    },
+    {
+      "filename" : "Front.png",
       "idiom" : "tv",
       "scale" : "1x"
     },
     {
+      "filename" : "Front 1.png",
       "idiom" : "tv",
       "scale" : "2x"
     }
