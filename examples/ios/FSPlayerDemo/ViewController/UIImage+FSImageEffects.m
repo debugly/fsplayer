@@ -76,7 +76,7 @@
         .bitsPerComponent = 8,
         .bitsPerPixel = 32,
         .colorSpace = NULL,
-        .bitmapInfo = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
+        .bitmapInfo = (uint32_t)kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
         .version = 0,
         .decode = NULL,
         .renderingIntent = kCGRenderingIntentDefault

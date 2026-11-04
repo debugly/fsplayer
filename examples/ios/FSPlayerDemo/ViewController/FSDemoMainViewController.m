@@ -23,7 +23,7 @@
 #import "FSDemoLocalFolderViewController.h"
 #import "FSDemoSampleViewController.h"
 #import "FSVerticalSwipeViewController.h"
-#import <MobileCoreServices/MobileCoreServices.h>
+@import UniformTypeIdentifiers;
 
 @interface FSDemoMainViewController () <UITableViewDataSource, UITableViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 
@@ -266,9 +266,8 @@
     UIImagePickerController *mediaUI = [[UIImagePickerController alloc] init];
     mediaUI.sourceType = UIImagePickerControllerSourceTypeSavedPhotosAlbum;
 
-    // Displays saved pictures and movies, if both are available, from the
-    // Camera Roll album.
-    mediaUI.mediaTypes = [[NSArray alloc] initWithObjects: (NSString *) kUTTypeMovie, nil];
+    // Limit the picker to movies from the saved photos album.
+    mediaUI.mediaTypes = @[UTTypeMovie.identifier];
 
     // Hides the controls for moving & scaling pictures, or for
     // trimming movies. To instead show the controls, use YES.

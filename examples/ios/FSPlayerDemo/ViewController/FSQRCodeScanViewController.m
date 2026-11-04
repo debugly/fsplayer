@@ -132,15 +132,9 @@
 
 - (void)setupCaptureOrientation {
     if ([_previewLayer.connection isVideoOrientationSupported]) {
-        UIInterfaceOrientation interfaceOrientation = UIInterfaceOrientationUnknown;
-        if (@available(iOS 13.0, *)) {
-            interfaceOrientation = self.view.window.windowScene.interfaceOrientation;
-        } else {
-            interfaceOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        }
         AVCaptureVideoOrientation orientation;
 
-        switch (interfaceOrientation) {
+        switch (self.view.window.windowScene.interfaceOrientation) {
             case UIInterfaceOrientationLandscapeLeft:
                 orientation = AVCaptureVideoOrientationLandscapeLeft;
                 break;
