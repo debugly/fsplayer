@@ -61,8 +61,14 @@ static void apply_preference(FFSubComponent *com)
         }
         int marginV = com->sp.BottomMargin * playResY;
         com->assRenderer->iformat->set_font_scale(com->assRenderer, com->sp.Scale);
-        char style[256] = {0};
-        sprintf(style, "FontName=%s,PrimaryColour=&H%08X,SecondaryColour=&H%08X,BackColour=&H%08X,OutlineColour=&H%08X,Outline=%f,MarginV=%d",com->sp.FontName,com->sp.PrimaryColour,com->sp.SecondaryColour,com->sp.BackColour,com->sp.OutlineColour,com->sp.Outline,marginV);
+        // Leave room for the full font name as well as the style fields.
+        char style[512];
+        snprintf(style, sizeof(style),
+                 "FontName=%.*s,PrimaryColour=&H%08X,SecondaryColour=&H%08X,"
+                 "BackColour=&H%08X,OutlineColour=&H%08X,Outline=%f,MarginV=%d",
+                 (int)sizeof(com->sp.FontName), com->sp.FontName,
+                 com->sp.PrimaryColour, com->sp.SecondaryColour,
+                 com->sp.BackColour, com->sp.OutlineColour, com->sp.Outline, marginV);
         
         int bits = ASS_OVERRIDE_DEFAULT | ASS_OVERRIDE_BIT_MARGINS;
         if (com->sp.ForceOverride > 0) {

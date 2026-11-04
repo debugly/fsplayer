@@ -25,6 +25,7 @@
 #define ff_subtitle_preference_hpp
 
 #include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -62,19 +63,10 @@ static inline uint32_t fs_str_to_uint32_color(char *token)
 
 static inline void fs_uint32_color_to_str(uint32_t color, char *buff, int size)
 {
-    memset(buff, 0, size);
-    buff[0] = '&';
-    buff[1] = 'H';
-    
-    uint32_t a = color & 0xFF;
-    uint32_t r = color >> 8  & 0xFF;
-    uint32_t g = color >> 16 & 0xFF;
-    uint32_t b = color >> 24 & 0xFF;
-    
-    sprintf(buff + 2, "%02X", b);
-    sprintf(buff + 4, "%02X", g);
-    sprintf(buff + 6, "%02X", r);
-    sprintf(buff + 8, "%02X", a);
+    //`0x1234ABCD` 会输出 &H1234ABCD
+    if (size > 0) {
+        snprintf(buff, (size_t)size, "&H%08" PRIX32, color);
+    }
 }
 
 static inline int FSSubtitlePreferenceIsEqual(FSSubtitlePreference* p1,FSSubtitlePreference* p2)

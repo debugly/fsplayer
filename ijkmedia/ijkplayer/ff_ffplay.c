@@ -6377,7 +6377,10 @@ int ffp_add_active_external_subtitle(FFPlayer *ffp, const char *file_name)
 #if CONFIG_VIDEO_AVFILTER && 0
     //use subtitles filter
     char buffer[1024] = { 0 };
-    sprintf(buffer, "subtitles=%s", file_name);
+    int length = snprintf(buffer, sizeof(buffer), "subtitles=%s", file_name);
+    if (length < 0 || length >= (int)sizeof(buffer)) {
+        return -1;
+    }
     resetVideoFilter(ffp, av_strdup(buffer));
     return 1;
 #endif

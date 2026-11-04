@@ -50,7 +50,7 @@
     //uint32_t value2 = (uint32_t)strtol(color, NULL, 16);
     
     char aColor[9] = {0};
-    sprintf(aColor, "%08X", value);
+    snprintf(aColor, sizeof(aColor), "%08X", value);
     
     printf("%s\n",aColor);
     
