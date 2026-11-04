@@ -21,8 +21,15 @@ set -e
 
 export MY_PROJECT_DIR="$THIS_DIR"
 
-if [[ -n $1 ]];then
-    xcodegen -p . -s FSPlayer-$1.yml
-else
-    xcodegen -p . -s FSPlayer.yml
+spec=FSPlayer.yml
+if [[ -n ${1:-} ]]; then
+    spec="FSPlayer-$1.yml"
+    echo "Using spec file: $spec"
+elif xcode_version=$(xcodebuild -version 2>/dev/null) &&
+     [[ $xcode_version =~ ^Xcode[[:space:]]+([0-9]+) ]] &&
+     (( BASH_REMATCH[1] >= 27 )); then
+    echo "Xcode version is ${BASH_REMATCH[1]}, using FSPlayer-27.yml"
+    spec=FSPlayer-27.yml
 fi
+
+xcodegen -p . -s "$spec"
