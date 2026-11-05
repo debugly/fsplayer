@@ -9,6 +9,8 @@
 #import "FSVideoRenderingProtocol.h"
 @import MetalKit;
 
+@class AVSampleBufferDisplayLayer;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface FSMetalView : MTKView <FSVideoRenderingProtocol>
@@ -29,6 +31,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 单次高斯模糊的 sigma（模糊半径）。默认 30，值越大越模糊。
 @property (nonatomic) float backgroundBlurSigma;
+
+#if !TARGET_OS_TV
+/// 画中画内容层：一个 AVSampleBufferDisplayLayer，接收与 Metal 渲染同一份解码后的
+/// CVPixelBuffer，作为 AVPictureInPictureController 的 sample buffer 内容源。
+/// 只有 -preparePictureInPicture 返回 YES 之后才非空。
+@property (nonatomic, readonly, nullable) AVSampleBufferDisplayLayer *pictureInPictureDisplayLayer;
+
+/// 是否把每帧同时喂给画中画内容层，默认为 YES（在 preparePictureInPicture 成功之后生效）。
+/// 关闭后画中画窗口停住最后一帧。
+@property (nonatomic, assign) BOOL pictureInPictureFeedEnabled;
+
+/// 画中画是否正在运行；运行期间内容层可见并持续接收画面（由 FSPlayer 维护）。
+@property (nonatomic, assign) BOOL pictureInPictureActive;
+#endif
 
 @end
 

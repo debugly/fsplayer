@@ -68,6 +68,9 @@ NSString *const FSPlayerSelectedStreamDidChangeNotification =
     @"FSPlayerSelectedStreamDidChangeNotification";
 NSString *const FSPlayerAfterSeekFirstVideoFrameDisplayNotification = @"FSPlayerAfterSeekFirstVideoFrameDisplayNotification";
 
+NSString *const FSPlayerPictureInPictureStateDidChangeNotification = @"FSPlayerPictureInPictureStateDidChangeNotification";
+NSString *const FSPlayerPictureInPictureErrorUserInfoKey = @"FSPlayerPictureInPictureErrorUserInfoKey";
+
 NSString *const FSPlayerVideoDecoderFatalNotification = @"FSPlayerVideoDecoderFatalNotification";
 
 NSString *const FSPlayerRecvWarningNotification = @"FSPlayerRecvWarningNotification";

@@ -237,6 +237,12 @@ FS_EXTERN NSString *const FSPlayerSeekVideoStartNotification;
 
 FS_EXTERN NSString *const FSPlayerSelectedStreamDidChangeNotification;
 FS_EXTERN NSString *const FSPlayerAfterSeekFirstVideoFrameDisplayNotification;
+
+// Posted when the picture in picture state changes (started / stopped / failed to start).
+// Only posted on iOS 15.0+/macOS 12.0+ when the render view supports picture in picture.
+// userInfo: FSPlayerPictureInPictureErrorUserInfoKey when starting failed.
+FS_EXTERN NSString *const FSPlayerPictureInPictureStateDidChangeNotification;
+FS_EXTERN NSString *const FSPlayerPictureInPictureErrorUserInfoKey;
 //when received this fatal notifi,need stop player,otherwize read frame and play to end.
 FS_EXTERN NSString *const FSPlayerVideoDecoderFatalNotification; /*useinfo's code is decoder's err code.*/
 FS_EXTERN NSString *const FSPlayerRecvWarningNotification; /*warning notifi.*/

@@ -7,6 +7,7 @@
 //
 
 #import "FSMetalView.h"
+#import <AVFoundation/AVFoundation.h>
 #import <AVFoundation/AVUtilities.h>
 #import <CoreImage/CIContext.h>
 #import <mach/mach_time.h>
@@ -138,6 +139,20 @@ typedef CGRect NSRect;
 @property (atomic) BOOL automaticBackgroundTransparencyActive;
 @property (atomic) BOOL backgroundTransparencyApplied;
 @property (nonatomic) BOOL picturePipelineHasAlpha;
+#if !TARGET_OS_TV
+// 画中画内容层（AVSampleBufferDisplayLayer）；见 -preparePictureInPicture。
+@property (nonatomic, strong, nullable) AVSampleBufferDisplayLayer *pictureInPictureDisplayLayer;
+// 承载内容层的普通容器视图（贴在渲染视图下方、同尺寸）。不能直接把内容层挂到
+// CAMetalLayer 上：AVKit 会给内容层建 host view 并按父层坐标算几何，CAMetalLayer
+// 下会算出 NaN，AppKit 校验几何时直接崩（Invalid view geometry: x is NaN）。
+@property (nonatomic, strong, nullable) UIView *pictureInPictureContainerView;
+// 预热帧计数：prepare 之后先喂几帧让 layer 有内容（层此时 opacity=0，不可见），
+// 之后只在画中画真正运行时持续喂帧，避免白白占用 GPU 合成。
+@property (nonatomic, assign) NSUInteger pictureInPictureWarmFrames;
+// 内容层的播放时间轴：AVKit 用它推算画中画窗口里的当前进度/时长。由 FSPlayer 在
+// 播放/暂停/seek/结束时通过 -updatePictureInPictureTimebaseWithTime:rate: 驱动。
+@property (nonatomic, assign) CMTimebaseRef pictureInPictureTimebase;
+#endif
 @end
 
 @implementation FSMetalView
@@ -174,6 +189,16 @@ typedef CGRect NSRect;
     [_displayLinkWrapper invalidate];
     _displayLinkWrapper = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+
+#if !TARGET_OS_TV
+    // 画中画容器视图是我们加在父视图上的，跟着视图一起回收。
+    [_pictureInPictureContainerView removeFromSuperview];
+    if (_pictureInPictureTimebase) {
+        CMTimebaseSetRate(_pictureInPictureTimebase, 0.0);
+        CFRelease(_pictureInPictureTimebase);
+        _pictureInPictureTimebase = NULL;
+    }
+#endif
 
     // 释放顺序很关键：所有持有 CVMetalTexture（其 backing 属于 _pictureTextureCache）
     // 的对象必须在 CFRelease(cache) 之前先释放，否则纹理 finalize 时会回调进已释放的
@@ -833,6 +858,15 @@ typedef CGRect NSRect;
         }
     }
 
+#if !TARGET_OS_TV
+    // 画中画内容层复用同一份 pixel buffer（解码后只转换一次）。
+    if (frame.videoPicture && [self shouldFeedPictureInPicture]) {
+        [self enqueuePictureInPictureSampleBuffer:frame.videoPicture
+                                     displayWidth:frame.w
+                                    displayHeight:frame.h];
+    }
+#endif
+
     if (self.preventDisplay || !frame.videoPicture) {
         frame = nil;
         goto end;
@@ -846,6 +880,11 @@ end:
 }
 
 - (void)displayCurrentFrameWithTimestamp:(const CFTimeInterval)timestamp {
+#if !TARGET_OS_TV
+    if (self.pictureInPictureActive) {
+        return;
+    }
+#endif
     [self.renderSnapshotLock lock];
     FSMetalRenderFrame *currentAttach = self.currentFrame;
 
@@ -884,9 +923,262 @@ end:
     [self draw];
 }
 
-// [self draw] driven
+#if !TARGET_OS_TV
+
+#pragma mark - Picture in Picture
+
+- (BOOL)preparePictureInPicture
+{
+    // 挂载 layer 必须在主线程，这里兼容后台线程调用。
+    if (![NSThread isMainThread]) {
+        __block BOOL prepared = NO;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            prepared = [self preparePictureInPicture];
+        });
+        return prepared;
+    }
+    if (self.pictureInPictureDisplayLayer) {
+        [self updatePictureInPictureLayerFrame];
+        if (CGRectIsEmpty(self.pictureInPictureDisplayLayer.frame) && !CGRectIsEmpty(self.frame)) {
+             self.pictureInPictureDisplayLayer.frame = self.bounds;
+        }
+        return YES;
+    }
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        if (!self.superview) {
+            ALOGW("FSMetalView: picture in picture needs a superview first\n");
+            return NO;
+        }
+        AVSampleBufferDisplayLayer *layer = [[AVSampleBufferDisplayLayer alloc] init];
+        layer.videoGravity = AVLayerVideoGravityResizeAspect;
+        // 层本身透明：opacity 为 0 时不可见，因此透明背景（Alpha 视频）特性不受影响。
+        layer.backgroundColor = [UIColor clearColor].CGColor;
+        layer.opacity = 0.0;
+        // 给内容层挂一个 controlTimebase：AVKit 据此推算画中画窗口的当前进度与总时长
+        // （配合 FSPlayer 返回的 timeRangeForPlayback）。没有它时画中画窗口不显示时长/进度条。
+        // 时间与速率由 FSPlayer 通过 -updatePictureInPictureTimebaseWithTime:rate: 驱动。
+        if (!self.pictureInPictureTimebase) {
+            CMTimebaseRef timebase = NULL;
+            if (CMTimebaseCreateWithSourceClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &timebase) == noErr && timebase) {
+                CMTimebaseSetTime(timebase, kCMTimeZero);
+                CMTimebaseSetRate(timebase, 0.0);
+                self.pictureInPictureTimebase = timebase; // 本对象持有 +1，dealloc 释放
+            }
+        }
+        if (self.pictureInPictureTimebase) {
+            layer.controlTimebase = self.pictureInPictureTimebase; // 层另持一份引用
+        }
+        // 用一个普通容器视图承载内容层：AVKit 会给内容层建 host view 并按父层坐标算它自己的
+        // frame，挂在 CAMetalLayer 下会算出 NaN（AppKit 直接 “Invalid view geometry: x is
+        // NaN” 崩掉）。容器贴在渲染视图下面，屏幕上被 Metal 层盖住，看不出两份画面。
+        UIView *container = [[UIView alloc] initWithFrame:self.frame];
+#if TARGET_OS_OSX
+        container.wantsLayer = YES;
+#else
+        container.userInteractionEnabled = NO;
+#endif
+        container.layer.backgroundColor = [UIColor clearColor].CGColor;
+#if TARGET_OS_OSX
+        [self.superview addSubview:container positioned:NSWindowBelow relativeTo:self];
+#else
+        [self.superview insertSubview:container belowSubview:self];
+#endif
+        [container.layer addSublayer:layer];
+        self.pictureInPictureContainerView = container;
+        self.pictureInPictureDisplayLayer = layer;
+        [self updatePictureInPictureLayerFrame];
+        self.pictureInPictureFeedEnabled = YES;
+        // 先喂一帧“当前画面”：AVKit 建 host view 时要靠这一帧拿到视频尺寸算几何，
+        // 内容层完全没画面时它算出的是 NaN，AppKit 校验几何直接崩。
+        [self.renderSnapshotLock lock];
+        FSMetalRenderFrame *lastRenderFrame = self.currentFrame;
+        CVPixelBufferRef lastFrame = lastRenderFrame.videoPicture;
+        int lastW = lastRenderFrame ? lastRenderFrame.w : 0;
+        int lastH = lastRenderFrame ? lastRenderFrame.h : 0;
+        if (lastFrame) {
+            CFRetain(lastFrame);
+        }
+        [self.renderSnapshotLock unlock];
+        if (lastFrame) {
+            [self enqueuePictureInPictureSampleBuffer:lastFrame displayWidth:lastW displayHeight:lastH];
+            CFRelease(lastFrame);
+        }
+        // 再喂几帧，让内容层进入可渲染状态，画中画启动时才不会黑屏。
+        self.pictureInPictureWarmFrames = 3;
+        ALOGI("FSMetalView: picture in picture content layer prepared, size:%.0fx%.0f\n", self.bounds.size.width, self.bounds.size.height);
+        return YES;
+    }
+    ALOGW("FSMetalView: picture in picture requires iOS 15.0/macOS 12.0 or later\n");
+    return NO;
+}
+
+- (nullable CALayer *)pictureInPictureContentLayer
+{
+    return self.pictureInPictureDisplayLayer;
+}
+
+- (void)setPictureInPictureActive:(BOOL)pictureInPictureActive
+{
+    if (_pictureInPictureActive == pictureInPictureActive) {
+        return;
+    }
+    _pictureInPictureActive = pictureInPictureActive;
+    AVSampleBufferDisplayLayer *layer = self.pictureInPictureDisplayLayer;
+    if (!layer) {
+        return;
+    }
+    if (pictureInPictureActive) {
+        // 再补一帧：启动瞬间画中画窗口立刻有画面
+        self.pictureInPictureWarmFrames = 1;
+    }
+    // PiP 激活时，隐藏渲染层的 opacity，避免挡住 AVKit 占位图，但保留 FSMetalView 存活状态以持续喂帧
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    layer.opacity = pictureInPictureActive ? 1.0 : 0.0;
+    self.layer.opacity = pictureInPictureActive ? 0.0 : 1.0;
+    [CATransaction commit];
+    ALOGI("FSMetalView: picture in picture %s\n", pictureInPictureActive ? "activated" : "deactivated");
+}
+
+- (void)updatePictureInPictureLayerFrame
+{
+    AVSampleBufferDisplayLayer *layer = self.pictureInPictureDisplayLayer;
+    if (!layer) {
+        return;
+    }
+    UIView *container = self.pictureInPictureContainerView;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    if (container && !CGRectEqualToRect(container.frame, self.frame)) {
+        container.frame = self.frame;
+    }
+    // AVKit can move the display layer into its own host. Only lay out our inline source.
+    CALayer *containerLayer = container.layer;
+    if (containerLayer && layer.superlayer == containerLayer) {
+        CGRect target = containerLayer.bounds;
+        if (!CGRectEqualToRect(layer.frame, target)) {
+            layer.frame = target;
+        }
+    }
+    [CATransaction commit];
+}
+
+
+
+
+
+/// 是否需要把当前帧喂给画中画内容层：预热期或画中画运行期间。
+- (BOOL)shouldFeedPictureInPicture
+{
+    if (!self.pictureInPictureDisplayLayer || !self.pictureInPictureFeedEnabled) {
+        return NO;
+    }
+    if (self.pictureInPictureActive) {
+        return YES;
+    }
+    if (self.pictureInPictureWarmFrames > 0) {
+        self.pictureInPictureWarmFrames--;
+        return YES;
+    }
+    return NO;
+}
+
+- (void)updatePictureInPictureTimebaseWithTime:(NSTimeInterval)time rate:(float)rate
+{
+    CMTimebaseRef timebase = self.pictureInPictureTimebase;
+    if (!timebase) {
+        return;
+    }
+    // 设定锚点时间后，timebase 会按给定 rate 自行随墙钟推进，画中画进度条自动前进，
+    // 无需逐帧更新；只在播放/暂停/seek/结束等状态变化时同步即可。
+    if (time >= 0 && isfinite(time)) {
+        CMTimebaseSetTime(timebase, CMTimeMakeWithSeconds(time, 600));
+    }
+    CMTimebaseSetRate(timebase, rate);
+}
+
+/// 用 Metal 渲染的同一个 CVPixelBuffer 生成 CMSampleBuffer 喂给画中画层。
+/// displayW/displayH 为该帧的有效显示尺寸（disp_w/disp_h），用于裁掉解码缓冲的
+/// 对齐 padding。时间戳取宿主时钟 + DisplayImmediately（等价于直播源），层内不再
+/// 排队缓冲，画中画窗口延迟 ≈ 一帧。
+- (void)enqueuePictureInPictureSampleBuffer:(CVPixelBufferRef)pixelBuffer
+                               displayWidth:(int)displayW
+                              displayHeight:(int)displayH
+{
+    AVSampleBufferDisplayLayer *layer = self.pictureInPictureDisplayLayer;
+    if (!layer || !pixelBuffer) {
+        return;
+    }
+    if (layer.status == AVQueuedSampleBufferRenderingStatusFailed) {
+        ALOGW("FSMetalView: picture in picture layer failed:%@, flush\n", layer.error);
+        [layer flush];
+    }
+
+    // VideoToolbox 解码缓冲区常有对齐 padding（如编码宽 1088 对齐自显示宽 1080，macOS 上
+    // 对齐更激进，编码宽可能远大于显示宽）。若缓冲没有附加 clean aperture，
+    // AVSampleBufferDisplayLayer 会把 padding 区域一同当作视频显示，导致画面不完整。
+    // 有效画面在缓冲的左上角（padding 在右/下）。
+    int validW = displayW;
+    int validH = displayH;
+
+    size_t bufferW = CVPixelBufferGetWidth(pixelBuffer);
+    size_t bufferH = CVPixelBufferGetHeight(pixelBuffer);
+    if (validW > 0 && validH > 0 && (validW < (int)bufferW || validH < (int)bufferH)) {
+        CFDictionaryRef cleanAperture = CVBufferCopyAttachment(pixelBuffer, kCVImageBufferCleanApertureKey, NULL);
+        if (!cleanAperture) {
+            // clean aperture 的 offset 是“裁剪区中心相对编码帧中心”的偏移：0 表示居中裁剪。
+            // 有效画面在左上角，必须把裁剪区中心向左上推 padding 的一半（负偏移），否则会
+            // 左/上切掉真实画面、右/下带进 padding（画面不完整/错位）。
+            NSDictionary *dict = @{
+                (id)kCVImageBufferCleanApertureWidthKey: @(validW),
+                (id)kCVImageBufferCleanApertureHeightKey: @(validH),
+                (id)kCVImageBufferCleanApertureHorizontalOffsetKey: @((validW - (int)bufferW) / 2.0),
+                (id)kCVImageBufferCleanApertureVerticalOffsetKey: @((validH - (int)bufferH) / 2.0)
+            };
+            CVBufferSetAttachment(pixelBuffer, kCVImageBufferCleanApertureKey, (__bridge CFDictionaryRef)dict, kCVAttachmentMode_ShouldPropagate);
+        } else {
+            CFRelease(cleanAperture);
+        }
+    }
+
+    CMVideoFormatDescriptionRef formatDesc = NULL;
+    OSStatus status = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, pixelBuffer, &formatDesc);
+    if (status != noErr || formatDesc == NULL) {
+        ALOGW("FSMetalView: picture in picture create format desc failed:%d\n", (int)status);
+        return;
+    }
+    CMSampleTimingInfo timing = {
+        .duration = kCMTimeInvalid,
+        .presentationTimeStamp = CMTimeMakeWithSeconds(CACurrentMediaTime(), 1000000),
+        .decodeTimeStamp = kCMTimeInvalid,
+    };
+    CMSampleBufferRef sampleBuffer = NULL;
+    status = CMSampleBufferCreateReadyWithImageBuffer(kCFAllocatorDefault, pixelBuffer, formatDesc, &timing, &sampleBuffer);
+    if (status == noErr && sampleBuffer) {
+        CFArrayRef attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, true);
+        if (attachments && CFArrayGetCount(attachments) > 0) {
+            CFMutableDictionaryRef attachment = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachments, 0);
+            CFDictionarySetValue(attachment, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
+        }
+        [layer enqueueSampleBuffer:sampleBuffer];
+        CFRelease(sampleBuffer);
+    } else {
+        ALOGW("FSMetalView: picture in picture create sample buffer failed:%d\n", (int)status);
+    }
+    CFRelease(formatDesc);
+}
+
+#endif
+
+
 - (void)drawRect:(NSRect)dirtyRect
 {
+#if !TARGET_OS_TV
+    // Keep the last inline frame while decoded frames continue feeding the PiP layer.
+    if (self.pictureInPictureActive) {
+        return;
+    }
+#endif
 #if TARGET_OS_IOS || TARGET_OS_TV
     if (self.isEnterBackground) {
         return;
@@ -1445,6 +1737,9 @@ end:
     if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
         [self setNeedsRefreshCurrentPic];
     }
+#if !TARGET_OS_TV
+    [self updatePictureInPictureLayerFrame];
+#endif
 }
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event

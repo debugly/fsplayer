@@ -183,6 +183,29 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)didShutdown;
 
+#pragma mark Picture in Picture
+
+#if !TARGET_OS_TV
+/// 是否支持画中画：需要 iOS 15.0+/macOS 12.0+、系统与设备支持画中画，
+/// 并且当前渲染视图（默认 FSMetalView）提供画中画内容层；否则返回 NO。
+- (BOOL)isPictureInPictureSupported;
+/// 画中画当前是否激活；进入/退出/启动失败都会发
+/// FSPlayerPictureInPictureStateDidChangeNotification。
+@property (nonatomic, readonly) BOOL isPictureInPictureActive;
+/// 进入画中画；返回 NO 表示当前不支持（系统版本/设备/渲染视图不满足）。
+- (BOOL)startPictureInPicture;
+/// 退出画中画。
+- (void)stopPictureInPicture;
+/// 底层 AVPictureInPictureController（未准备时返回 nil），
+/// 用于访问 canStartPictureInPictureAutomaticallyFromInline 等系统 API。
+@property (nonatomic, readonly, nullable) id pictureInPictureController;
+/// 系统请求从画中画恢复 App 界面（用户点了画中画窗口的“返回 App”按钮）时回调。
+/// 宿主应在此恢复自己的播放器界面（例如重新 present 播放页），恢复完成后调用
+/// completionHandler(YES)。未设置时 FSPlayer 直接调用 completionHandler(YES)，不做
+/// 任何界面操作。FSPlayer 不是 UIViewController，不应、也无法代替宿主管理界面层级。
+@property (nonatomic, copy, nullable) void (^pictureInPictureRestoreUIHandler)(void (^completionHandler)(BOOL restored));
+#endif
+
 #pragma mark KVO properties
 @property (nonatomic, readonly) FSMonitor *monitor;
 

@@ -50,6 +50,11 @@
                                         <action selector="onClickHUD:" destination="-1" id="0a9-F8-3bM"/>
                                     </connections>
                                 </barButtonItem>
+                                <barButtonItem title="PiP" id="pip-01-001">
+                                    <connections>
+                                        <action selector="onClickPictureInPicture:" destination="-1" id="pip-01-002"/>
+                                    </connections>
+                                </barButtonItem>
                             </items>
                         </toolbar>
                         <view contentMode="scaleToFill" fixedFrame="YES" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="38" userLabel="Panel: Bottom">

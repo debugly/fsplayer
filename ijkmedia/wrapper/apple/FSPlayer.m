@@ -33,6 +33,9 @@
 #if TARGET_OS_IOS || TARGET_OS_TV
 #import <AVFoundation/AVFoundation.h>
 #endif
+#if !TARGET_OS_TV
+#import <AVKit/AVKit.h>
+#endif
 
 #include "../ijkmedia/ijkplayer/apple/ijkplayer_apple.h"
 #include "../ijkmedia/ijkplayer/ijkmeta.h"
@@ -56,6 +59,11 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 @interface FSPlayer()
 
 @property (nonatomic, copy) NSString *content;
+
+#if !TARGET_OS_TV
+// 画中画激活状态（对外 readonly，见 FSPlayer.h）
+@property (nonatomic, readwrite) BOOL isPictureInPictureActive;
+#endif
 
 @end
 
@@ -130,6 +138,11 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
 }
 
 @end
+#if !TARGET_OS_TV
+API_AVAILABLE(macos(12.0), ios(15.0))
+@interface FSPlayer () <AVPictureInPictureControllerDelegate, AVPictureInPictureSampleBufferPlaybackDelegate>
+@end
+#endif
 
 @implementation FSPlayer {
     IjkMediaPlayer *_mediaPlayer;
@@ -158,6 +171,10 @@ static void (^_logHandler)(FSLogLevel level, NSString *tag, NSString *msg);
     BOOL _appPlaybackSuspended;
     BOOL _resumePlaybackOnForeground;
     BOOL _resumePlaybackAfterPrepare;
+#endif
+#if !TARGET_OS_TV
+    AVPictureInPictureController *_pipController;
+    AVPictureInPictureControllerContentSource *_pipContentSource;
 #endif
     int _enableAccurateSeek;
     BOOL _canUpdateAccurateSeek;
@@ -452,7 +469,11 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 - (void)dealloc
 {
     FSPlayerSafeDestroy(self, NO);
-    
+
+#if !TARGET_OS_TV
+    [self teardownPictureInPicture];
+#endif
+
     av_log(NULL, AV_LOG_DEBUG, "FSPlayer dealloc\n");
 }
 
@@ -547,8 +568,12 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 
     [self setScreenOn:_keepScreenOnWhilePlaying];
     [self startHudTimerIfNeed];
-    
+
     ijkmp_start(_mediaPlayer);
+#if !TARGET_OS_TV
+    // 同步画中画窗口的播放/暂停按钮与进度推进
+    [self syncPictureInPicturePlaybackState];
+#endif
 }
 
 - (void)pause
@@ -562,6 +587,9 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
         return;
 
     ijkmp_pause(_mediaPlayer);
+#if !TARGET_OS_TV
+    [self syncPictureInPicturePlaybackState];
+#endif
 }
 
 - (void)stop
@@ -573,6 +601,13 @@ static void FSPlayerSafeDestroy(FSPlayer *player, BOOL synchronous) {
 #endif
     if (!_mediaPlayer)
         return;
+
+#if !TARGET_OS_TV
+    // 停止播放时同步退出画中画，避免留下一个不再更新的画中画窗口
+    if (self.isPictureInPictureActive || _pipController.isPictureInPictureActive) {
+        [self stopPictureInPicture];
+    }
+#endif
 
     [self setScreenOn:NO];
     [self stopHudTimer];
@@ -868,6 +903,10 @@ void ffp_apple_log_extra_print(int level, const char *tag, const char *fmt, ...)
          postNotificationName:FSPlayerPlaybackStateDidChangeNotification
          object:self];
     }
+#if !TARGET_OS_TV
+    // 播放结束/出错/暂停等状态变化后，刷新画中画窗口的播放按钮与进度（进度条停住）。
+    [self syncPictureInPicturePlaybackState];
+#endif
 }
 
 - (void)setCurrentPlaybackTime:(NSTimeInterval)aCurrentPlaybackTime
@@ -1851,8 +1890,12 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerCurrentPlaybackTimeDidChangeNotification
              object:self];
-            
+
             _seeking = NO;
+#if !TARGET_OS_TV
+            // seek 后把新的播放位置同步给画中画窗口的进度条
+            [self syncPictureInPicturePlaybackState];
+#endif
             break;
         }
         case FFP_MSG_VIDEO_DECODER_OPEN: {
@@ -1870,6 +1913,12 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [[NSNotificationCenter defaultCenter]
              postNotificationName:FSPlayerFirstVideoFrameRenderedNotification
              object:self];
+#if !TARGET_OS_TV
+            // 收到第一帧渲染时在主线程提前预热创建画中画控制器，避免用户首次点击时尚未就绪
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self preparePictureInPictureController];
+            });
+#endif
             break;
         }
         case FFP_MSG_AUDIO_RENDERING_START: {
@@ -2470,6 +2519,10 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 
 - (void)applicationWillResignActive
 {
+#if TARGET_OS_IOS
+    if (self.isPictureInPictureActive)
+        return;
+#endif
     if (!_pauseOnBackgroundAndResumeOnForeground || _appPlaybackSuspended)
         return;
 
@@ -2526,6 +2579,258 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
         [self applicationWillResignActive];
     else if (!enabled && _appPlaybackSuspended)
         [self applicationDidBecomeActive];
+}
+
+#endif
+
+#if !TARGET_OS_TV
+
+#pragma mark - Picture in Picture
+
+- (BOOL)isPictureInPictureSupported
+{
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        if (![AVPictureInPictureController isPictureInPictureSupported]) {
+            return NO;
+        }
+        UIView<FSVideoRenderingProtocol> *view = (UIView<FSVideoRenderingProtocol> *)self.view;
+        return view != nil && [view respondsToSelector:@selector(preparePictureInPicture)];
+    }
+    return NO;
+}
+
+/// 准备画中画内容层与控制器（幂等），失败返回 NO。
+- (BOOL)preparePictureInPictureController
+{
+    if (_pipController) {
+        return YES;
+    }
+    if (![self isPictureInPictureSupported]) {
+        av_log(NULL, AV_LOG_WARNING, "FSPlayer: picture in picture is not supported\n");
+        return NO;
+    }
+    UIView<FSVideoRenderingProtocol> *view = (UIView<FSVideoRenderingProtocol> *)self.view;
+    if (![view preparePictureInPicture]) {
+        av_log(NULL, AV_LOG_ERROR, "FSPlayer: render view can not prepare picture in picture content layer\n");
+        return NO;
+    }
+    CALayer *contentLayer = [view pictureInPictureContentLayer];
+    if (!contentLayer) {
+        av_log(NULL, AV_LOG_ERROR, "FSPlayer: picture in picture content layer is nil\n");
+        return NO;
+    }
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        AVPictureInPictureControllerContentSource *source =
+            [[AVPictureInPictureControllerContentSource alloc] initWithSampleBufferDisplayLayer:(AVSampleBufferDisplayLayer *)contentLayer
+                                                                              playbackDelegate:self];
+        // 内容源自己留一份强引用：避免系统启动画中画时内容源已释放。
+        _pipContentSource = source;
+        _pipController = [[AVPictureInPictureController alloc] initWithContentSource:source];
+        _pipController.delegate = self;
+        // 进度由播放器维护，画中画窗口不限制用户拖拽方向
+        _pipController.requiresLinearPlayback = NO;
+        av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture controller prepared\n");
+        // 控制器刚建好时同步一次时长/进度/播放状态，避免画中画窗口首次出现时时长为空。
+        [self syncPictureInPicturePlaybackState];
+    }
+    return _pipController != nil;
+}
+
+- (BOOL)startPictureInPicture
+{
+    if (![self preparePictureInPictureController]) {
+        return NO;
+    }
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        if (!_pipController.isPictureInPicturePossible) {
+            av_log(NULL, AV_LOG_WARNING, "FSPlayer: picture in picture is not possible now (window not visible?), start anyway\n");
+        }
+        // 启动前同步时长/进度/播放状态（内部已调用 invalidatePlaybackState）
+        [self syncPictureInPicturePlaybackState];
+        [_pipController startPictureInPicture];
+        return YES;
+        }
+    return NO;
+}
+
+- (void)stopPictureInPicture
+{
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        if (_pipController.isPictureInPictureActive || _pipController.isPictureInPictureSuspended) {
+            [_pipController stopPictureInPicture];
+        }
+    }
+}
+
+/// 把当前播放进度与播放/暂停状态同步给画中画窗口。
+/// AVKit 会缓存 AVPictureInPictureSampleBufferPlaybackDelegate 的返回值，必须调用
+/// invalidatePlaybackState 才会重新查询时间轴与暂停状态；同时驱动内容层的
+/// controlTimebase，使画中画窗口显示正确的进度/时长。需在主线程调用。
+- (void)syncPictureInPicturePlaybackState
+{
+    if (@available(iOS 15.0, macOS 12.0, *)) {
+        if (!_pipController) {
+            return;
+        }
+        void (^work)(void) = ^{
+            if (!self->_pipController) {
+                return;
+            }
+            UIView<FSVideoRenderingProtocol> *view = (UIView<FSVideoRenderingProtocol> *)self.view;
+            if ([view respondsToSelector:@selector(updatePictureInPictureTimebaseWithTime:rate:)]) {
+                [view updatePictureInPictureTimebaseWithTime:self.currentPlaybackTime
+                                                        rate:self.isPlaying ? 1.0f : 0.0f];
+            }
+            [self->_pipController invalidatePlaybackState];
+        };
+        if ([NSThread isMainThread]) {
+            work();
+        } else {
+            dispatch_async(dispatch_get_main_queue(), work);
+        }
+    }
+}
+
+- (id)pictureInPictureController
+{
+    return _pipController;
+}
+
+- (void)teardownPictureInPicture
+{
+    self.isPictureInPictureActive = NO;
+    _pipController.delegate = nil;
+    if (_pipController.isPictureInPictureActive) {
+        [_pipController stopPictureInPicture];
+    }
+    _pipController = nil;
+}
+
+- (void)pictureInPictureStateDidChange:(BOOL)active error:(nullable NSError *)error
+{
+    if (self.isPictureInPictureActive != active) {
+        self.isPictureInPictureActive = active;
+        UIView<FSVideoRenderingProtocol> *view = (UIView<FSVideoRenderingProtocol> *)self.view;
+        if ([view respondsToSelector:@selector(setPictureInPictureActive:)]) {
+            view.pictureInPictureActive = active;
+        }
+#if TARGET_OS_IOS
+        if (!active && _enteredBackground)
+            [self applicationWillResignActive];
+#endif
+    }
+    NSDictionary *userInfo = error ? @{FSPlayerPictureInPictureErrorUserInfoKey: error} : nil;
+    [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerPictureInPictureStateDidChangeNotification
+                                                        object:self
+                                                      userInfo:userInfo];
+}
+
+#pragma mark AVPictureInPictureControllerDelegate
+
+- (void)pictureInPictureControllerWillStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture will start\n");
+    // 画中画窗口立即取内容层的画面，从这一刻开始持续喂帧
+    [self pictureInPictureStateDidChange:YES error:nil];
+}
+
+- (void)pictureInPictureControllerDidStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture did start\n");
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
+    failedToStartPictureInPictureWithError:(NSError *)error
+{
+    av_log(NULL, AV_LOG_ERROR, "FSPlayer: picture in picture failed to start:%s\n", [[error localizedDescription] UTF8String]);
+    [self pictureInPictureStateDidChange:NO error:error];
+}
+
+- (void)pictureInPictureControllerWillStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture will stop\n");
+}
+
+- (void)pictureInPictureControllerDidStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture did stop\n");
+    [self pictureInPictureStateDidChange:NO error:nil];
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
+    restoreUserInterfaceForPictureInPictureStopWithCompletionHandler:(void (^)(BOOL restored))completionHandler
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture restore user interface\n");
+    // 界面层级由宿主管理：FSPlayer 是播放器对象而非 UIViewController，不能用它去
+    // present 任何控制器（旧实现 `presentViewController:self` 会直接崩溃）。把恢复
+    // 动作交给宿主回调，宿主恢复完界面后再回调 completionHandler。
+    void (^handler)(void (^)(BOOL)) = self.pictureInPictureRestoreUIHandler;
+    if (handler) {
+        handler(completionHandler ?: ^(BOOL restored){});
+    } else if (completionHandler) {
+        // 宿主未提供恢复逻辑：直接告知系统完成，避免卡住画中画停止流程。
+        completionHandler(YES);
+    }
+}
+
+#pragma mark AVPictureInPictureSampleBufferPlaybackDelegate
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController setPlaying:(BOOL)playing
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture setPlaying:%d\n", (int)playing);
+    if (playing) {
+        [self play];
+    } else {
+        [self pause];
+    }
+}
+
+- (CMTimeRange)pictureInPictureControllerTimeRangeForPlayback:(AVPictureInPictureController *)pictureInPictureController
+{
+    NSTimeInterval duration = self.duration;
+    if (duration > 0 && isfinite(duration)) {
+        return CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(duration, 600));
+    }
+    // 直播/未知时长：不显示进度
+    return kCMTimeRangeInvalid;
+}
+
+- (BOOL)pictureInPictureControllerIsPlaybackPaused:(AVPictureInPictureController *)pictureInPictureController
+{
+    return ![self isPlaying];
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
+                    skipByInterval:(CMTime)skipInterval
+                 completionHandler:(void (^)(void))completionHandler
+{
+    NSTimeInterval interval = CMTimeGetSeconds(skipInterval);
+    if (isfinite(interval) && interval != 0) {
+        NSTimeInterval target = self.currentPlaybackTime + interval;
+        NSTimeInterval duration = self.duration;
+        if (duration > 0 && isfinite(duration)) {
+            target = MAX(0.0, MIN(target, duration - 0.1));
+        } else if (target < 0) {
+            target = 0;
+        }
+        av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture skip %.1fs to %.1fs\n", interval, target);
+        self.currentPlaybackTime = target;
+    }
+    if (completionHandler) {
+        completionHandler();
+    }
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
+           didTransitionToRenderSize:(CMVideoDimensions)newRenderSize
+{
+    av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture render size:%dx%d\n", newRenderSize.width, newRenderSize.height);
+}
+
+- (BOOL)pictureInPictureControllerShouldProhibitBackgroundAudioPlayback:(AVPictureInPictureController *)pictureInPictureController
+{
+    // 是否继续播放由播放器自己决定（画中画激活期间不会因进后台而暂停）
+    return NO;
 }
 
 #endif

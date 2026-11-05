@@ -21,17 +21,40 @@
 #import "FSCommon.h"
 #import "FSDemoHistory.h"
 #import <Photos/Photos.h>
+#import <AVKit/AVKit.h>
 
 @interface FSVideoViewController ()<FSVideoRenderingDelegate>
 
 @property(nonatomic,strong) NSURL *temporaryMovieURL;
+#if !TARGET_OS_TV
+/// 工具栏上的画中画入口（xib 里的 “PiP” barButtonItem）
+@property(nonatomic,weak) UIBarButtonItem *pipBarButtonItem;
+/// 系统正在从画中画恢复本页（用户点了画中画窗口的“返回 App”）。置位时，
+/// viewWillAppear 不再重新 prepareToPlay，退出画中画时也不关闭播放器。
+@property(nonatomic,assign) BOOL pipRestoring;
+/// 为“发起新播放”而主动丢弃本页：置位后停止画中画时不再把本页 present 回来，
+/// 直接随画中画结束关闭旧播放器。避免旧页被 restore 回调重新弹出、与新播放页叠加。
+@property(nonatomic,assign) BOOL pipDiscarding;
+#endif
 
 @end
+
+#if !TARGET_OS_TV
+// 画中画激活期间，本页会被 dismiss 以隐藏播放界面。dismiss 后原 presenting VC 不再
+// 持有本页，这里用一个强引用兜住它，保证本页与它持有的 FSPlayer 在画中画期间存活；
+// 退出画中画（返回或关闭）后再释放。
+static FSVideoViewController *sPictureInPictureHoldingController = nil;
+#endif
 
 @implementation FSVideoViewController
 
 - (void)dealloc
 {
+#if !TARGET_OS_TV
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:FSPlayerPictureInPictureStateDidChangeNotification
+                                                  object:nil];
+#endif
     if (_temporaryMovieURL) {
         [[NSFileManager defaultManager] removeItemAtURL:_temporaryMovieURL error:NULL];
     }
@@ -77,6 +100,18 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view from its nib.
+
+#if !TARGET_OS_TV
+    // 不论从哪个入口创建新的播放页（有的入口直接 alloc/present，不走
+    // presentFromViewController:），只要上一条播放还停留在画中画，就先把它结束，
+    // 避免旧画中画与新播放页并存。pipDiscarding 让旧页在停止 PiP 时不被 restore
+    // 回调重新 present 回来。
+    FSVideoViewController *holding = sPictureInPictureHoldingController;
+    if (holding && holding != self && [holding.player isKindOfClass:[FSPlayer class]]) {
+        holding.pipDiscarding = YES;
+        [(FSPlayer *)holding.player stopPictureInPicture];
+    }
+#endif
 
 //    [[UIApplication sharedApplication] setStatusBarHidden:YES];
 //    [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationLandscapeLeft animated:NO];
@@ -136,25 +171,73 @@
     [self.view addSubview:self.mediaControl];
 
     self.mediaControl.delegatePlayer = self.player;
+
+#if !TARGET_OS_TV
+    // 画中画状态观察者随 VC 生命周期常驻（在 dealloc 注销），而不是跟着
+    // viewWillAppear/viewDidDisappear 装卸：进入画中画后本页会被隐藏，仍需在隐藏
+    // 期间收到“画中画已停止”的回调来决定恢复界面还是关闭播放器。
+    if ([self.player isKindOfClass:[FSPlayer class]]) {
+        FSPlayer *player = (FSPlayer *)self.player;
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pictureInPictureStateDidChange:)
+                                                     name:FSPlayerPictureInPictureStateDidChangeNotification
+                                                   object:player];
+        // 系统请求从画中画返回 App 时，由本页重新把自己 present 回来，再回调系统完成。
+        __weak typeof(self) weakSelf = self;
+        player.pictureInPictureRestoreUIHandler = ^(void (^completionHandler)(BOOL restored)) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.pipDiscarding) {
+                // 本页正被丢弃（为新播放让路）：不恢复界面，直接告知系统未恢复。
+                completionHandler(NO);
+                return;
+            }
+            strongSelf.pipRestoring = YES;
+            UIViewController *presenter = [UIApplication sharedApplication].keyWindow.rootViewController;
+            while (presenter.presentedViewController) {
+                presenter = presenter.presentedViewController;
+            }
+            [presenter presentViewController:strongSelf animated:YES completion:^{
+                completionHandler(YES);
+            }];
+        };
+    }
+#endif
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    
+
     [self installMovieNotificationObservers];
 
+#if !TARGET_OS_TV
+    if (self.pipRestoring) {
+        // 从画中画返回：播放器一直在运行，不要重新 prepare（会打断播放）。
+        return;
+    }
+#endif
     [self.player prepareToPlay];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
-    
+
+    // 平衡 viewWillAppear 里安装的播放通知观察者（画中画状态观察者在 dealloc 注销，不在此处）。
+    [self removeMovieNotificationObservers];
+
+#if !TARGET_OS_TV
+    // 进入画中画会 dismiss 本页以隐藏播放界面，但播放器必须继续运行，否则
+    // ff_vout 停止解码，画中画窗口会定格在最后一帧。此时不要关闭播放器。
+    if ([self.player isKindOfClass:[FSPlayer class]] &&
+        ((FSPlayer *)self.player).isPictureInPictureActive) {
+        return;
+    }
+#endif
+
     id<FSMediaPlayback> player = self.player;
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         // Keep the controller and its temporary file alive until playback shuts down.
         [player shutdownSync:self.temporaryMovieURL != nil];
     });
-    [self removeMovieNotificationObservers];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -224,6 +307,71 @@
     }
 #endif
 }
+
+#if !TARGET_OS_TV
+- (IBAction)onClickPictureInPicture:(UIBarButtonItem *)sender
+{
+    self.pipBarButtonItem = sender;
+    if (![self.player isKindOfClass:[FSPlayer class]]) {
+        return;
+    }
+    FSPlayer *player = (FSPlayer *)self.player;
+    NSLog(@"[PiP] supported:%d active:%d possible:%d",
+          player.isPictureInPictureSupported,
+          player.isPictureInPictureActive,
+          [(AVPictureInPictureController *)player.pictureInPictureController isPictureInPicturePossible]);
+    if (player.isPictureInPictureActive) {
+        [player stopPictureInPicture];
+    } else {
+        [player startPictureInPicture];
+    }
+}
+
+- (void)pictureInPictureStateDidChange:(NSNotification *)notification
+{
+    // 本方法可能把 sPictureInPictureHoldingController 置空，而那可能是本页唯一的强
+    // 引用；用一个方法级强引用保证本页在本次回调执行期间不被提前析构。
+    __strong typeof(self) keepSelfAlive __attribute__((unused)) = self;
+
+    FSPlayer *player = (FSPlayer *)notification.object;
+    NSError *error = notification.userInfo[FSPlayerPictureInPictureErrorUserInfoKey];
+    NSLog(@"[PiP] state changed active:%d error:%@", player.isPictureInPictureActive, error);
+    self.pipBarButtonItem.title = player.isPictureInPictureActive ? @"PiP On" : @"PiP";
+
+    if (error) {
+        // 启动失败：页面未隐藏，无需做界面处理。
+        return;
+    }
+
+    if (player.isPictureInPictureActive) {
+        // 进入画中画：先用静态强引用兜住本页，避免 dismiss 后本页（及其 FSPlayer）
+        // 被释放导致画中画画面来源消失；再 dismiss 隐藏播放界面（返回列表页）。
+        sPictureInPictureHoldingController = self;
+        if (self.presentingViewController) {
+            [self dismissViewControllerAnimated:YES completion:nil];
+        }
+    } else {
+        // 退出画中画
+        if (self.pipRestoring) {
+            // 用户点了“返回 App”：restore 回调已把本页重新 present 回来，继续播放即可。
+            self.pipRestoring = NO;
+        } else {
+            // 用户点了画中画窗口的关闭按钮：播放页仍处于隐藏状态，关闭播放器。
+            id<FSMediaPlayback> p = self.player;
+            BOOL removeTemp = self.temporaryMovieURL != nil;
+            dispatch_async(dispatch_get_global_queue(0, 0), ^{
+                [p shutdownSync:removeTemp];
+            });
+        }
+        // 画中画结束：释放静态强引用。恢复场景下本页已由 presenter 重新持有，关闭
+        // 场景下由上面 shutdown 的 block 持有到清理完成，均不会在此处提前析构。
+        // 用 == self 守卫：若此时静态引用已指向新播放页（新 VC 已进入画中画），不要误清。
+        if (sPictureInPictureHoldingController == self) {
+            sPictureInPictureHoldingController = nil;
+        }
+    }
+}
+#endif
 
 - (IBAction)onClickPlay:(id)sender
 {

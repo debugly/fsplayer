@@ -128,6 +128,24 @@ typedef enum : NSUInteger {
 // 单次高斯模糊的 sigma（模糊半径），默认 30，值越大越模糊。
 @property(nonatomic) float backgroundBlurSigma;
 
+#if !TARGET_OS_TV
+// ---- 画中画（Picture in Picture，iOS 15+/macOS 12+ 才可用）----
+// 准备画中画内容层（幂等）：创建 AVSampleBufferDisplayLayer 并挂进视图层级。
+// 返回 NO 表示该渲染视图/当前系统不支持画中画；不实现也视为不支持。
+- (BOOL)preparePictureInPicture;
+// 画中画内容层（AVSampleBufferDisplayLayer）；未准备成功时返回 nil。
+- (nullable CALayer *)pictureInPictureContentLayer;
+// 画中画是否正在运行：YES 时渲染视图应持续把画面喂给内容层。
+@property(nonatomic) BOOL pictureInPictureActive;
+// 是否允许把画面喂给画中画内容层，默认 YES。
+@property(nonatomic) BOOL pictureInPictureFeedEnabled;
+// 同步画中画内容层的播放时间轴，供 PiP 窗口显示进度与时长。
+// time 为当前播放位置（秒），rate 为播放速率（播放 1.0 / 暂停 0.0）。
+// 内容层带 controlTimebase：设定 rate 后会自动按墙钟推进，无需逐帧更新。
+// 仅在 -preparePictureInPicture 成功后有效。
+- (void)updatePictureInPictureTimebaseWithTime:(NSTimeInterval)time rate:(float)rate;
+#endif
+
 @end
 
 /// Read-only display information supplied by a renderer. Does not retain decoded
