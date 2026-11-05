@@ -1,3 +1,7 @@
+## tag 1.1.3
+
+- add Picture in Picture (PiP) support on iOS, macOS and Android #96
+
 ## tag 1.1.2
 
 - fix HEVC hardware decoding on android by enabling all mediacodec decoders instead of only h264
