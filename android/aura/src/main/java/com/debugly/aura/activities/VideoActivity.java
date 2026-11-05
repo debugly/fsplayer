@@ -20,18 +20,22 @@ package com.debugly.aura.activities;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
+import android.app.PictureInPictureParams;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowCompat;
@@ -43,6 +47,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Rational;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -62,6 +67,7 @@ import java.util.List;
 
 import com.debugly.fsplayer.player.FSHudView;
 import com.debugly.fsplayer.player.FSPlayer;
+import com.debugly.fsplayer.player.IMediaPlayer;
 import com.debugly.aura.services.MediaPlayerService;
 import com.debugly.aura.widget.media.MediaPlayerCompat;
 import com.debugly.fsplayer.player.misc.ITrackInfo;
@@ -240,6 +246,9 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             return;
         }
         setupPlaylistSwipe();
+        mVideoView.setOnPreparedListener(mp -> {
+            updatePictureInPictureParams();
+        });
         mVideoView.setOnCompletionListener(mp -> {
             // 播完自动接下一条；已经是最后一条就停在原地。
             if (mPlaylist == null || mPlaylistSwitching)
@@ -345,6 +354,111 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         return MediaPlayerCompat.getFSPlayer(mVideoView.getMediaPlayer());
     }
 
+    /** 系统/设备是否支持画中画（Android 8.0+，且厂商没有裁掉 FEATURE_PICTURE_IN_PICTURE）。 */
+    private boolean isPictureInPictureSupported() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
+    }
+
+    /** 用当前视频尺寸构造画中画参数；宽高比拿了视频的（含 SAR），拿不到就用系统默认。 */
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private PictureInPictureParams buildPictureInPictureParams() {
+        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
+        IMediaPlayer player = mVideoView != null ? mVideoView.getMediaPlayer() : null;
+        if (player != null) {
+            long width = player.getVideoWidth();
+            long height = player.getVideoHeight();
+            int sarNum = player.getVideoSarNum();
+            int sarDen = player.getVideoSarDen();
+            if (width > 0 && height > 0) {
+                if (sarNum > 0 && sarDen > 0) {
+                    width *= sarNum;
+                    height *= sarDen;
+                }
+                long divisor = gcd(width, height);
+                long num = width / divisor;
+                long den = height / divisor;
+                // 画中画窗口宽高比系统只接受 1:2.39 ~ 2.39:1，超范围会抛 IllegalArgumentException
+                if (num <= Integer.MAX_VALUE && den <= Integer.MAX_VALUE
+                        && num * 1000L <= den * 2390L && den * 1000L <= num * 2390L) {
+                    builder.setAspectRatio(new Rational((int) num, (int) den));
+                }
+            }
+        }
+        if (mVideoView != null) {
+            Rect sourceRectHint = new Rect();
+            if (mVideoView.getGlobalVisibleRect(sourceRectHint)) {
+                builder.setSourceRectHint(sourceRectHint);
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(mVideoView != null && mVideoView.isPlaying());
+        }
+        return builder.build();
+    }
+
+    /** 进入画中画（Toolbar 上的 PiP 菜单项）；返回是否进入成功。 */
+    private boolean enterPictureInPicture() {
+        if (!isPictureInPictureSupported()) {
+            showToast("画中画需要 Android 8.0 及以上，且设备支持");
+            return false;
+        }
+        try {
+            PictureInPictureParams params = buildPictureInPictureParams();
+            boolean enter = enterPictureInPictureMode(params);
+            Log.i(TAG, "enterPictureInPictureMode -> " + enter);
+            if (!enter) {
+                showToast("进入画中画失败");
+            }
+            return enter;
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "enterPictureInPictureMode failed: " + e.getMessage());
+            showToast("进入画中画失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** 更新系统画中画参数（用于播放状态或尺寸变化时同步给系统）。 */
+    private void updatePictureInPictureParams() {
+        if (isPictureInPictureSupported() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                setPictureInPictureParams(buildPictureInPictureParams());
+            } catch (Exception e) {
+                Log.w(TAG, "setPictureInPictureParams failed: " + e.getMessage());
+            }
+        }
+    }
+
+    private static long gcd(long a, long b) {
+        while (b != 0) {
+            long t = b;
+            b = a % b;
+            a = t;
+        }
+        return a;
+    }
+
+    /** 点了 Home/切到别的应用：正在播放就进画中画（Android 8.0+）。 */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (isPictureInPictureSupported() && mVideoView.isPlaying()) {
+            enterPictureInPicture();
+        }
+    }
+
+    /** 画中画窗口里收起控制器，退出后再显示；播放本身不受影响。 */
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        Log.i(TAG, "onPictureInPictureModeChanged -> " + isInPictureInPictureMode);
+        if (isInPictureInPictureMode) {
+            mMediaController.hide();
+        } else {
+            mMediaController.show();
+        }
+    }
+
     /** 复用 demo 的 toast 展示方式。 */
     private void showToast(int resId) {
         mToastTextView.setText(resId);
@@ -395,6 +509,9 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             String renderText = FSVideoView.getRenderText(this, render);
             mToastTextView.setText(renderText);
             mMediaController.showOnce(mToastTextView);
+            return true;
+        } else if (id == R.id.action_pip) {
+            enterPictureInPicture();
             return true;
         } else if (id == R.id.action_toggle_hud) {
             boolean shown = mVideoView.toggleHudView();

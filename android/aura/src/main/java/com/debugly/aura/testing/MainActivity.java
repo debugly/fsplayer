@@ -1,16 +1,25 @@
 package com.debugly.aura.testing;
 
 import android.app.Activity;
+import android.app.PictureInPictureParams;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
+import android.util.Rational;
 import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+
+import androidx.annotation.RequiresApi;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,6 +29,8 @@ import com.debugly.fsplayer.player.IMediaPlayer;
 import com.debugly.fsplayer.player.FSPlayer;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
+
+    private static final String TAG = "FSPlayerPiP";
 
     private FSPlayer mPlayer;
     private SurfaceView mSurfaceView;
@@ -35,6 +46,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private float mContrast;
     private int mBgColor;
     private float mBlurSigma = FSPlayer.FS_BACKGROUND_BLUR_SIGMA;
+    private boolean mPipOnPrepared;
+    private int mPipAtMs = 3000;
 
     // H264 + AAC MP4，软解可播放（W3C 长期托管）
     // 可用 intent extra "url" 覆盖（本地文件或网络地址）
@@ -52,6 +65,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     // 可用 intent extra "hud"（0/1）起播就显示统计 HUD（默认 0，点画面也能开关）
     // 可用 intent extra "seekAtMs" 指定起播后多少毫秒 seek 到 seekToMs（验证 seek-frame 耗时）
     // 可用 intent extra "seekToMs"（默认 30000）配合 seekAtMs 使用
+    // 画中画：长按画面手动进入；退到后台且正在播放时自动进入（Android 8.0+）
+    // 可用 intent extra "pip"（1）起播后自动进入画中画，配合 "pipAtMs"（默认 3000）调整延时
     private static final String TEST_URL =
             "https://media.w3.org/2010/05/sintel/trailer.mp4";
 
@@ -104,6 +119,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 ? getIntent().getFloatExtra("contrast", FSPlayer.FS_COLOR_DEFAULT)
                 : FSPlayer.FS_COLOR_DEFAULT;
         mBgColor = getIntent() != null ? getIntent().getIntExtra("bgColor", 0) : 0;
+        mPipOnPrepared = getIntent() != null && getIntent().getIntExtra("pip", 0) != 0;
+        mPipAtMs = getIntent() != null ? getIntent().getIntExtra("pipAtMs", 3000) : 3000;
 
         mPlayer = new FSPlayer();
         mPlayer.attachHudView(mHudView);
@@ -113,6 +130,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             @Override
             public void onClick(View v) {
                 mPlayer.setShouldShowHudView(!mPlayer.shouldShowHudView());
+            }
+        });
+        // 长按画面进画中画（和 iOS 上的 PiP 入口对应）
+        mSurfaceView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                return enterPictureInPicture();
             }
         });
         // MediaCodec 硬解 + Vulkan 外部显存零拷贝（设备不支持时自动回退软解）
@@ -166,6 +190,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             + " c=" + mPlayer.getColorContrast()
                             + " bg=" + Integer.toHexString(mPlayer.getBackgroundColor()));
                 }
+                updatePictureInPictureParams();
                 if (seekAtMs >= 0) {
                     new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                         @Override
@@ -181,6 +206,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             mPlayer.pause();
                         }
                     }, pauseAfterMs);
+                }
+                if (mPipOnPrepared) {
+                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            enterPictureInPicture();
+                        }
+                    }, mPipAtMs);
                 }
                 if (mSnapshotType >= 0) {
                     new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
@@ -206,6 +239,107 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 return false;
             }
         });
+    }
+
+    /** 系统/设备是否支持画中画（Android 8.0+，且厂商没有裁掉 FEATURE_PICTURE_IN_PICTURE）。 */
+    private boolean isPictureInPictureSupported() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
+    }
+
+    /** 用当前视频尺寸构造画中画参数；宽高比拿了视频的（含 SAR），拿不到就用系统默认。 */
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private PictureInPictureParams buildPictureInPictureParams() {
+        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
+        int width = mPlayer != null ? mPlayer.getVideoWidth() : 0;
+        int height = mPlayer != null ? mPlayer.getVideoHeight() : 0;
+        int sarNum = mPlayer != null ? mPlayer.getVideoSarNum() : 0;
+        int sarDen = mPlayer != null ? mPlayer.getVideoSarDen() : 0;
+        if (width > 0 && height > 0) {
+            if (sarNum > 0 && sarDen > 0) {
+                width *= sarNum;
+                height *= sarDen;
+            }
+            int divisor = gcd(width, height);
+            int num = width / divisor;
+            int den = height / divisor;
+            // 画中画窗口宽高比系统只接受 1:2.39 ~ 2.39:1，超范围会抛 IllegalArgumentException
+            if (num > 0 && den > 0 && num * 1000L <= den * 2390L && den * 1000L <= num * 2390L) {
+                builder.setAspectRatio(new Rational((int) num, (int) den));
+            }
+        }
+        if (mSurfaceView != null) {
+            Rect sourceRectHint = new Rect();
+            if (mSurfaceView.getGlobalVisibleRect(sourceRectHint)) {
+                builder.setSourceRectHint(sourceRectHint);
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(mPlayer != null && mPlayer.isPlaying());
+        }
+        return builder.build();
+    }
+
+    /** 进入画中画；返回是否进入成功。 */
+    private boolean enterPictureInPicture() {
+        if (!isPictureInPictureSupported()) {
+            toast("画中画需要 Android 8.0 及以上，且设备支持");
+            return false;
+        }
+        try {
+            PictureInPictureParams params = buildPictureInPictureParams();
+            boolean enter = enterPictureInPictureMode(params);
+            Log.i(TAG, "enterPictureInPictureMode -> " + enter);
+            if (!enter) {
+                toast("进入画中画失败");
+            }
+            return enter;
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "enterPictureInPictureMode failed: " + e.getMessage());
+            toast("进入画中画失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** 更新系统画中画参数。 */
+    private void updatePictureInPictureParams() {
+        if (isPictureInPictureSupported() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                setPictureInPictureParams(buildPictureInPictureParams());
+            } catch (Exception e) {
+                Log.w(TAG, "setPictureInPictureParams failed: " + e.getMessage());
+            }
+        }
+    }
+
+    private static int gcd(int a, int b) {
+        while (b != 0) {
+            int t = b;
+            b = a % b;
+            a = t;
+        }
+        return a;
+    }
+
+    /** 点了 Home/切到别的应用：正在播放就进画中画（Android 8.0+）。 */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (isPictureInPictureSupported() && mPlayer != null && mPlayer.isPlaying()) {
+            enterPictureInPicture();
+        }
+    }
+
+    /** 画中画窗口小，HUD 会挡住画面，进出画中画时收起/恢复。 */
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        Log.i(TAG, "onPictureInPictureModeChanged -> " + isInPictureInPictureMode);
+        if (mHudView != null) {
+            mHudView.setVisibility(isInPictureInPictureMode
+                    ? View.GONE
+                    : (mPlayer != null && mPlayer.shouldShowHudView() ? View.VISIBLE : View.GONE));
+        }
     }
 
     private void saveSnapshot(int type) {

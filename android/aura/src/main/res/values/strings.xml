@@ -13,6 +13,7 @@
     <string name="tracks">Tracks</string>
     <string name="playlist">Playlist</string>
     <string name="toggle_player">Player</string>
+    <string name="pip">PiP</string>
     <string name="toggle_render">Render</string>
     <string name="toggle_ratio">Scale</string>
     <string name="show_info">Info</string>
