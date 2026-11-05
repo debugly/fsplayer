@@ -137,6 +137,8 @@ typedef enum : NSUInteger {
 - (nullable CALayer *)pictureInPictureContentLayer;
 // 画中画是否正在运行：YES 时渲染视图应持续把画面喂给内容层。
 @property(nonatomic) BOOL pictureInPictureActive;
+// 即将停止画中画：在收起动画前恢复源层几何，active 和持续喂帧保持到 didStop。
+- (void)pictureInPictureWillStop;
 // 是否允许把画面喂给画中画内容层，默认 YES。
 @property(nonatomic) BOOL pictureInPictureFeedEnabled;
 // 同步画中画内容层的播放时间轴，供 PiP 窗口显示进度与时长。

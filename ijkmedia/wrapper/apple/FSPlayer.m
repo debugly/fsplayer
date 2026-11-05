@@ -2749,6 +2749,10 @@ static int ijkff_audio_samples_callback(void *opaque, int16_t *samples, int samp
 - (void)pictureInPictureControllerWillStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController
 {
     av_log(NULL, AV_LOG_INFO, "FSPlayer: picture in picture will stop\n");
+    UIView<FSVideoRenderingProtocol> *view = (UIView<FSVideoRenderingProtocol> *)self.view;
+    if ([view respondsToSelector:@selector(pictureInPictureWillStop)]) {
+        [view pictureInPictureWillStop];
+    }
 }
 
 - (void)pictureInPictureControllerDidStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController

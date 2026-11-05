@@ -146,6 +146,11 @@ typedef CGRect NSRect;
 // CAMetalLayer 上：AVKit 会给内容层建 host view 并按父层坐标算几何，CAMetalLayer
 // 下会算出 NaN，AppKit 校验几何时直接崩（Invalid view geometry: x is NaN）。
 @property (nonatomic, strong, nullable) UIView *pictureInPictureContainerView;
+@property (nonatomic, assign) BOOL pictureInPictureStopping;
+#if TARGET_OS_OSX
+// 仅记录本次退出中由我们隐藏的占位视图；弱引用不延长 AVKit 视图的生命周期。
+@property (nonatomic, strong) NSHashTable<NSView *> *pictureInPictureHiddenPlaceholders;
+#endif
 // 预热帧计数：prepare 之后先喂几帧让 layer 有内容（层此时 opacity=0，不可见），
 // 之后只在画中画真正运行时持续喂帧，避免白白占用 GPU 合成。
 @property (nonatomic, assign) NSUInteger pictureInPictureWarmFrames;
@@ -881,7 +886,7 @@ end:
 
 - (void)displayCurrentFrameWithTimestamp:(const CFTimeInterval)timestamp {
 #if !TARGET_OS_TV
-    if (self.pictureInPictureActive) {
+    if (self.pictureInPictureActive && !self.pictureInPictureStopping) {
         return;
     }
 #endif
@@ -1002,6 +1007,8 @@ end:
         if (lastFrame) {
             [self enqueuePictureInPictureSampleBuffer:lastFrame displayWidth:lastW displayHeight:lastH];
             CFRelease(lastFrame);
+            // 首帧入队后已有 clean aperture；启动前用实际视频比例确定源层几何。
+            [self updatePictureInPictureLayerFrame];
         }
         // 再喂几帧，让内容层进入可渲染状态，画中画启动时才不会黑屏。
         self.pictureInPictureWarmFrames = 3;
@@ -1022,7 +1029,17 @@ end:
     if (_pictureInPictureActive == pictureInPictureActive) {
         return;
     }
+#if TARGET_OS_OSX
+    if (pictureInPictureActive) {
+        // 在切换可见层之前更新；active=YES 后普通布局会让位给 PiP 面板尺寸修正。
+        [self updatePictureInPictureLayerFrame];
+    }
+    if (!pictureInPictureActive && self.pictureInPictureStopping) {
+        [self logPictureInPictureStopGeometry:@"didStop"];
+    }
+#endif
     _pictureInPictureActive = pictureInPictureActive;
+    self.pictureInPictureStopping = NO;
     AVSampleBufferDisplayLayer *layer = self.pictureInPictureDisplayLayer;
     if (!layer) {
         return;
@@ -1037,7 +1054,55 @@ end:
     layer.opacity = pictureInPictureActive ? 1.0 : 0.0;
     self.layer.opacity = pictureInPictureActive ? 0.0 : 1.0;
     [CATransaction commit];
+#if TARGET_OS_OSX
+    if (pictureInPictureActive) {
+        // macOS 坑：AVKit 把内容层搬进 PiP 面板后，只按视频原生尺寸布局一次、且忽略
+        // videoGravity，导致画中画窗口按 1:1 显示、只露出左上一块。反向修正 AVKit
+        // 面板里的宿主视图，使其跟随窗口大小。PiP 窗口是异步出现的，故延迟多次重试，
+        // 并监听窗口 resize 持续修正。
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pictureInPictureHostWindowDidResize:)
+                                                     name:NSWindowDidResizeNotification
+                                                   object:nil];
+        [self schedulePictureInPictureWindowLayoutFixes];
+    } else {
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                        name:NSWindowDidResizeNotification
+                                                      object:nil];
+    }
+    if (!pictureInPictureActive) {
+        [self updatePictureInPictureLayerFrame];
+        for (NSView *placeholder in self.pictureInPictureHiddenPlaceholders) {
+            placeholder.hidden = NO;
+        }
+        [self.pictureInPictureHiddenPlaceholders removeAllObjects];
+    }
+#endif
     ALOGI("FSMetalView: picture in picture %s\n", pictureInPictureActive ? "activated" : "deactivated");
+}
+
+- (void)pictureInPictureWillStop
+{
+#if TARGET_OS_OSX
+    [self logPictureInPictureStopGeometry:@"willStop-before"];
+    // AVKit 的收起动画镜像源层，必须在动画开始前恢复播放器内的视频显示尺寸。
+    // 先恢复 Metal 底图，避免源层几何变化及收起动画期间露出窗口底色。
+    // PiP 仍持续喂帧，直到 didStop 才隐藏内容层。
+    self.pictureInPictureStopping = YES;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.layer.opacity = 1.0;
+    [self updatePictureInPictureLayerFrame];
+    // AVKit 后续布局会重置占位视图的位置，退出期间直接隐藏它。
+    [self parkOffscreenPictureInPictureHostViewsInRoot:[self findPictureInPictureWindow].contentView];
+    [CATransaction commit];
+    // 暂停时没有新帧触发刷新，也要把保留的当前帧画回播放器。
+    [self.renderSnapshotLock lock];
+    self.previousTag = ~self.currentFrame.tag;
+    [self.renderSnapshotLock unlock];
+    [self displayCurrentFrameWithTimestamp:CACurrentMediaTime()];
+    [self samplePictureInPictureStopGeometry:0];
+#endif
 }
 
 - (void)updatePictureInPictureLayerFrame
@@ -1046,6 +1111,13 @@ end:
     if (!layer) {
         return;
     }
+#if TARGET_OS_OSX
+    // 画中画激活期间，源层尺寸由 resizePictureInPictureSourceLayerTo: 按 PiP 面板大小控制，
+    // willStop 后恢复播放器内的视频显示尺寸，供 AVKit 收起动画使用。
+    if (self.pictureInPictureActive && !self.pictureInPictureStopping) {
+        return;
+    }
+#endif
     UIView *container = self.pictureInPictureContainerView;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -1056,6 +1128,10 @@ end:
     CALayer *containerLayer = container.layer;
     if (containerLayer && layer.superlayer == containerLayer) {
         CGRect target = containerLayer.bounds;
+#if TARGET_OS_OSX
+        // 启动和返回使用同一视频区域，避免启动瞬间把 view 的留黑边区域带入镜像。
+        target = [self pictureInPictureInlineVideoRect:target];
+#endif
         if (!CGRectEqualToRect(layer.frame, target)) {
             layer.frame = target;
         }
@@ -1063,7 +1139,305 @@ end:
     [CATransaction commit];
 }
 
+#if TARGET_OS_OSX
 
+- (CGRect)pictureInPictureInlineVideoRect:(CGRect)bounds
+{
+    // 与 AVKit 使用同一份 sample buffer 格式，包含 clean aperture 与像素宽高比。
+    // 整个 view 可能比视频宽；把它当源层尺寸会产生透明边，再被较窄的镜像宿主裁切。
+    [self.renderSnapshotLock lock];
+    CVPixelBufferRef buffer = self.currentFrame.videoPicture;
+    if (buffer) CVPixelBufferRetain(buffer);
+    [self.renderSnapshotLock unlock];
+    if (!buffer) {
+        return bounds;
+    }
+    CMVideoFormatDescriptionRef format = NULL;
+    OSStatus status = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, buffer, &format);
+    CVPixelBufferRelease(buffer);
+    if (status != noErr || !format) {
+        return bounds;
+    }
+    CGSize size = CMVideoFormatDescriptionGetPresentationDimensions(format, true, true);
+    CFRelease(format);
+    if (size.width <= 0 || size.height <= 0 || !isfinite(size.width) || !isfinite(size.height)) {
+        return bounds;
+    }
+    return AVMakeRectWithAspectRatioInsideRect(size, bounds);
+}
+
+- (void)logPictureInPictureStopGeometry:(NSString *)phase
+{
+    CALayer *source = self.pictureInPictureDisplayLayer;
+    CALayer *presentation = source.presentationLayer;
+    NSLog(@"[PiP-STOP] t=%.6f phase=%@ active=%d stopping=%d source=%@ bounds=%@ presentation=%@ super=%@ container=%@ metalOpacity=%.2f",
+          CACurrentMediaTime(), phase, self.pictureInPictureActive, self.pictureInPictureStopping,
+          NSStringFromRect(source.frame), NSStringFromRect(source.bounds),
+          presentation ? NSStringFromRect(presentation.frame) : @"nil",
+          NSStringFromClass(source.superlayer.class),
+          NSStringFromRect(self.pictureInPictureContainerView.frame), self.layer.opacity);
+    NSWindow *window = [self findPictureInPictureWindow];
+    NSLog(@"[PiP-STOP] window=%@ content=%@", NSStringFromRect(window.frame),
+          NSStringFromRect(window.contentView.bounds));
+    if (window.contentView) {
+        [self dumpViewTree:window.contentView depth:0];
+    }
+}
+
+- (void)samplePictureInPictureStopGeometry:(NSUInteger)sample
+{
+    [self logPictureInPictureStopGeometry:[NSString stringWithFormat:@"animation-%lu", (unsigned long)sample]];
+    if (!self.pictureInPictureStopping || sample >= 40) {
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [weakSelf samplePictureInPictureStopGeometry:sample + 1];
+    });
+}
+
+// macOS 画中画窗口尺寸修正。
+// AVKit 把我们的 AVSampleBufferDisplayLayer 搬进它自建的 PiP 面板，用一个
+// AVPictureInPictureCALayerHostView 承载，但只在面板初次出现时按视频原生尺寸布局一次，
+// 之后不跟随窗口，也不按 videoGravity 缩放——于是画中画按 1:1 显示、只露出左上一块，
+// 放大窗口才看到更多。下面反向修正该宿主视图，使其 autoresizing 跟随窗口。
+// 依赖 AVKit 私有视图类名，属脆弱绕法；类名匹配失败时安全退出（恢复为原生 1:1 行为）。
+
+- (void)schedulePictureInPictureWindowLayoutFixes
+{
+    // PiP 面板(PIPPanel)异步出现，且 4K/HDR 解码较重时 AVKit 要 ~2.5s 才建出内容视图树，
+    // 固定短延迟(<1s)会全部跑在空视图树上而白做。改为有界轮询：每 0.2s 一次、最多 ~8s，
+    // 直到成功找到并修正 DisplayLayer 视图后再多做 2 次收尾；退出 PiP 则停止。
+    [self retryPictureInPictureWindowLayoutFix:0 appliedCount:0];
+}
+
+- (void)retryPictureInPictureWindowLayoutFix:(int)attempt appliedCount:(int)appliedCount
+{
+    if (!self.pictureInPictureActive || self.pictureInPictureStopping) {
+        return;
+    }
+    BOOL applied = [self performPictureInPictureWindowLayoutFix];
+    int newApplied = applied ? appliedCount + 1 : appliedCount;
+    // 成功修正后再收尾 2 次（覆盖 AVKit 启动阶段可能的再次布局），然后停；
+    // 一直没成功则最多重试 40 次(~8s)。之后的窗口 resize 由通知持续兜住。
+    BOOL keepGoing = (newApplied > 0 && newApplied < 3) || (newApplied == 0 && attempt < 40);
+    if (keepGoing) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            [self retryPictureInPictureWindowLayoutFix:attempt + 1 appliedCount:newApplied];
+        });
+    }
+}
+
+- (void)pictureInPictureHostWindowDidResize:(NSNotification *)notification
+{
+    if (!self.pictureInPictureActive) {
+        return;
+    }
+    // 只在 AVKit 的 PiP 窗口 resize 时处理（忽略 App 自己的窗口）。
+    NSWindow *window = notification.object;
+    NSString *cls = NSStringFromClass([window class]);
+    if ([cls localizedCaseInsensitiveContainsString:@"pip"] ||
+        [cls localizedCaseInsensitiveContainsString:@"pictureinpicture"]) {
+        if (self.pictureInPictureStopping) {
+            // 返回动画会放大面板；只维护占位视图避让，不能再把源层改为面板尺寸。
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+            [self parkOffscreenPictureInPictureHostViewsInRoot:window.contentView];
+            [CATransaction commit];
+        } else {
+            [self performPictureInPictureWindowLayoutFix];
+        }
+    }
+}
+
+// 返回 YES 表示本次确实找到并修正了至少一个承载视频的 DisplayLayer 视图。
+- (BOOL)performPictureInPictureWindowLayoutFix
+{
+    if (!self.pictureInPictureActive || self.pictureInPictureStopping) {
+        return NO;
+    }
+    NSWindow *pipWindow = [self findPictureInPictureWindow];
+    NSView *contentView = pipWindow.contentView;
+    if (!contentView) {
+        return NO;
+    }
+    // 真实层级（实测）：
+    //   contentView(跟随窗口)
+    //     AVPictureInPictureSampleBufferDisplayLayerView   ← 卡在初始尺寸，不跟随窗口
+    //       AVPictureInPictureSampleBufferDisplayLayerHostView(CALayerHost) ← 同样卡住，承载镜像内容
+    //         AVPictureInPictureCALayerHostView            ← 停在上方的黑色占位视图
+    // 承载视频的两层类名都含 "DisplayLayer"，黑色占位是 "CALayerHostView"（不含 "DisplayLayer"）。
+    int fixed = [self fillPictureInPictureDisplayViews:contentView];
+    [self parkOffscreenPictureInPictureHostViewsInRoot:contentView];
+    // 关键：AVKit 只是用 CALayerHost 镜像我们的源层(contentLayer)，并不缩放镜像；把承载视图改小
+    // 只会把原生尺寸的镜像裁掉。真正有效的是把源层本身缩放到 PiP 面板大小，镜像随之变小填满窗口。
+    // 用面板 content view 的点尺寸，避免像素/点换算歧义。
+    [self resizePictureInPictureSourceLayerTo:contentView.bounds.size];
+    if (fixed > 0) {
+        NSView *dv = [self firstDisplayLayerViewIn:contentView];
+        NSLog(@"[PiP-DIAG] applied fix: fixedViews=%d contentView=%@ displayView=%@ sourceLayer=%@",
+              fixed, NSStringFromRect(contentView.bounds),
+              dv ? NSStringFromRect(dv.frame) : @"(none)",
+              NSStringFromRect(self.pictureInPictureDisplayLayer.frame));
+    }
+    return fixed > 0;
+}
+
+// 把源 AVSampleBufferDisplayLayer 缩放到给定尺寸。AVKit 镜像的是这个层，缩小它，
+// 画中画窗口里的镜像才会跟着缩小、按 videoGravity 填满窗口。
+// 注意：
+// 1) 只缩放内容层本身，不要动承载它的容器视图(pictureInPictureContainerView)——
+//    容器贴在原播放器窗口里，改它的 frame 会让原窗口上的 PiP 占位图/按钮跟着偏移。
+// 2) 镜像只取内容层的“尺寸”、不关心它在容器里的“位置”，因此把缩小后的层在容器里居中摆放：
+//    PiP 窗口镜像照常填满，AVKit 画在原窗口上的“正在画中画”占位图也回到中间（放左下角
+//    会导致占位图偏到左下）。
+- (void)resizePictureInPictureSourceLayerTo:(CGSize)size
+{
+    if (size.width < 1 || size.height < 1) {
+        return;
+    }
+    AVSampleBufferDisplayLayer *layer = self.pictureInPictureDisplayLayer;
+    if (!layer) {
+        return;
+    }
+    CGSize containerSize = self.pictureInPictureContainerView ? self.pictureInPictureContainerView.bounds.size : self.bounds.size;
+    CGRect r = CGRectMake((containerSize.width - size.width) / 2.0,
+                          (containerSize.height - size.height) / 2.0,
+                          size.width, size.height);
+    if (!CGRectEqualToRect(layer.frame, r)) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        layer.frame = r;
+        [CATransaction commit];
+    }
+}
+
+// 递归让所有承载视频的 DisplayLayer 视图填满各自父视图并开启 autoresize；返回修正的视图数。
+// 先改父、再递归子，保证子视图读到的 superview.bounds 已是修正后的尺寸。
+- (int)fillPictureInPictureDisplayViews:(NSView *)view
+{
+    int count = 0;
+    for (NSView *sub in view.subviews) {
+        NSString *cls = NSStringFromClass([sub class]);
+        if ([cls containsString:@"DisplayLayer"]) {
+            sub.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+            NSRect target = sub.superview.bounds;
+            if (!NSEqualRects(sub.frame, target)) {
+                sub.frame = target;
+            }
+            sub.needsLayout = YES;
+            // 同步 CALayerHost 宿主层几何 + contentsGravity，让镜像内容按新尺寸缩放而非裁切。
+            if (sub.layer) {
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+                if (!NSEqualRects(sub.layer.frame, target)) {
+                    sub.layer.frame = target;
+                }
+                sub.layer.contentsGravity = kCAGravityResizeAspect;
+                [CATransaction commit];
+            }
+            count++;
+        }
+        count += [self fillPictureInPictureDisplayViews:sub];
+    }
+    return count;
+}
+
+- (nullable NSView *)firstDisplayLayerViewIn:(NSView *)view
+{
+    for (NSView *sub in view.subviews) {
+        if ([NSStringFromClass([sub class]) containsString:@"DisplayLayer"]) {
+            return sub;
+        }
+        NSView *found = [self firstDisplayLayerViewIn:sub];
+        if (found) {
+            return found;
+        }
+    }
+    return nil;
+}
+
+- (nullable NSWindow *)findPictureInPictureWindow
+{
+    for (NSWindow *w in [NSApplication sharedApplication].windows) {
+        NSString *cls = NSStringFromClass([w class]);
+        if ([cls localizedCaseInsensitiveContainsString:@"pip"] ||
+            [cls localizedCaseInsensitiveContainsString:@"pictureinpicture"]) {
+            return w;
+        }
+    }
+    return nil;
+}
+
+// 一次性诊断：打印所有窗口与 PiP 面板子视图树（类名 + frame）+ 内容层几何。
+- (void)dumpPictureInPictureHierarchy
+{
+    NSLog(@"[PiP-DIAG] ===== windows =====");
+    for (NSWindow *w in [NSApplication sharedApplication].windows) {
+        NSLog(@"[PiP-DIAG] window class=%@ frame=%@ visible=%d",
+              NSStringFromClass([w class]), NSStringFromRect(w.frame), w.isVisible);
+    }
+    NSWindow *pipWindow = [self findPictureInPictureWindow];
+    if (pipWindow.contentView) {
+        NSLog(@"[PiP-DIAG] ----- PiP window(%@) view tree -----", NSStringFromClass([pipWindow class]));
+        [self dumpViewTree:pipWindow.contentView depth:0];
+    } else {
+        NSLog(@"[PiP-DIAG] no PiP window matched (class name not containing pip/pictureinpicture)");
+    }
+    AVSampleBufferDisplayLayer *layer = self.pictureInPictureDisplayLayer;
+    NSLog(@"[PiP-DIAG] contentLayer bounds=%@ frame=%@ gravity=%@ superlayer=%@",
+          NSStringFromRect(layer.bounds), NSStringFromRect(layer.frame),
+          layer.videoGravity, NSStringFromClass([layer.superlayer class]));
+}
+
+- (void)dumpViewTree:(NSView *)view depth:(int)depth
+{
+    NSMutableString *indent = [NSMutableString string];
+    for (int i = 0; i < depth; i++) { [indent appendString:@"  "]; }
+    NSLog(@"[PiP-DIAG] %@%@ frame=%@ autoresize=%lu layer=%@ bounds=%@ hidden=%d",
+          indent, NSStringFromClass([view class]), NSStringFromRect(view.frame),
+          (unsigned long)view.autoresizingMask,
+          NSStringFromClass([view.layer class]),
+          view.layer ? NSStringFromRect(view.layer.bounds) : @"(nil)", view.isHidden);
+    for (NSView *sub in view.subviews) {
+        [self dumpViewTree:sub depth:depth + 1];
+    }
+}
+
+- (void)parkOffscreenPictureInPictureHostViewsInRoot:(NSView *)root
+{
+    for (NSView *sub in root.subviews) {
+        NSString *cls = NSStringFromClass([sub class]);
+        // 仅针对黑色占位视图 AVPictureInPictureCALayerHostView（含 "CALayerHostView" 且不含
+        // "DisplayLayer"，以区别于上面承载视频的 DisplayLayerHostView）。它停在窗口上方、
+        // origin.y > 0，窗口放大时会滑进可视区，这里把它移出视图范围。
+        if ([cls containsString:@"CALayerHostView"] &&
+            ![cls containsString:@"DisplayLayer"] &&
+            (self.pictureInPictureStopping || sub.frame.origin.y > 0)) {
+            if (self.pictureInPictureStopping) {
+                // 日志确认 AVKit 会在 willStop 后把 y=718 重置为 y=350，
+                // 而且没有后续窗口 resize 通知；隐藏不依赖这一几何布局。
+                if (!sub.isHidden) {
+                    if (!self.pictureInPictureHiddenPlaceholders) {
+                        self.pictureInPictureHiddenPlaceholders = [NSHashTable weakObjectsHashTable];
+                    }
+                    [self.pictureInPictureHiddenPlaceholders addObject:sub];
+                    sub.hidden = YES;
+                }
+            } else {
+                CGRect f = sub.frame;
+                f.origin.y = root.bounds.size.height + 10;
+                if (!CGRectEqualToRect(sub.frame, f)) {
+                    sub.frame = f;
+                }
+            }
+        }
+        [self parkOffscreenPictureInPictureHostViewsInRoot:sub];
+    }
+}
+
+#endif
 
 
 
@@ -1174,8 +1548,8 @@ end:
 - (void)drawRect:(NSRect)dirtyRect
 {
 #if !TARGET_OS_TV
-    // Keep the last inline frame while decoded frames continue feeding the PiP layer.
-    if (self.pictureInPictureActive) {
+    // PiP 退出动画期间恢复 inline 渲染，作为动画下方的完整底图。
+    if (self.pictureInPictureActive && !self.pictureInPictureStopping) {
         return;
     }
 #endif
@@ -1726,6 +2100,7 @@ end:
 {
     [super resizeWithOldSuperviewSize:oldSize];
     [self setNeedsRefreshCurrentPic];
+    [self updatePictureInPictureLayerFrame];
 }
 
 #else

@@ -7,6 +7,7 @@
 //
 
 #import "MRRootViewController.h"
+#import <AVKit/AVKit.h>
 #import "MRDragView.h"
 #import "MRUtil+SystemPanel.h"
 #import "MRHoverColorButton.h"
@@ -136,6 +137,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 @property (nonatomic, strong) MRHoverColorButton *screenshotBtn;
 @property (nonatomic, strong) MRHoverColorButton *recordBtn;
 @property (nonatomic, strong) NSView *recordPill;
+@property (nonatomic, strong) MRHoverColorButton *pipBtn;
+@property (nonatomic, strong) NSView *pipPill;
 @property (nonatomic, assign) BOOL isRecording;
 @property (nonatomic, strong) MRHoverColorButton *fullscreenBtn;
 
@@ -680,6 +683,20 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     self.recordPill = recordPill;
     [self updateRecordButtonUI];
     
+    // 画中画入口（macOS 12+ 且设备支持时才显示）
+    MRHoverColorButton *pipBtn = [[MRHoverColorButton alloc] init];
+    pipBtn.imageScaling = NSImageScaleProportionallyUpOrDown;
+    pipBtn.target = self;
+    pipBtn.action = @selector(onTogglePictureInPicture:);
+    self.pipBtn = pipBtn;
+    [self updatePictureInPictureButtonUI];
+
+    NSView *pipPill = [self wrapInPill:pipBtn withPaddingX:12 paddingY:12 cornerRadius:27];
+    self.pipPill = pipPill;
+    // 此时播放器还没建，先在 updatePictureInPictureButtonUI 里按支持情况隐藏，
+    // 播放器就绪（prepared）后再刷新一次显示出来。
+    pipPill.hidden = YES;
+
     NSStackView *leftControlStack = [[NSStackView alloc] init];
     leftControlStack.translatesAutoresizingMaskIntoConstraints = NO;
     leftControlStack.orientation = NSUserInterfaceLayoutOrientationVertical;
@@ -687,6 +704,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     leftControlStack.alignment = NSLayoutAttributeCenterX;
     [leftControlStack addArrangedSubview:screenshotPill];
     [leftControlStack addArrangedSubview:recordPill];
+    [leftControlStack addArrangedSubview:pipPill];
     
     self.leftScreenshotPillView = leftControlStack;
     [self.view addSubview:self.leftScreenshotPillView positioned:NSWindowAbove relativeTo:self.playerCtrlPanel];
@@ -697,6 +715,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
         [screenshotPill.heightAnchor constraintEqualToConstant:54],
         [recordPill.widthAnchor constraintEqualToConstant:54],
         [recordPill.heightAnchor constraintEqualToConstant:54],
+        [pipPill.widthAnchor constraintEqualToConstant:54],
+        [pipPill.heightAnchor constraintEqualToConstant:54],
         [self.leftScreenshotPillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24],
         [self.leftScreenshotPillView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
     ]];
@@ -725,6 +745,10 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
             }
             [menu addItemWithTitle:@"重播" action:@selector(retry) keyEquivalent:@""];
             [menu addItemWithTitle:@"停止" action:@selector(onStop) keyEquivalent:@"."];
+            if ([self isPictureInPictureSupported]) {
+                NSString *pipTitle = self.player.isPictureInPictureActive ? @"退出画中画" : @"画中画";
+                [menu addItemWithTitle:pipTitle action:@selector(onTogglePictureInPicture:) keyEquivalent:@"p"];
+            }
             [menu addItemWithTitle:@"下一集" action:@selector(playNext:)keyEquivalent:@""];
             [menu addItemWithTitle:@"上一集" action:@selector(playPrevious:)keyEquivalent:@""];
             
@@ -1297,6 +1321,11 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                 NSLog(@"rotate x,y,z:(%d,%d,%d)",(int)self.renderingView.xRotateDegrees,(int)self.renderingView.yRotateDegrees,(int)self.renderingView.zRotateDegrees);
                 return YES;
             }
+            case kVK_ANSI_P:
+            {
+                [self onTogglePictureInPicture:nil];
+                return YES;
+            }
             case kVK_ANSI_S:
             {
                 [self onCaptureShot];
@@ -1806,6 +1835,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerVideoDecoderFatal:) name:FSPlayerVideoDecoderFatalNotification object:self.player];
     
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerPictureInPictureStateDidChange:) name:FSPlayerPictureInPictureStateDidChangeNotification object:self.player];
+
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerRecvWarning:) name:FSPlayerRecvWarningNotification object:self.player];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fsPlayerSelectingStreamDidFailed:) name:FSPlayerSelectingStreamDidFailed object:self.player];
@@ -1844,6 +1875,8 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
 {
     if (self.player == notifi.object) {
         NSLog(@"[stat] prepared to play cost:%lldms",self.player.monitor.prepareLatency);
+        // 播放器就绪，刷新画中画入口的显示状态（macOS 12+ 且设备支持时才显示）
+        [self updatePictureInPictureButtonUI];
         float speed = [MRCocoaBindingUserDefault playback_speed];
         if (speed <= 0.0) speed = 1.0;
         self.player.playbackRate = speed;
@@ -2628,6 +2661,50 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
     [self onStop];
     [self playURL:url];
     self.player.playbackRate = playbackRate;
+}
+
+#pragma mark - Picture in Picture
+
+- (BOOL)isPictureInPictureSupported
+{
+    if (@available(macOS 12.0, *)) {
+        return [self.player isPictureInPictureSupported];
+    }
+    return NO;
+}
+
+- (IBAction)onTogglePictureInPicture:(id)sender
+{
+    if (self.player.isPictureInPictureActive) {
+        [self.player stopPictureInPicture];
+    } else if (![self.player startPictureInPicture]) {
+        NSLog(@"[PiP] start failed, supported:%d", [self.player isPictureInPictureSupported]);
+    }
+    [self updatePictureInPictureButtonUI];
+}
+
+- (void)fsPlayerPictureInPictureStateDidChange:(NSNotification *)notification
+{
+    NSLog(@"[PiP] state changed active:%d", self.player.isPictureInPictureActive);
+    [self updatePictureInPictureButtonUI];
+}
+
+- (void)updatePictureInPictureButtonUI
+{
+    // 播放器是后建的，所以可见性在这里统一刷新（而不是建按钮时判断一次）
+    self.pipPill.hidden = ![self isPictureInPictureSupported];
+    BOOL active = self.player.isPictureInPictureActive;
+    NSImage *img = nil;
+    if (@available(macOS 11.0, *)) {
+        NSString *name = active ? @"pip.exit" : @"pip.enter";
+        NSImageSymbolConfiguration *config = [NSImageSymbolConfiguration configurationWithPointSize:22 weight:NSFontWeightMedium];
+        img = [[NSImage imageWithSystemSymbolName:name accessibilityDescription:nil] imageWithSymbolConfiguration:config];
+    }
+    if (!img) {
+        img = [NSImage imageNamed:NSImageNameShareTemplate];
+    }
+    self.pipBtn.image = img;
+    self.pipBtn.toolTip = active ? @"退出画中画" : @"进入画中画";
 }
 
 - (void)onStop
