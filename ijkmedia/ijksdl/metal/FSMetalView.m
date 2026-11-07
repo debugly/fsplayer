@@ -950,10 +950,6 @@ end:
         return YES;
     }
     if (@available(iOS 15.0, macOS 12.0, *)) {
-        if (!self.superview) {
-            ALOGW("FSMetalView: picture in picture needs a superview first\n");
-            return NO;
-        }
         AVSampleBufferDisplayLayer *layer = [[AVSampleBufferDisplayLayer alloc] init];
         layer.videoGravity = AVLayerVideoGravityResizeAspect;
         // 层本身透明：opacity 为 0 时不可见，因此透明背景（Alpha 视频）特性不受影响。
@@ -983,14 +979,10 @@ end:
         container.userInteractionEnabled = NO;
 #endif
         container.layer.backgroundColor = [UIColor clearColor].CGColor;
-#if TARGET_OS_OSX
-        [self.superview addSubview:container positioned:NSWindowBelow relativeTo:self];
-#else
-        [self.superview insertSubview:container belowSubview:self];
-#endif
         [container.layer addSublayer:layer];
         self.pictureInPictureContainerView = container;
         self.pictureInPictureDisplayLayer = layer;
+        [self updatePictureInPictureSuperview];
         [self updatePictureInPictureLayerFrame];
         self.pictureInPictureFeedEnabled = YES;
         // 先喂一帧“当前画面”：AVKit 建 host view 时要靠这一帧拿到视频尺寸算几何，
@@ -1103,6 +1095,37 @@ end:
     [self displayCurrentFrameWithTimestamp:CACurrentMediaTime()];
     [self samplePictureInPictureStopGeometry:0];
 #endif
+}
+
+#if TARGET_OS_OSX
+- (void)viewDidMoveToSuperview {
+    [super viewDidMoveToSuperview];
+    [self updatePictureInPictureSuperview];
+}
+#else
+- (void)didMoveToSuperview {
+    [super didMoveToSuperview];
+    [self updatePictureInPictureSuperview];
+}
+#endif
+
+- (void)updatePictureInPictureSuperview {
+    UIView *container = self.pictureInPictureContainerView;
+    if (!container) {
+        return;
+    }
+    if (self.superview != nil) {
+        if (self.superview != container.superview) {
+            [container removeFromSuperview];
+#if TARGET_OS_OSX
+            [self.superview addSubview:container positioned:NSWindowBelow relativeTo:self];
+#else
+            [self.superview insertSubview:container belowSubview:self];
+#endif
+        }
+    } else {
+        [container removeFromSuperview];
+    }
 }
 
 - (void)updatePictureInPictureLayerFrame
