@@ -409,6 +409,8 @@ static int ijkmp_prepare_async_l(IjkMediaPlayer *mp)
     int retval = ffp_prepare_async_l(mp->ffplayer, mp->data_source);
     if (retval < 0) {
         ijkmp_change_state_l(mp, MP_STATE_ERROR);
+        // Prepare can fail before stream_open; wake the message thread even without an is.
+        ffp_stop_l(mp->ffplayer);
         return retval;
     }
 
