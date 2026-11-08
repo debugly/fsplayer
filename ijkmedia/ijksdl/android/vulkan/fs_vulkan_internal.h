@@ -26,8 +26,7 @@
 
 #include "fs_vulkan_renderer.h"
 
-#define VK_USE_PLATFORM_ANDROID_KHR 1
-#include <vulkan/vulkan.h>
+#include "fs_vulkan_loader.h"
 
 struct SDL_TextureOverlay;
 

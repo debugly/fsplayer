@@ -88,6 +88,14 @@ public class FSHudView extends ScrollView {
         mTitle.setVisibility(View.VISIBLE);
     }
 
+    /** Replace the renderer title in place, preserving any additional title lines. */
+    void setRendererTitle(String renderer) {
+        String current = mTitle.getText().toString();
+        int nextLine = current.indexOf('\n');
+        mTitle.setText(renderer + (nextLine >= 0 ? current.substring(nextLine) : ""));
+        mTitle.setVisibility(View.VISIBLE);
+    }
+
     /** 更新/新增一行（iOS 的 setHudValue:forKey:），value 自带标签 */
     public void setHudValue(String value, String key) {
         if (key == null) {

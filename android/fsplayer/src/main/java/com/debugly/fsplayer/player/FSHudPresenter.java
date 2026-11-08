@@ -48,7 +48,10 @@ public final class FSHudPresenter {
         }
 
         mHud.setHudValue(mPlayer.getDataSource(), "path");
-        mHud.setHudValue("Vulkan", "v-renderer");
+        long renderer = mPlayer.getPropertyLong(FSPlayer.FFP_PROP_INT64_VIDEO_RENDERER, 0);
+        String rendererName = renderer == 1 ? "OpenGL ES 3"
+                : renderer == 2 ? "Vulkan" : "Not initialized";
+        mHud.setRendererTitle(rendererName);
 
         if (mMeta == null) {
             MediaInfo info = mPlayer.getMediaInfo();

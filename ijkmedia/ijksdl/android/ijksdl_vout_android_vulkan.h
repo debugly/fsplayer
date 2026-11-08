@@ -39,6 +39,19 @@
  * 采样器上的 YCbCr 转换 -> swapchain 呈现。
  */
 
+/* Auto: Vulkan on API 24+, ES3 on API 23 / unavailable Vulkan loader.
+ * debug.fsplayer.renderer=gles3|vulkan overrides selection for diagnostics. */
+enum {
+    SDL_ANDROID_RENDERER_AUTO = 0,
+    SDL_ANDROID_RENDERER_OPENGL = 1,
+    SDL_ANDROID_RENDERER_VULKAN = 2,
+};
+/* Create an inert per-player wrapper; prepare after applying video-renderer. */
+SDL_Vout *SDL_VoutAndroid_CreateForAndroid(void);
+int SDL_VoutAndroid_PrepareRenderer(SDL_Vout *vout, int backend);
+/* Actual initialized backend, or zero before successful initialization. */
+int SDL_VoutAndroid_GetRendererType(SDL_Vout *vout);
+SDL_Vout *SDL_VoutAndroid_CreateForOpenGLES3(void);
 SDL_Vout *SDL_VoutAndroid_CreateForVulkan(void);
 
 /* 由上层 (ijkmp_android_set_surface) 调用，把 Java Surface 传给渲染器。 */
@@ -49,6 +62,8 @@ void SDL_VoutAndroid_SetAndroidSurface(JNIEnv *env, SDL_Vout *vout, jobject andr
  * 不可用时上层应保持软解。
  */
 int SDL_VoutAndroid_IsMediaCodecSupported(SDL_Vout *vout);
+/* Internal backend query for stream-specific decode capability checks. */
+int SDL_VoutAndroid_IsOpenGLES3(SDL_Vout *vout);
 
 /*
  * 返回 AImageReader 的输出 Surface，供 MediaCodec 作为解码输出目标。

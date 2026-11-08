@@ -18,6 +18,14 @@
             app:entrySummaries="@array/pref_entry_summaries_player" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_title_ijkplayer_video">
+        <com.debugly.aura.widget.preference.FSListPreference
+            android:defaultValue="auto"
+            android:entries="@array/pref_entries_video_renderer"
+            android:entryValues="@array/pref_entry_values_video_renderer"
+            android:key="@string/pref_key_video_renderer"
+            android:persistent="true"
+            android:title="@string/pref_title_video_renderer"
+            app:entrySummaries="@array/pref_entry_summaries_video_renderer" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_using_media_codec"

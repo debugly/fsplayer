@@ -180,6 +180,14 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(copy_hw_frame),   OPTION_INT(0, 0, 1) },
     
     // Android only options
+    { "video-renderer", "Android video backend (set before first prepare)",
+        OPTION_OFFSET(video_renderer), OPTION_INT(0, 0, 2), .unit = "video-renderer" },
+    { "auto", "Prefer Vulkan with AHB on API24+, otherwise OpenGL ES3", 0,
+        OPTION_CONST(0), .unit = "video-renderer" },
+    { "opengl", "Require OpenGL ES 3", 0,
+        OPTION_CONST(1), .unit = "video-renderer" },
+    { "vulkan", "Prefer Vulkan; fall back to OpenGL ES 3 if unavailable", 0,
+        OPTION_CONST(2), .unit = "video-renderer" },
     { "mediacodec",                             "MediaCodec: enable H264 (deprecated by 'mediacodec-avc')",
         OPTION_OFFSET(mediacodec_avc),          OPTION_INT(0, 0, 1) },
     { "mediacodec-auto-rotate",                 "MediaCodec: auto rotate frame depending on meta",

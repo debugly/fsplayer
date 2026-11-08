@@ -29,9 +29,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#define VK_USE_PLATFORM_ANDROID_KHR 1
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_android.h>
+#include "fs_vulkan_loader.h"
 #include <android/native_window.h>
 #include <android/hardware_buffer.h>
 
@@ -150,6 +148,7 @@ struct FSVulkanRenderer {
 
     /* ---- MediaCodec 零拷贝通路（VK_ANDROID_external_memory_android_hardware_buffer）---- */
     int instance_11;                        /* instance 是否为 Vulkan 1.1 */
+    int has_ahb;                            /* physical-device AHB extension availability */
     int mc_supported;                       /* 设备是否支持硬解零拷贝 */
     SDL_AndroidImageReader *mc_reader;      /* 硬解输出目标的硬件 buffer 队列 */
     PFN_vkGetAndroidHardwareBufferPropertiesANDROID_t mcGetAHBProps;
@@ -439,6 +438,7 @@ static VkResult create_device(FSVulkanRenderer *r)
     vkGetPhysicalDeviceProperties(r->physical_device, &pd_props);
     int has_ahb = device_has_extension(r->physical_device,
                                        VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME);
+    r->has_ahb = has_ahb;
     int mc_ok = r->instance_11 && has_ahb &&
                 (pd_props.apiVersion >= VK_API_VERSION_1_1);
 
@@ -1374,6 +1374,9 @@ struct SDL_TextureOverlay *fs_vulkan_renderer_get_sub_overlay(FSVulkanRenderer *
 
 FSVulkanRenderer *fs_vulkan_renderer_create(void)
 {
+    if (fs_vulkan_loader_init() != 0)
+        return NULL;
+
     FSVulkanRenderer *r = calloc(1, sizeof(FSVulkanRenderer));
     if (!r)
         return NULL;
@@ -3398,6 +3401,11 @@ void fs_vulkan_renderer_destroy(FSVulkanRenderer *r)
         vkDestroyInstance(r->instance, NULL);
 
     free(r);
+}
+
+int fs_vulkan_renderer_is_ahb_supported(FSVulkanRenderer *r)
+{
+    return r && r->has_ahb;
 }
 
 int fs_vulkan_renderer_is_mediacodec_supported(FSVulkanRenderer *r)

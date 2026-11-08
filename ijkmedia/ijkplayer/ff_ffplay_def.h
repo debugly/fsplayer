@@ -644,6 +644,7 @@ typedef struct FFPlayer {
     FSSubtitlePreference sp;
 
     int video_scaling_mode;   // 画面缩放模式，见 FFP_PROP_INT64_VIDEO_SCALING_MODE
+    int video_renderer;       // Android option: 0 auto, 1 OpenGL ES3, 2 Vulkan
 
     /* 画面手动三轴旋转（度），见 FFP_PROP_FLOAT_VIDEO_*_ROTATE_DEGREES；
        语义对齐 iOS 的 xRotateDegrees/yRotateDegrees/zRotateDegrees */
@@ -770,6 +771,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
      */
     ffp->sp = fs_subtitle_default_preference();
 
+    ffp->video_renderer                 = 0; // option: auto, retain initialized vout across reset
     ffp->video_scaling_mode             = 0; // option: 等比完整显示
     ffp->x_rotate_degrees               = 0.0f;
     ffp->y_rotate_degrees               = 0.0f;

@@ -37,22 +37,11 @@ IjkMediaPlayer *ijkmp_android_create(int(*msg_loop)(void*))
     if (!mp)
         goto fail;
 
-    mp->ffplayer->vout = SDL_VoutAndroid_CreateForVulkan();
+    mp->ffplayer->vout = SDL_VoutAndroid_CreateForAndroid();
     if (!mp->ffplayer->vout)
         goto fail;
 
-    /*
-     * 字幕纹理层（SDL_GPU）：和 vout 的 Vulkan 渲染器共用 device/queue，
-     * 对应 iOS 在 ijkmp_ios_set_glview_l 里调 SDL_CreateGPU_WithContext。
-     * 所有权归 ffplayer，由 ffp_destroy 里的 SDL_GPUFreeP 释放。
-     */
-    mp->ffplayer->gpu = SDL_VoutAndroid_GetGPU(mp->ffplayer->vout);
-    if (mp->ffplayer->gpu) {
-        ALOGI("subtitle gpu ready\n");
-    } else {
-        mp->ffplayer->subtitle_mix = 0;
-        ALOGE("video rendering not provide gpu context,subtile feature will be disabled");
-    }
+    /* Renderer/GPU creation is deferred until prepare applies video-renderer. */
 
     /* 缩放模式（等比完整显示/铺满/拉伸），之后可通过 setPropertyInt64 改 */
     SDL_VoutAndroid_SetScalingMode(mp->ffplayer->vout, mp->ffplayer->video_scaling_mode);

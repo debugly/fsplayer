@@ -5,15 +5,14 @@ plugins {
 android {
     // R 的包名 = Java 源码包名 = namespace = com.debugly.aura，与 applicationId 一致。
     namespace 'com.debugly.aura'
-    // Media3 1.11.x 要求 compileSdk 36。targetSdk 仍保持 35（不改变运行时行为），
-    // compileSdk 只决定能调用哪些 API。
+    // compileSdk / targetSdk 不决定最低安装版本；最低版本为 API21。
     compileSdk 36
 
     defaultConfig {
         // Aura 的正式包名。历史上用过 com.debugly.fsplayer.demo，改名后旧包
         // 无法覆盖升级（会被当成另一个 app 并存），需要手动卸载。
         applicationId "com.debugly.aura"
-        minSdk 24
+        minSdk 21
         targetSdk 35
         // Aura 演示包版本：默认 0.1.7 / 107，aura-apk workflow 直接读这里（不再读 version.sh）；
         // android.yml（AAR/Maven）仍通过 -PversionName/-PversionCode 覆盖成 version.sh 的版本。
@@ -71,11 +70,10 @@ dependencies {
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'com.squareup:otto:1.3.8'
 
-    // 「AndroidX Media3」播放器后端。原 ExoPlayer 的
-    // com.google.android.exoplayer2 已于 2023 年归档废弃，现在叫
-    // androidx.media3（同一份代码，官方在继续迭代，当前 1.11.x）。
-    // 只要基础 exoplayer + HLS/DASH，SmoothStreaming 用得少就不引。
-    implementation "androidx.media3:media3-exoplayer:1.11.1"
-    implementation "androidx.media3:media3-exoplayer-hls:1.11.1"
-    implementation "androidx.media3:media3-exoplayer-dash:1.11.1"
+    // Media3 1.9+ requires API23. Pin the API21-compatible line for Aura;
+    // do not override library manifests to force unsupported newer versions.
+    def media3Version = "1.8.1"
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-dash:$media3Version"
 }

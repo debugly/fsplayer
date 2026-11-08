@@ -74,7 +74,7 @@ include_directories(${UNI_DIR}/unibreak/unibreak-${ARCH}/include)
 include_directories(${UNI_DIR}/openssl/openssl-${ARCH}/include)
 
 file(GLOB_RECURSE SOURCE_IJKJ4A ${ijkmedia}/ijkj4a/*.c ${ijkmedia}/ijkj4a/*.cpp)
-file(GLOB_RECURSE SOURCE_SDL ${ijkmedia}/ijksdl/*.c ${ijkmedia}/ijksdl/*.cpp)
+file(GLOB_RECURSE SOURCE_SDL CONFIGURE_DEPENDS ${ijkmedia}/ijksdl/*.c ${ijkmedia}/ijksdl/*.cpp)
 file(GLOB_RECURSE SOURCE_IJKPLAYER ${ijkmedia}/ijkplayer/*.c ${ijkmedia}/ijkplayer/*.cpp)
 file(GLOB_RECURSE SOURCE_SOUNDTOUCH ${ijkmedia}/ijksoundtouch/*.c)
 
@@ -127,7 +127,8 @@ set(FONTCONFIG_LIB ${UNI_DIR}/fontconfig/fontconfig-${ARCH}/lib/libfontconfig.a)
 find_library(z-lib z REQUIRED)
 find_library(log-lib log)
 find_library(android-lib android)
-find_library(vulkan-lib vulkan)
+find_library(egl-lib EGL REQUIRED)
+find_library(gles-lib GLESv3 REQUIRED)
 find_library(jnigraphics-lib jnigraphics)
 find_library(m-lib m)
 find_library(mediandk-lib mediandk)
@@ -156,7 +157,8 @@ target_link_libraries(fsplayer
     ${mediandk-lib}
     ${log-lib}
     ${android-lib}
-    ${vulkan-lib}
+    ${egl-lib}
+    ${gles-lib}
     ${jnigraphics-lib}
     ${m-lib}
     "-Wl,-z,max-page-size=16384"

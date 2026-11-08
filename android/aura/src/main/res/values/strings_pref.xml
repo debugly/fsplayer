@@ -34,7 +34,24 @@
     </string-array>
 
     <!-- -->
-    <string name="pref_title_ijkplayer_video">Video: ijkplayer</string>
+    <string name="pref_title_ijkplayer_video">Video: FSPlayer</string>
+    <string name="pref_key_video_renderer" translatable="false">pref.video_renderer</string>
+    <string name="pref_title_video_renderer">Video renderer</string>
+    <string-array name="pref_entries_video_renderer">
+        <item>Auto</item>
+        <item>OpenGL ES 3</item>
+        <item>Vulkan</item>
+    </string-array>
+    <string-array name="pref_entry_values_video_renderer" translatable="false">
+        <item>auto</item>
+        <item>opengl</item>
+        <item>vulkan</item>
+    </string-array>
+    <string-array name="pref_entry_summaries_video_renderer">
+        <item>Auto: prefer Vulkan with AHB on Android 7+, otherwise OpenGL ES 3. Applies to the next new FSPlayer.</item>
+        <item>OpenGL ES 3. Applies to the next new FSPlayer.</item>
+        <item>Prefer Vulkan; fall back to OpenGL ES 3 if unavailable. Applies to the next new FSPlayer.</item>
+    </string-array>
 
     <string name="pref_key_using_media_codec">pref.using_media_codec</string>
     <string name="pref_title_using_media_codec">Using MediaCodec</string>

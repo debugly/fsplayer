@@ -36,6 +36,7 @@ import android.provider.OpenableColumns;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowCompat;
@@ -137,7 +138,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         // 不这样做的话系统按 insets 把窗口内缩，1272 高的屏里状态栏+导航栏要占
         // 141+56=197px（15.5%），横屏看视频时这两条栏纯属浪费。
         // 竖屏不隐藏，保持和列表页一致的行为。
-        getWindow().setDecorFitsSystemWindows(false);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         applyImmersive();
 
         setContentView(R.layout.activity_player);
@@ -306,13 +307,13 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         WindowInsetsControllerCompat controller =
                 WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         if (landscape) {
-            getWindow().setDecorFitsSystemWindows(false);
+            WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
             controller.hide(WindowInsetsCompat.Type.systemBars());
             controller.setSystemBarsBehavior(
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         } else {
             // 转回竖屏：把窗口交还给 insets 处理，否则工具栏会被状态栏切掉一截
-            getWindow().setDecorFitsSystemWindows(true);
+            WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
             controller.show(WindowInsetsCompat.Type.systemBars());
         }
     }
@@ -355,6 +356,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     }
 
     /** 系统/设备是否支持画中画（Android 8.0+，且厂商没有裁掉 FEATURE_PICTURE_IN_PICTURE）。 */
+    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.O)
     private boolean isPictureInPictureSupported() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);

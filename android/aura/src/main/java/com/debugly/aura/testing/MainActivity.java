@@ -20,6 +20,7 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
+import androidx.annotation.ChecksSdkIntAtLeast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -86,7 +87,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mRootLayout.addView(mSurfaceView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         mHudView = new FSHudView(this);
-        mHudView.appendTitle("Vulkan");
         FrameLayout.LayoutParams hudParams = new FrameLayout.LayoutParams(
                 (int) (300 * getResources().getDisplayMetrics().density),
                 FrameLayout.LayoutParams.WRAP_CONTENT);
@@ -123,6 +123,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mPipAtMs = getIntent() != null ? getIntent().getIntExtra("pipAtMs", 3000) : 3000;
 
         mPlayer = new FSPlayer();
+        String renderer = getIntent() != null ? getIntent().getStringExtra("videoRenderer") : null;
+        mPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "video-renderer",
+                renderer != null ? renderer : "auto");
         mPlayer.attachHudView(mHudView);
         mPlayer.setShouldShowHudView(getIntent() != null
                 && getIntent().getIntExtra("hud", 0) != 0);
@@ -144,6 +147,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         int useMediaCodec = getIntent() != null ? getIntent().getIntExtra("mediacodec", 1) : 1;
         if (useMediaCodec != 0) {
             mPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
+            // Test JNI/NDK codec wrappers separately; default keeps FFmpeg's choice.
+            if (getIntent() != null && getIntent().hasExtra("ndkCodec")) {
+                mPlayer.setOption(FSPlayer.OPT_CATEGORY_CODEC, "ndk_codec",
+                        getIntent().getIntExtra("ndkCodec", -1));
+            }
         }
         // 画面缩放模式（和 iOS 的 player.scalingMode 对齐）
         int scaleMode = getIntent() != null
@@ -239,9 +247,37 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 return false;
             }
         });
+        // Opt-in regression hook: directly release/reset after synchronous prepare
+        // failure, without stop() hiding a blocked message-thread cleanup bug.
+        String lifecycle = getIntent() != null ? getIntent().getStringExtra("lifecycleAction") : null;
+        if ("release".equals(lifecycle) || "reset".equals(lifecycle)) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (isFinishing() || mPlayer == null)
+                    return;
+                Log.i(TAG, "lifecycle begin: " + lifecycle);
+                try {
+                    if ("reset".equals(lifecycle)) {
+                        mPlayer.reset();
+                        mPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "video-renderer", "opengl");
+                        mPlayer.setSurface(mSurfaceView.getHolder().getSurface());
+                        String url = getIntent().getStringExtra("url");
+                        mPlayer.setDataSource(url != null ? url : TEST_URL);
+                        mPlayer.prepareAsync();
+                    } else {
+                        mPlayer.release();
+                        mPlayer = null;
+                        finish();
+                    }
+                    Log.i(TAG, "lifecycle completed: " + lifecycle);
+                } catch (Exception e) {
+                    Log.e(TAG, "lifecycle failed: " + lifecycle, e);
+                }
+            }, 1500);
+        }
     }
 
     /** 系统/设备是否支持画中画（Android 8.0+，且厂商没有裁掉 FEATURE_PICTURE_IN_PICTURE）。 */
+    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.O)
     private boolean isPictureInPictureSupported() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);

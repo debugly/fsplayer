@@ -134,6 +134,8 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
  * 渲染器内部持有 AImageReader，把它的输出 Surface 交给解码器；
  * 非 0 表示设备支持该通路（Vulkan 1.1 + VK_ANDROID_external_memory_...）。
  */
+/* Raw physical-device AHB extension capability; independent of decoder setup. */
+int fs_vulkan_renderer_is_ahb_supported(FSVulkanRenderer *r);
 int fs_vulkan_renderer_is_mediacodec_supported(FSVulkanRenderer *r);
 
 /* 返回 AImageReader 的输出 Surface（NewLocalRef，调用方 DeleteLocalRef）。 */

@@ -60,6 +60,13 @@ public class Settings {
         return player;
     }
 
+    /** Per-FSPlayer initialization option, not a SurfaceView/TextureView choice. */
+    public String getVideoRenderer() {
+        String key = mAppContext.getString(R.string.pref_key_video_renderer);
+        String value = mSharedPreferences.getString(key, "auto");
+        return "opengl".equals(value) || "vulkan".equals(value) ? value : "auto";
+    }
+
     public boolean getUsingMediaCodec() {
         String key = mAppContext.getString(R.string.pref_key_using_media_codec);
         return mSharedPreferences.getBoolean(key, false);

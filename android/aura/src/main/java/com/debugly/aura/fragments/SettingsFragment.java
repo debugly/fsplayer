@@ -19,6 +19,8 @@ package com.debugly.aura.fragments;
 
 import android.os.Bundle;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.Preference;
+import com.debugly.aura.application.Settings;
 
 import com.debugly.aura.R;
 
@@ -31,5 +33,18 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     @Override
     public void onCreatePreferences(Bundle bundle, String s) {
         addPreferencesFromResource(R.xml.settings);
+        final Preference renderer = findPreference(getString(R.string.pref_key_video_renderer));
+        Preference player = findPreference(getString(R.string.pref_key_player));
+        if (renderer != null) {
+            renderer.setEnabled(new Settings(requireContext()).getPlayer()
+                    == Settings.PV_PLAYER__FSPlayer);
+        }
+        if (player != null && renderer != null) {
+            player.setOnPreferenceChangeListener((preference, value) -> {
+                String choice = String.valueOf(value);
+                renderer.setEnabled("0".equals(choice) || "2".equals(choice));
+                return true;
+            });
+        }
     }
 }

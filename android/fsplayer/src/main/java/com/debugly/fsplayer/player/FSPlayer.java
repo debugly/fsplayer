@@ -189,6 +189,8 @@ public final class FSPlayer extends AbstractMediaPlayer {
     public static final int FFP_PROP_INT64_LATEST_SEEK_LOAD_DURATION        = 20300;
     public static final int FFP_PROP_INT64_IMMEDIATE_RECONNECT              = 20211;
     public static final int FFP_PROP_INT64_VIDEO_SCALING_MODE               = 20023;
+    // Actual initialized native backend; package-private HUD implementation detail.
+    static final int FFP_PROP_INT64_VIDEO_RENDERER                         = 20024;
     public static final int FFP_PROP_FLOAT_AVDELAY                          = 10004;
     public static final int FFP_PROP_FLOAT_VMDIFF                           = 10005;
     public static final int FFP_PROP_FLOAT_DROP_FRAME_COUNT                 = 10008;

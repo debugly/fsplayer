@@ -247,8 +247,6 @@ public class FSVideoView extends FrameLayout implements MediaController.MediaPla
 
     public void setHudView(FSHudView hudView) {
         mHudView = hudView;
-        if (mHudView != null)
-            mHudView.appendTitle("Vulkan");
         attachHudView();
     }
 
@@ -261,11 +259,8 @@ public class FSVideoView extends FrameLayout implements MediaController.MediaPla
     }
 
     /**
-     * HUD 首行标出当前后端。
-     *
-     * 原来首行只有渲染器（Vulkan），看不出播放器是谁——而 HUD 恰恰是用来对比
-     * 不同播放器表现的，看不出后端就失去了意义。播放器类型作为一行固定值单独写，
-     * 放在 "v-renderer" 之前。
+     * Keep player type separate from the first-line renderer title, which is
+     * refreshed from the actual native backend by FSHudPresenter.
      */
     private void updateHudPlayerType() {
         if (mHudView == null)
@@ -427,28 +422,21 @@ public class FSVideoView extends FrameLayout implements MediaController.MediaPla
     }
 
     /**
-     * 复用当前播放器切换到另一个视频地址。
-     *
-     * 和 setVideoPath() 的区别是这里不销毁重建：setVideoPath 会走
-     * openVideo() -&gt; release(false) 把 native 实例整个 ffp_destroy 掉，
-     * 紧接着再 new FSPlayer() 新建。销毁和创建挤在同一个调用栈里，
-     * 旧实例的 Vulkan 渲染线程还没收尾，新实例就去抢设备，
-     * 结果 ijkmp_android_create() 里 SIGSEGV（fault addr 是变化的小整数）。
-     *
-     * 这里走 ijkplayer 设计的正规切换姿势：同一个 FSPlayer 实例
-     * reset() 之后换数据源，底层是 ffp_reset_internal 复用解封装/解码管线，
-     * Vulkan 上下文原封不动，不存在「旧实例销毁 vs 新实例创建」的交接窗口。
-     *
-     * @return true 表示切换已发起；false 表示当前没有可复用的实例，
-     *         调用方需要退回 setVideoPath() 走冷启动路径。
+     * Reuse the Java player wrapper to switch sources. FSPlayer.reset() releases
+     * and recreates its native instance, so initialization options must be reapplied.
+     * @return false if the caller must fall back to the cold-start path.
      */
     public boolean switchToUrl(String url) {
         if (mMediaPlayer == null || TextUtils.isEmpty(url))
             return false;
 
         try {
-            // reset 不 release：native 实例留着，Vulkan device / 渲染线程继续用
             mMediaPlayer.reset();
+            FSPlayer fsPlayer = MediaPlayerCompat.getFSPlayer(mMediaPlayer);
+            if (fsPlayer != null) {
+                fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "video-renderer",
+                        mSettings.getVideoRenderer());
+            }
 
             Uri uri = Uri.parse(url);
             mUri = uri;
@@ -1184,6 +1172,8 @@ public class FSVideoView extends FrameLayout implements MediaController.MediaPla
                 FSPlayer fsPlayer = null;
                 if (mUri != null) {
                     fsPlayer = new FSPlayer();
+                    fsPlayer.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "video-renderer",
+                            mSettings.getVideoRenderer());
                     fsPlayer.native_setLogLevel(FSPlayer.IJK_LOG_DEBUG);
                     fsPlayer.setOption(FSPlayer.OPT_CATEGORY_FORMAT, "analyzeduration", "600000");
 

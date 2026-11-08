@@ -3485,6 +3485,17 @@ static int ffp_android_mediacodec_init(FFPlayer *ffp, AVCodecContext *avctx, con
         return -1;
     }
 
+    /* The external-texture path is SDR RGBA. Preserve HDR precision by using
+     * software decode/tone mapping instead of silently sampling it as SDR. */
+    if (SDL_VoutAndroid_IsOpenGLES3(ffp->vout) &&
+        (avctx->colorspace == AVCOL_SPC_BT2020_NCL ||
+         avctx->colorspace == AVCOL_SPC_BT2020_CL ||
+         avctx->color_trc == AVCOL_TRC_SMPTE2084 ||
+         avctx->color_trc == AVCOL_TRC_ARIB_STD_B67)) {
+        ALOGI("android: ES3 HDR stream uses software tone mapping\n");
+        return -1;
+    }
+
     enum AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
     if (type == AV_HWDEVICE_TYPE_NONE)
         return -1;
@@ -3682,6 +3693,10 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     AVCodecContext *avctx;
     const AVCodec *codec = NULL;
     const char *forced_codec_name = NULL;
+#if defined(__ANDROID__)
+    int android_mc_attempted = 0;
+    int android_mc_disabled = 0;
+#endif
     AVDictionary *opts = NULL;
     int sample_rate;
     AVChannelLayout ch_layout = { 0 };
@@ -3694,6 +3709,10 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     AVStream *st = ic->streams[stream_index];
     assert(st->codecpar->codec_type != AVMEDIA_TYPE_SUBTITLE);
     
+#if defined(__ANDROID__)
+reopen_android_decoder:
+    stream_lowres = ffp->lowres;
+#endif
     avctx = avcodec_alloc_context3(NULL);
     if (!avctx)
         return AVERROR(ENOMEM);
@@ -3756,13 +3775,16 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
      * 原生 h264/hevc 等解码器的 hw_configs 里不含 MediaCodec。
      * 其解码输出目标是渲染器内部的 AImageReader Surface（零拷贝源头）。
      */
-    if (!forced_codec_name && avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
+    if (!android_mc_disabled && !forced_codec_name &&
+        avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
         !(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+        SDL_VoutAndroid_IsMediaCodecSupported(ffp->vout) &&
         ffp_android_mediacodec_wanted(ffp, avctx->codec_id)) {
         const char *mc_name = ffp_android_mediacodec_decoder_name(avctx->codec_id);
         const AVCodec *mc_codec = mc_name ? avcodec_find_decoder_by_name(mc_name) : NULL;
         if (mc_codec) {
             codec = mc_codec;
+            android_mc_attempted = 1;
             ALOGI("android: use %s\n", mc_name);
         } else {
             ALOGI("android: %s unavailable, fallback to %s\n",
@@ -3821,11 +3843,15 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
      * MediaCodec 硬解：解码直出 AImageReader 的 Surface，帧不落 CPU，
      * 渲染器用 Vulkan 外部显存（零拷贝）直接采样。
      */
-    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
+    if (!android_mc_disabled && avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
         !(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
+        strstr(codec->name, "_mediacodec") &&
         ffp_android_mediacodec_wanted(ffp, avctx->codec_id)) {
-        if (ffp_android_mediacodec_init(ffp, avctx, codec) == 0)
+        ret = ffp_android_mediacodec_init(ffp, avctx, codec);
+        if (ret == 0)
             ALOGI("try use mediacodec accel: %s\n", codec->name);
+        else if (android_mc_attempted)
+            goto retry_android_software;
 
         /*
          * MP4 里是 AVCC（长度前缀），MediaCodec 只吃 Annex-B：把 extradata
@@ -3837,6 +3863,19 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     }
 #endif
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
+#if defined(__ANDROID__)
+        if (android_mc_attempted && !android_mc_disabled) {
+retry_android_software:
+            ALOGW("android: MediaCodec open failed (%d); retry software decoder\n", ret);
+            /* Recreate from codecpar: failed open consumed options and may have
+             * changed extradata/get_format/hw_device_ctx. Never reuse that context. */
+            avcodec_free_context(&avctx);
+            av_dict_free(&opts);
+            android_mc_disabled = 1;
+            android_mc_attempted = 0;
+            goto reopen_android_decoder;
+        }
+#endif
         goto fail;
     }
     const AVDictionaryEntry *t = NULL;
@@ -5463,7 +5502,20 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
     ffp_show_dict(ffp, "swr-opts   ", ffp->swr_opts);
     av_log(NULL, AV_LOG_INFO, "===================\n");
 
+#if defined(__ANDROID__)
+    int option_result = av_opt_set_dict(ffp, &ffp->player_opts);
+    if (option_result < 0)
+        return option_result;
+    if (SDL_VoutAndroid_PrepareRenderer(ffp->vout, ffp->video_renderer) < 0)
+        return AVERROR(EINVAL);
+    ffp->gpu = SDL_VoutAndroid_GetGPU(ffp->vout);
+    if (!ffp->gpu) {
+        ffp->subtitle_mix = 0;
+        ALOGW("video renderer has no subtitle GPU context\n");
+    }
+#else
     av_opt_set_dict(ffp, &ffp->player_opts);
+#endif
     if (!ffp->aout) {
         ffp->aout = ffpipeline_open_audio_output(ffp->pipeline, ffp);
         if (!ffp->aout)
@@ -6185,6 +6237,12 @@ int64_t ffp_get_property_int64(FFPlayer *ffp, int id, int64_t default_value)
             }
         case FFP_PROP_INT64_AUDIO_DECODER:
             return FFP_PROPV_DECODER_AVCODEC;
+        case FFP_PROP_INT64_VIDEO_RENDERER:
+#if defined(__ANDROID__)
+            return SDL_VoutAndroid_GetRendererType(ffp->vout);
+#else
+            return default_value;
+#endif
         case FFP_PROP_INT64_VIDEO_SCALING_MODE:
             if (!ffp)
                 return default_value;
