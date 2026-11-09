@@ -46,7 +46,9 @@ android {
             resValue "string", "app_name", "Aura-D"
         }
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig System.getenv("FS_KEYSTORE_FILE") != null
                     ? signingConfigs.release
                     : signingConfigs.debug
