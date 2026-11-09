@@ -254,7 +254,7 @@ jobs:
       if: ${{ env.HAS_MACOS == '1' && inputs.publish == true }}
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release edit "$TAG" --draft=false
+      run: gh release edit "$TAG" --draft=false --latest=false
 
     # Homebrew 失败时保持 job 失败，同时撤销本次草稿及其 tag。
     - name: Clean up release after Homebrew failure
