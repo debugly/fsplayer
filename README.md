@@ -115,7 +115,7 @@ Under investigation
 
 ## Integration
 
-FSPlayer is free and released under [LGPLv2.1+](./COPYING.LGPLv2.1). If it's useful to you, [buy the author a coffee](./Donate.md).
+FSPlayer is free and released under [LGPLv2.1+](./COPYING.LGPLv2.1). If it's useful to you, [buy the author a coffee](doc/donate.md).
 
 - Swift Package Manager: [FSPlayer-SPM](https://github.com/debugly/FSPlayer-SPM.git)
 - CocoaPods:
@@ -180,13 +180,13 @@ The source is fully open; build the framework (Apple) or AAR (Android) yourself:
 ```bash
 # iOS
 ./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
-./examples/ios/build-framework.sh
+./.github/scripts/xcframewrok/build-ios-framework.sh
 # macOS
 ./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
-./examples/macos/build-framework.sh
+./.github/scripts/xcframewrok/build-macos-framework.sh
 # tvOS
 ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
-./examples/tvos/build-framework.sh
+./.github/scripts/xcframewrok/build-tvos-framework.sh
 # Android
 ./FFToolChain/main.sh install -p android -l 'ass yuv ffmpeg'
 (cd ijkmedia/wrapper/android && ./gradlew :fsplayer:assembleRelease)
