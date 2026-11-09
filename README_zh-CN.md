@@ -92,6 +92,10 @@ player.prepareAsync();
 
 FSPlayer 使用 [LGPL-2.1-or-later](COPYING.LGPLv2.1) 发布。第三方组件保留各自的许可证和版权声明。 [分发声明](NOTICE)
 
+## 贡献者
+
+[![contrib.rocks](https://contrib.rocks/image?repo=debugly/fsplayer&max=1000)](https://contrib.rocks/image?repo=debugly/fsplayer&max=1000)
+
 ## FSPlayer-Pro
 
 FSPlayer-Pro 以动态库形式提供 Dolby Vision P5、HLS 点播边播边缓存、无缝切换音轨与清晰度，以及网络 ISO / BDMV 的首帧和跳转加速。 [邮件联系](mailto:debugly@icloud.com)

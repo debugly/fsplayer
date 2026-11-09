@@ -92,6 +92,10 @@ player.prepareAsync();
 
 FSPlayer is released under the [LGPL-2.1-or-later](COPYING.LGPLv2.1). Third-party components retain their respective licenses and copyright notices. [Distribution notices](NOTICE)
 
+## Contributors
+
+[![contrib.rocks](https://contrib.rocks/image?repo=debugly/fsplayer&max=1000)](https://contrib.rocks/image?repo=debugly/fsplayer&max=1000)
+
 ## FSPlayer-Pro
 
 FSPlayer-Pro is available as a dynamic library. It adds Dolby Vision Profile 5, caching during HLS on-demand playback, seamless switching between audio tracks and quality levels, and faster first-frame startup and seeking for network ISO and BDMV playback. [Contact by email](mailto:debugly@icloud.com)
