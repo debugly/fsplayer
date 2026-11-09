@@ -160,11 +160,8 @@ rejected, not silently overwritten. Returned RGBA is top-down, tightly packed,
   IDs on that initial Java-to-native prepare call; decode/render native threads
   only use those cached references and attach via `SDL_JNI_SetupThreadEnv`.
   JNI failures are described, cleared and reported as unavailable/failure.
-  Shrinking builds must keep the helper's JNI names, for example:
-
-  ```proguard
-  -keep class com.debugly.fsplayer.player.FSGLESCodecSurface { *; }
-  ```
+  The AAR ships consumer rules that keep the helper and its JNI members when
+  the consuming app enables R8.
 
 - Capability requires actual extension discovery, shader compile/link, external
   texture setup and live Java Surface creation. Prefer

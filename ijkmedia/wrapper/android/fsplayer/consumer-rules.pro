@@ -50,3 +50,8 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# 8. Native-only class lookups. The GLES helper is required for MediaCodec OES
+#    rendering. Native error handling looks up FSException by name.
+-keep class com.debugly.fsplayer.player.FSGLESCodecSurface { *; }
+-keep class com.debugly.fsplayer.player.exceptions.FSException { *; }
