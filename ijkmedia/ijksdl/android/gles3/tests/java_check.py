@@ -7,7 +7,7 @@ import os
 import subprocess
 import tempfile
 repo = Path(__file__).resolve().parents[5]
-helper = repo/'android/fsplayer/src/main/java/com/debugly/fsplayer/player/FSGLESCodecSurface.java'
+helper = repo/'ijkmedia/wrapper/android/fsplayer/src/main/java/com/debugly/fsplayer/player/FSGLESCodecSurface.java'
 assert helper.exists(), 'private MediaCodec SurfaceTexture helper is missing'
 scratch = Path.home()/'.hermes/cache/scratch'
 scratch.mkdir(parents=True, exist_ok=True)

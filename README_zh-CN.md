@@ -197,7 +197,9 @@ player.prepareAsync();
 ./examples/tvos/build-framework.sh
 # Build Android AAR
 ./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
-cd android && ./gradlew :fsplayer:assembleRelease
+(cd ijkmedia/wrapper/android && ./gradlew :fsplayer:assembleRelease)
+# Aura Android 示例（使用本地 SDK 源码）
+(cd examples/android && ./gradlew :aura:assembleDebug)
 ```
 
 ## FSPlayer-Pro

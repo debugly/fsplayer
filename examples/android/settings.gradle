@@ -1,0 +1,5 @@
+rootProject.name = "aura-android"
+
+include ':fsplayer'
+project(':fsplayer').projectDir = file('../../ijkmedia/wrapper/android/fsplayer')
+include ':aura'

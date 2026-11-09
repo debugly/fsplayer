@@ -1,9 +1,12 @@
 name: aura-apk
 # 给 Aura APK 单独发一个 release：tag 和 APK 文件名都叫 Aura-android-<version>。
-# 版本号读 aura 模块 build.gradle 的 defaultConfig（= APK 的 versionName），不读 version.sh，
-# 所以 Aura 的版本独立于 fsplayer 库的版本（version.sh 只影响 AAR / Maven Central）。
+# 从 GitHub 上已发布的 Aura Android 版本取最大值，构建前递增补丁号。
 permissions:
   contents: write
+
+concurrency:
+  group: aura-android-release
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -36,14 +39,14 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-    # 这个 workflow 只在含 android/ 的分支上有效；被 cherry-pick 到其它分支时静默跳过
+    # 这个 workflow 只在含 examples/android/ 的分支上有效；被 cherry-pick 到其它分支时静默跳过
     - name: Check android project present
       run: |
-        if [[ -d android ]]; then
+        if [[ -f examples/android/settings.gradle && -f ijkmedia/wrapper/android/fsplayer/build.gradle ]]; then
           echo "HAS_ANDROID=1" >> "$GITHUB_ENV"
         else
           echo "HAS_ANDROID=0" >> "$GITHUB_ENV"
-          echo "::notice::android/ is not present on ${GITHUB_REF_NAME}, nothing to build"
+          echo "::notice::Aura or its local FSPlayer SDK is missing on ${GITHUB_REF_NAME}, nothing to build"
         fi
 
     - name: Set up JDK 17
@@ -54,7 +57,7 @@ jobs:
         java-version: '17'
 
     # ubuntu-latest 镜像自带 Android SDK（$ANDROID_HOME，含 cmdline-tools）
-    - name: Install Android platform / build-tools / NDK
+    - name: Install Android platforms, build-tools, NDK and CMake
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
         SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
@@ -65,13 +68,14 @@ jobs:
         export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$PATH"
         sdkmanager --version
         yes | sdkmanager --licenses > /dev/null || true
-        sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+        sdkmanager "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" \
+          "ndk;27.3.13750724" "cmake;3.22.1"
         sdkmanager --list_installed | head -20 || true
 
     - name: Download Pre Compiled Dependencies
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        ./FFToolChain/main.sh install -p android -l 'openssl3 opus bluray dav1d uavs3d smb2 soundtouch xml2 freetype fribidi harfbuzz unibreak fontconfig ass ffmpeg8'
+        ./FFToolChain/main.sh install -p android -l 'openssl3 opus bluray dav1d uavs3d smb2 soundtouch xml2 freetype fribidi harfbuzz unibreak fontconfig ass ffmpeg'
 
     - name: Decode release keystore
       if: ${{ env.HAS_ANDROID == '1' }}
@@ -90,30 +94,39 @@ jobs:
           echo "FS_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}"
         } >> "$GITHUB_ENV"
 
+    - name: Determine Aura version
+      if: ${{ env.HAS_ANDROID == '1' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: bash .github/scripts/next-aura-android-version.sh >> "$GITHUB_ENV"
+
     - name: Build APK
       if: ${{ env.HAS_ANDROID == '1' }}
+      working-directory: examples/android
       run: |
-        chmod +x android/gradlew
-        cd android
         ./gradlew :aura:assembleRelease \
           -PabiFilters="${{ inputs.abis }}" \
+          -PversionName="$VERSION" -PversionCode="$VERSION_CODE" \
           --no-daemon --stacktrace
 
-    # 版本号不硬编码、不读 version.sh，而是从编出来的 APK 里读 defaultConfig 的 versionName
-    - name: Read version from APK
+    - name: Verify APK version
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        APK=android/aura/build/outputs/apk/release/aura-release.apk
-        VERSION=$("$ANDROID_HOME"/build-tools/35.0.0/aapt dump badging "$APK" | grep -oE "versionName='[^']+'" | cut -d"'" -f2)
-        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "TAG=Aura-android-$VERSION" >> "$GITHUB_ENV"
+        set -euo pipefail
+        APK=examples/android/aura/build/outputs/apk/release/aura-release.apk
+        BADGING=$("$ANDROID_HOME"/build-tools/35.0.0/aapt dump badging "$APK")
+        APK_VERSION=$(sed -n "s/^package: .*versionName='\([^']*\)'.*/\1/p" <<< "$BADGING")
+        APK_CODE=$(sed -n "s/^package: .*versionCode='\([^']*\)'.*/\1/p" <<< "$BADGING")
+        if [[ "$APK_VERSION" != "$VERSION" || "$APK_CODE" != "$VERSION_CODE" ]]; then
+          echo "::error::APK version $APK_VERSION ($APK_CODE) differs from $VERSION ($VERSION_CODE)"
+          exit 1
+        fi
         echo "version=$VERSION  tag=Aura-android-$VERSION"
 
     # 从上一个 Aura tag 到当前 HEAD 的提交生成 changelog，写进 release notes
     - name: Generate changelog
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        PREV_TAG=$(git tag --list 'Aura-android-*' --sort=-creatordate | head -1)
         {
           echo "Aura APK."
           echo ""
@@ -128,14 +141,13 @@ jobs:
             echo ""
           fi
         } > "$RUNNER_TEMP/release-notes.md"
-        echo "PREV_TAG=${PREV_TAG:-none}" >> "$GITHUB_ENV"
         echo "changelog written (${PREV_TAG:-no previous tag}..HEAD)"
 
     - name: Collect artifacts
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
         mkdir -p dist
-        cp android/aura/build/outputs/apk/release/aura-release.apk "dist/Aura-android-${VERSION}.apk"
+        cp examples/android/aura/build/outputs/apk/release/aura-release.apk "dist/Aura-android-${VERSION}.apk"
         ls -l dist
 
     - name: Upload Release Asset

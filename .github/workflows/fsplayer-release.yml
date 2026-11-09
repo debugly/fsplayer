@@ -59,7 +59,7 @@ jobs:
         link-to-sdk: true
         local-cache: false
 
-    - name: Install Android platform / build-tools
+    - name: Install Android platform, build-tools and CMake
       run: |
         SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
         test -d "$SDK" || { echo "::error::no Android SDK at $SDK"; exit 1; }
@@ -67,7 +67,7 @@ jobs:
         export PATH="$SDK/cmdline-tools/latest/bin:$PATH"
         sdkmanager --version
         yes | sdkmanager --licenses > /dev/null || true
-        sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        sdkmanager "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1"
         sdkmanager --list_installed | head -20 || true
 
     - name: Install xcodegen
@@ -104,7 +104,7 @@ jobs:
     - name: Prepare Distribution Documents
       run: |
         set -euo pipefail
-        docs="android/fsplayer/src/main/resources/META-INF/fsplayer"
+        docs="ijkmedia/wrapper/android/fsplayer/src/main/resources/META-INF/fsplayer"
         mkdir -p "$docs"
         cp COPYING.LGPLv2.1 "$docs/LICENSE"
         cp NOTICE README.md CHANGELOG.md "$docs/"
@@ -134,10 +134,9 @@ jobs:
         ls -l dist
 
     - name: Build AAR
+      working-directory: ijkmedia/wrapper/android
       run: |
         set -euo pipefail
-        chmod +x android/gradlew
-        cd android
         ./gradlew :fsplayer:assembleRelease \
           -PabiFilters="arm64-v8a,armeabi-v7a" \
           --no-daemon --stacktrace
@@ -147,7 +146,7 @@ jobs:
       run: |
         set -euo pipefail
         mkdir -p dist
-        cp android/fsplayer/build/outputs/aar/fsplayer-release.aar dist/fsplayer-release.aar
+        cp ijkmedia/wrapper/android/fsplayer/build/outputs/aar/fsplayer-release.aar dist/fsplayer-release.aar
         ls -l dist
 
     - name: Verify Distribution Documents
@@ -321,8 +320,8 @@ jobs:
     #       fi
     #     done
     #     set -a; source release-constants.env; set +a
-    #     chmod +x android/gradlew
-    #     cd android
+    #     chmod +x ijkmedia/wrapper/android/gradlew
+    #     cd ijkmedia/wrapper/android
     #     ./gradlew :fsplayer:publishAndReleaseToMavenCentral \
     #       -PabiFilters="arm64-v8a,armeabi-v7a" \
     #       -PversionName="$VERSION" \

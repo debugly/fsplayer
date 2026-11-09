@@ -1,4 +1,3 @@
 rootProject.name = "fsplayer-android"
 
 include ':fsplayer'
-include ':aura'

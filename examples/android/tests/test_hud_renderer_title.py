@@ -5,8 +5,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[2]
-PACKAGE = ROOT / 'android/fsplayer/src/main/java/com/debugly/fsplayer/player'
+ROOT = Path(__file__).resolve().parents[3]
+PACKAGE = ROOT / 'ijkmedia/wrapper/android/fsplayer/src/main/java/com/debugly/fsplayer/player'
 STUBS = {
 'android.content.Context': 'public android.content.res.Resources getResources(){return new android.content.res.Resources();}',
 'android.content.res.Resources': 'public android.util.DisplayMetrics getDisplayMetrics(){return new android.util.DisplayMetrics();}',
@@ -116,8 +116,8 @@ def main():
     assert '"Renderer: "' not in presenter
     assert '"v-renderer"' not in presenter
     for relative in (
-        'android/aura/src/main/java/com/debugly/aura/widget/media/FSVideoView.java',
-        'android/aura/src/main/java/com/debugly/aura/testing/MainActivity.java',
+        'examples/android/aura/src/main/java/com/debugly/aura/widget/media/FSVideoView.java',
+        'examples/android/aura/src/main/java/com/debugly/aura/testing/MainActivity.java',
     ):
         text = (ROOT/relative).read_text()
         assert 'appendTitle("Vulkan")' not in text and 'appendTitle("FSPlayer")' not in text

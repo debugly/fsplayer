@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Host-native tests of the REAL Android vout wrapper, with stub GPU/JNI APIs.
 
-Run: python3 android/tests/test_video_renderer_native.py
+Run: python3 ijkmedia/wrapper/android/tests/test_video_renderer_native.py
 No emulator/Gradle needed. This is not a real EGL/Vulkan integration test.
 The production C body is compiled unchanged except for platform includes;
 backend prototypes come from the real headers. Stub backends let us inject
@@ -13,7 +13,7 @@ import re
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 SDL = ROOT / "ijkmedia/ijksdl/android"
 PRELUDE = r'''
 #include <assert.h>

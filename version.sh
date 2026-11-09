@@ -38,7 +38,7 @@ do_version_android() {
     sed -i "" \
         -e "s#\(findProperty('versionName') ?: '\)$V#\1$VERSION_NAME#g" \
         -e "s#\(version\.sh 读），本地默认 \)$V#\1$VERSION_NAME#g" \
-        android/fsplayer/build.gradle
+        ijkmedia/wrapper/android/fsplayer/build.gradle
 }
 
 if [ "$VERSION_TARGET" = "readme" ]; then

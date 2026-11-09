@@ -18,9 +18,9 @@ else()
     message(FATAL_ERROR "Unsupported ANDROID_ABI: ${ANDROID_ABI}")
 endif()
 
-# 仓库根目录：本文件位于 android/ijkplayer/src/main/cpp/，向上 5 层即仓库根
-get_filename_component(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../ ABSOLUTE)
-set(ijkmedia ${REPO_ROOT}/ijkmedia)
+# 从 wrapper/android/fsplayer/src/main/cpp 定位 ijkmedia 和仓库根目录。
+get_filename_component(ijkmedia "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../.." ABSOLUTE)
+get_filename_component(REPO_ROOT "${ijkmedia}/.." ABSOLUTE)
 include_directories(${ijkmedia})
 include_directories(${ijkmedia}/ijkj4a)
 include_directories(${ijkmedia}/ijksdl)
@@ -88,7 +88,7 @@ list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijksegment")
 
 add_library(fsplayer SHARED ${SOURCE_IJKJ4A} ${SOURCE_SDL} ${SOURCE_IJKPLAYER} ${SOURCE_SOUNDTOUCH})
 
-# 排查用（二分定位）：./gradlew :demo:assembleDebug -PfsNoVulkan=1
+# 排查用（二分定位）：./gradlew :fsplayer:assembleDebug -PfsNoVulkan=1
 # 让 SDL_VoutAndroid_CreateForVulkan 直接返回 NULL，用来判断崩溃是否来自 Vulkan 渲染器本身。
 if (fsNoVulkan)
     add_compile_definitions(FS_NO_VULKAN=1)

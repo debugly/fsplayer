@@ -50,7 +50,7 @@ player.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "video-renderer", "opengl");
   with no separate `Renderer:` row. It does not echo the requested preference or
   assume Vulkan. Repeated refreshes replace that title rather than appending it.
 
-`python3 android/tests/test_video_renderer_native.py` compiles the production vout
+`python3 ijkmedia/wrapper/android/tests/test_video_renderer_native.py` compiles the production vout
 with instrumented backend/platform stubs. It checks lazy construction, explicit
 selection and Vulkan/auto fallback, per-instance isolation, cached setters/surface/image
 ownership, failure rollback/retry, reset retention and unsupported switching.
@@ -59,9 +59,9 @@ These control-flow tests are not real Vulkan or OpenGL rendering tests.
 For an installed Aura debug APK and a moving SDR H264 clip on an Android target:
 
 ```sh
-python3 android/tests/verify_renderer_fallback.py \
+python3 examples/android/tests/verify_renderer_fallback.py \
   --serial "$SERIAL" --video /data/local/tmp/fs-gles/baseline.mp4 \
-  --output android/build/fallback-check --renderer auto --lifecycle
+  --output examples/android/build/fallback-check --renderer auto --lifecycle
 ```
 
 The integration probe requires adb and Pillow. Auto runs without diagnostic

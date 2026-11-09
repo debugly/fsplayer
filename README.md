@@ -189,7 +189,9 @@ The source is fully open; build the framework (Apple) or AAR (Android) yourself:
 ./examples/tvos/build-framework.sh
 # Android
 ./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
-cd android && ./gradlew :fsplayer:assembleRelease
+(cd ijkmedia/wrapper/android && ./gradlew :fsplayer:assembleRelease)
+# Aura Android demo (builds against the local SDK sources)
+(cd examples/android && ./gradlew :aura:assembleDebug)
 ```
 
 ## FSPlayer-Pro

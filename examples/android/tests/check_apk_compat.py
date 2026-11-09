@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the packaged APK floor, ABI dependencies and versioned native imports.
 
-Usage: python3 android/tests/check_apk_compat.py path/to/app.apk --api 21
+Usage: python3 examples/android/tests/check_apk_compat.py path/to/app.apk --api 21
 This is a static loader check, not an Android device playback test.
 """
 import argparse

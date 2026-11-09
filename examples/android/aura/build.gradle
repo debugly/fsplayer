@@ -14,8 +14,7 @@ android {
         applicationId "com.debugly.aura"
         minSdk 21
         targetSdk 35
-        // Aura 演示包版本：默认 0.1.7 / 107，aura-apk workflow 直接读这里（不再读 version.sh）；
-        // android.yml（AAR/Maven）仍通过 -PversionName/-PversionCode 覆盖成 version.sh 的版本。
+        // 本地构建使用默认版本，aura-apk workflow 根据 GitHub Release 传入版本。
         versionCode((project.findProperty("versionCode") ?: 107).toInteger())
         versionName(project.findProperty("versionName") ?: "0.1.7")
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Host-executable prepare/release regression; NOT an Android/device test.
 
-Run: python3 android/tests/test_prepare_failure_lifecycle.py
+Run: python3 ijkmedia/wrapper/android/tests/test_prepare_failure_lifecycle.py
 Production ijkplayer lifecycle functions, ffp_stop_l/ffp_wait_stop_l and the
 complete message queue implementation are extracted and compiled unchanged.
 Stub boundaries: reduced FFPlayer/VideoState layouts, FFmpeg allocation/logging,
@@ -20,7 +20,7 @@ import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 CORE = ROOT / "ijkmedia/ijkplayer"
 SCRATCH = Path(os.environ.get("TMPDIR", str(Path.home() / ".hermes/cache/scratch")))
 

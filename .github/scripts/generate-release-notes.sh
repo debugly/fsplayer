@@ -137,11 +137,11 @@ android_section() {
   # 这里会自动跟上。解析失败直接失败，不发空坐标的说明。
   local artifact_id group_id
   artifact_id=$(sed -n "s/.*coordinates(fsPublishGroupId, '\([^']*\)'.*/\1/p" \
-    android/fsplayer/build.gradle | head -1)
+    ijkmedia/wrapper/android/fsplayer/build.gradle | head -1)
   group_id=$(sed -n "s/.*findProperty('publishGroupId') ?: '\([^']*\)'.*/\1/p" \
-    android/fsplayer/build.gradle | head -1)
+    ijkmedia/wrapper/android/fsplayer/build.gradle | head -1)
   if [[ -z "$artifact_id" || -z "$group_id" ]]; then
-    echo "::error::无法从 android/fsplayer/build.gradle 解析出 Maven 坐标" >&2
+    echo "::error::无法从 ijkmedia/wrapper/android/fsplayer/build.gradle 解析出 Maven 坐标" >&2
     return 1
   fi
 

@@ -2,7 +2,7 @@
 """Real Android integration check: Vulkan request -> ES3 -> moving video pixels.
 
 Requires adb and Pillow. Install the current Aura debug APK first, then run:
-  python3 android/tests/verify_renderer_fallback.py --serial <emulator> \
+  python3 examples/android/tests/verify_renderer_fallback.py --serial <emulator> \
       --video /data/local/tmp/fs-gles/baseline.mp4 --output <evidence-dir>
 The video must be a moving SDR H264 clip long enough to consume 300 frames.
 --lifecycle also checks direct release/reset after an invalid option. Only the
