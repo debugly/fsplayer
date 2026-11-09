@@ -75,7 +75,7 @@ jobs:
     - name: Download Pre Compiled Dependencies
       if: ${{ env.HAS_ANDROID == '1' }}
       run: |
-        ./FFToolChain/main.sh install -p android -l 'openssl3 opus bluray dav1d uavs3d smb2 soundtouch xml2 freetype fribidi harfbuzz unibreak fontconfig ass ffmpeg'
+        ./FFToolChain/main.sh install -p android -l 'ass yuv ffmpeg'
 
     - name: Decode release keystore
       if: ${{ env.HAS_ANDROID == '1' }}

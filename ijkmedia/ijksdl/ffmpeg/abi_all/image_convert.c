@@ -24,7 +24,7 @@
 
 #include "../ijksdl_image_convert.h"
 #if defined(__ANDROID__)
-#include "libyuv/convert_from.h"
+#include "libyuv/convert_argb.h"
 #endif
 
 int ijk_image_convert(int width, int height,
@@ -34,17 +34,17 @@ int ijk_image_convert(int width, int height,
 #if defined(__ANDROID__)
     switch (src_format) {
         case AV_PIX_FMT_YUV420P:
-        case AV_PIX_FMT_YUVJ420P: // FIXME: 9 not equal to AV_PIX_FMT_YUV420P, but a workaround
+        case AV_PIX_FMT_YUVJ420P:
             switch (dst_format) {
             case AV_PIX_FMT_RGB565:
-                return I420ToRGB565(
+                return (src_format == AV_PIX_FMT_YUVJ420P ? J420ToRGB565 : I420ToRGB565)(
                     src_data[0], src_linesize[0],
                     src_data[1], src_linesize[1],
                     src_data[2], src_linesize[2],
                     dst_data[0], dst_linesize[0],
                     width, height);
             case AV_PIX_FMT_0BGR32:
-                return I420ToABGR(
+                return (src_format == AV_PIX_FMT_YUVJ420P ? J420ToABGR : I420ToABGR)(
                     src_data[0], src_linesize[0],
                     src_data[1], src_linesize[1],
                     src_data[2], src_linesize[2],

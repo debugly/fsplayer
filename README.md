@@ -188,7 +188,7 @@ The source is fully open; build the framework (Apple) or AAR (Android) yourself:
 ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
 ./examples/tvos/build-framework.sh
 # Android
-./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
+./FFToolChain/main.sh install -p android -l 'ass yuv ffmpeg'
 (cd ijkmedia/wrapper/android && ./gradlew :fsplayer:assembleRelease)
 # Aura Android demo (builds against the local SDK sources)
 (cd examples/android && ./gradlew :aura:assembleDebug)

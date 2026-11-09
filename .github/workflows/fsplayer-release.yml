@@ -82,7 +82,7 @@ jobs:
     - name: Download Pre Compiled Dependencies
       run: |
         set -euo pipefail
-        PLATFORMS=(ios macos tvos android)
+        PLATFORMS=(ios macos tvos)
         echo "platforms: ${PLATFORMS[*]}"
 
         for p in "${PLATFORMS[@]}"; do
@@ -90,7 +90,10 @@ jobs:
           ./FFToolChain/main.sh install -p "$p" -l 'ass ffmpeg'
           echo "::endgroup::"
         done
-        
+
+        # Android 构建显式安装 libyuv，供 FSPlayer 原生链接。
+        ./FFToolChain/main.sh install -p android -l 'ass yuv ffmpeg'
+
     - name: Build Apple Frameworks
       run: |
         set -euo pipefail

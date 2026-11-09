@@ -196,7 +196,7 @@ player.prepareAsync();
 ./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
 ./examples/tvos/build-framework.sh
 # Build Android AAR
-./FFToolChain/main.sh install -p android -l 'ass ffmpeg'
+./FFToolChain/main.sh install -p android -l 'ass yuv ffmpeg'
 (cd ijkmedia/wrapper/android && ./gradlew :fsplayer:assembleRelease)
 # Aura Android 示例（使用本地 SDK 源码）
 (cd examples/android && ./gradlew :aura:assembleDebug)

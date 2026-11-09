@@ -1,6 +1,8 @@
 ## tag 1.1.3
 
 - add Picture in Picture (PiP) support on iOS, macOS and Android #96
+- add an OpenGL ES 3 fallback when Vulkan rendering cannot initialize or not support ahb on Android
+- use libyuv for pixel format conversion on Android
 
 ## tag 1.1.2
 

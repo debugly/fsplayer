@@ -21,8 +21,6 @@ targets:
           - "ijkplayer/android/**/*.*"
           - "ijksdl/android/**/*.*"
           - "ijkj4a/**/*.*"
-          # 安卓专用：swscale 版 ijk_image_convert（苹果沿用 abi_all/image_convert.c）
-          - "ijksdl/ffmpeg/ijksdl_image_convert_sws.c"
           - "ijksdl/ios/*.*"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
@@ -128,8 +126,6 @@ targets:
           - "ijkplayer/android/**/*.*"
           - "ijksdl/android/**/*.*"
           - "ijkj4a/**/*.*"
-          # 安卓专用：swscale 版 ijk_image_convert（苹果沿用 abi_all/image_convert.c）
-          - "ijksdl/ffmpeg/ijksdl_image_convert_sws.c"
           - "ijksdl/mac/*.*"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
@@ -232,8 +228,6 @@ targets:
           - "ijksdl/ijksdl_container.*"
           - "ijksdl/android/**/*.*"
           - "ijkj4a/**/*.*"
-          # 安卓专用：swscale 版 ijk_image_convert（苹果沿用 abi_all/image_convert.c）
-          - "ijksdl/ffmpeg/ijksdl_image_convert_sws.c"
           - "ijksdl/mac/*.*"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"

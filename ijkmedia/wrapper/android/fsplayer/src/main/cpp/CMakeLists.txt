@@ -65,6 +65,18 @@ if(NOT FFMPEG_DIR)
     message(FATAL_ERROR "FFmpeg 产物缺失，请先运行：./FFToolChain/main.sh install -p android -l ffmpeg8")
 endif()
 message(STATUS "FFmpeg product: ${FFMPEG_DIR}")
+
+foreach(cand "${UNI_DIR}/yuv/yuv-${ARCH}"
+             "${REPO_ROOT}/FFToolChain/build/product/android/yuv-${ARCH}")
+    if(EXISTS "${cand}/include/libyuv/convert_argb.h" AND EXISTS "${cand}/lib/libyuv.a")
+        set(YUV_DIR "${cand}")
+        break()
+    endif()
+endforeach()
+if(NOT YUV_DIR)
+    message(FATAL_ERROR "libyuv 产物缺失，请先运行：./FFToolChain/main.sh install -p android -l yuv")
+endif()
+
 include_directories(${FFMPEG_DIR}/include)
 include_directories(${UNI_DIR}/ass/ass-${ARCH}/include)
 include_directories(${UNI_DIR}/freetype/freetype-${ARCH}/include)
@@ -78,15 +90,15 @@ file(GLOB_RECURSE SOURCE_SDL CONFIGURE_DEPENDS ${ijkmedia}/ijksdl/*.c ${ijkmedia
 file(GLOB_RECURSE SOURCE_IJKPLAYER ${ijkmedia}/ijkplayer/*.c ${ijkmedia}/ijkplayer/*.cpp)
 file(GLOB_RECURSE SOURCE_SOUNDTOUCH ${ijkmedia}/ijksoundtouch/*.c)
 
-# 排除苹果平台专属（.c 的 heic 等）与 libyuv 依赖
+# 排除苹果平台专属（.c 的 heic 等）
 list(FILTER SOURCE_SDL EXCLUDE REGEX "/apple/")
-list(FILTER SOURCE_SDL EXCLUDE REGEX "/abi_all/")
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "/apple/")
 # 排除依赖 ffmpeg 内部头 http.h（安卓预编译 ffmpeg 未导出）的 HLS/segment
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijkhls")
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijksegment")
 
 add_library(fsplayer SHARED ${SOURCE_IJKJ4A} ${SOURCE_SDL} ${SOURCE_IJKPLAYER} ${SOURCE_SOUNDTOUCH})
+target_include_directories(fsplayer PRIVATE "${YUV_DIR}/include")
 
 # 排查用（二分定位）：./gradlew :fsplayer:assembleDebug -PfsNoVulkan=1
 # 让 SDL_VoutAndroid_CreateForVulkan 直接返回 NULL，用来判断崩溃是否来自 Vulkan 渲染器本身。
@@ -137,6 +149,7 @@ find_library(dl-lib dl)
 target_link_libraries(fsplayer
     "-Wl,--start-group"
     ijkffmpeg-lib
+    "${YUV_DIR}/lib/libyuv.a"
     ${DAV1D_LIB}
     ${OPUS_LIB}
     ${UAVS3D_LIB}
