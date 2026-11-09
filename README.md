@@ -1,207 +1,97 @@
-# FSPlayer
+[简体中文](README_zh-CN.md) · **English**
 
-[Stargazers repo roster for @debugly/fsplayer](https://github.com/debugly/fsplayer/stargazers)
+<div align="center">
 
-**FSPlayer is the actively-maintained successor to [ijkplayer](https://github.com/bilibili/ijkplayer).** It keeps the proven `ijkplayer` architecture while replacing its aging foundation with a modern one: FFmpeg 8, Metal / Vulkan rendering, hardware-decode hot-switching, and first-class support for HDR, Dolby Vision, Blu-ray/ISO, and rich subtitle effects.
+<img src="./doc/banner.jpg" width="480" alt="FSPlayer">
 
-> 🇨🇳 中文文档见 [README.md](./README_zh-CN.md)
+## FSPlayer
 
-## Why FSPlayer over ijkplayer
+[Apple Integration Guide](doc/getting-started-apple_en-US.md) · [Android Integration Guide](doc/getting-started-android_en-US.md) · [Changelog](CHANGELOG.md) · [Report an Issue](https://github.com/debugly/fsplayer/issues)
 
-ijkplayer has been effectively unmaintained for years — its last release (`k0.8.8`) is from 2018. It ships FFmpeg 4.0 (2021). Renders through OpenGL ES 2.0, and its own README lists native subtitle rendering and avfilter support as explicitly *not on plan*.
+[![FSPlayer Version](https://img.shields.io/github/v/release/debugly/fsplayer?filter=%21Aura-%2A&sort=semver&color=green)](https://github.com/debugly/fsplayer/releases)
+![iOS 12.0](https://img.shields.io/badge/iOS-12.0-blue)
+![macOS 10.14](https://img.shields.io/badge/macOS-10.14-blue)
+![tvOS 12.0](https://img.shields.io/badge/tvOS-12.0-blue)
+![Android 5.0](https://img.shields.io/badge/Android-5.0-blue)
+![GitHub License](https://img.shields.io/github/license/debugly/fsplayer)
 
-FSPlayer keeps the same architecture you know, and moves the stack forward:
+</div>
 
+## Why FSPlayer
 
-|                                      | ijkplayer                                     | FSPlayer                                          |
-| ------------------------------------ | --------------------------------------------- | ------------------------------------------------- |
-| **Maintenance**                      | Stalled — last release 2018, last commit 2021 | Active — updated monthly                          |
-| **FFmpeg**                           | 4.0                                           | **8.1.2**                                         |
-| **Platforms**                        | Android, iOS                                  | Android, iOS, macOS, tvOS,                        |
-| **Video output**                     | OpenGL ES 2.0                                 | **Metal** (iOS/macOS/tvOS) · **Vulkan** (Android) |
-| **4K / HDR / HDR10+ / Dolby Vision** | ✗                                             | **✓**                                             |
-| **Native subtitle rendering**        | ✗ (explicitly not on plan)                    | **✓** — ASS effects, text + bitmap subs           |
-| **Blu-ray / ISO / BDMV**             | ✗                                             | **✓** — incl. over network                        |
-| **avfilter / video filters**         | ✗ (explicitly not on plan)                    | **✓** — e.g. software deinterlacing               |
-| **HW-decode hot switch**             | ✗                                             | **✓** — no player restart needed                  |
-| **Distribution**                     | jcenter (dead) / manual                       | **SPM + CocoaPods · Maven Central** (Android)     |
-| **License**                          | LGPLv2.1+                                     | LGPLv2.1+                                         |
+FSPlayer builds on [ijkplayer](https://github.com/bilibili/ijkplayer) with native ASS subtitle effects, 4K and HDR playback, and picture-in-picture. Hardware decoding is enabled by default on all supported platforms to reduce stutter and heat. The rendering backends support zero-copy texture uploads when hardware decoding is available.
 
+FSPlayer is open source under the LGPL, actively maintained, and free to use.
 
-Already on ijkplayer? Migration is straightforward — see the [migration guide](./doc/migration.md).
+## Features
 
-## FSPlayer All Features
+| Feature | Support |
+| --- | --- |
+| FFmpeg | Based on FFmpeg 8.1.2 with hardware acceleration enabled and ongoing upgrades. |
+| iOS | iOS 12 or later. The Xcode 27 configuration requires iOS 15 or later. |
+| macOS | macOS 10.14 or later. The Xcode 27 configuration requires macOS 12 or later. |
+| tvOS | tvOS 12 or later. The Xcode 27 configuration requires tvOS 15 or later. |
+| Android | Android 5.0 (API 21) or later. |
+| Rendering backends | Metal on Apple platforms. Android uses Vulkan when available and falls back to OpenGL ES 3. |
+| Decoding and rendering | Supports 4K, HDR, AV1, and AVS3. Hardware decoding and HDR output depend on the platform and device. Supports switching between hardware and software decoding, video filters, deinterlacing with software decoding, and transparent video. |
+| Subtitles and audio tracks | Supports embedded and external subtitles, including SRT, WebVTT, ASS, and bitmap formats such as PGS. Subtitle styling, subtitle delay, and audio delay are adjustable. |
+| Local and network playback | Plays local files, live and on-demand HLS, and streams over HTTP(S), RTSP, RTMP, and SMB. Plays Blu-ray ISO images and BDMV folders over the network. |
+| Playback controls | Supports accurate seeking, looping, variable playback speed, and multiple player instances. Reports download speed, buffering progress, and first-frame decode and render timings. |
+| Video and output | Supports scaling, rotation, mirroring, brightness and contrast adjustments, frame capture, recording, and real-time PCM output. Some APIs vary by platform. |
 
-- [x] FFmpeg 8.1.2
-- [x] Pass-through of FFmpeg options
-- [x] Download speed &amp; preload progress reporting
-- [x] Media info (audio sample rate / channels / duration; video width / height / fps / duration)
-- [x] First-frame decode &amp; render timing
-- [x] Protocols: file, http, https, udp, rtmp, rtp, rtsp, bluray, smb, ftp, …
-- [x] HTTP tuning: timeout, retry, User-Agent, Cookie, Referer, Origin (and pass-through to TS requests for m3u8)
-- [x] HLS live &amp; VOD
-- [x] AV1 and uavs3 decoders
-- [x] Embedded cover art for audio playback
-- [x] Image playback (incl. animated WebP)
-- [x] Accurate seeking
-- [x] Hardware / software decoding, switchable without restart
-- [x] Multiple concurrent instances
-- [x] Re-seek after EOF
-- [x] Fast start for `file` protocol seeks
-- [x] Encrypted A/V playback (e.g. AES-128 HLS)
-- [x] Powerful subtitles
-  - [x] Text subtitles (srt / vtt / ass)
-  - [x] Bitmap subtitles (dvbsub / dvdsub / pgssub / idx+sub)
-  - [x] Embedded and external
-  - [x] Subtitle delay
-  - [x] ASS effects
-  - [x] Text subtitle styling
-- [x] Loop playback
-- [x] Audio track switching &amp; track delay
-- [x] Snapshot (jpg, png, tiff)
-- [x] Display aspect ratio, rotation (0/90/180/270), horizontal &amp; vertical mirror
-- [x] Video background color (default black)
-- [x] Saturation / brightness / contrast
-- [x] Render one frame to multiple views
-- [x] Real-time PCM access
-- [x] Custom render view &amp; custom audio renderer
-- [x] 4K / HDR / HDR10 / HDR10+ / Dolby Vision (Pro adds Dolby Vision P5)
-- [x] Smart ISO detection (bluray / DVD / regular video)
-- [x] No pixelation on MPEG-TS fast-forward
-- [x] Network playback of ISO images and BDMV folders
-- [x] Force a channel on stereo audio
-- [x] Access the currently displayed video frame
-- [x] Video recording (iOS saves to Photos)
-- [x] Buffer progress notifications
-- [x] Async destroy (safe even without calling `shutdown`)
-- [x] Optional player-controlled AudioSession
-- [x] Smoother view rotation animation
-- [x] Tile-grid HEIC playback
-- [x] Gaussian blur background
+[Full feature list](doc/all-feature_en-US.md)
 
-Latest additions
+## Quick Start
 
-- [x] HDR display brightens the HDR screen
-- [x] Playable &amp; seekable when audio ends before video
-- [x] Video filters with software deinterlacing
-- [x] Synchronous destroy (async by default)
-- [x] Transparent video and transparent background (uncovered areas show the views underneath)
-- [x] AV1 hardware decode
+### Try FSPlayer with Aura
 
-Under investigation
+Aura is a sample player built with FSPlayer. It is available for macOS and Android.
 
-- [ ] Live playback / timeshift
-- [ ] Variable playback rate with pitch correction
-- [ ] Picture-in-picture
+- [Download the Android APK](https://github.com/debugly/fsplayer/releases?q=Aura+Android&expanded=true)
+- [Download the macOS app](https://github.com/debugly/fsplayer/releases?q=Aura+macOS&expanded=true)
+- [Install on macOS with Homebrew](https://github.com/debugly/homebrew-aura)
 
-## Build environment
+### Integration Examples
 
-- macOS Tahoe (26.5)
-- Xcode 26.6 (17F113)
-- Android NDK 27.3
+#### Apple (Objective-C)
 
-
-| Minimum platform                          | Architectures                               |
-| ----------------------------------------- | ------------------------------------------- |
-| iOS 12.0                                  | arm64, arm64\_simulator, x86\_64\_simulator |
-| macOS 10.14 (Intel), 11.0 (Apple Silicon) | arm64, x86\_64                              |
-| tvOS 12.0                                 | arm64, arm64\_simulator, x86\_64\_simulator |
-| Android 7.0 (API 24)                      | arm64-v8a, armeabi-v7a                      |
-
-
-## Changelog
-
-- [CHANGELOG.md](CHANGELOG.md)
-
-## Integration
-
-FSPlayer is free and released under [LGPLv2.1+](./COPYING.LGPLv2.1). If it's useful to you, [buy the author a coffee](doc/donate.md).
-
-- Swift Package Manager: [FSPlayer-SPM](https://github.com/debugly/FSPlayer-SPM.git)
-- CocoaPods:
-
-```
-pod "FSPlayer", :podspec => 'https://github.com/debugly/fsplayer/releases/download/1.1.3/FSPlayer.spec.json'
-```
-
-- Android (Gradle, Maven Central):
-
-```groovy
-dependencies {
-    implementation 'io.github.debugly:fsplayer:1.1.3'
-}
-```
-
-### Usage
-
-**Apple**
+This example uses macOS.
 
 ```objc
+#import <FSPlayer/FSPlayer.h>
+
 FSOptions *options = [FSOptions optionsByDefault];
 self.player = [[FSPlayer alloc] initWithContent:url options:options];
 
-NSView <FSVideoRenderingProtocol>* playerView = self.player.view;
+NSView<FSVideoRenderingProtocol> *playerView = self.player.view;
 playerView.frame = self.playerContainer.bounds;
 playerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-[self.playerContainer addSubview:playerView positioned:NSWindowBelow relativeTo:self.playerCtrlPanel];
+[self.playerContainer addSubview:playerView];
 
 self.player.shouldAutoplay = YES;
 [self.player prepareToPlay];
 ```
 
-**Android**
+#### Android (Java)
 
-The Android build is an AAR. `FSPlayer` implements `IMediaPlayer` directly (the
-ijkplayer-style `setDataSource` / `prepareAsync` / `start` lifecycle), so hand it a
-`SurfaceHolder` and it renders there.
+Once the `SurfaceView` surface is ready, set the media source and prepare the player asynchronously.
 
 ```java
 FSPlayer player = new FSPlayer();
-// hardware / software decoding, same option semantics as ijkplayer
 player.setOption(FSPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1);
-player.setDisplay(surfaceView.getHolder());   // or setSurface(surface)
-
+player.setDisplay(surfaceView.getHolder());
 player.setDataSource(context, uri);
 player.setOnPreparedListener(mp -> mp.start());
 player.prepareAsync();
 ```
 
-Call `release()` when done. To switch media source on a live instance use `reset()`,
-which tears down and recreates the native player. To check whether hardware or
-software decoding is in use, look at `getVideoDecoder()`
-(`FFP_PROPV_DECODER_MEDIACODEC` means hardware).
+- [Full integration guide for iOS, macOS, and tvOS](doc/getting-started-apple_en-US.md)
+- [Full integration guide for Android](doc/getting-started-android_en-US.md)
 
-Full [documentation](https://fsplayer.debugly.cn/manuals/getting-started.html).
+## License
 
-## Building from source
-
-The source is fully open; build the framework (Apple) or AAR (Android) yourself:
-
-```bash
-# iOS
-./FFToolChain/main.sh install -p ios -l 'ass ffmpeg'
-./.github/scripts/xcframewrok/build-ios-framework.sh
-# macOS
-./FFToolChain/main.sh install -p macos -l 'ass ffmpeg'
-./.github/scripts/xcframewrok/build-macos-framework.sh
-# tvOS
-./FFToolChain/main.sh install -p tvos -l 'ass ffmpeg'
-./.github/scripts/xcframewrok/build-tvos-framework.sh
-# Android
-./FFToolChain/main.sh install -p android -l 'ass yuv ffmpeg'
-(cd ijkmedia/wrapper/android && ./gradlew :fsplayer:assembleRelease)
-# Aura Android demo (builds against the local SDK sources)
-(cd examples/android && ./gradlew :aura:assembleDebug)
-```
+FSPlayer is released under the [LGPL-2.1-or-later](COPYING.LGPLv2.1). Third-party components retain their respective licenses and copyright notices. [Distribution notices](NOTICE)
 
 ## FSPlayer-Pro
 
-A drop-in dynamic library on top of FSPlayer with extra capabilities:
-
-- Dolby Vision P5
-- HLS VOD play-while-cache (seeking back to cached content costs no traffic and starts faster)
-- Seamless audio-track switching (no reload / no brief silence or black frame)
-- Seamless quality switching
-- Multi-x faster first-frame and seek start for network ISO / BDMV playback
-
-Contact: [debugly@icloud.com](mailto:debugly@icloud.com)
+FSPlayer-Pro is available as a dynamic library. It adds Dolby Vision Profile 5, caching during HLS on-demand playback, seamless switching between audio tracks and quality levels, and faster first-frame startup and seeking for network ISO and BDMV playback. [Contact by email](mailto:debugly@icloud.com)

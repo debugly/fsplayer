@@ -4,9 +4,11 @@
 - add an OpenGL ES 3 fallback when Vulkan rendering cannot initialize or not support ahb on Android
 - use libyuv for pixel format conversion on Android
 - statically link libSMB2 on Android
+- support Android 5.0（API 21）
 
 ## tag 1.1.2
 
+- support Android 7.0（API 24）
 - fix HEVC hardware decoding on android by enabling all mediacodec decoders instead of only h264
 - rm deprecated rotatePreference property
 - add FSVideoOutputProtocol new protocol

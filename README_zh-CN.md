@@ -8,9 +8,12 @@
 
 [Apple端使用文档](doc/getting-started-apple.md) · [安卓端使用文档](doc/getting-started-android.md) · [更新日志](CHANGELOG.md) · [反馈问题](https://github.com/debugly/fsplayer/issues)
 
-[![Version](https://img.shields.io/github/v/release/debugly/fsplayer)](https://github.com/debugly/fsplayer/releases/latest)
+[![FSPlayer Version](https://img.shields.io/github/v/release/debugly/fsplayer?filter=%21Aura-%2A&sort=semver&color=green)](https://github.com/debugly/fsplayer/releases)
+![Static Badge](https://img.shields.io/badge/iOS-12.0-blue)
+![Static Badge](https://img.shields.io/badge/macOS-10.14-blue)
+![Static Badge](https://img.shields.io/badge/tvOS-12.0-blue)
+![Static Badge](https://img.shields.io/badge/Android-5.0-blue)
 ![GitHub License](https://img.shields.io/github/license/debugly/fsplayer)
-
 
 </div>
 
@@ -27,7 +30,7 @@ LGPL 协议开源，持续更新，永久免费使用。
 |  FFmpeg | 基于 FFmpeg 8.1.2，开启硬件加速，后续会持续升级。|
 | iOS     | 最低支持 iOS 12 系统，使用 Xcode 27 配置时为 iOS 15 系统     |
 | macOS   | 最低支持 macOS 10.14，使用 Xcode 27 配置时为 macOS 12 系统 |
-| tvOS    | 最低支持 tvOS 12，系统，使用 Xcode 27 配置时为 iOS 15 系统 |
+| tvOS    | 最低支持 tvOS 12，系统，使用 Xcode 27 配置时为 tvOS 15 系统 |
 | Android | 最低支持 Android 5.0（API 21）|
 | 渲染后端 | Apple 平台使用 Metal，Android 优先使用 Vulkan，不可用时回退到 OpenGL ES 3|
 | 解码与渲染   | 支持 4K、HDR、AV1 和 AVS3，硬解及 HDR 输出取决于平台和设备。支持软硬解切换、视频滤镜、软解反交错和透明视频。                |
