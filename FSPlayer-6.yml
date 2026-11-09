@@ -9,6 +9,7 @@ targets:
     preBuildScripts:
       - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
         name: ijkversion.h
+        basedOnDependencyAnalysis: false
     sources:
       - path: ijkmedia
         headerVisibility: project
@@ -21,6 +22,7 @@ targets:
           - "ijksdl/android/**/*.*"
           - "ijkj4a/**/*.*"
           - "ijksdl/ios/*.*"
+          - "wrapper/android"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
           - "ijksoundtouch/**/*.*"
@@ -110,6 +112,7 @@ targets:
     preBuildScripts: 
       - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
         name: ijkversion.h
+        basedOnDependencyAnalysis: false
     sources:
       - path: ijkmedia
         headerVisibility: project
@@ -122,6 +125,7 @@ targets:
           - "ijksdl/android/**/*.*"
           - "ijkj4a/**/*.*"
           - "ijksdl/mac/*.*"
+          - "wrapper/android"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
           - "ijksoundtouch/**/*.*"
@@ -210,6 +214,7 @@ targets:
     preBuildScripts: 
       - script: cd ${MY_PROJECT_DIR}/ijkmedia/ijkplayer;sh version.sh ./ ijkversion.h
         name: ijkversion.h
+        basedOnDependencyAnalysis: false
     sources:
       - path: ijkmedia
         headerVisibility: project
@@ -223,6 +228,7 @@ targets:
           - "ijksdl/android/**/*.*"
           - "ijkj4a/**/*.*"
           - "ijksdl/mac/*.*"
+          - "wrapper/android"
           - "wrapper/apple/*.*"
           - "ijkplayer/ff_subtitle_preference.h"
           - "ijksoundtouch/**/*.*"
