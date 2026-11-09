@@ -31,7 +31,7 @@ FSPlayer is open source under the LGPL, actively maintained, and free to use.
 | iOS | iOS 12 or later. The Xcode 27 configuration requires iOS 15 or later. |
 | macOS | macOS 10.14 or later. The Xcode 27 configuration requires macOS 12 or later. |
 | tvOS | tvOS 12 or later. The Xcode 27 configuration requires tvOS 15 or later. |
-| Android | Android 5.0 (API 21) or later. |
+| Android | Android 5.0 (API 21) or later，supports 16 KB memory page sizes. |
 | Rendering backends | Metal on Apple platforms. Android uses Vulkan when available and falls back to OpenGL ES 3. |
 | Decoding and rendering | Supports 4K, HDR, AV1, and AVS3. Hardware decoding and HDR output depend on the platform and device. Supports switching between hardware and software decoding, video filters, deinterlacing with software decoding, and transparent video. |
 | Subtitles and audio tracks | Supports embedded and external subtitles, including SRT, WebVTT, ASS, and bitmap formats such as PGS. Subtitle styling, subtitle delay, and audio delay are adjustable. |

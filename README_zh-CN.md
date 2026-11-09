@@ -31,7 +31,7 @@ LGPL 协议开源，持续更新，永久免费使用。
 | iOS     | 最低支持 iOS 12 系统，使用 Xcode 27 配置时为 iOS 15 系统     |
 | macOS   | 最低支持 macOS 10.14，使用 Xcode 27 配置时为 macOS 12 系统 |
 | tvOS    | 最低支持 tvOS 12，系统，使用 Xcode 27 配置时为 tvOS 15 系统 |
-| Android | 最低支持 Android 5.0（API 21）|
+| Android | 最低支持 Android 5.0（API 21），支持 16 KB 内存页面大小     |
 | 渲染后端 | Apple 平台使用 Metal，Android 优先使用 Vulkan，不可用时回退到 OpenGL ES 3|
 | 解码与渲染   | 支持 4K、HDR、AV1 和 AVS3，硬解及 HDR 输出取决于平台和设备。支持软硬解切换、视频滤镜、软解反交错和透明视频。                |
 | 字幕与音轨   | 支持内嵌和外挂字幕，包括 SRT、WebVTT、ASS 及 PGS 等图形字幕。可调整字幕样式、字幕延迟和音轨延迟。                      |
