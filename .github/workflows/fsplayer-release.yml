@@ -97,10 +97,10 @@ jobs:
     - name: Build Apple Frameworks
       run: |
         set -euo pipefail
-        ./examples/ios/build-framework.sh
-        ./examples/macos/build-framework.sh
-        ./examples/tvos/build-framework.sh
-        ./examples/xcframewrok/make-xcframework.sh
+        ./.github/scripts/xcframewrok/build-ios-framework.sh
+        ./.github/scripts/xcframewrok/build-macos-framework.sh
+        ./.github/scripts/xcframewrok/build-tvos-framework.sh
+        ./.github/scripts/xcframewrok/make-xcframework.sh
 
     # 四个 ZIP 与 AAR 共用同一份许可证和分发说明。
     # Android Java resources 会进入 AAR 内 classes.jar 的 META-INF/fsplayer/。
@@ -130,10 +130,10 @@ jobs:
         }
 
         mkdir -p dist
-        package_dist "FSPlayer" "examples/xcframewrok/FSPlayer.xcframework"
-        package_dist "FSPlayer-iOS" "examples/xcframewrok/ios/FSPlayer.xcframework"
-        package_dist "FSPlayer-macOS" "examples/xcframewrok/macos/FSPlayer.xcframework"
-        package_dist "FSPlayer-tvOS" "examples/xcframewrok/tvos/FSPlayer.xcframework"
+        package_dist "FSPlayer" "build/xcframework/FSPlayer.xcframework"
+        package_dist "FSPlayer-iOS" "build/xcframework/ios/FSPlayer.xcframework"
+        package_dist "FSPlayer-macOS" "build/xcframework/macos/FSPlayer.xcframework"
+        package_dist "FSPlayer-tvOS" "build/xcframework/tvos/FSPlayer.xcframework"
         ls -l dist
 
     - name: Build AAR
@@ -200,7 +200,7 @@ jobs:
         set -euo pipefail
         set -a; source release-constants.env; set +a
         echo "version: $VERSION"
-        ./examples/xcframewrok/make-podspec.sh "$VERSION"
+        ./.github/scripts/xcframewrok/make-podspec.sh "$VERSION"
         mv dist/fsplayer-release.aar "dist/fsplayer-${VERSION}.aar"
 
     # 发布前最后一步才生成说明。放这么靠后是因为 third-party 要读

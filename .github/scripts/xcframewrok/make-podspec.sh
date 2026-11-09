@@ -18,14 +18,15 @@
 # THIS_DIR。原来那行 THIS_DIR=$(...cd "$THIS_DIR"...) 还自我引用，cd 的目标在赋值
 # 完成前是空的，只能靠调用方恰好先 cd 到脚本目录才没出错。
 THIS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "$THIS_DIR/../../.." && pwd)
 
 set -e
-version=${1:-$(grep -m 1 VERSION_NAME= "$THIS_DIR/../../version.sh" | awk -F = '{printf "%s",$2}')}
+version=${1:-$(grep -m 1 VERSION_NAME= "$REPO_ROOT/version.sh" | awk -F = '{printf "%s",$2}')}
 
 # 输出到仓库根的 dist/，而不是脚本所在目录：发布流程把 dist/ 里的东西原样当
 # release 资产，podspec 也放在那儿就不用在发布脚本里单独列一遍。
 # 可选第二个参数可以指定别的输出目录，默认 <repo>/dist。
-OUT_DIR=${2:-"$THIS_DIR/../../dist"}
+OUT_DIR=${2:-"$REPO_ROOT/dist"}
 mkdir -p "$OUT_DIR"
 OUT_DIR=$(cd "$OUT_DIR" && pwd)
 

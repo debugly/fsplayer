@@ -14,17 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-THIS_DIR=$(DIRNAME=$(dirname "$0"); cd "$DIRNAME"; pwd)
-cd "$THIS_DIR"
-
 set -e
 
-if [[ ! -d FSPlayer.xcodeproj ]]; then
-    ../../generate-proj.sh
-fi
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+PLATFORM_DIR="$REPO_ROOT/examples/ios"
+cd "$PLATFORM_DIR"
 
-# 1
-PROJECT_NAME="FSPlayer.xcodeproj"
+PROJECT_NAME="$REPO_ROOT/FSPlayer.xcodeproj"
+if [[ ! -d "$PROJECT_NAME" ]]; then
+    "$REPO_ROOT/generate-proj.sh"
+fi
 TARGET_NAME="FSPlayer-iOS"
 
 WORK_DIR="Release-iphoneos"
@@ -45,16 +44,16 @@ fi
 # Build the framework for device and simulator with all architectures.
 export IPHONEOS_DEPLOYMENT_TARGET=11.0
 
-xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
+xcodebuild -project "$PROJECT_NAME" -target ${TARGET_NAME} \
 -configuration Release  \
 -sdk iphonesimulator -arch x86_64 -arch arm64 \
-BUILD_DIR="$THIS_DIR" \
+BUILD_DIR="$PLATFORM_DIR" \
 clean build
 
-xcodebuild -project ${PROJECT_NAME} -target ${TARGET_NAME} \
+xcodebuild -project "$PROJECT_NAME" -target ${TARGET_NAME} \
 -configuration Release  \
 -sdk iphoneos -arch arm64 \
-BUILD_DIR="$THIS_DIR" \
+BUILD_DIR="$PLATFORM_DIR" \
 clean build
 
 echo "ios framework dir:$WORK_DIR"

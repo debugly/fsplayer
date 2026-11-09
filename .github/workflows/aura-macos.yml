@@ -108,7 +108,7 @@ jobs:
         bash .github/scripts/next-aura-macos-version.sh "$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
 
     # AuraPlayer 通过 workspace 里的 FSPlayer.xcodeproj 交叉引用直接依赖 FSPlayer.framework，
-    # xcodebuild 会一并把它编出来，不需要先跑 build-framework.sh。
+    # xcodebuild 会一并构建 FSPlayer framework。
     #
     # 无证书构建：CI 上没有开发者证书，Aura demo 的 Release 配置用的是
     # Apple Development + Automatic 签名，直接编会卡在签名，所以显式关掉签名。

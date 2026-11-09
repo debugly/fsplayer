@@ -41,5 +41,4 @@ examples/ios/Release-iphoneos
 examples/ios/Release-iphonesimulator
 examples/tvos/Release-appletvos
 examples/tvos/Release-appletvsimulator
-examples/xcframewrok/FSPlayer.xcframework
 FSPlayer.xcodeproj

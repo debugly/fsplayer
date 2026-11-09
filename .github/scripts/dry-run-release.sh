@@ -63,7 +63,7 @@ mv constants.env release-constants.env
 
 # ---- Stamp Version Into Artifacts ----
 ( set -a; . release-constants.env; set +a; echo "  VERSION=$VERSION"
-  ./examples/xcframewrok/make-podspec.sh "$VERSION" >/dev/null
+  ./.github/scripts/xcframewrok/make-podspec.sh "$VERSION" >/dev/null
   mv dist/fsplayer-release.aar "dist/fsplayer-${VERSION}.aar" )
 
 # ---- Generate Release Notes ----
