@@ -21,11 +21,6 @@ endif()
 # 从 wrapper/android/fsplayer/src/main/cpp 定位 ijkmedia 和仓库根目录。
 get_filename_component(ijkmedia "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../.." ABSOLUTE)
 get_filename_component(REPO_ROOT "${ijkmedia}/.." ABSOLUTE)
-include_directories(${ijkmedia})
-include_directories(${ijkmedia}/ijkj4a)
-include_directories(${ijkmedia}/ijksdl)
-include_directories(${ijkmedia}/ijksdl/ffmpeg)
-include_directories(${ijkmedia}/ijkplayer)
 
 # ijkversion.h 是 version.sh 为 Apple 构建生成的产物，而且被 .gitignore 忽略，
 # 所以全新 checkout 里并不存在 —— ijkplayer.c / ff_ffplay.c 都 include 它，
@@ -44,7 +39,6 @@ file(WRITE ${FS_VER_DIR}/ijkversion.h
 #define FSPLAYER_VERSION \"${FS_VERSION}-android\"
 #endif /* IJKVERSION_H */
 ")
-include_directories(BEFORE ${FS_VER_DIR})
 message(STATUS "generated ijkversion.h with FSPLAYER_VERSION=\"${FS_VERSION}-android\"")
 
 # 三方库（FFToolChain 预编译产物）
@@ -77,14 +71,6 @@ if(NOT YUV_DIR)
     message(FATAL_ERROR "libyuv 产物缺失，请先运行：./FFToolChain/main.sh install -p android -l yuv")
 endif()
 
-include_directories(${FFMPEG_DIR}/include)
-include_directories(${UNI_DIR}/ass/ass-${ARCH}/include)
-include_directories(${UNI_DIR}/freetype/freetype-${ARCH}/include)
-include_directories(${UNI_DIR}/fribidi/fribidi-${ARCH}/include)
-include_directories(${UNI_DIR}/harfbuzz/harfbuzz-${ARCH}/include)
-include_directories(${UNI_DIR}/unibreak/unibreak-${ARCH}/include)
-include_directories(${UNI_DIR}/openssl/openssl-${ARCH}/include)
-
 file(GLOB_RECURSE SOURCE_IJKJ4A ${ijkmedia}/ijkj4a/*.c ${ijkmedia}/ijkj4a/*.cpp)
 file(GLOB_RECURSE SOURCE_SDL CONFIGURE_DEPENDS ${ijkmedia}/ijksdl/*.c ${ijkmedia}/ijksdl/*.cpp)
 file(GLOB_RECURSE SOURCE_IJKPLAYER ${ijkmedia}/ijkplayer/*.c ${ijkmedia}/ijkplayer/*.cpp)
@@ -98,7 +84,16 @@ list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijkhls")
 list(FILTER SOURCE_IJKPLAYER EXCLUDE REGEX "ijksegment")
 
 add_library(fsplayer SHARED ${SOURCE_IJKJ4A} ${SOURCE_SDL} ${SOURCE_IJKPLAYER} ${SOURCE_SOUNDTOUCH})
-target_include_directories(fsplayer PRIVATE "${YUV_DIR}/include")
+target_include_directories(fsplayer PRIVATE
+    "${FS_VER_DIR}"
+    "${ijkmedia}"
+    "${ijkmedia}/ijkj4a"
+    "${ijkmedia}/ijksdl"
+    "${ijkmedia}/ijksdl/ffmpeg"
+    "${ijkmedia}/ijkplayer"
+    "${FFMPEG_DIR}/include"
+    "${UNI_DIR}/ass/ass-${ARCH}/include"
+    "${YUV_DIR}/include")
 
 # 排查用（二分定位）：./gradlew :fsplayer:assembleDebug -PfsNoVulkan=1
 # 让 SDL_VoutAndroid_CreateForVulkan 直接返回 NULL，用来判断崩溃是否来自 Vulkan 渲染器本身。
@@ -133,8 +128,15 @@ set(XML2_LIB      ${UNI_DIR}/xml2/xml2-${ARCH}/lib/libxml2.a)
 set(BLURAY_LIB    ${UNI_DIR}/bluray/bluray-${ARCH}/lib/libbluray.a)
 # 不链 libdvdnav/libdvdread：它们是 GPL，会把 FFmpeg 从 LGPL 拉成 nonfree；
 # 预编译 product 里也不再有它们（ffconfig 的 auto-detect 只在探测到才启用）
-set(SMB2_LIB      ${UNI_DIR}/smb2/smb2-${ARCH}/lib/libsmb2.so)
 set(FONTCONFIG_LIB ${UNI_DIR}/fontconfig/fontconfig-${ARCH}/lib/libfontconfig.a)
+
+# FFToolChain 将 SMB2 放在与 FFmpeg 同级的目录。
+find_file(SMB2_LIB NAMES libsmb2.a
+    PATHS "${UNI_DIR}/smb2/smb2-${ARCH}/lib" "${UNI_DIR}/../smb2-${ARCH}/lib"
+    NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH NO_CACHE)
+if(NOT SMB2_LIB)
+    message(FATAL_ERROR "libSMB2 静态库缺失，请使用包含 libsmb2.a 的 FFToolChain Android FFmpeg 预编译包")
+endif()
 
 find_library(z-lib z REQUIRED)
 find_library(log-lib log)
@@ -163,8 +165,8 @@ target_link_libraries(fsplayer
     ${HARFBUZZ_LIB}
     ${UNIBREAK_LIB}
     ${FONTCONFIG_LIB}
+    "${SMB2_LIB}"
     "-Wl,--end-group"
-    ${SMB2_LIB}
     ${z-lib}
     ${dl-lib}
     ${mediandk-lib}
@@ -175,4 +177,5 @@ target_link_libraries(fsplayer
     ${jnigraphics-lib}
     ${m-lib}
     "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
     "-Wl,-Bsymbolic")

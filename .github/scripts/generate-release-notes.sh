@@ -155,7 +155,7 @@ android_section() {
 - ABIs: ${ABIS}
 - Changelog: [${PREV_TAG}...${TAG}](https://github.com/debugly/fsplayer/compare/${PREV_TAG}...${TAG})
 - license: ${license}
-- note: the library (namespace com.debugly.fsplayer), FFmpeg statically linked into libfsplayer.so, libsmb2.so shipped alongside
+- note: FFmpeg was linked into libfsplayer.so statically(namespace com.debugly.fsplayer)
 - third-party: ${third_party}
 
 ### Gradle
