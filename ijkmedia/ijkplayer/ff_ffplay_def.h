@@ -51,7 +51,6 @@
 #include "libavcodec/bsf.h"
 #include "libswscale/swscale.h"
 #include "libavutil/opt.h"
-//#include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
 #if CONFIG_AUDIO_AVFILTER || CONFIG_VIDEO_AVFILTER

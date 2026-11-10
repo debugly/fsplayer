@@ -42,7 +42,6 @@
 #else
 #include "libavutil/application.h"
 #endif
-//#include "libavcodec/avfft.h"
 #include "libswscale/swscale.h"
 #include "ijksdl/ijksdl.h"
 

@@ -50,7 +50,6 @@
 #endif
 #include "libswscale/swscale.h"
 #include "libavutil/opt.h"
-//#include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 #include "ff_version.h"
 #if CONFIG_AUDIO_AVFILTER || CONFIG_VIDEO_AVFILTER
