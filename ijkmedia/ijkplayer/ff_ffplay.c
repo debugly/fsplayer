@@ -133,9 +133,6 @@ int cmp_audio_fmts(enum AVSampleFormat fmt1, int64_t channel_count1,
 static void free_picture(Frame *vp);
 static double consume_audio_buffer(FFPlayer *ffp, double diff);
 static void update_sample_display(FFPlayer *ffp, uint8_t *samples, int samples_size);
-static int ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial);
-static int ffp_get_master_sync_type(VideoState *is);
-static double ffp_get_master_clock(VideoState *is);
 static void ffp_toggle_buffering_l(FFPlayer *ffp, int start_buffering);
 static void ffp_check_buffering_l(FFPlayer *ffp);
 
@@ -5762,21 +5759,6 @@ int ffp_get_loop(FFPlayer *ffp)
     if (!ffp)
         return 1;
     return ffp->loop;
-}
-
-static int ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
-{
-    return queue_picture(ffp, src_frame, pts, duration, pos, serial);
-}
-
-static int ffp_get_master_sync_type(VideoState *is)
-{
-    return get_master_sync_type(is);
-}
-
-static double ffp_get_master_clock(VideoState *is)
-{
-    return get_master_clock(is);
 }
 
 static void ffp_toggle_buffering_l(FFPlayer *ffp, int buffering_on)
