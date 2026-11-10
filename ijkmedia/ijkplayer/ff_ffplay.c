@@ -2115,7 +2115,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 {
     char sws_flags_str[512] = "";
     char buffersrc_args[256] = "";
-    char vfilters_buf[1024] = "";
     int ret;
     AVFilterContext *filt_src = NULL, *filt_out = NULL, *last_filter = NULL;
     AVCodecParameters *codecpar = is->video_st->codecpar;
@@ -2124,38 +2123,11 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     if (!par)
         return AVERROR(ENOMEM);
 
-    if (vfilters)
-        av_strlcpy(vfilters_buf, vfilters, sizeof(vfilters_buf));
-
-    if (ffp->deinterlace > 0) {
-        if (vfilters_buf[0])
-            av_strlcatf(vfilters_buf, sizeof(vfilters_buf), ",");
-
-        switch (ffp->deinterlace) {
-            case 1:
-                // bwdif: SIMD-accelerated (NEON/AVX2), optimal performance and quality
-                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "bwdif=mode=0:parity=-1:deint=0");
-                break;
-            case 2:
-                // yadif: classic software spatial/temporal deinterlacing
-                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "yadif=mode=0:parity=-1:deint=0");
-                break;
-            case 3:
-                // field: simple field extraction with ultra-low CPU usage
-                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "field=type=top");
-                break;
-            default:
-                av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "bwdif=mode=0:parity=-1:deint=0");
-                break;
-        }
+    if (!vfilters || !vfilters[0]) {
+        av_freep(&par);
+        return AVERROR(EINVAL);
     }
 
-//    // [TEST FILTER] 增加黑白测试滤镜 (hue=s=0)，用于直观验证 AVFilter 是否生效
-//    if (vfilters_buf[0])
-//        av_strlcatf(vfilters_buf, sizeof(vfilters_buf), ",");
-//    av_strlcatf(vfilters_buf, sizeof(vfilters_buf), "hue=s=0");
-//
-//    av_log(ffp, AV_LOG_INFO, "configure_video_filters: vfilters_buf='%s', deinterlace=%d\n", vfilters_buf, ffp->deinterlace);
     const AVDictionaryEntry *e = NULL;
 #if IS_FFMPEG_6
     while ((e = av_dict_iterate(ffp->sws_dict, e)))
@@ -2173,7 +2145,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 
     graph->scale_sws_opts = av_strdup(sws_flags_str);
 
-#if IS_FFMPEG_7
     snprintf(buffersrc_args, sizeof(buffersrc_args),
              "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d:"
              "colorspace=%d:range=%d",
@@ -2181,13 +2152,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
              is->video_st->time_base.num, is->video_st->time_base.den,
              codecpar->sample_aspect_ratio.num, FFMAX(codecpar->sample_aspect_ratio.den, 1),
              frame->colorspace, frame->color_range);
-#else
-    snprintf(buffersrc_args, sizeof(buffersrc_args),
-             "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-             frame->width, frame->height, frame->format,
-             is->video_st->time_base.num, is->video_st->time_base.den,
-             codecpar->sample_aspect_ratio.num, FFMAX(codecpar->sample_aspect_ratio.den, 1));
-#endif
     if (fr.num && fr.den)
         av_strlcatf(buffersrc_args, sizeof(buffersrc_args), ":frame_rate=%d/%d", fr.num, fr.den);
 
@@ -2202,15 +2166,15 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     if (ret < 0)
         goto fail;
     
-    if ((ret = avfilter_graph_create_filter(&filt_out,
-                                            avfilter_get_by_name("buffersink"),
-                                            "ffplay_buffersink", NULL, NULL,
-                                            graph)) < 0)
+    ret = avfilter_graph_create_filter(&filt_out,
+                                       avfilter_get_by_name("buffersink"),
+                                       "ffplay_buffersink", NULL, NULL, graph);
+    if (ret < 0)
         goto fail;
 
     last_filter = filt_out;
-
-    if ((ret = configure_filtergraph(graph, vfilters_buf[0] ? vfilters_buf : NULL, filt_src, last_filter)) < 0)
+    
+    if ((ret = configure_filtergraph(graph, vfilters, filt_src, last_filter)) < 0)
         goto fail;
 
     is->in_video_filter  = filt_src;
@@ -2251,110 +2215,6 @@ static void ffp_video_filter_free(FFVideoFilterContext **pctx)
     av_freep(pctx);
 }
 
-typedef int (*ffp_video_filter_output_cb)(FFPlayer *ffp, AVFrame *frame, AVRational tb, AVRational frame_rate, void *opaque);
-
-static int ffp_video_filter_process(FFPlayer *ffp, FFVideoFilterContext **pctx, AVFrame *frame,
-                                    ffp_video_filter_output_cb output_cb, void *opaque)
-{
-    VideoState *is = ffp->is;
-    int ret = 0;
-
-    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
-    int is_hw = (desc && (desc->flags & AV_PIX_FMT_FLAG_HWACCEL))
-             || frame->format == AV_PIX_FMT_VIDEOTOOLBOX
-             || frame->hw_frames_ctx != NULL;
-
-    if (!is_hw && pctx) {
-        if (!*pctx) {
-            *pctx = ffp_video_filter_create();
-            if (!*pctx)
-                return AVERROR(ENOMEM);
-        }
-        FFVideoFilterContext *ctx = *pctx;
-        AVRational tb;
-        AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
-
-        if (   ctx->last_w != frame->width
-            || ctx->last_h != frame->height
-            || ctx->last_format != frame->format
-            || ctx->last_serial != is->viddec.pkt_serial
-            || ffp->vf_changed) {
-            SDL_LockMutex(ffp->vf_mutex);
-            ffp->vf_changed = 0;
-            av_log(NULL, AV_LOG_INFO,
-                   "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
-                   ctx->last_w, ctx->last_h,
-                   (const char *)av_x_if_null(av_get_pix_fmt_name(ctx->last_format), "none"), ctx->last_serial,
-                   frame->width, frame->height,
-                   (const char *)av_x_if_null(av_get_pix_fmt_name(frame->format), "none"), is->viddec.pkt_serial);
-            avfilter_graph_free(&ctx->graph);
-            ctx->graph = avfilter_graph_alloc();
-            if (!ctx->graph) {
-                SDL_UnlockMutex(ffp->vf_mutex);
-                return AVERROR(ENOMEM);
-            }
-            if ((ret = configure_video_filters(ffp, ctx->graph, is, ffp->vfilters, frame)) < 0) {
-                SDL_UnlockMutex(ffp->vf_mutex);
-                return ret;
-            }
-            ctx->filt_in  = is->in_video_filter;
-            ctx->filt_out = is->out_video_filter;
-            ctx->last_w = frame->width;
-            ctx->last_h = frame->height;
-            ctx->last_format = frame->format;
-            ctx->last_serial = is->viddec.pkt_serial;
-            SDL_UnlockMutex(ffp->vf_mutex);
-        }
-
-        frame_rate = av_buffersink_get_frame_rate(ctx->filt_out);
-
-        ret = av_buffersrc_add_frame(ctx->filt_in, frame);
-        if (ret < 0)
-            return ret;
-
-        while (ret >= 0) {
-            is->frame_last_returned_time = av_gettime_relative() / 1000000.0;
-
-            ret = av_buffersink_get_frame_flags(ctx->filt_out, frame, 0);
-            if (ret < 0) {
-                if (ret == AVERROR_EOF)
-                    is->viddec.finished = is->viddec.pkt_serial;
-                ret = 0;
-                break;
-            }
-
-            is->frame_last_filter_delay = av_gettime_relative() / 1000000.0 - is->frame_last_returned_time;
-            if (fabs(is->frame_last_filter_delay) > AV_NOSYNC_THRESHOLD / 10.0)
-                is->frame_last_filter_delay = 0;
-            tb = av_buffersink_get_time_base(ctx->filt_out);
-
-            if (output_cb) {
-                ret = output_cb(ffp, frame, tb, frame_rate, opaque);
-            }
-            av_frame_unref(frame);
-
-            if (is->videoq.serial != is->viddec.pkt_serial)
-                break;
-        }
-    } else {
-        if (is_hw && ffp->deinterlace > 0) {
-            static int hw_log_once = 0;
-            if (!hw_log_once) {
-                av_log(ffp, AV_LOG_WARNING, "deinterlace filter requested (%d), but video frame is HW accelerated (%d), bypassing software AVFilter!\n",
-                       ffp->deinterlace, frame->format);
-                hw_log_once = 1;
-            }
-        }
-        AVRational tb = is->video_st->time_base;
-        AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
-        if (output_cb) {
-            ret = output_cb(ffp, frame, tb, frame_rate, opaque);
-        }
-        av_frame_unref(frame);
-    }
-
-    return ret;
-}
 #endif
 
 #if CONFIG_AUDIO_AVFILTER
@@ -2524,10 +2384,10 @@ static int audio_thread(void *arg)
                                 av_log(NULL, AV_LOG_INFO, "audio accurate_seek start, target_pos=%0.3f, audio_clock=%0.3f, delay:%0.3f, estimate drop=%d, is->accurate_seek_start_time=%lld\n", is->seek_pos/1000000.0, audio_clock, audio_delay, need_drop, is->accurate_seek_start_time);
                             }
                             is->drop_aframe_count++;
-/*
- decode audio stream is faster, audio accurate seek finished in a flash.
- some video stream decode is slow, accurate seek maybe timeout, thus video picture display in a flash, because video clock is later, so dropping frames need keep a safe distance.
- */
+                            /*
+                             decode audio stream is faster, audio accurate seek finished in a flash.
+                             some video stream decode is slow, accurate seek maybe timeout, thus video picture display in a flash, because video clock is later, so dropping frames need keep a safe distance.
+                             */
                             while (audio_delay == 0 && is->video_accurate_seek_req && !is->abort_request) {
                                 int64_t vpts = is->accurate_seek_vframe_pts;
                                 int64_t deviation2 = vpts - audio_clock * 1000 * 1000;
@@ -2544,7 +2404,7 @@ static int audio_thread(void *arg)
                                     break;
                                 }
                             }
-
+                            
                             now = av_gettime_relative() / 1000;
                             if ((now - is->accurate_seek_start_time) <= ffp->accurate_seek_timeout) {
                                 av_frame_unref(frame);
@@ -2701,6 +2561,156 @@ static int on_video_picture_output(FFPlayer *ffp, AVFrame *frame, AVRational tb,
     return queue_picture(ffp, frame, pts, duration, pos, is->viddec.pkt_serial);
 }
 
+static int ffp_assemble_video_filters(FFPlayer *ffp, char *buf, size_t buf_size)
+{
+    if (!buf || buf_size == 0)
+        return 0;
+    
+    buf[0] = '\0';
+    
+    if (ffp->vfilters && ffp->vfilters[0]) {
+        av_strlcpy(buf, ffp->vfilters, buf_size);
+    }
+    
+    if (ffp->deinterlace > 0) {
+        if (buf[0])
+            av_strlcatf(buf, buf_size, ",");
+        
+        switch (ffp->deinterlace) {
+            case 1:
+                // bwdif: SIMD-accelerated (NEON/AVX2), optimal performance and quality
+                av_strlcatf(buf, buf_size, "bwdif=mode=0:parity=-1:deint=0");
+                break;
+            case 2:
+                // yadif: classic software spatial/temporal deinterlacing
+                av_strlcatf(buf, buf_size, "yadif=mode=0:parity=-1:deint=0");
+                break;
+            case 3:
+                // field: simple field extraction with ultra-low CPU usage
+                av_strlcatf(buf, buf_size, "field=type=top");
+                break;
+            default:
+                av_strlcatf(buf, buf_size, "bwdif=mode=0:parity=-1:deint=0");
+                break;
+        }
+    }
+    
+    return (int)strlen(buf);
+}
+
+static int ffp_video_filter_process(FFPlayer *ffp, FFVideoFilterContext **pctx, AVFrame *frame, AVRational* p_frame_rate, AVRational* p_tb)
+{
+    VideoState *is = ffp->is;
+    int ret = 0;
+    
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
+    int is_hw = (desc && (desc->flags & AV_PIX_FMT_FLAG_HWACCEL))
+    || frame->format == AV_PIX_FMT_VIDEOTOOLBOX
+    || frame->hw_frames_ctx != NULL;
+    
+    if (is_hw) {
+        if (ffp->vf_changed > 0) {
+            static int hw_log_once = 0;
+            if (!hw_log_once) {
+                av_log(ffp, AV_LOG_WARNING, "can't enable video filter,video frame is HW accelerated (%d), bypassing software AVFilter!\n", frame->format);
+                hw_log_once = 1;
+            }
+        }
+        return on_video_picture_output(ffp, frame, *p_tb, *p_frame_rate, is);
+    }
+    
+    FFVideoFilterContext *vf_ctx = *pctx;
+    int need_reconfigure = 0;
+    
+    if (ffp->vf_changed) {
+        need_reconfigure = 1;
+    } else if (vf_ctx && vf_ctx->graph) {
+        if (   vf_ctx->last_w != frame->width
+            || vf_ctx->last_h != frame->height
+            || vf_ctx->last_format != frame->format
+            || vf_ctx->last_serial != is->viddec.pkt_serial) {
+            need_reconfigure = 1;
+        }
+    }
+    
+    if (need_reconfigure) {
+        char vfilters[1024] = "";
+        SDL_LockMutex(ffp->vf_mutex);
+        int vfilters_len = ffp_assemble_video_filters(ffp, vfilters, sizeof(vfilters));
+        ffp->vf_changed = 0;
+        SDL_UnlockMutex(ffp->vf_mutex);
+        
+        if (vfilters_len > 0) {
+            if (!*pctx) {
+                *pctx = ffp_video_filter_create();
+                if (!*pctx)
+                    return AVERROR(ENOMEM);
+            }
+            vf_ctx = *pctx;
+            
+            SDL_LockMutex(ffp->vf_mutex);
+            av_log(NULL, AV_LOG_INFO,
+                   "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
+                   vf_ctx->last_w, vf_ctx->last_h,
+                   (const char *)av_x_if_null(av_get_pix_fmt_name(vf_ctx->last_format), "none"), vf_ctx->last_serial,
+                   frame->width, frame->height,
+                   (const char *)av_x_if_null(av_get_pix_fmt_name(frame->format), "none"), is->viddec.pkt_serial);
+            avfilter_graph_free(&vf_ctx->graph);
+            vf_ctx->graph = avfilter_graph_alloc();
+            if (!vf_ctx->graph) {
+                SDL_UnlockMutex(ffp->vf_mutex);
+                return AVERROR(ENOMEM);
+            }
+            if ((ret = configure_video_filters(ffp, vf_ctx->graph, is, vfilters, frame)) < 0) {
+                SDL_UnlockMutex(ffp->vf_mutex);
+                return ret;
+            }
+            vf_ctx->filt_in  = is->in_video_filter;
+            vf_ctx->filt_out = is->out_video_filter;
+            vf_ctx->last_w = frame->width;
+            vf_ctx->last_h = frame->height;
+            vf_ctx->last_format = frame->format;
+            vf_ctx->last_serial = is->viddec.pkt_serial;
+            *p_frame_rate = av_buffersink_get_frame_rate(vf_ctx->filt_out);
+            SDL_UnlockMutex(ffp->vf_mutex);
+        } else if (*pctx) {
+            SDL_LockMutex(ffp->vf_mutex);
+            ffp_video_filter_free(pctx);
+            vf_ctx = NULL;
+            SDL_UnlockMutex(ffp->vf_mutex);
+        }
+    }
+    
+    if (vf_ctx && vf_ctx->graph) {
+        ret = av_buffersrc_add_frame(vf_ctx->filt_in, frame);
+        if (ret < 0)
+            return ret;
+        
+        while (ret >= 0) {
+            is->frame_last_returned_time = av_gettime_relative() / 1000000.0;
+            
+            ret = av_buffersink_get_frame_flags(vf_ctx->filt_out, frame, 0);
+            if (ret < 0) {
+                if (ret == AVERROR_EOF)
+                    is->viddec.finished = is->viddec.pkt_serial;
+                ret = 0;
+                break;
+            }
+            
+            is->frame_last_filter_delay = av_gettime_relative() / 1000000.0 - is->frame_last_returned_time;
+            if (fabs(is->frame_last_filter_delay) > AV_NOSYNC_THRESHOLD / 10.0)
+                is->frame_last_filter_delay = 0;
+            *p_tb = av_buffersink_get_time_base(vf_ctx->filt_out);
+            ret = on_video_picture_output(ffp, frame, *p_tb, *p_frame_rate, is);
+            if (is->videoq.serial != is->viddec.pkt_serial)
+                break;
+        }
+        return ret;
+    } else {
+        return on_video_picture_output(ffp, frame, *p_tb, *p_frame_rate, is);
+    }
+}
+
 static int ffplay_video_thread(void *arg)
 {
     FFPlayer *ffp = (FFPlayer *)arg;
@@ -2708,7 +2718,8 @@ static int ffplay_video_thread(void *arg)
     AVFrame *frame = av_frame_alloc();
     int ret = 0;
     int convert_frame_count = 0;
-
+    AVRational tb = {0, 0};
+    AVRational frame_rate = {0, 0};
 #if CONFIG_VIDEO_AVFILTER
     FFVideoFilterContext *vf_ctx = NULL;
 #endif
@@ -2723,14 +2734,17 @@ static int ffplay_video_thread(void *arg)
             goto the_end;
         if (!ret)
             continue;
-
+        
+        if (is->video_st) {
+            tb = is->video_st->time_base;
+            frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
+        }
 #if CONFIG_VIDEO_AVFILTER
-        ret = ffp_video_filter_process(ffp, &vf_ctx, frame, on_video_picture_output, is);
+        ret = ffp_video_filter_process(ffp, &vf_ctx, frame, &frame_rate, &tb);
 #else
-        ret = on_video_picture_output(ffp, frame, is->video_st->time_base, av_guess_frame_rate(is->ic, is->video_st, NULL), is);
+        ret = on_video_picture_output(ffp, frame, tb, frame_rate, is);
         av_frame_unref(frame);
 #endif
-
         if (ret < 0)
             goto the_end;
     }
@@ -5480,11 +5494,13 @@ void ffp_set_option_intptr(FFPlayer *ffp, int opt_category, const char *name, ui
 
 #if CONFIG_VIDEO_AVFILTER
 static void resetVideoFilter(FFPlayer *ffp, const char *filter) {
+    SDL_LockMutex(ffp->vf_mutex);
     av_freep(&ffp->vfilters);
     if (filter) {
         ffp->vfilters = av_strdup(filter);
-        ffp->vf_changed = 1;
     }
+    ffp->vf_changed = 1;
+    SDL_UnlockMutex(ffp->vf_mutex);
 }
 #endif
 
@@ -5533,6 +5549,9 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
     ffp->vout->overlay_format    = ffp->overlay_format;
 #if CONFIG_VIDEO_AVFILTER
     resetVideoFilter(ffp, ffp->vfilter0);
+    if (ffp->deinterlace > 0) {
+        ffp->vf_changed = 1;
+    }
 #endif
 
     VideoState *is = stream_open(ffp, file_name, NULL);

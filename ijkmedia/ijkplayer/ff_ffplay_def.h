@@ -604,7 +604,7 @@ typedef struct FFPlayer {
 
     /* filters */
 #if CONFIG_VIDEO_AVFILTER
-    char *vfilters;
+    const char *vfilters;
     char *vfilter0;
     SDL_mutex  *vf_mutex;
     int         vf_changed;
