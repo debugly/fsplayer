@@ -4155,6 +4155,25 @@ static double max_buffer_size(FFPlayer *ffp)
     return ffp->dcc.max_buffer_size + fabs(audio_delay) * DEFAULT_QUEUE_SIZE;
 }
 
+static void subtile_update_ic(FFPlayer *ffp, VideoState *is, int *st_index) {
+    if (is->video_st) {
+        AVCodecParameters *codecpar = is->video_st->codecpar;
+        
+        int v_width = codecpar->width;
+        if (codecpar->sample_aspect_ratio.num > 0 && codecpar->sample_aspect_ratio.den > 0) {
+            float ratio = 1.0 * codecpar->sample_aspect_ratio.num / codecpar->sample_aspect_ratio.den;
+            v_width = (int)(v_width * ratio);
+        }
+        ff_sub_stream_ic_ready(is->ffSub, is->ic, v_width, codecpar->height);
+        if (st_index[AVMEDIA_TYPE_SUBTITLE] >= 0) {
+            AVStream *st = is->ic->streams[st_index[AVMEDIA_TYPE_SUBTITLE]];
+            st->discard = AVDISCARD_DEFAULT;
+            ff_sub_record_need_select_stream(is->ffSub, st_index[AVMEDIA_TYPE_SUBTITLE]);
+            ffp_apply_subtitle_preference(ffp);
+        }
+    }
+}
+
 /* this thread gets the stream from the disk or the network */
 static int read_thread(void *arg)
 {
@@ -4412,23 +4431,7 @@ static int read_thread(void *arg)
         is->show_mode = ret >= 0 ? SHOW_MODE_VIDEO : SHOW_MODE_RDFT;
     
     //tell subtitle stream is ready.
-    if (is->video_st) {
-        AVCodecParameters *codecpar = is->video_st->codecpar;
-                        
-        int v_width = codecpar->width;
-        if (codecpar->sample_aspect_ratio.num > 0 && codecpar->sample_aspect_ratio.den > 0) {
-            float ratio = 1.0 * codecpar->sample_aspect_ratio.num / codecpar->sample_aspect_ratio.den;
-            v_width = (int)(v_width * ratio);
-        }
-        ff_sub_stream_ic_ready(is->ffSub, ic, v_width, codecpar->height);
-        if (st_index[AVMEDIA_TYPE_SUBTITLE] >= 0) {
-            AVStream *st = ic->streams[st_index[AVMEDIA_TYPE_SUBTITLE]];
-            st->discard = AVDISCARD_DEFAULT;
-            ff_sub_record_need_select_stream(is->ffSub, st_index[AVMEDIA_TYPE_SUBTITLE]);
-            ffp_apply_subtitle_preference(ffp);
-        }
-    }
-    
+    subtile_update_ic(ffp, is, st_index);
     ffp_notify_msg1(ffp, FFP_MSG_COMPONENT_OPEN);
 
     if (!ffp->ijkmeta_delay_init) {
