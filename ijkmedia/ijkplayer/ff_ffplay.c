@@ -197,6 +197,7 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
      frame #12: 0x000000019ff61470 Foundation`__NSThread__start__ + 716
      frame #13: 0x00000001045d95d4 libsystem_pthread.dylib`_pthread_start + 148
  */
+#if defined(__ANDROID__)
 /*
  * 给一个 Annex-B 包补上 AUD（Access Unit Delimiter）。
  *
@@ -244,6 +245,7 @@ static int packet_prepend_aud(AVPacket *pkt)
     av_packet_free(&np);
     return 0;
 }
+#endif
 
 #if FFP_APPLE_MOBILE_HWDEC_RECOVERY
 /* Called only by the decoder thread, which owns the packet cache. */
@@ -526,10 +528,12 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     av_packet_unref(d->pkt);
                     continue;
                 }
+                #if defined(__ANDROID__)
                 if (d->bsf_insert_aud && packet_prepend_aud(d->pkt) < 0) {
                     av_packet_unref(d->pkt);
                     continue;
                 }
+                #endif
             }
             int send = avcodec_send_packet(d->avctx, d->pkt);
             if (send == AVERROR(EAGAIN)) {
