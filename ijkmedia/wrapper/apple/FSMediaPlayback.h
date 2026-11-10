@@ -222,6 +222,11 @@ FS_EXTERN NSString *const FSPlayerOpenInputNotification;
 FS_EXTERN NSString *const FSPlayerFindStreamInfoNotification;
 FS_EXTERN NSString *const FSPlayerComponentOpenNotification;
 
+// Posted when the display's direct HDR support state changes.
+FS_EXTERN NSString *const FSPlayerDirectDisplayHDRSupporttedDidChangeNotification;
+//FSPlayerDirectDisplayHDRSupporttedDidChangeNotification's userInfo; value is BOOL (NSNumber).
+FS_EXTERN NSString *const FSPlayerDirectDisplayHDRSupporttedDidChangeUserInfoKey;
+
 FS_EXTERN NSString *const FSPlayerDidSeekCompleteNotification;
 //FSPlayerDidSeekCompleteNotification's userInfo
 FS_EXTERN NSString *const FSPlayerDidSeekCompleteTargetKey;

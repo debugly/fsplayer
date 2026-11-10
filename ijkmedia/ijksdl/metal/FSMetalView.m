@@ -328,8 +328,8 @@ typedef CGRect NSRect;
     [_displayLinkWrapper updateWithWindow:self.window];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(windowDidChangeScreen:)
-                                                  name:NSWindowDidChangeScreenNotification
-                                                object:nil];
+                                                 name:NSWindowDidChangeScreenNotification
+                                               object:nil];
 #endif
     [_displayLinkWrapper start];
 
@@ -337,8 +337,8 @@ typedef CGRect NSRect;
     // Re-check HDR capability whenever screen parameters change (brightness, display connection).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(screenParametersDidChange:)
-                                                  name:NSApplicationDidChangeScreenParametersNotification
-                                                object:nil];
+                                                 name:NSApplicationDidChangeScreenParametersNotification
+                                               object:nil];
 #endif
 }
 
@@ -379,29 +379,30 @@ typedef CGRect NSRect;
     // Fast path: Check if we actually need to change display mode before hopping to the main thread.
     [self.renderSnapshotLock lock];
     BOOL supportsHDR = _screenSupportsHDR && isHDRContent;
-    
     if (supportsHDR != self.directDisplayHDRSupported) {
         _directDisplayHDRSupported = supportsHDR;
         ALOGI("content and display support HDR: %d", supportsHDR);
     }
-    
     BOOL activeHDR = supportsHDR && _allowHDRDirectDisplay;
     BOOL activeReady = (self.hdrDirectDisplayActive == activeHDR);
     self.hdrDirectDisplayActive = activeHDR;
-    
     [self.renderSnapshotLock unlock];
-    
+   
     if (activeReady) {
         return;
+    } else {
+        [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerDirectDisplayHDRSupporttedDidChangeNotification
+                                                            object:self
+                                                          userInfo:@{FSPlayerDirectDisplayHDRSupporttedDidChangeUserInfoKey : @(supportsHDR)}];
     }
-    
+
     void (^updateBlock)(void) = ^{
         [self.renderSnapshotLock lock];
-        
+
         //direct display status need update
         MTLPixelFormat newFormat = activeHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
         BOOL formatChanged = (self.colorPixelFormat != newFormat);
-       
+
         if (formatChanged) {
             // MTLRenderPipelineState bakes in colorAttachments[0].pixelFormat at creation time.
             // 字幕/背景管线也把像素格式烤进了 PSO，目标格式变化后必须一并重建，
@@ -1899,8 +1900,6 @@ end:
     CGImageRef cgImg = [self snapshot:FSSnapshotTypeScreen];
     return [[UIImage alloc]initWithCGImage:cgImg];
 }
-#else
-
 #endif
 
 #pragma mark - Property Setters & Informational Getters

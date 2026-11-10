@@ -51,6 +51,9 @@ NSString *const FSPlayerOpenInputNotification               = @"FSPlayerOpenInpu
 NSString *const FSPlayerFindStreamInfoNotification          = @"FSPlayerFindStreamInfoNotification";
 NSString *const FSPlayerComponentOpenNotification           = @"FSPlayerComponentOpenNotification";
 
+NSString *const FSPlayerDirectDisplayHDRSupporttedDidChangeNotification = @"FSPlayerDirectDisplayHDRSupporttedDidChangeNotification";
+NSString *const FSPlayerDirectDisplayHDRSupporttedDidChangeUserInfoKey = @"FSPlayerDirectDisplayHDRSupporttedDidChangeUserInfoKey";
+
 NSString *const FSPlayerDidSeekCompleteNotification = @"FSPlayerDidSeekCompleteNotification";
 //FSPlayerDidSeekCompleteNotification's userInfo
 NSString *const FSPlayerDidSeekCompleteTargetKey = @"FSPlayerDidSeekCompleteTargetKey";
