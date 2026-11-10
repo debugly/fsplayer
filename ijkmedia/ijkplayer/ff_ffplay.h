@@ -67,17 +67,7 @@ long      ffp_get_playable_duration_l(FFPlayer *ffp);
 void      ffp_set_loop(FFPlayer *ffp, int loop);
 int       ffp_get_loop(FFPlayer *ffp);
 
-/* for internal usage */
-int       ffp_packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished);
-int       ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial);
-
-int       ffp_get_master_sync_type(VideoState *is);
-double    ffp_get_master_clock(VideoState *is);
-
-void      ffp_toggle_buffering_l(FFPlayer *ffp, int start_buffering);
 void      ffp_toggle_buffering(FFPlayer *ffp, int start_buffering);
-void      ffp_check_buffering_l(FFPlayer *ffp);
-
 int       ffp_video_thread(FFPlayer *ffp);
 
 void      ffp_set_playback_rate(FFPlayer *ffp, float rate);

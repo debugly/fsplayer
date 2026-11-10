@@ -129,9 +129,15 @@ int cmp_audio_fmts(enum AVSampleFormat fmt1, int64_t channel_count1,
 
 #endif
 
+/* for internal usage */
 static void free_picture(Frame *vp);
 static double consume_audio_buffer(FFPlayer *ffp, double diff);
 static void update_sample_display(FFPlayer *ffp, uint8_t *samples, int samples_size);
+static int ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial);
+static int ffp_get_master_sync_type(VideoState *is);
+static double ffp_get_master_clock(VideoState *is);
+static void ffp_toggle_buffering_l(FFPlayer *ffp, int start_buffering);
+static void ffp_check_buffering_l(FFPlayer *ffp);
 
 #include "ff_heic_tile.h"
 
@@ -3570,7 +3576,7 @@ static int check_stream_specifier(AVFormatContext *s, AVStream *st, const char *
     return ret;
 }
 
-static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
+int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
                       AVFormatContext *s, AVStream *st, const AVCodec *codec,
                       AVDictionary **dst, AVDictionary **opts_used)
 {
@@ -3645,7 +3651,7 @@ static int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
     return 0;
 }
 
-static int setup_find_stream_info_opts(AVFormatContext *s,
+int setup_find_stream_info_opts(AVFormatContext *s,
                                 AVDictionary *local_codec_opts,
                                 AVDictionary ***dst)
 {
@@ -4092,13 +4098,13 @@ out:
     return ret;
 }
 
-static int decode_interrupt_cb(void *ctx)
+int decode_interrupt_cb(void *ctx)
 {
     VideoState *is = ctx;
     return is->abort_request;
 }
 
-static int stream_has_enough_packets(AVStream *st, int stream_id, PacketQueue *queue, int min_frames) {
+int stream_has_enough_packets(AVStream *st, int stream_id, PacketQueue *queue, int min_frames) {
     return stream_id < 0 ||
            queue->abort_request ||
            (st->disposition & AV_DISPOSITION_ATTACHED_PIC) ||
@@ -5740,22 +5746,22 @@ int ffp_get_loop(FFPlayer *ffp)
     return ffp->loop;
 }
 
-int ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
+static int ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
 {
     return queue_picture(ffp, src_frame, pts, duration, pos, serial);
 }
 
-int ffp_get_master_sync_type(VideoState *is)
+static int ffp_get_master_sync_type(VideoState *is)
 {
     return get_master_sync_type(is);
 }
 
-double ffp_get_master_clock(VideoState *is)
+static double ffp_get_master_clock(VideoState *is)
 {
     return get_master_clock(is);
 }
 
-void ffp_toggle_buffering_l(FFPlayer *ffp, int buffering_on)
+static void ffp_toggle_buffering_l(FFPlayer *ffp, int buffering_on)
 {
     if (!ffp->packet_buffering)
         return;
@@ -5792,7 +5798,7 @@ void ffp_toggle_buffering(FFPlayer *ffp, int start_buffering)
     SDL_UnlockMutex(ffp->is->play_mutex);
 }
 
-void ffp_check_buffering_l(FFPlayer *ffp)
+static void ffp_check_buffering_l(FFPlayer *ffp)
 {
     VideoState *is            = ffp->is;
     int hwm_in_ms             = ffp->dcc.current_high_water_mark_in_ms; // use fast water mark for first loading
