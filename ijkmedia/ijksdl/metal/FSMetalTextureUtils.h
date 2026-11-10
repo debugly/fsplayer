@@ -15,6 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// 传 NULL 或 wrap 失败则回退 CPU 上传。
 @interface FSMetalTextureUtils : NSObject
 
+/// 新建可用于渲染和计算的 BGRA8 私有离屏纹理；尺寸向上取整且至少为 1。
++ (nullable id<MTLTexture>)makeBGRATextureWithSize:(CGSize)size
+                                            device:(id<MTLDevice>)device;
+
 /// 从 pixelBuffer 生成 Metal 纹理。
 /// @param pixelBuffer 输入像素缓冲（YUV/RGB 等，由内部 mp_format 表查 Metal 格式）。
 /// @param textureCache  Metal Texture Cache（可为 NULL，不传时走 CPU 上传路径）。

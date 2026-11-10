@@ -43,6 +43,20 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt);
 
 @implementation FSMetalTextureUtils
 
++ (id<MTLTexture>)makeBGRATextureWithSize:(CGSize)size device:(id<MTLDevice>)device
+{
+    int width = MAX((int)ceil(size.width), 1);
+    int height = MAX((int)ceil(size.height), 1);
+    MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+                                                                                          width:width
+                                                                                         height:height
+                                                                                      mipmapped:NO];
+    descriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+    descriptor.storageMode = MTLStorageModePrivate;
+    return [device newTextureWithDescriptor:descriptor];
+}
+
+
 /// CPU 上传单个平面。non-planar 格式必须用 GetBaseAddress 系列，
 /// GetBaseAddressOfPlane 对 non-planar buffer 返回 NULL。
 + (id<MTLTexture>)uploadPlane:(CVPixelBufferRef)pixelBuffer

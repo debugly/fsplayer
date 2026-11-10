@@ -342,6 +342,9 @@ float3 hdr2sdr(float3 rgb_2020, FSColorTransferFunc transferFun)
     }
 
     // 2、HDR 线性光信号做颜色空间转换（Color Space Converting）
+    // RGB → XYZ：将源 RGB 颜色转换到 CIE XYZ 中间颜色空间
+    // XYZ → RGB：将 XYZ 颜色转换到目标 RGB 颜色空间
+    // 这两个步骤可以合并为一个矩阵运算：RGB_target = M * RGB_source，其中 M 是组合变换矩阵。
     myFragColor = myFragColor * RGB2020_TO_RGB709;
 
     // 3、HDR 线性光信号色调映射为 SDR 线性光信号（Tone Mapping）

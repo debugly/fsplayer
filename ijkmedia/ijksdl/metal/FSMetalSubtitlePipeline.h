@@ -26,7 +26,7 @@ typedef enum : NSUInteger {
                      outFormat:(FSMetalSubtitleOutFormat)outFormat;
 
 - (instancetype)initWithDevice:(id<MTLDevice>)device
-                     inFormat:(FSMetalSubtitleInFormat)inFormat
+                      inFormat:(FSMetalSubtitleInFormat)inFormat
                      outFormat:(FSMetalSubtitleOutFormat)outFormat
               colorPixelFormat:(MTLPixelFormat)colorPixelFormat;
 

@@ -28,7 +28,7 @@
 @implementation FSMetalSubtitlePipeline
 
 - (instancetype)initWithDevice:(id<MTLDevice>)device
-                     inFormat:(FSMetalSubtitleInFormat)inFormat
+                      inFormat:(FSMetalSubtitleInFormat)inFormat
                      outFormat:(FSMetalSubtitleOutFormat)outFormat
 {
     return [self initWithDevice:device
@@ -38,7 +38,7 @@
 }
 
 - (instancetype)initWithDevice:(id<MTLDevice>)device
-                     inFormat:(FSMetalSubtitleInFormat)inFormat
+                      inFormat:(FSMetalSubtitleInFormat)inFormat
                      outFormat:(FSMetalSubtitleOutFormat)outFormat
               colorPixelFormat:(MTLPixelFormat)colorPixelFormat
 {
