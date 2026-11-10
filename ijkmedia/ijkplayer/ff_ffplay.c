@@ -5468,17 +5468,6 @@ void ffp_set_option_intptr(FFPlayer *ffp, int opt_category, const char *name, ui
     av_dict_set_intptr(dict, name, value, 0);
 }
 
-
-
-static void ffp_show_dict(FFPlayer *ffp, const char *tag, AVDictionary *dict)
-{
-    AVDictionaryEntry *t = NULL;
-
-    while ((t = av_dict_get(dict, "", t, AV_DICT_IGNORE_SUFFIX))) {
-        av_log(ffp, AV_LOG_INFO, "%-*s: %-*s = %s\n", 12, tag, 28, t->key, t->value);
-    }
-}
-
 #if CONFIG_VIDEO_AVFILTER
 static void resetVideoFilter(FFPlayer *ffp, const char *filter) {
     av_freep(&ffp->vfilters);
@@ -5745,11 +5734,6 @@ int ffp_get_loop(FFPlayer *ffp)
     if (!ffp)
         return 1;
     return ffp->loop;
-}
-
-int ffp_packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
-{
-    return packet_queue_get_or_buffering(ffp, q, pkt, serial, finished);
 }
 
 int ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, double duration, int64_t pos, int serial)
