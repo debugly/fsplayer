@@ -862,6 +862,7 @@ int decoder_extradata_annexb(AVCodecContext *avctx, AVStream *st);
 void decoder_destroy(Decoder *d);
 void decoder_abort(Decoder *d, FrameQueue *fq);
 
+void show_dict_pretty(void *avcl, const char *tag, AVDictionary *dict);
 #if FFP_APPLE_MOBILE_HWDEC_RECOVERY
 /* 关键帧封包缓存（issue #68）：硬解会话失效后从最近的关键帧重放 */
 void decoder_kpkt_cache_reset(Decoder *d);

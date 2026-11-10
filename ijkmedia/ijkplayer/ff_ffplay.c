@@ -5494,11 +5494,11 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
     }
 
     av_log(NULL, AV_LOG_INFO, "===== options =====\n");
-    ffp_show_dict(ffp, "player-opts", ffp->player_opts);
-    ffp_show_dict(ffp, "format-opts", ffp->format_opts);
-    ffp_show_dict(ffp, "codec-opts ", ffp->codec_opts);
-    ffp_show_dict(ffp, "sws-opts   ", ffp->sws_dict);
-    ffp_show_dict(ffp, "swr-opts   ", ffp->swr_opts);
+    show_dict_pretty(ffp, "player-opts", ffp->player_opts);
+    show_dict_pretty(ffp, "format-opts", ffp->format_opts);
+    show_dict_pretty(ffp, "codec-opts ", ffp->codec_opts);
+    show_dict_pretty(ffp, "sws-opts   ", ffp->sws_dict);
+    show_dict_pretty(ffp, "swr-opts   ", ffp->swr_opts);
     av_log(NULL, AV_LOG_INFO, "===================\n");
 
 #if defined(__ANDROID__)

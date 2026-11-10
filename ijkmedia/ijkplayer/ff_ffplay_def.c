@@ -26,7 +26,16 @@
 #include "ff_frame_queue.h"
 #include "libavutil/mem.h"
 
-int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond) 
+void show_dict_pretty(void *avcl, const char *tag, AVDictionary *dict)
+{
+    AVDictionaryEntry *t = NULL;
+
+    while ((t = av_dict_get(dict, "", t, AV_DICT_IGNORE_SUFFIX))) {
+        av_log(avcl, AV_LOG_INFO, "%-*s: %-*s = %s\n", 12, tag, 28, t->key, t->value);
+    }
+}
+
+int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond)
 {
     memset(d, 0, sizeof(Decoder));
     d->pkt = av_packet_alloc();
