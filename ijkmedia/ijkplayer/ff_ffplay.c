@@ -3172,12 +3172,13 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
                memset(stream, 0, len);
                is->audio_buf = NULL;
                is->audio_buf_size = 0;
+               is->audio_buf_index = 0;
                break;
            } else {
                gotFrame = 1;
                is->audio_buf_size = audio_size;
+               is->audio_buf_index = 0;
            }
-           is->audio_buf_index = 0;
         }
         if (is->auddec.pkt_serial != is->audioq.serial) {
             is->audio_buf_index = is->audio_buf_size;
