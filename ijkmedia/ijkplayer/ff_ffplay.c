@@ -2111,6 +2111,37 @@ fail:
 
 #if CONFIG_VIDEO_AVFILTER
 
+typedef struct FFVideoFilterContext {
+    AVFilterGraph   *graph;
+    AVFilterContext *filt_in;
+    AVFilterContext *filt_out;
+    int              last_w;
+    int              last_h;
+    enum AVPixelFormat last_format;
+    int              last_serial;
+} FFVideoFilterContext;
+
+static FFVideoFilterContext *ffp_video_filter_create(void)
+{
+    FFVideoFilterContext *ctx = av_mallocz(sizeof(FFVideoFilterContext));
+    if (!ctx)
+        return NULL;
+    ctx->last_w = 0;
+    ctx->last_h = 0;
+    ctx->last_format = -2;
+    ctx->last_serial = -1;
+    return ctx;
+}
+
+static void ffp_video_filter_free(FFVideoFilterContext **pctx)
+{
+    if (!pctx || !*pctx)
+        return;
+    FFVideoFilterContext *ctx = *pctx;
+    avfilter_graph_free(&ctx->graph);
+    av_freep(pctx);
+}
+
 static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoState *is, const char *vfilters, AVFrame *frame)
 {
     char sws_flags_str[512] = "";
@@ -2183,38 +2214,6 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
 fail:
     return ret;
 }
-
-typedef struct FFVideoFilterContext {
-    AVFilterGraph   *graph;
-    AVFilterContext *filt_in;
-    AVFilterContext *filt_out;
-    int              last_w;
-    int              last_h;
-    enum AVPixelFormat last_format;
-    int              last_serial;
-} FFVideoFilterContext;
-
-static FFVideoFilterContext *ffp_video_filter_create(void)
-{
-    FFVideoFilterContext *ctx = av_mallocz(sizeof(FFVideoFilterContext));
-    if (!ctx)
-        return NULL;
-    ctx->last_w = 0;
-    ctx->last_h = 0;
-    ctx->last_format = -2;
-    ctx->last_serial = -1;
-    return ctx;
-}
-
-static void ffp_video_filter_free(FFVideoFilterContext **pctx)
-{
-    if (!pctx || !*pctx)
-        return;
-    FFVideoFilterContext *ctx = *pctx;
-    avfilter_graph_free(&ctx->graph);
-    av_freep(pctx);
-}
-
 #endif
 
 #if CONFIG_AUDIO_AVFILTER
