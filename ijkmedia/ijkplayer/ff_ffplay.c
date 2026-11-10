@@ -547,12 +547,17 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     av_strerror(send, errbuf, sizeof(errbuf));
                     av_log(d->avctx, AV_LOG_ERROR, "avcodec_send_packet failed:%s(%d).\n",errbuf,send);
                 }
-                if (send == AVERROR_INVALIDDATA
+                
+                if (send == AVERROR(ENOSYS)) {
+                    //Function not implemented: av1 hw accelerate decoder not implemented before M3 PRO
+                    if (d->avctx->hw_device_ctx) {
+                        ffp_notify_msg2(ffp, FFP_MSG_VIDEO_DECODER_FATAL, send);
+                    }
+                } else if (send == AVERROR_INVALIDDATA
                     || send == AVERROR_UNKNOWN
                     || send == AVERROR_EXTERNAL
-                    || send == AVERROR(ENOSYS)
                     || send == AVERROR(EINVAL)) {
-                    //Samsung Wonderland Two HDR UHD 4K HDR10.ts decode first frame return AVERROR_INVALIDDATA 
+                    //Samsung Wonderland Two HDR UHD 4K HDR10.ts decode first frame return AVERROR_INVALIDDATA
                     //hw accel decode failed greater than twice.
 #if FFP_APPLE_MOBILE_HWDEC_RECOVERY
                     if (d->avctx->hw_device_ctx) {
