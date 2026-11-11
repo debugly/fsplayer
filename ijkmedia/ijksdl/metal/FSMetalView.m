@@ -126,7 +126,7 @@ typedef CGRect NSRect;
 // YES when the current display supports EDR/HDR and HDR content is rendered natively
 // (no tone-mapping to SDR). Updated automatically when the display changes.
 // HDR direct display is unavailable on tvOS
-@property(nonatomic, readonly) BOOL directDisplayHDRSupported HDR_API_AVAILABLE;
+@property(nonatomic, readwrite) BOOL directDisplayHDRSupported HDR_API_AVAILABLE;
 // Whether the current display supports EDR/HDR and we have switched to HDR rendering mode.
 @property (nonatomic, assign) BOOL hdrDirectDisplayActive HDR_API_AVAILABLE;
 // 高斯模糊背景：复用字幕管线（BGRA/DIRECT）把模糊后的纹理铺满整个视图。
