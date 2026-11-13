@@ -37,6 +37,11 @@
     NSMutableDictionary *_swrOptions;
 }
 
++ (NSString *)defaultUserAgent
+{
+    return @"fsplayer";
+}
+
 + (FSOptions *)optionsByDefault
 {
     FSOptions *options = [[FSOptions alloc] init];
@@ -49,7 +54,7 @@
     [options setFormatOptionIntValue:1                  forKey:@"reconnect"];
     [options setFormatOptionIntValue:30 * 1000 * 1000   forKey:@"timeout"];
     //the user-agent option is deprecated, please use user_agent option
-    [options setFormatOptionValue:@"fsplayer"           forKey:@"user_agent"];
+    [options setFormatOptionValue:[self defaultUserAgent] forKey:@"user_agent"];
     //set default whitelist
     [options setFormatOptionValue:FS_DEFAULT_WHITELIST forKey:@"protocol_whitelist"];
     

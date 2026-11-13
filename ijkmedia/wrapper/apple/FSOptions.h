@@ -39,6 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface FSOptions : NSObject
 
 + (FSOptions *)optionsByDefault;
++ (NSString *)defaultUserAgent;
 
 - (void)applyTo:(struct IjkMediaPlayer *)mediaPlayer;
 
