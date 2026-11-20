@@ -25,7 +25,7 @@ static inline CFTypeRef _Nullable FSMetalCopyBufferAttachment(CVBufferRef buffer
     return attachment ? CFRetain(attachment) : NULL;
 }
 
-static NSData *FSMetalCopyEDRAttachment(CVPixelBufferRef pixelBuffer, CFStringRef key, NSUInteger size)
+static inline NSData *FSMetalCopyEDRAttachment(CVPixelBufferRef pixelBuffer, CFStringRef key, NSUInteger size)
 {
     NSData *data = CFBridgingRelease(FSMetalCopyBufferAttachment(pixelBuffer, key));
     return [data isKindOfClass:NSData.class] && data.length == size ? data : nil;

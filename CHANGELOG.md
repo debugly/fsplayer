@@ -1,3 +1,7 @@
+## tag 1.1.4
+
+- fix(apple): correct video range and HDR10 rendering #5
+
 ## tag 1.1.3
 
 - add Picture in Picture (PiP) support on iOS, macOS and Android #96
@@ -18,7 +22,7 @@
 - support transparent video and transparent background color, fix #56
 - auto enable av1 videotoolbox hwaccel
 - under the LGPL-2.1-or-later License #98
-- upgrade openssl to 3.6.4 #95 
+- upgrade openssl to 3.6.4 #95
 
 ## tag 1.1.1
 
