@@ -23,12 +23,21 @@
 #include "ijk_cvpixelbuffer.h"
 #include "../ijksdl_log.h"
 #include <libavutil/hwcontext_videotoolbox.h>
+#include <libavutil/intreadwrite.h>
+#include <libavutil/mastering_display_metadata.h>
+#include <libavutil/mathematics.h>
 
 #define USE_VIMAGE_ACCELERATE 0
 
 #if USE_VIMAGE_ACCELERATE
 #import <Accelerate/Accelerate.h>
 #endif
+
+static bool frameIsFullRange(const AVFrame *frame)
+{
+    return frame->color_range == AVCOL_RANGE_JPEG ||
+        (frame->color_range == AVCOL_RANGE_UNSPECIFIED && frame->format == AV_PIX_FMT_YUVJ420P);
+}
 
 static NSDictionary* prepareCVPixelBufferAttibutes(const int format, const bool fullRange, const int h, const int w)
 {
@@ -43,10 +52,8 @@ static NSDictionary* prepareCVPixelBufferAttibutes(const int format, const bool 
         pixelFormatType = fullRange ? kCVPixelFormatType_420YpCbCr8BiPlanarFullRange : kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
     } else if (format == AV_PIX_FMT_BGRA || format == AV_PIX_FMT_BGR0) {
         pixelFormatType = kCVPixelFormatType_32BGRA;
-    } else if (format == AV_PIX_FMT_YUV420P) {
-        pixelFormatType = kCVPixelFormatType_420YpCbCr8PlanarFullRange;
-    } else if (format == AV_PIX_FMT_YUVJ420P) {
-        pixelFormatType = kCVPixelFormatType_420YpCbCr8Planar;
+    } else if (format == AV_PIX_FMT_YUV420P || format == AV_PIX_FMT_YUVJ420P) {
+        pixelFormatType = fullRange ? kCVPixelFormatType_420YpCbCr8PlanarFullRange : kCVPixelFormatType_420YpCbCr8Planar;
     } else if (format == AV_PIX_FMT_UYVY422) {
         pixelFormatType = kCVPixelFormatType_422YpCbCr8;
     } else if (format == AV_PIX_FMT_YUYV422) {
@@ -102,46 +109,51 @@ static NSDictionary* prepareCVPixelBufferAttibutes(const int format, const bool 
     return attributes;
 }
 
-CVReturn FSCVPixelBufferPoolCreateForAVFrame(CVPixelBufferPoolRef *poolRef, int width, int height, int format)
+static CVReturn createPixelBufferPool(CVPixelBufferPoolRef *poolRef, int width, int height, int format, bool fullRange)
 {
-    if (NULL == poolRef) {
+    if (!poolRef) {
         return kCVReturnInvalidArgument;
     }
 
-    CVReturn result = kCVReturnError;
-    //FIXME TODO
-    const bool fullRange = true;
-    NSDictionary * attributes = prepareCVPixelBufferAttibutes(format, fullRange, height, width);
+    NSDictionary *attributes = prepareCVPixelBufferAttibutes(format, fullRange, height, width);
+    if (!attributes) {
+        return kCVReturnInvalidPixelFormat;
+    }
 
-    result = CVPixelBufferPoolCreate(NULL, NULL, (__bridge CFDictionaryRef) attributes, poolRef);
-
+    CVReturn result = CVPixelBufferPoolCreate(NULL, NULL, (__bridge CFDictionaryRef)attributes, poolRef);
     if (result != kCVReturnSuccess) {
-        ALOGE("CVPixelBufferCreate Failed:%d\n", result);
+        ALOGE("CVPixelBufferPoolCreate Failed:%d\n", result);
     }
     return result;
 }
 
-CVPixelBufferPoolRef FSSwPixelBufferPoolEnsure(FSSwPixelBufferPool *p, int width, int height, int format)
+CVReturn FSCVPixelBufferPoolCreateForAVFrame(CVPixelBufferPoolRef *poolRef, int width, int height, int format)
 {
-    if (NULL == p) {
+    return createPixelBufferPool(poolRef, width, height, format, true);
+}
+
+CVPixelBufferPoolRef FSSwPixelBufferPoolEnsure(FSSwPixelBufferPool *p, const AVFrame *frame)
+{
+    if (!p || !frame) {
         return NULL;
     }
-    if (!p->pool ||
-        p->width != width ||
-        p->height != height ||
-        p->format != format) {
-        if (p->pool) {
-            CVPixelBufferPoolRelease(p->pool);
-            p->pool = NULL;
-        }
-        CVPixelBufferPoolRef pool = NULL;
-        if (FSCVPixelBufferPoolCreateForAVFrame(&pool, width, height, format) == kCVReturnSuccess) {
-            p->pool   = pool;
-            p->width  = width;
-            p->height = height;
-            p->format = format;
-        }
+
+    const bool fullRange = frameIsFullRange(frame);
+    if (p->pool && p->width == frame->width && p->height == frame->height &&
+        p->format == frame->format && p->fullRange == fullRange) {
+        return p->pool;
     }
+
+    FSSwPixelBufferPoolRelease(p);
+    CVReturn result = createPixelBufferPool(&p->pool, frame->width, frame->height, frame->format, fullRange);
+    if (result != kCVReturnSuccess) {
+        return NULL;
+    }
+
+    p->width = frame->width;
+    p->height = frame->height;
+    p->format = frame->format;
+    p->fullRange = fullRange;
     return p->pool;
 }
 
@@ -155,6 +167,7 @@ void FSSwPixelBufferPoolRelease(FSSwPixelBufferPool *p)
         p->pool = NULL;
     }
     p->width = p->height = p->format = 0;
+    p->fullRange = false;
 }
 
 #if USE_VIMAGE_ACCELERATE
@@ -181,6 +194,49 @@ NS_INLINE size_t  pixelSizeForCV(CVPixelBufferRef pixelBuffer) {
 }
 #endif
 
+static uint32_t HDR10MetadataCode(AVRational value, int scale, uint32_t maximum)
+{
+    if (value.den <= 0 || value.num <= 0) {
+        return 0;
+    }
+    return (uint32_t)av_clip64(av_rescale_q(1, value, (AVRational){1, scale}), 0, maximum);
+}
+
+void FSCVPixelBufferAttachHDR10Metadata(CVPixelBufferRef pixelBuffer, const AVFrame *frame)
+{
+    const AVFrameSideData *mastering = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
+    if (mastering && mastering->size >= sizeof(AVMasteringDisplayMetadata)) {
+        const AVMasteringDisplayMetadata *md = (const AVMasteringDisplayMetadata *)mastering->data;
+        if (md->has_luminance && md->has_primaries) {
+            // FFmpeg lists RGB primaries. The HEVC MDCV payload uses GBR.
+            const int order[] = {1, 2, 0};
+            uint8_t bytes[24];
+            for (int i = 0; i < 3; i++) {
+                AV_WB16(bytes + 4 * i, HDR10MetadataCode(md->display_primaries[order[i]][0], 50000, UINT16_MAX));
+                AV_WB16(bytes + 4 * i + 2, HDR10MetadataCode(md->display_primaries[order[i]][1], 50000, UINT16_MAX));
+            }
+            AV_WB16(bytes + 12, HDR10MetadataCode(md->white_point[0], 50000, UINT16_MAX));
+            AV_WB16(bytes + 14, HDR10MetadataCode(md->white_point[1], 50000, UINT16_MAX));
+            AV_WB32(bytes + 16, HDR10MetadataCode(md->max_luminance, 10000, UINT32_MAX));
+            AV_WB32(bytes + 20, HDR10MetadataCode(md->min_luminance, 10000, UINT32_MAX));
+            CVBufferSetAttachment(pixelBuffer, kCVImageBufferMasteringDisplayColorVolumeKey,
+                                  (__bridge CFDataRef)[NSData dataWithBytes:bytes length:sizeof(bytes)],
+                                  kCVAttachmentMode_ShouldPropagate);
+        }
+    }
+
+    const AVFrameSideData *contentLight = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
+    if (contentLight && contentLight->size >= sizeof(AVContentLightMetadata)) {
+        const AVContentLightMetadata *levels = (const AVContentLightMetadata *)contentLight->data;
+        uint8_t bytes[4];
+        AV_WB16(bytes, FFMIN(levels->MaxCLL, UINT16_MAX));
+        AV_WB16(bytes + 2, FFMIN(levels->MaxFALL, UINT16_MAX));
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferContentLightLevelInfoKey,
+                              (__bridge CFDataRef)[NSData dataWithBytes:bytes length:sizeof(bytes)],
+                              kCVAttachmentMode_ShouldPropagate);
+    }
+}
+
 CVPixelBufferRef FSCVPixelBufferCreateFromAVFrame(const AVFrame *frame, CVPixelBufferPoolRef poolRef)
 {
     if (NULL == frame) {
@@ -206,12 +262,7 @@ CVPixelBufferRef FSCVPixelBufferCreateFromAVFrame(const AVFrame *frame, CVPixelB
     }
 
     if (kCVReturnSuccess != result) {
-        //AVCOL_RANGE_MPEG对应tv，AVCOL_RANGE_JPEG对应pc
-        //Y′ values are conventionally shifted and scaled to the range [16, 235] (referred to as studio swing or "TV levels") rather than using the full range of [0, 255] (referred to as full swing or "PC levels").
-        //https://en.wikipedia.org/wiki/YUV#Numerical_approximations
-
-        const bool fullRange = frame->color_range == AVCOL_RANGE_JPEG;
-        NSDictionary* attributes = prepareCVPixelBufferAttibutes(format, fullRange, h, w);
+        NSDictionary *attributes = prepareCVPixelBufferAttibutes(format, frameIsFullRange(frame), h, w);
 
         if (!attributes) {
             ALOGE("Overly FFmpeg Create CVPixelBuffer Failed: no attributes\n");
@@ -228,7 +279,11 @@ CVPixelBufferRef FSCVPixelBufferCreateFromAVFrame(const AVFrame *frame, CVPixelB
     }
 
     if (kCVReturnSuccess == result) {
+        // A reused buffer may have carried metadata from an earlier frame.
+        CVBufferRemoveAttachment(pixelBuffer, kCVImageBufferMasteringDisplayColorVolumeKey);
+        CVBufferRemoveAttachment(pixelBuffer, kCVImageBufferContentLightLevelInfoKey);
         av_vt_pixbuf_set_attachments(NULL, pixelBuffer, frame);
+        FSCVPixelBufferAttachHDR10Metadata(pixelBuffer, frame);
 
         int planes = 1;
         if (CVPixelBufferIsPlanar(pixelBuffer)) {

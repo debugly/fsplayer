@@ -32,6 +32,15 @@ typedef enum FSColorTransferFunc
     FSColorTransferFuncHLG,
 } FSColorTransferFunc;
 
+typedef enum FSHDRDisplayMode
+{
+    FSHDRDisplayModeSDR,
+    FSHDRDisplayModeLinearSRGB,
+    FSHDRDisplayModeLinearBT2020,
+} FSHDRDisplayMode;
+
+#define FS_HDR_PQ_REFERENCE_WHITE_NITS 203.0f
+
 // Buffer index values shared between shader and C code to ensure Metal shader buffer inputs
 // match Metal API buffer set calls.
 typedef enum FSVertexInputIndex
@@ -62,8 +71,7 @@ typedef struct {
     vector_float4 adjustment;
     FSColorTransferFunc transferFun;
     int hdrContent;  // 1 when the video content itself is HDR (PQ/HLG transfer function)
-    // When 1, output linear light values for EDR/HDR display instead of tone-mapping to SDR.
-    int hdrDisplay;
+    FSHDRDisplayMode hdrDisplayMode;
 } FSConvertMatrix;
 
 typedef enum FSFragmentBufferArguments
@@ -92,4 +100,4 @@ typedef struct mp_format {
     uint32_t formats[3];
 } mp_format;
 
-FSConvertMatrix ijk_metal_create_color_matrix(FSYUV2RGBColorMatrixType matrixType, int fullRange);
+FSConvertMatrix ijk_metal_create_color_matrix(FSYUV2RGBColorMatrixType matrixType, int fullRange, uint32_t pixelFormat);

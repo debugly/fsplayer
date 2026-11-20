@@ -66,7 +66,7 @@
     
     self.convertMatrixChanged = YES;
     
-    ALOGI("render pipeline:%s\n",[[self.pipelineMeta description:self.hdrDisplay]UTF8String]);
+    ALOGI("render pipeline:%s\n",[[self.pipelineMeta description:self.hdrDisplayMode]UTF8String]);
     
     NSBundle* bundle = [NSBundle bundleForClass:[self class]];
     NSURL * libURL = [bundle URLForResource:@"default" withExtension:@"metallib"];
@@ -246,22 +246,15 @@
     if (self.convertMatrixChanged || !self.convertMatrixBuff) {
         self.convertMatrixChanged = NO;
         
-        FSConvertMatrix convertMatrix = ijk_metal_create_color_matrix(self.pipelineMeta.convertMatrixType, self.pipelineMeta.fullRange);
+        FSConvertMatrix convertMatrix = ijk_metal_create_color_matrix(self.pipelineMeta.convertMatrixType,
+                                                                    self.pipelineMeta.fullRange, self.pipelineMeta.pixelFormat);
         convertMatrix.adjustment = _colorAdjustment;
         convertMatrix.transferFun = self.pipelineMeta.transferFunc;
         convertMatrix.hdrContent = self.pipelineMeta.hdrContent;
-        convertMatrix.hdrDisplay = self.hdrDisplay ? 1 : 0;
+        convertMatrix.hdrDisplayMode = self.hdrDisplayMode;
         self.convertMatrixBuff = [_device newBufferWithBytes:&convertMatrix
                                                       length:sizeof(FSConvertMatrix)
                                                      options:MTLResourceStorageModeShared];
-    }
-}
-
-- (void)setHdrDisplay:(BOOL)hdrDisplay
-{
-    if (_hdrDisplay != hdrDisplay) {
-        _hdrDisplay = hdrDisplay;
-        self.convertMatrixChanged = YES;
     }
 }
 

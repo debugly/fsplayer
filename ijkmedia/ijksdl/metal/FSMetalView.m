@@ -127,8 +127,11 @@ typedef CGRect NSRect;
 // (no tone-mapping to SDR). Updated automatically when the display changes.
 // HDR direct display is unavailable on tvOS
 @property(nonatomic, readwrite) BOOL directDisplayHDRSupported HDR_API_AVAILABLE;
-// Whether the current display supports EDR/HDR and we have switched to HDR rendering mode.
-@property (nonatomic, assign) BOOL hdrDirectDisplayActive HDR_API_AVAILABLE;
+@property (nonatomic, assign) FSHDRDisplayMode hdrDisplayMode;
+#if !TARGET_OS_TV
+@property (nonatomic, copy) NSData *edrMasteringDisplay;
+@property (nonatomic, copy) NSData *edrContentLight;
+#endif
 // 高斯模糊背景：复用字幕管线（BGRA/DIRECT）把模糊后的纹理铺满整个视图。
 @property (atomic, strong) FSMetalSubtitlePipeline *backgroundPipeline;
 @property (atomic, strong) FSMetalBlurFilter *blurFilter;
@@ -244,9 +247,9 @@ typedef CGRect NSRect;
         _screenSupportsHDR = [self currentDisplaySupportsHDR];
     }
 #endif
-    
+
     [self setupDisplayLink];
-    
+
     self.device = MTLCreateSystemDefaultDevice();
     if (!self.device) {
         ALOGE("Can't Create Metal Device.");
@@ -265,7 +268,7 @@ typedef CGRect NSRect;
 #else
     self.contentMode = UIViewContentModeCenter;
 #endif
-    
+
     // Create the command queue
     self.commandQueue = [self.device newCommandQueue];
     self.autoResizeDrawable = YES;
@@ -274,10 +277,10 @@ typedef CGRect NSRect;
     self.paused = YES;
     //set default bg color.
     [self setBackgroundColor:0 g:0 b:0];
-    
+
 #if TARGET_OS_IOS || TARGET_OS_TV
     self.isEnterBackground = UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
-    
+
     [NSNotificationCenter.defaultCenter addObserver:self
                                            selector:@selector(applicationDidEnterBackground)
                                                name:UIApplicationDidEnterBackgroundNotification
@@ -371,74 +374,123 @@ typedef CGRect NSRect;
 #endif
 }
 
-/// Core implementation: switches pixel format, layer color space, and hdrDisplayEnabled
-/// based on whether the display supports EDR AND the content is HDR.
-/// If colorPixelFormat changes, nils the existing pipeline so it is rebuilt with the new format.
-- (void)updateHDRDisplayModeForHDRContent:(BOOL)isHDRContent HDR_API_AVAILABLE
+static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRDisplayMode mode)
 {
-    // Fast path: Check if we actually need to change display mode before hopping to the main thread.
-    [self.renderSnapshotLock lock];
-    BOOL supportsHDR = _screenSupportsHDR && isHDRContent;
-    if (supportsHDR != self.directDisplayHDRSupported) {
-        _directDisplayHDRSupported = supportsHDR;
-        ALOGI("content and display support HDR: %d", supportsHDR);
+    if (mode != FSHDRDisplayModeLinearBT2020 || !(color.red || color.green || color.blue)) {
+        return color;
     }
-    BOOL activeHDR = supportsHDR && _allowHDRDirectDisplay;
-    BOOL activeReady = (self.hdrDirectDisplayActive == activeHDR);
-    self.hdrDirectDisplayActive = activeHDR;
-    [self.renderSnapshotLock unlock];
-   
-    if (activeReady) {
-        return;
-    } else {
-        [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerDirectDisplayHDRSupporttedDidChangeNotification
-                                                            object:self
-                                                          userInfo:@{FSPlayerDirectDisplayHDRSupporttedDidChangeUserInfoKey : @(supportsHDR)}];
+    if (@available(macOS 10.15, iOS 16.0, tvOS 13.0, *)) {
+        CGColorSpaceRef sourceSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+        CGColorSpaceRef targetSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearITUR_2020);
+        CGFloat components[] = {color.red, color.green, color.blue, color.alpha};
+        CGColorRef source = CGColorCreate(sourceSpace, components);
+        CGColorRef mapped = CGColorCreateCopyByMatchingToColorSpace(targetSpace, kCGRenderingIntentRelativeColorimetric, source, NULL);
+        if (mapped) {
+            const CGFloat *rgb = CGColorGetComponents(mapped);
+            color.red = rgb[0];
+            color.green = rgb[1];
+            color.blue = rgb[2];
+            CGColorRelease(mapped);
+        }
+        CGColorRelease(source);
+        CGColorSpaceRelease(targetSpace);
+        CGColorSpaceRelease(sourceSpace);
+    }
+    return color;
+}
+
+#if !TARGET_OS_TV
+- (void)updateHDRDisplayModeForPixelBuffer:(CVPixelBufferRef)pixelBuffer HDR_API_AVAILABLE
+{
+    BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:pixelBuffer];
+    BOOL usePQMetadata = NO;
+    NSData *masteringDisplay = nil;
+    NSData *contentLight = nil;
+    if (@available(macOS 10.15, iOS 16.0, *)) {
+        if (isHDRContent) {
+            CFTypeRef transfer = FSMetalCopyBufferAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey);
+            usePQMetadata = transfer && CFEqual(transfer, kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ);
+            if (transfer) CFRelease(transfer);
+        }
+        if (usePQMetadata) {
+            // Core Video supplies the HDR10 SEI payloads in the format Core Animation expects.
+            masteringDisplay = FSMetalCopyEDRAttachment(pixelBuffer, kCVImageBufferMasteringDisplayColorVolumeKey, 24);
+            contentLight = FSMetalCopyEDRAttachment(pixelBuffer, kCVImageBufferContentLightLevelInfoKey, 4);
+        }
     }
 
-    void (^updateBlock)(void) = ^{
+    // Test for changes on the render thread, then recheck against the current screen and
+    // user preference under the same lock when applying the layer configuration on main.
+    BOOL (^update)(BOOL) = ^BOOL(BOOL apply) {
         [self.renderSnapshotLock lock];
+        BOOL supported = self->_screenSupportsHDR && isHDRContent;
+        FSHDRDisplayMode mode = FSHDRDisplayModeSDR;
+        if (supported && self->_allowHDRDirectDisplay) {
+            mode = usePQMetadata ? FSHDRDisplayModeLinearBT2020 : FSHDRDisplayModeLinearSRGB;
+        }
+        BOOL wide = mode == FSHDRDisplayModeLinearBT2020;
+        NSData *displayData = wide ? masteringDisplay : nil;
+        NSData *lightData = wide ? contentLight : nil;
+        BOOL modeChanged = self.hdrDisplayMode != mode;
+        BOOL supportChanged = self.directDisplayHDRSupported != supported;
+        BOOL metadataChanged = (self.edrMasteringDisplay != displayData && ![self.edrMasteringDisplay isEqualToData:displayData]) ||
+        (self.edrContentLight != lightData && ![self.edrContentLight isEqualToData:lightData]);
+        BOOL changed = modeChanged || supportChanged || metadataChanged;
+        if (!apply || !changed) {
+            [self.renderSnapshotLock unlock];
+            return changed;
+        }
 
-        //direct display status need update
-        MTLPixelFormat newFormat = activeHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
-        BOOL formatChanged = (self.colorPixelFormat != newFormat);
-
-        if (formatChanged) {
-            // MTLRenderPipelineState bakes in colorAttachments[0].pixelFormat at creation time.
-            // 字幕/背景管线也把像素格式烤进了 PSO，目标格式变化后必须一并重建，
-            // 否则在新的渲染目标上 setRenderPipelineState: 会触发 Metal 断言崩溃。
+        self->_directDisplayHDRSupported = supported;
+        self.hdrDisplayMode = mode;
+        self.edrMasteringDisplay = displayData;
+        self.edrContentLight = lightData;
+        CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
+        if (modeChanged) {
+            BOOL activeHDR = mode != FSHDRDisplayModeSDR;
+            // These pipelines bake in the drawable format and the overlay color space.
             self.picturePipeline = nil;
             self.subPipeline = nil;
-            // 背景管线只在 rebuildBackgroundTextureIfNeed 里重建，需置位让其下一帧用新格式重建。
             self.backgroundPipeline = nil;
-            self.needRebuildBackgroundTexture = (self.backgroundImage != nil);
+            self.needRebuildBackgroundTexture = self.backgroundImage != nil;
+
+            self.colorPixelFormat = activeHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
+            metalLayer.wantsExtendedDynamicRangeContent = activeHDR;
+            CGColorSpaceRef colorSpace = NULL;
+            if (activeHDR) {
+                colorSpace = CGColorSpaceCreateWithName(wide ? kCGColorSpaceExtendedLinearITUR_2020 : kCGColorSpaceExtendedLinearSRGB);
+            }
+            metalLayer.colorspace = colorSpace;
+            if (colorSpace) CGColorSpaceRelease(colorSpace);
+            MTLClearColor background = self.backgroundTransparencyApplied ? MTLClearColorMake(0, 0, 0, 0) : self->_requestedBackgroundColor;
+            self.clearColor = FSMetalClearColorForDisplayMode(background, mode);
         }
-     
-#if !TARGET_OS_TV
-        CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
-        metalLayer.wantsExtendedDynamicRangeContent = activeHDR;
-        // Update colorPixelFormat and metalLayer's colorspace
-        self.colorPixelFormat = newFormat;
-        if (activeHDR) {
-            CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
-            metalLayer.colorspace = cs;
-            ALOGI("update layer colorspace:%@",cs);
-            CGColorSpaceRelease(cs);
-        } else {
-            metalLayer.colorspace = nil;
-            ALOGI("update layer colorspace:nil");
+
+        if (modeChanged || metadataChanged) {
+            if (@available(macOS 10.15, iOS 16.0, *)) {
+                // A nil metadata object would clip highlights to the screen's current headroom.
+                // Missing payloads use Core Animation's HDR10 defaults.
+                metalLayer.EDRMetadata = wide ? [CAEDRMetadata HDR10MetadataWithDisplayInfo:displayData
+                                                                                contentInfo:lightData
+                                                                         opticalOutputScale:FS_HDR_PQ_REFERENCE_WHITE_NITS] : nil;
+            }
         }
-#endif
-        
         [self.renderSnapshotLock unlock];
+        if (modeChanged || supportChanged) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:FSPlayerDirectDisplayHDRSupporttedDidChangeNotification
+                                                                object:self
+                                                              userInfo:@{FSPlayerDirectDisplayHDRSupporttedDidChangeUserInfoKey : @(supported)}];
+        }
+        return YES;
     };
-    
+
     if ([NSThread isMainThread]) {
-        updateBlock();
-    } else {
-        dispatch_sync(dispatch_get_main_queue(), updateBlock);
+        update(YES);
+    } else if (update(NO)) {
+        dispatch_sync(dispatch_get_main_queue(), ^{ update(YES); });
     }
 }
+#endif
 
 /// Called from the main thread (screen change notifications, setAllowHDRDisplay:).
 /// Uses renderSnapshotLock to synchronise with the render thread, which holds the same
@@ -448,11 +500,12 @@ typedef CGRect NSRect;
     BOOL displaySupportsHDR = [self currentDisplaySupportsHDR];
     [self.renderSnapshotLock lock];
     _screenSupportsHDR = displaySupportsHDR;
-    BOOL isHDRContent = [self.pipelineMeta hdrContent];
+    // Keep the render frame alive while inspecting its pixel buffer outside the lock.
+    FSMetalRenderFrame *frame = self.currentFrame;
     [self.renderSnapshotLock unlock];
-    
+
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        [self updateHDRDisplayModeForHDRContent:isHDRContent];
+        [self updateHDRDisplayModeForPixelBuffer:frame.videoPicture];
     }
 #endif
 }
@@ -473,7 +526,7 @@ typedef CGRect NSRect;
     }
     _allowHDRDirectDisplay = allowHDRDirectDisplay;
     [self.renderSnapshotLock unlock];
-    
+
     // Re-evaluate: if we just disabled, force SDR; if we just enabled, check display capability.
     [self updateHDRDisplayMode];
     [self setNeedsRefreshCurrentPic];
@@ -493,13 +546,13 @@ typedef CGRect NSRect;
     if (frame.sarNum > 0 && frame.sarDen > 0) {
         frameWidth = 1.0 * frame.sarNum / frame.sarDen * frameWidth;
     }
-    
+
     int zDegrees = 0;
     zDegrees += (int)self.zRotateDegrees;
     zDegrees += frame.autoZRotate;
 
     float darRatio = self.darPreference.ratio;
-    
+
     //when video's z rotate degrees is 90 odd multiple
     if (abs(zDegrees) / 90 % 2 == 1) {
         //need swap user's ratio
@@ -511,7 +564,7 @@ typedef CGRect NSRect;
         drawableSize.width = drawableSize.height;
         drawableSize.height = tmp;
     }
-    
+
     //apply user dar
     if (darRatio > 0.001) {
         if (1.0 * frame.w / frame.h > darRatio) {
@@ -520,11 +573,11 @@ typedef CGRect NSRect;
             frameWidth = frameHeight * darRatio;
         }
     }
-    
+
     float wRatio = drawableSize.width / frameWidth;
     float hRatio = drawableSize.height / frameHeight;
     float ratio  = 1.0f;
-    
+
     if (_scalingMode == FSScalingModeAspectFit) {
         ratio = FFMIN(wRatio, hRatio);
     } else if (_scalingMode == FSScalingModeAspectFill) {
@@ -566,30 +619,12 @@ typedef CGRect NSRect;
     }
     CGImageRef cgImage = [self cgImageFromBackgroundImage:image];
     self.backgroundTexture = [self.blurFilter blurredTextureFromImage:cgImage
-                                                               sigma:self.backgroundBlurSigma
-                                                          iterations:self.backgroundBlurIterations
-                                                        commandQueue:self.commandQueue];
+                                                                sigma:self.backgroundBlurSigma
+                                                           iterations:self.backgroundBlurIterations
+                                                         commandQueue:self.commandQueue];
     if (self.backgroundTexture && ![self setupBackgroundPipelineIfNeed]) {
         self.backgroundTexture = nil;
     }
-}
-
-- (BOOL)setupBackgroundPipelineIfNeed
-{
-    if (self.backgroundPipeline) {
-        return YES;
-    }
-    
-    FSMetalSubtitlePipeline *pipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device
-                                                                               inFormat:FSMetalSubtitleInFormatBRGA
-                                                                              outFormat:FSMetalSubtitleOutFormatDIRECT
-                                                                       colorPixelFormat:self.colorPixelFormat];
-    if (![pipeline createRenderPipelineIfNeed]) {
-        ALOGE("create backgroundRenderPipeline failed.");
-        return NO;
-    }
-    self.backgroundPipeline = pipeline;
-    return YES;
 }
 
 // 把模糊纹理铺满整个 drawable（拉伸填充；背景已模糊，形变不可见）。
@@ -603,24 +638,32 @@ typedef CGRect NSRect;
 
 #pragma mark - Pipeline & Upload Textures
 
-- (BOOL)setupSubPipelineIfNeed
+- (FSMetalSubtitlePipeline *)newOverlayPipelineWithPixelFormat:(MTLPixelFormat)pixelFormat mode:(FSHDRDisplayMode)mode
 {
-    if (self.subPipeline) {
+    FSMetalSubtitleOutFormat output = mode == FSHDRDisplayModeLinearBT2020 ? FSMetalSubtitleOutFormatBT2020 : FSMetalSubtitleOutFormatDIRECT;
+    FSMetalSubtitlePipeline *pipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device
+                                                                               inFormat:FSMetalSubtitleInFormatBRGA
+                                                                              outFormat:output
+                                                                       colorPixelFormat:pixelFormat];
+    return [pipeline createRenderPipelineIfNeed] ? pipeline : nil;
+}
+
+- (BOOL)setupBackgroundPipelineIfNeed
+{
+    if (self.backgroundPipeline) {
         return YES;
     }
-    
-    FSMetalSubtitlePipeline *subPipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device inFormat:FSMetalSubtitleInFormatBRGA outFormat:FSMetalSubtitleOutFormatDIRECT];
-    
-    BOOL created = [subPipeline createRenderPipelineIfNeed];
-    
-    if (!created) {
-        ALOGE("create subRenderPipeline failed.");
-        subPipeline = nil;
+
+    self.backgroundPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat mode:self.hdrDisplayMode];
+    return self.backgroundPipeline != nil;
+}
+
+- (BOOL)setupSubPipelineIfNeed
+{
+    if (!self.subPipeline) {
+        self.subPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat mode:self.hdrDisplayMode];
     }
-    
-    self.subPipeline = subPipeline;
-    
-    return subPipeline != nil;
+    return self.subPipeline != nil;
 }
 
 - (BOOL)setupPipelineIfNeed:(CVPixelBufferRef)pixelBuffer blend:(BOOL)blend
@@ -628,20 +671,16 @@ typedef CGRect NSRect;
     if (!pixelBuffer) {
         return NO;
     }
-    
+
     if (self.picturePipeline) {
         if ([self.picturePipeline matchPixelBuffer:pixelBuffer] && self.picturePipelineHasAlpha == blend) {
             return YES;
         }
         ALOGI("pixel format not match,need rebuild pipeline");
     }
-    
+
     FSMetalRenderer *picturePipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:self.colorPixelFormat];
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, macOS 10.11, *)) {
-        picturePipeline.hdrDisplay = self.hdrDirectDisplayActive;
-    }
-#endif
+    picturePipeline.hdrDisplayMode = self.hdrDisplayMode;
     FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:pixelBuffer];
     BOOL created = [picturePipeline createRenderPipelineIfNeed:meta blend:blend];
 
@@ -659,42 +698,37 @@ typedef CGRect NSRect;
         renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
          drawableSize:(CGSize)drawableSize
                 ratio:(CGSize)ratio
+             pipeline:(FSMetalRenderer *)pipeline
 {
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, *)) {
-        self.picturePipeline.hdrDisplay = self.hdrDirectDisplayActive;
-    } else {
-        // Fallback on earlier versions
-    }
-#endif
-    self.picturePipeline.autoZRotateDegrees = frame.autoZRotate;
-    self.picturePipeline.xRotateDegrees = self.xRotateDegrees;
-    self.picturePipeline.yRotateDegrees = self.yRotateDegrees;
-    self.picturePipeline.zRotateDegrees = self.zRotateDegrees;
-    
+    pipeline.autoZRotateDegrees = frame.autoZRotate;
+    pipeline.xRotateDegrees = self.xRotateDegrees;
+    pipeline.yRotateDegrees = self.yRotateDegrees;
+    pipeline.zRotateDegrees = self.zRotateDegrees;
+
     bool applyAdjust = _colorPreference.brightness != 1.0 || _colorPreference.saturation != 1.0 || _colorPreference.contrast != 1.0;
-    [self.picturePipeline updateColorAdjustment:(vector_float4){_colorPreference.brightness,_colorPreference.saturation,_colorPreference.contrast,applyAdjust ? 1.0 : 0.0}];
-    self.picturePipeline.vertexRatio = ratio;
-    self.picturePipeline.textureCrop = CGSizeMake(1.0 * (frame.pixelW - frame.w) / frame.pixelW, 1.0 * (frame.pixelH - frame.h) / frame.pixelH);
+    [pipeline updateColorAdjustment:(vector_float4){_colorPreference.brightness,_colorPreference.saturation,_colorPreference.contrast,applyAdjust ? 1.0 : 0.0}];
+    pipeline.vertexRatio = ratio;
+    pipeline.textureCrop = CGSizeMake(1.0 * (frame.pixelW - frame.w) / frame.pixelW, 1.0 * (frame.pixelH - frame.h) / frame.pixelH);
 
     // Set the region of the drawable to draw into.
     [renderEncoder setViewport:(MTLViewport){0.0, 0.0, drawableSize.width, drawableSize.height, -1.0, 1.0}];
     //upload textures
-    [self.picturePipeline uploadTextureWithEncoder:renderEncoder
-                                          textures:frame.videoTextures];
+    [pipeline uploadTextureWithEncoder:renderEncoder
+                              textures:frame.videoTextures];
 }
 
 - (void)encodeSubtitle:(id<MTLRenderCommandEncoder>)renderEncoder
           drawableSize:(CGSize)viewport
                texture:(id<MTLTexture>)subTexture
+              pipeline:(FSMetalSubtitlePipeline *)pipeline
 {
     // Set the region of the drawable to draw into.
     [renderEncoder setViewport:(MTLViewport){0.0, 0.0, viewport.width, viewport.height, -1.0, 1.0}];
     //upload textures
-    
+
     float wRatio = viewport.width / subTexture.width;
     float hRatio = viewport.height / subTexture.height;
-    
+
     CGRect subRect;
     //aspect fit
     if (wRatio < hRatio) {
@@ -704,9 +738,9 @@ typedef CGRect NSRect;
         float nW = (subTexture.width * hRatio / viewport.width);
         subRect = CGRectMake(-nW, -1, 2.0 * nW, 2.0);
     }
-    
-    [self.subPipeline updateSubtitleVertexIfNeed:subRect];
-    [self.subPipeline drawTexture:subTexture encoder:renderEncoder];
+
+    [pipeline updateSubtitleVertexIfNeed:subRect];
+    [pipeline drawTexture:subTexture encoder:renderEncoder];
 }
 
 // 合成成一张 BGRA 纹理，由当前视图的 FSMetalRenderFrame 持有。
@@ -780,7 +814,7 @@ typedef CGRect NSRect;
 // Produce a +1 retained CVPixelBuffer from a decoded AVFrame. VideoToolbox frames
 // already carry the buffer in data[3] (zero copy, just retained); software frames are
 // converted via the shared FSCVPixelBufferCreateFromAVFrame, reusing a per-view pool
-// (recreated on dimension/format change) to avoid a per-frame allocation.
+// (recreated on dimension, format or range change) to avoid a per-frame allocation.
 // Returns NULL on unsupported formats. Caller owns the returned buffer.
 - (CVPixelBufferRef)pixelBufferFromAVFrame:(struct AVFrame *)frame CF_RETURNS_RETAINED
 {
@@ -789,15 +823,18 @@ typedef CGRect NSRect;
     }
     if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
         CVPixelBufferRef pb = (CVPixelBufferRef)frame->data[3];
-        return pb ? (CVPixelBufferRef)CVPixelBufferRetain(pb) : NULL;
+        if (pb) {
+            FSCVPixelBufferAttachHDR10Metadata(pb, frame);
+            CVPixelBufferRetain(pb);
+        }
+        return pb;
     }
 
     if (frame->width <= 0 || frame->height <= 0) {
         return NULL;
     }
 
-    CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool,
-                                                          frame->width, frame->height, frame->format);
+    CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool, frame);
     return FSCVPixelBufferCreateFromAVFrame(frame, pool);
 }
 
@@ -823,7 +860,7 @@ typedef CGRect NSRect;
         frame = nil;
         goto end;
     }
-    
+
     // Derive a per-view CVPixelBuffer from the source AVFrame.
     // VideoToolbox frames wrap the pixel
     // buffer in data[3]; software frames are converted (planes copied, color/DoVi
@@ -911,10 +948,9 @@ end:
     }
 
 #if !TARGET_OS_TV
-    BOOL isHDRContent = [FSMetalPipelineMeta isHDRContentWithPixelBuffer:currentAttach.videoPicture];
     // 内部可能同步到主线程并再次获取 renderSnapshotLock，必须在锁外调用。
     if (@available(iOS 16.0, macOS 10.11, *)) {
-        [self updateHDRDisplayModeForHDRContent:isHDRContent];
+        [self updateHDRDisplayModeForPixelBuffer:currentAttach.videoPicture];
     }
 #endif
 
@@ -946,7 +982,7 @@ end:
     if (self.pictureInPictureDisplayLayer) {
         [self updatePictureInPictureLayerFrame];
         if (CGRectIsEmpty(self.pictureInPictureDisplayLayer.frame) && !CGRectIsEmpty(self.frame)) {
-             self.pictureInPictureDisplayLayer.frame = self.bounds;
+            self.pictureInPictureDisplayLayer.frame = self.bounds;
         }
         return YES;
     }
@@ -1582,7 +1618,7 @@ end:
         return;
     }
 #endif
-    
+
     id<CAMetalDrawable> drawable = self.currentDrawable;
     // 拿不到 Drawable 直接放弃这一帧，不要强行 commit
     if (!drawable) {
@@ -1603,7 +1639,7 @@ end:
             passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
             passDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
             passDescriptor.colorAttachments[0].clearColor = self.clearColor;
-            
+
             id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
             id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
             //无视频时，用高斯模糊背景填充，替代纯色背景。
@@ -1617,18 +1653,18 @@ end:
         }
         return;
     }
-    
+
     [self.renderSnapshotLock lock];
 
     if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
         [self.renderSnapshotLock unlock];
         return;
     }
-    
+
     if (self.displayDelegate && [self.displayDelegate respondsToSelector:@selector(videoRenderingDidDisplay:attach:)]) {
         [self.displayDelegate videoRenderingDidDisplay:self attach:currentFrame];
     }
-    
+
     //draw textures
     CGSize drawableSize = self.drawableSize;
 
@@ -1644,27 +1680,29 @@ end:
         [self.renderSnapshotLock unlock];
         return;
     }
-    
+
     // Create a render command encoder.
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-    
+
     //[renderEncoder pushDebugGroup:@"encodePicture"];
-    
+
     //先铺高斯模糊背景，视频画面随后绘制在其上，黑边区域即显示模糊背景。
     //只有 AspectFit 会留出黑边，其它模式视频铺满全屏，无需绘制背景。
     if (self.backgroundTexture && _scalingMode == FSScalingModeAspectFit) {
         [self encodeBackground:renderEncoder drawableSize:drawableSize];
     }
-    
+
     [self encodePicture:currentFrame
           renderEncoder:renderEncoder
            drawableSize:drawableSize
-                  ratio:ratio];
-    
+                  ratio:ratio
+               pipeline:self.picturePipeline];
+
     if (currentFrame.subTexture) {
         [self encodeSubtitle:renderEncoder
                 drawableSize:drawableSize
-                     texture:currentFrame.subTexture];
+                     texture:currentFrame.subTexture
+                    pipeline:self.subPipeline];
     }
     //[renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
@@ -1685,30 +1723,50 @@ end:
 
 #pragma mark - snapshot
 
+// Snapshots use the BGRA8 offscreen target even when the screen drawable is EDR.
+- (FSMetalRenderer *)videoPicturePipelineForSnapshot:(FSMetalRenderFrame *)frame
+{
+    if (self.colorPixelFormat == MTLPixelFormatBGRA8Unorm) {
+        return [self setupPipelineIfNeed:frame.videoPicture blend:frame.hasAlpha] ? self.picturePipeline : nil;
+    }
+    FSMetalRenderer *pipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
+    FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:frame.videoPicture];
+    return [pipeline createRenderPipelineIfNeed:meta blend:frame.hasAlpha] ? pipeline : nil;
+}
+
+- (FSMetalSubtitlePipeline *)subtitlePipelineForSnapshot
+{
+    if (self.colorPixelFormat == MTLPixelFormatBGRA8Unorm) {
+        return [self setupSubPipelineIfNeed] ? self.subPipeline : nil;
+    }
+    return [self newOverlayPipelineWithPixelFormat:MTLPixelFormatBGRA8Unorm mode:FSHDRDisplayModeSDR];
+}
+
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
 {
     [self.renderSnapshotLock lock];
 
     FSMetalRenderFrame *currentFrame = self.currentFrame;
-    CVPixelBufferRef pixelBuffer = currentFrame.videoPicture;
-    if (!pixelBuffer) {
+    // A snapshot can reach a newly published frame before drawRect: prepares its textures.
+    if (!currentFrame.videoPicture ||
+        ![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-    
+
     if (!self.offscreenRendering) {
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
     float width  = currentFrame.w;
     float height = currentFrame.h;
-    
+
     //keep video AVRational
     if (currentFrame.sarNum > 0 && currentFrame.sarDen > 0) {
         width = 1.0 * currentFrame.sarNum / currentFrame.sarDen * width;
     }
-    
+
     float darRatio = self.darPreference.ratio;
-    
+
     int zDegrees = 0;
     zDegrees += (int)self.zRotateDegrees;
     zDegrees += currentFrame.autoZRotate;
@@ -1718,7 +1776,7 @@ end:
         width = height;
         height = tmp;
     }
-    
+
     //apply user dar
     if (darRatio > 0.001) {
         if (1.0 * width / height > darRatio) {
@@ -1727,39 +1785,15 @@ end:
             width = height * darRatio;
         }
     }
-    
+
     CGSize viewport = CGSizeMake(floorf(width), floorf(height));
-    if (![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
+    FSMetalRenderer *picturePipeline = [self videoPicturePipelineForSnapshot:currentFrame];
+    BOOL includeSubtitle = drawSub && currentFrame.subTexture;
+    FSMetalSubtitlePipeline *subtitlePipeline = includeSubtitle ? [self subtitlePipelineForSnapshot] : nil;
+    if (!picturePipeline || (includeSubtitle && !subtitlePipeline)) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-
-    if (drawSub && currentFrame.subTexture && ![self setupSubPipelineIfNeed]) {
-        [self.renderSnapshotLock unlock];
-        return NULL;
-    }
-
-    // FSMetalFBO render target is always BGRA8Unorm; HDR pipelines use RGBA16Float.
-    // Use a temporary SDR pipeline for the snapshot so pixel formats match.
-    // (Snapshots are saved as SDR image files, so tone-mapping is correct here.)
-    FSMetalRenderer *savedPipeline = nil;
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, *)) {
-        if (self.directDisplayHDRSupported) {
-            savedPipeline = self.picturePipeline;
-            FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
-            if (![sdrPipeline createRenderPipelineIfNeed:meta blend:currentFrame.hasAlpha]) {
-                [self.renderSnapshotLock unlock];
-                return NULL;
-            }
-            self.pipelineMeta = meta;
-            self.picturePipeline = sdrPipeline;
-        }
-    } else {
-        // Fallback on earlier versions
-    }
-#endif
 
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
     CGImageRef result = [self.offscreenRendering snapshot:viewport device:self.device commandBuffer:commandBuffer doUploadPicture:^(id<MTLRenderCommandEncoder> _Nonnull renderEncoder) {
@@ -1767,17 +1801,16 @@ end:
         [self encodePicture:currentFrame
               renderEncoder:renderEncoder
                drawableSize:viewport
-                      ratio:CGSizeMake(1.0, 1.0)];
+                      ratio:CGSizeMake(1.0, 1.0)
+                   pipeline:picturePipeline];
 
-        if (drawSub && currentFrame.subTexture) {
+        if (includeSubtitle) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:viewport
-                         texture:currentFrame.subTexture];
+                         texture:currentFrame.subTexture
+                        pipeline:subtitlePipeline];
         }
     }];
-    if (savedPipeline) {
-        self.picturePipeline = savedPipeline;
-    }
     [self.renderSnapshotLock unlock];
     return result;
 }
@@ -1827,36 +1860,13 @@ end:
         self.offscreenRendering = [FSMetalOffscreenRendering alloc];
     }
 
-    if (![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
+    FSMetalRenderer *picturePipeline = [self videoPicturePipelineForSnapshot:currentFrame];
+    BOOL includeSubtitle = currentFrame.subTexture != nil;
+    FSMetalSubtitlePipeline *subtitlePipeline = includeSubtitle ? [self subtitlePipelineForSnapshot] : nil;
+    if (!picturePipeline || (includeSubtitle && !subtitlePipeline)) {
         [self.renderSnapshotLock unlock];
         return NULL;
     }
-
-    if (currentFrame.subTexture && ![self setupSubPipelineIfNeed]) {
-        [self.renderSnapshotLock unlock];
-        return NULL;
-    }
-
-    // FSMetalFBO render target is always BGRA8Unorm; HDR pipelines use RGBA16Float.
-    // Use a temporary SDR pipeline for the snapshot so pixel formats match.
-    FSMetalRenderer *savedPipeline = nil;
-#if !TARGET_OS_TV
-    if (@available(iOS 16.0, *)) {
-        if (self.directDisplayHDRSupported) {
-            savedPipeline = self.picturePipeline;
-            FSMetalRenderer *sdrPipeline = [[FSMetalRenderer alloc] initWithDevice:self.device colorPixelFormat:MTLPixelFormatBGRA8Unorm];
-            FSMetalPipelineMeta *meta = [FSMetalPipelineMeta createWithCVPixelbuffer:currentFrame.videoPicture];
-            if (![sdrPipeline createRenderPipelineIfNeed:meta  blend:currentFrame.hasAlpha]) {
-                [self.renderSnapshotLock unlock];
-                return NULL;
-            }
-            self.pipelineMeta = meta;
-            self.picturePipeline = sdrPipeline;
-        }
-    } else {
-        // Fallback on earlier versions
-    }
-#endif
 
     CGSize drawableSize = self.drawableSize;
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
@@ -1865,17 +1875,16 @@ end:
         [self encodePicture:currentFrame
               renderEncoder:renderEncoder
                drawableSize:drawableSize
-                      ratio:ratio];
+                      ratio:ratio
+                   pipeline:picturePipeline];
 
-        if (currentFrame.subTexture) {
+        if (includeSubtitle) {
             [self encodeSubtitle:renderEncoder
                     drawableSize:drawableSize
-                         texture:currentFrame.subTexture];
+                         texture:currentFrame.subTexture
+                        pipeline:subtitlePipeline];
         }
     }];
-    if (savedPipeline) {
-        self.picturePipeline = savedPipeline;
-    }
     [self.renderSnapshotLock unlock];
     return result;
 }
@@ -1985,7 +1994,7 @@ end:
     BOOL automatic = _autoTransparentBackgroundColor && frame.hasAlpha;
     BOOL transparent = _requestedBackgroundColor.alpha == 0.0 || automatic;
     BOOL unchanged = self.automaticBackgroundTransparencyActive == automatic &&
-                     self.backgroundTransparencyApplied == transparent;
+    self.backgroundTransparencyApplied == transparent;
     [self.renderSnapshotLock unlock];
     if (!force && unchanged) return;
 
@@ -1998,7 +2007,7 @@ end:
         // Transparent drawables use premultiplied alpha: RGB must also be zero.
         color = isTransparent ? (MTLClearColor){0.0, 0.0, 0.0, 0.0} : color;
         color.alpha = isTransparent ? 0.0 : 1.0;
-        self.clearColor = color;
+        self.clearColor = FSMetalClearColorForDisplayMode(color, self.hdrDisplayMode);
         self.automaticBackgroundTransparencyActive = autoTransparent;
         self.backgroundTransparencyApplied = isTransparent;
         self.needCleanBackgroundColor = YES;
@@ -2008,7 +2017,7 @@ end:
 #if !TARGET_OS_OSX
         self.opaque = !isTransparent;
         self.backgroundColor = isTransparent ? UIColor.clearColor :
-            [UIColor colorWithRed:color.red green:color.green blue:color.blue alpha:1.0];
+        [UIColor colorWithRed:color.red green:color.green blue:color.blue alpha:1.0];
 #endif
     };
     if ([NSThread isMainThread]) {
@@ -2130,7 +2139,7 @@ end:
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    
+
     if (!CGSizeEqualToSize(self.drawableSize, self.preferredDrawableSize)) {
         [self setNeedsRefreshCurrentPic];
     }

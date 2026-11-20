@@ -169,6 +169,29 @@ int SDL_VoutDisplayYUVOverlay(SDL_Vout *vout, const Frame *frame, SDL_TextureOve
     return -1;
 }
 
+#if defined(__APPLE__)
+static int refresh_hdr10_side_data(AVFrame *dst, const AVFrame *src, enum AVFrameSideDataType type)
+{
+    const AVFrameSideData *incoming = av_frame_get_side_data(src, type);
+    const AVFrameSideData *outgoing = av_frame_get_side_data(dst, type);
+    if (incoming && outgoing && incoming->size == outgoing->size &&
+        !memcmp(incoming->data, outgoing->data, incoming->size)) {
+        return 0;
+    }
+    if (outgoing) {
+        av_frame_remove_side_data(dst, type);
+    }
+    if (incoming) {
+        AVBufferRef *ref = av_buffer_ref(incoming->buf);
+        if (!ref || !av_frame_new_side_data_from_buf(dst, type, ref)) {
+            av_buffer_unref(&ref);
+            return AVERROR(ENOMEM);
+        }
+    }
+    return 0;
+}
+#endif
+
 int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame, const AVFrame **outFrame)
 {
     if (!vout) {
@@ -225,6 +248,10 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
         convert->frame_buffer_size = frame_bytes;
     }
     
+#if defined(__APPLE__)
+    enum AVColorRange dst_color_range = inFrame->color_range;
+#endif
+
     //优先使用libyuv转换
     int r = ijk_image_convert(inFrame->width, inFrame->height,
                              dst_format, convert->frame->data, convert->frame->linesize,
@@ -241,6 +268,29 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
             return -4;
         }
         
+#if defined(__APPLE__)
+        enum AVPixelFormat src_fmt = inFrame->format;
+        enum AVPixelFormat dst_fmt = convert->frame->format;
+        const AVPixFmtDescriptor *src_desc = av_pix_fmt_desc_get(src_fmt);
+        const AVPixFmtDescriptor *dst_desc = av_pix_fmt_desc_get(dst_fmt);
+        if (src_desc->nb_components >= 3 && !(src_desc->flags & AV_PIX_FMT_FLAG_RGB) &&
+            dst_desc->nb_components >= 3 && !(dst_desc->flags & AV_PIX_FMT_FLAG_RGB)) {
+            const int src_full = inFrame->color_range == AVCOL_RANGE_JPEG ||
+                (inFrame->color_range == AVCOL_RANGE_UNSPECIFIED && src_fmt == AV_PIX_FMT_YUVJ420P);
+            // Keep the source range where CoreVideo provides both variants.
+            const int dst_full = dst_fmt == AV_PIX_FMT_YUVJ420P ||
+                (src_full && (dst_fmt == AV_PIX_FMT_YUV420P || dst_fmt == AV_PIX_FMT_NV12 ||
+                              dst_fmt == AV_PIX_FMT_P010 || dst_fmt == AV_PIX_FMT_YUYV422));
+            const int *coefficients = sws_getCoefficients(SWS_CS_DEFAULT);
+            if (sws_setColorspaceDetails(convert->sws_ctx, coefficients, src_full,
+                                         coefficients, dst_full, 0, 1 << 16, 1 << 16) < 0) {
+                ALOGE("sws_setColorspaceDetails failed");
+                return -4;
+            }
+            dst_color_range = dst_full ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
+        }
+#endif
+
         int scaled = sws_scale(convert->sws_ctx, (const uint8_t**) inFrame->data, inFrame->linesize,
                   0, inFrame->height, convert->frame->data, convert->frame->linesize);
         r = scaled == inFrame->height ? 0 : -6;
@@ -250,6 +300,15 @@ int SDL_VoutConvertFrame(SDL_Vout *vout, int dst_format, const AVFrame *inFrame,
         convert->frame->width  = inFrame->width;
         convert->frame->height = inFrame->height;
 #if defined(__APPLE__)
+        // The converter reuses the frame, but the stream can change color metadata.
+        convert->frame->color_range = dst_color_range;
+        convert->frame->colorspace = inFrame->colorspace;
+        convert->frame->color_primaries = inFrame->color_primaries;
+        convert->frame->color_trc = inFrame->color_trc;
+        if (refresh_hdr10_side_data(convert->frame, inFrame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA) < 0 ||
+            refresh_hdr10_side_data(convert->frame, inFrame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL) < 0) {
+            return -5;
+        }
         // swscale（--disable-swscale-alpha 构建）丢掉的 alpha 自己补回来。
         // 必须在 width/height 赋值之后：补 alpha 是按目标帧尺寸逐行搬运的。
         fs_merge_alpha_channel(inFrame, convert->frame);

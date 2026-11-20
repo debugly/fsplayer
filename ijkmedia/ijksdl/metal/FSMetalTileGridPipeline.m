@@ -120,8 +120,7 @@
             pixelBuffer = (CVPixelBufferRef)frame->data[3];
             if (pixelBuffer) CVPixelBufferRetain(pixelBuffer);
         } else if (frame) {
-            CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool,
-                                                                frame->width, frame->height, frame->format);
+            CVPixelBufferPoolRef pool = FSSwPixelBufferPoolEnsure(&_swPixelBufferPool, frame);
             pixelBuffer = FSCVPixelBufferCreateFromAVFrame(frame, pool);
         }
         if (!pixelBuffer) {

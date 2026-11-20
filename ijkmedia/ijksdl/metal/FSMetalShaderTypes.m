@@ -136,50 +136,38 @@ mp_format * mp_get_metal_format(uint32_t cvpixfmt)
     return NULL;
 }
 
-//https://developer.apple.com/library/archive/samplecode/AVBasicVideoOutput/Listings/AVBasicVideoOutput_APLEAGLView_m.html
-FSConvertMatrix ijk_metal_create_color_matrix(FSYUV2RGBColorMatrixType matrixType, int fullRange)
+FSConvertMatrix ijk_metal_create_color_matrix(FSYUV2RGBColorMatrixType matrixType, int fullRange, uint32_t pixelFormat)
 {
-    FSConvertMatrix matrix = {0.0};
+    FSConvertMatrix matrix = {0};
+    float kr, kb;
     switch (matrixType) {
-        case FSYUV2RGBColorMatrixBT601:
-        {
-            matrix.colorMatrix = (matrix_float3x3){
-                (simd_float3){1.164,  1.164, 1.164},
-                (simd_float3){0.0,   -0.392, 2.017},
-                (simd_float3){1.596, -0.813, 0.0},
-            };
-        }
-            break;
-        case FSYUV2RGBColorMatrixBT709:
-        {
-            matrix.colorMatrix = (matrix_float3x3){
-                (simd_float3){1.164,  1.164, 1.164},
-                (simd_float3){0.0,   -0.213, 2.112},
-                (simd_float3){1.793, -0.533, 0.0},
-            };
-        }
-            break;
-        case FSYUV2RGBColorMatrixBT2020:
-        {
-            matrix.colorMatrix = (matrix_float3x3){
-                (simd_float3){1.164384, 1.164384 , 1.164384},
-                (simd_float3){0.0     , -0.187326, 2.14177},
-                (simd_float3){1.67867 , -0.65042 , 0.0},
-            };
-        }
-            break;
-        case FSYUV2RGBColorMatrixNone:
-        {
-            break;
-        }
+        case FSYUV2RGBColorMatrixBT601:  kr = 0.299f;  kb = 0.114f;  break;
+        case FSYUV2RGBColorMatrixBT709:  kr = 0.2126f; kb = 0.0722f; break;
+        case FSYUV2RGBColorMatrixBT2020: kr = 0.2627f; kb = 0.0593f; break;
+        case FSYUV2RGBColorMatrixNone:   return matrix;
+        default:                        return matrix;
     }
 
-    vector_float3 offset;
-    if (fullRange) {
-        offset = (vector_float3){ 0.0, -0.5, -0.5};
-    } else {
-        offset = (vector_float3){ -(16.0/255.0), -0.5, -0.5};
-    }
-    matrix.offset = offset;
+    const mp_format *format = mp_get_metal_format(pixelFormat);
+    const bool wide = format && (format->formats[0] == MTLPixelFormatR16Unorm ||
+                                 format->formats[0] == MTLPixelFormatRGBA16Unorm);
+    // 10-bit bi-planar samples occupy the high bits of a 16-bit UNORM texture.
+    const float textureMax = wide ? 65535.0f : 255.0f;
+    const float codeStep = wide ? 256.0f : 1.0f;
+    const float fullRangeMax = wide ? 1023.0f * 64.0f : 255.0f;
+    const float yScale = textureMax / (fullRange ? fullRangeMax : 219.0f * codeStep);
+    const float cScale = textureMax / (fullRange ? fullRangeMax : 224.0f * codeStep);
+    const float kg = 1.0f - kr - kb;
+    const float cb = 2.0f * (1.0f - kb) * cScale;
+    const float cr = 2.0f * (1.0f - kr) * cScale;
+    const float yOffset = fullRange ? 0.0f : -16.0f * codeStep / textureMax;
+    const float cOffset = -128.0f * codeStep / textureMax;
+
+    matrix.colorMatrix = (matrix_float3x3){
+        (simd_float3){yScale, yScale, yScale},
+        (simd_float3){0.0f, -kb / kg * cb, cb},
+        (simd_float3){cr, -kr / kg * cr, 0.0f},
+    };
+    matrix.offset = (vector_float3){yOffset, cOffset, cOffset};
     return matrix;
 }

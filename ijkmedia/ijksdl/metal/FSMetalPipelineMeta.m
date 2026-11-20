@@ -16,6 +16,7 @@
     NSString* shaderName;
     
     BOOL needConvertColor = YES;
+    OSType cv_format = CVPixelBufferGetPixelFormatType(pixelBuffer);
     int plane = CVPixelBufferIsPlanar(pixelBuffer) ? (int)CVPixelBufferGetPlaneCount(pixelBuffer) : 1;
     if (plane == 3) {
         /*
@@ -38,7 +39,6 @@
          */
         shaderName = @"nv12FragmentShader";
     } else if (plane == 1) {
-        OSType cv_format = CVPixelBufferGetPixelFormatType(pixelBuffer);
         if (cv_format == kCVPixelFormatType_32BGRA) {
             needConvertColor = NO;
             shaderName = @"bgraFragmentShader";
@@ -59,7 +59,6 @@
     #endif
     } else {
         //wtf?
-        OSType cv_format = CVPixelBufferGetPixelFormatType(pixelBuffer);
         ALOGE("create render failed,unsupported plane count:%d,unknown format:%4s\n",plane,(char *)&cv_format);
         return nil;
     }
@@ -83,12 +82,13 @@
     }
     
     BOOL fullRange = NO;
-    OSType cv_format = CVPixelBufferGetPixelFormatType(pixelBuffer);
     
     //full color range
     if (kCVPixelFormatType_420YpCbCr8BiPlanarFullRange == cv_format ||
         kCVPixelFormatType_420YpCbCr8PlanarFullRange == cv_format ||
         kCVPixelFormatType_422YpCbCr8FullRange == cv_format ||
+        kCVPixelFormatType_422YpCbCr8BiPlanarFullRange == cv_format ||
+        kCVPixelFormatType_444YpCbCr8BiPlanarFullRange == cv_format ||
         kCVPixelFormatType_420YpCbCr10BiPlanarFullRange == cv_format ||
         kCVPixelFormatType_422YpCbCr10BiPlanarFullRange == cv_format ||
         kCVPixelFormatType_444YpCbCr10BiPlanarFullRange == cv_format) {
@@ -98,6 +98,7 @@
     FSMetalPipelineMeta *meta = [FSMetalPipelineMeta new];
     meta.fragmentName = shaderName;
     meta.fullRange = fullRange;
+    meta.pixelFormat = cv_format;
     meta.convertMatrixType = colorMatrixType;
     //HDR color space.
     if (colorMatrixType == FSYUV2RGBColorMatrixBT2020) {
@@ -133,15 +134,20 @@
     return isHDR;
 }
 
-- (NSString *)description:(BOOL)displayHDR
+- (NSString *)description:(FSHDRDisplayMode)hdrDisplayMode
 {
     NSString *matrix = [@[@"None",@"BT601",@"BT709",@"BT2020"] objectAtIndex:self.convertMatrixType];
     if (self.hdrContent) {
-        if (displayHDR) {
-            return [NSString stringWithFormat:@"%@,hdr dispaly,fullRange:%d",self.fragmentName,self.fullRange];
-        } else {
-            NSString *tf = [@[@"LINEAR",@"PQ",@"HLG"] objectAtIndex:self.transferFunc];
-            return [NSString stringWithFormat:@"%@,hdr tone mapping,fullRange:%d,matrix:%@,transfer:%@",self.fragmentName,self.fullRange,matrix,tf];
+        switch (hdrDisplayMode) {
+            case FSHDRDisplayModeSDR:
+            {
+                NSString *tf = [@[@"LINEAR",@"PQ",@"HLG"] objectAtIndex:self.transferFunc];
+                return [NSString stringWithFormat:@"%@,hdr tone mapping,fullRange:%d,matrix:%@,transfer:%@",self.fragmentName,self.fullRange,matrix,tf];
+            }
+            case FSHDRDisplayModeLinearSRGB:
+                return [NSString stringWithFormat:@"%@,hdr linear SRGB dispaly,fullRange:%d",self.fragmentName,self.fullRange];
+            case FSHDRDisplayModeLinearBT2020:
+                return [NSString stringWithFormat:@"%@,hdr linear BT2020 dispaly,fullRange:%d",self.fragmentName,self.fullRange];
         }
     } else {
         return [NSString stringWithFormat:@"%@,sdr, fullRange:%d,matrix:%@",self.fragmentName,self.fullRange,matrix];
@@ -165,7 +171,7 @@
     if (self.fragmentName != meta.fragmentName) {
         return NO;
     }
-    if (self.fullRange != meta.fullRange) {
+    if (self.pixelFormat != meta.pixelFormat || self.fullRange != meta.fullRange) {
         return NO;
     }
     if (self.hdrContent != meta.hdrContent) {

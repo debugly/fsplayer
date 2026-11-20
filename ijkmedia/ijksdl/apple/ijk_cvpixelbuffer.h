@@ -32,23 +32,28 @@
  * (via av_vt_pixbuf_set_attachments), so downstream renderers can read colorspace,
  * range and transfer function from the buffer.
  *
- * When poolRef is non-NULL a buffer is drawn from that pool (its format must match
+ * When poolRef is non-NULL a buffer is drawn from that pool (its dimensions, format and range must match
  * the frame); otherwise a standalone buffer is created from the frame's dimensions
  * and pixel format. Returns a +1 retained CVPixelBufferRef the caller owns, or NULL
  * on failure (e.g. unsupported pixel format).
  */
 CVPixelBufferRef FSCVPixelBufferCreateFromAVFrame(const AVFrame *frame, CVPixelBufferPoolRef poolRef);
 
+/* Copy FFmpeg's HDR10 side data as Core Video's big-endian MDCV and CLLI attachments. */
+void FSCVPixelBufferAttachHDR10Metadata(CVPixelBufferRef pixelBuffer, const AVFrame *frame);
+
 /*
- * Create a CVPixelBufferPool sized for width x height frames of the given AVPixelFormat.
- * Returns kCVReturnSuccess and writes the +1 owned pool into *poolRef on success.
+ * Create a pool for frames of the given dimensions and AVPixelFormat.
+ * Formats offering both ranges use the legacy full-range default here.
+ * Returns kCVReturnSuccess and writes an owned pool to *poolRef on success.
+ * For a pool that follows AVFrame color metadata, use FSSwPixelBufferPoolEnsure.
  */
 CVReturn FSCVPixelBufferPoolCreateForAVFrame(CVPixelBufferPoolRef *poolRef, int width, int height, int format);
 
 /*
  * A CVPixelBufferPool paired with the frame geometry it was created for, so callers
  * converting a stream of software-decoded AVFrames can reuse one pool and only recreate
- * it when the frame's dimensions or pixel format change. Zero-initialise before first use
+ * it when the frame's dimensions, pixel format or color range change. Zero-initialise before first use
  * (e.g. as an ivar); VideoToolbox frames don't need it (their buffer is frame->data[3]).
  */
 typedef struct FSSwPixelBufferPool {
@@ -56,13 +61,14 @@ typedef struct FSSwPixelBufferPool {
     int width;
     int height;
     int format;
+    bool fullRange;
 } FSSwPixelBufferPool;
 
 /*
- * Ensure the pool matches (width, height, format), recreating it on mismatch. Returns the
+ * Ensure the pool matches the frame, recreating it on mismatch. Returns the
  * current pool (may be NULL if creation failed). The pool stays owned by the struct.
  */
-CVPixelBufferPoolRef FSSwPixelBufferPoolEnsure(FSSwPixelBufferPool *p, int width, int height, int format);
+CVPixelBufferPoolRef FSSwPixelBufferPoolEnsure(FSSwPixelBufferPool *p, const AVFrame *frame);
 
 /*
  * Release the pool and reset the cached geometry. Safe to call on a zero-initialised or

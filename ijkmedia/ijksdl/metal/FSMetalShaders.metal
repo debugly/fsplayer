@@ -142,6 +142,22 @@ float3 rgb_adjust(float3 rgb, float4 rgbAdjustment) {
 
 // MARK: - HDR Helpers
 
+// Multiply a row vector by this matrix to convert linear BT.709 to BT.2020.
+constant matrix_float3x3 RGB709_TO_RGB2020 = matrix_float3x3(
+    0.6274039, 0.3292830, 0.0433131,
+    0.0690973, 0.9195404, 0.0113623,
+    0.0163914, 0.0880133, 0.8955953);
+
+fragment float4 subtitleBT2020Fragment(RasterizerData input [[stage_in]],
+                                      texture2d<float> texture [[texture(FSFragmentTextureIndexTextureY)]])
+{
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+    float4 premultiplied = texture.sample(textureSampler, input.textureCoordinate);
+    float3 srgb = premultiplied.rgb / max(premultiplied.a, 1e-6f);
+    float3 linear = select(srgb / 12.92f, pow((srgb + 0.055f) / 1.055f, 2.4f), srgb > 0.04045f);
+    return float4((linear * RGB709_TO_RGB2020) * premultiplied.a, premultiplied.a);
+}
+
 constant matrix_float3x3 RGB2020_TO_XYZ = matrix_float3x3(
                                             0.6370, 0.1446, 0.1689,
                                             0.2627, 0.6780, 0.0593,
@@ -207,7 +223,7 @@ float st_2084_eotf(float x)
     constexpr float ST2084_C2 = 18.8515625;
     constexpr float ST2084_C3 = 18.6875;
     
-    float xpow = pow(x, float(1.0 / ST2084_M2));
+    float xpow = pow(max(x, 0.0f), float(1.0 / ST2084_M2));
     float num = max(xpow - ST2084_C1, 0.0);
     float den = max(ST2084_C2 - ST2084_C3 * xpow, FLT_MIN);
     return pow(num/den, 1.0 / ST2084_M1);
@@ -305,25 +321,16 @@ float3 rec_1886_eotf_vec(float3 v)
 // bt709]
 
 // mark -hdr helps
-// HDR direct output for EDR/HDR-capable displays.
-// Applies EOTF and gamut conversion (BT.2020 → linear sRGB) but skips tone-mapping.
-// Output is in linear light; 1.0 == SDR reference white (~203 nits per BT.2408).
-// Values above 1.0 represent HDR highlights delivered straight to the EDR layer.
-float3 hdr_direct(float3 rgb_2020, FSColorTransferFunc transferFun)
+// Decode to linear BT.2020 for EDR. Values of 1.0 represent HDR reference white.
+float3 hdr_linear_bt2020(float3 rgb_2020, FSColorTransferFunc transferFun)
 {
-    float3 linear;
     if (transferFun == FSColorTransferFuncPQ) {
-        // PQ EOTF → [0, 10000] nits; normalise: 203 nits (HDR ref white) == 1.0
-        linear = st_2084_eotf_vec(rgb_2020) * (10000.0 / 203.0);
-    } else if (transferFun == FSColorTransferFuncHLG) {
-        // HLG EOTF → [0, 1000] nits; normalise: 203 nits == 1.0
-        linear = arib_b67_eotf_vec(rgb_2020) * (1000.0 / 203.0);
-    } else {
-        // Linear or unrecognised: decode gamma only
-        linear = rec_1886_eotf_vec(rgb_2020);
+        return st_2084_eotf_vec(rgb_2020) * (10000.0f / FS_HDR_PQ_REFERENCE_WHITE_NITS);
     }
-    // Gamut: BT.2020 primaries → linear sRGB primaries
-    return linear * RGB2020_TO_RGB709;
+    if (transferFun == FSColorTransferFuncHLG) {
+        return arib_b67_eotf_vec(rgb_2020) * (1000.0f / FS_HDR_PQ_REFERENCE_WHITE_NITS);
+    }
+    return rec_1886_eotf_vec(rgb_2020);
 }
 
 float3 hdr2sdr(float3 rgb_2020, FSColorTransferFunc transferFun)
@@ -356,16 +363,22 @@ float3 hdr2sdr(float3 rgb_2020, FSColorTransferFunc transferFun)
 }
 
 // 统一核心 YUV2RGB 算法
-inline float4 yuv2rgb_internal(float3 yuv, matrix_float3x3 colorMatrix, vector_float3 offset, vector_float4 adjustment, int hdrContent, int hdrDisplay, FSColorTransferFunc transferFun)
+inline float4 yuv2rgb_internal(float3 yuv, matrix_float3x3 colorMatrix, vector_float3 offset, vector_float4 adjustment, int hdrContent, FSHDRDisplayMode hdrDisplayMode, FSColorTransferFunc transferFun)
 {
     // 先把 [0.0,1.0] 范围的 YUV 处理为 [0.0,1.0] 范围的 RGB
     float3 rgb = colorMatrix * (yuv + offset);
     // HDR 转 SDR
     float3 myFragColor;
     if (hdrContent) {
-        if (hdrDisplay) {
-            // HDR display mode: output linear light for EDR layer (no tone-mapping)
-            myFragColor = hdr_direct(rgb, transferFun);
+        if (hdrDisplayMode == FSHDRDisplayModeLinearBT2020) {
+            float3 wide = hdr_linear_bt2020(rgb, transferFun);
+            if (adjustment.w > 0.99f) {
+                wide = rgb_adjust(wide * RGB2020_TO_RGB709, adjustment) * RGB709_TO_RGB2020;
+            }
+            return float4(wide, 1.0f);
+        }
+        if (hdrDisplayMode == FSHDRDisplayModeLinearSRGB) {
+            myFragColor = hdr_linear_bt2020(rgb, transferFun) * RGB2020_TO_RGB709;
         } else {
             // SDR display mode: tone-map HDR → SDR
             myFragColor = hdr2sdr(rgb, transferFun);
@@ -389,7 +402,7 @@ struct FSFragmentShaderArguments {
 // 重载 1：供 Argument Buffer (device 指针) 调用
 inline float4 yuv2rgb(float3 yuv, device FSConvertMatrix *convertMatrix)
 {
-    return yuv2rgb_internal(yuv, convertMatrix->colorMatrix, convertMatrix->offset, convertMatrix->adjustment, convertMatrix->hdrContent, convertMatrix->hdrDisplay, convertMatrix->transferFun);
+    return yuv2rgb_internal(yuv, convertMatrix->colorMatrix, convertMatrix->offset, convertMatrix->adjustment, convertMatrix->hdrContent, convertMatrix->hdrDisplayMode, convertMatrix->transferFun);
 }
 
 /// @brief hdr BiPlanar fragment shader
@@ -488,7 +501,7 @@ fragment float4 argbFragmentShader_argbuf(RasterizerData input [[stage_in]],
 // 重载 2：供 Direct Parameter Binding (constant 引用) 调用
 inline float4 yuv2rgb(float3 yuv, constant FSConvertMatrix &convertMatrix)
 {
-    return yuv2rgb_internal(yuv, convertMatrix.colorMatrix, convertMatrix.offset, convertMatrix.adjustment, convertMatrix.hdrContent, convertMatrix.hdrDisplay, convertMatrix.transferFun);
+    return yuv2rgb_internal(yuv, convertMatrix.colorMatrix, convertMatrix.offset, convertMatrix.adjustment, convertMatrix.hdrContent, convertMatrix.hdrDisplayMode, convertMatrix.transferFun);
 }
 
 /// @brief nv12 fragment shader (Direct Parameter Binding)

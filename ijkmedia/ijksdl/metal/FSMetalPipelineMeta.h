@@ -25,10 +25,17 @@ static inline CFTypeRef _Nullable FSMetalCopyBufferAttachment(CVBufferRef buffer
     return attachment ? CFRetain(attachment) : NULL;
 }
 
+static NSData *FSMetalCopyEDRAttachment(CVPixelBufferRef pixelBuffer, CFStringRef key, NSUInteger size)
+{
+    NSData *data = CFBridgingRelease(FSMetalCopyBufferAttachment(pixelBuffer, key));
+    return [data isKindOfClass:NSData.class] && data.length == size ? data : nil;
+}
+
 @interface FSMetalPipelineMeta : NSObject
 
 @property (nonatomic) BOOL hdrContent;
 @property (nonatomic) BOOL fullRange;
+@property (nonatomic) OSType pixelFormat;
 @property (nonatomic) NSString* fragmentName;
 @property (nonatomic) FSColorTransferFunc transferFunc;
 @property (nonatomic) FSYUV2RGBColorMatrixType convertMatrixType;

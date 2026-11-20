@@ -77,6 +77,10 @@
             fsh = @"subtileDIRECTFragment";
         } else if (_outFormat == FSMetalSubtitleOutFormatSWAP_RB) {
             fsh = @"subtileSWAPRGFragment";
+        } else if (_outFormat == FSMetalSubtitleOutFormatBT2020) {
+            fsh = @"subtitleBT2020Fragment";
+        } else if (_outFormat == FSMetalSubtitleOutFormatLinearSRGB) {
+            fsh = @"subtitleLinearSRGBFragment";
         } else {
             NSAssert(fsh, @"FSMetalSubtitleOutFormat is wrong!");
         }
@@ -87,7 +91,7 @@
     }
     
     id<MTLFunction> fragmentFunction = [defaultLibrary newFunctionWithName:fsh];
-    NSAssert(vertexFunction, @"can't find subtileRGBAFragment Function!");
+    NSAssert(fragmentFunction, @"can't find fragment function %@!", fsh);
     
     // Configure a pipeline descriptor that is used to create a pipeline state.
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
@@ -113,7 +117,7 @@
     //  from Xcode.)
     NSAssert(pipelineState, @"Failed to create pipeline state: %@", error);
     self.renderPipeline = pipelineState;
-    return YES;
+    return pipelineState != nil;
 }
 
 - (void)updateSubtitleVertexIfNeed:(CGRect)rect
