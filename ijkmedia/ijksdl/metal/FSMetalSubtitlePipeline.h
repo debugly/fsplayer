@@ -12,7 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 typedef enum : NSUInteger {
     FSMetalSubtitleOutFormatDIRECT,
     FSMetalSubtitleOutFormatSWAP_RB,
-    FSMetalSubtitleOutFormatBT2020
+    FSMetalSubtitleOutFormatBT2020,
+    FSMetalSubtitleOutFormatLinearSRGB
 } FSMetalSubtitleOutFormat;
 
 typedef enum : NSUInteger {

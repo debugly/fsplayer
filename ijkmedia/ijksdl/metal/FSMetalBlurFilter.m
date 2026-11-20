@@ -53,7 +53,7 @@
     if (!data) {
         return nil;
     }
-    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     CGContextRef ctx = CGBitmapContextCreate(data, w, h, 8, bytesPerRow, cs,
                                              (uint32_t)kCGImageAlphaPremultipliedFirst | (uint32_t)kCGBitmapByteOrder32Little);
     CGColorSpaceRelease(cs);

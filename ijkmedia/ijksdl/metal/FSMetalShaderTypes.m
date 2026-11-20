@@ -145,7 +145,6 @@ FSConvertMatrix ijk_metal_create_color_matrix(FSYUV2RGBColorMatrixType matrixTyp
         case FSYUV2RGBColorMatrixBT709:  kr = 0.2126f; kb = 0.0722f; break;
         case FSYUV2RGBColorMatrixBT2020: kr = 0.2627f; kb = 0.0593f; break;
         case FSYUV2RGBColorMatrixNone:   return matrix;
-        default:                        return matrix;
     }
 
     const mp_format *format = mp_get_metal_format(pixelFormat);

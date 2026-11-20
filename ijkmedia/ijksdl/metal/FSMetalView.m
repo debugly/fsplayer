@@ -132,7 +132,7 @@ typedef CGRect NSRect;
 @property (nonatomic, copy) NSData *edrMasteringDisplay;
 @property (nonatomic, copy) NSData *edrContentLight;
 #endif
-// 高斯模糊背景：复用字幕管线（BGRA/DIRECT）把模糊后的纹理铺满整个视图。
+// 高斯模糊背景：复用字幕管线把模糊后的纹理铺满整个视图。
 @property (atomic, strong) FSMetalSubtitlePipeline *backgroundPipeline;
 @property (atomic, strong) FSMetalBlurFilter *blurFilter;
 @property (atomic, strong) id<MTLTexture> backgroundTexture;
@@ -452,7 +452,7 @@ static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRD
             self.picturePipeline = nil;
             self.subPipeline = nil;
             self.backgroundPipeline = nil;
-            self.needRebuildBackgroundTexture = self.backgroundImage != nil;
+            self.needCleanBackgroundColor = YES;
 
             self.colorPixelFormat = activeHDR ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
             metalLayer.wantsExtendedDynamicRangeContent = activeHDR;
@@ -493,8 +493,7 @@ static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRD
 #endif
 
 /// Called from the main thread (screen change notifications, setAllowHDRDisplay:).
-/// Uses renderSnapshotLock to synchronise with the render thread, which holds the same
-/// lock for the entire setupPipelineIfNeed: → encode sequence in drawRect:.
+/// drawRect: holds renderSnapshotLock from drawable acquisition through encoding.
 - (void)updateHDRDisplayMode HDR_API_AVAILABLE {
 #if !TARGET_OS_TV
     BOOL displaySupportsHDR = [self currentDisplaySupportsHDR];
@@ -622,28 +621,30 @@ static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRD
                                                                 sigma:self.backgroundBlurSigma
                                                            iterations:self.backgroundBlurIterations
                                                          commandQueue:self.commandQueue];
-    if (self.backgroundTexture && ![self setupBackgroundPipelineIfNeed]) {
-        self.backgroundTexture = nil;
-    }
 }
 
-// 把模糊纹理铺满整个 drawable（拉伸填充；背景已模糊，形变不可见）。
+// 持有 renderSnapshotLock 时，把模糊纹理铺满 drawable。
 - (void)encodeBackground:(id<MTLRenderCommandEncoder>)renderEncoder
             drawableSize:(CGSize)drawableSize
 {
+    id<MTLTexture> texture = self.backgroundTexture;
+    if (!texture || ![self setupBackgroundPipelineIfNeed]) {
+        return;
+    }
+
     [renderEncoder setViewport:(MTLViewport){0.0, 0.0, drawableSize.width, drawableSize.height, -1.0, 1.0}];
     [self.backgroundPipeline updateSubtitleVertexIfNeed:CGRectMake(-1.0, -1.0, 2.0, 2.0)];
-    [self.backgroundPipeline drawTexture:self.backgroundTexture encoder:renderEncoder];
+    [self.backgroundPipeline drawTexture:texture encoder:renderEncoder];
 }
 
 #pragma mark - Pipeline & Upload Textures
 
-- (FSMetalSubtitlePipeline *)newOverlayPipelineWithPixelFormat:(MTLPixelFormat)pixelFormat mode:(FSHDRDisplayMode)mode
+- (FSMetalSubtitlePipeline *)newOverlayPipelineWithPixelFormat:(MTLPixelFormat)pixelFormat
+                                                     outFormat:(FSMetalSubtitleOutFormat)outFormat
 {
-    FSMetalSubtitleOutFormat output = mode == FSHDRDisplayModeLinearBT2020 ? FSMetalSubtitleOutFormatBT2020 : FSMetalSubtitleOutFormatDIRECT;
     FSMetalSubtitlePipeline *pipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device
                                                                                inFormat:FSMetalSubtitleInFormatBRGA
-                                                                              outFormat:output
+                                                                              outFormat:outFormat
                                                                        colorPixelFormat:pixelFormat];
     return [pipeline createRenderPipelineIfNeed] ? pipeline : nil;
 }
@@ -654,14 +655,27 @@ static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRD
         return YES;
     }
 
-    self.backgroundPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat mode:self.hdrDisplayMode];
+    FSMetalSubtitleOutFormat outFormat = FSMetalSubtitleOutFormatDIRECT;
+    switch (self.hdrDisplayMode) {
+        case FSHDRDisplayModeSDR:
+            break;
+        case FSHDRDisplayModeLinearSRGB:
+            outFormat = FSMetalSubtitleOutFormatLinearSRGB;
+            break;
+        case FSHDRDisplayModeLinearBT2020:
+            outFormat = FSMetalSubtitleOutFormatBT2020;
+            break;
+    }
+    self.backgroundPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat outFormat:outFormat];
     return self.backgroundPipeline != nil;
 }
 
 - (BOOL)setupSubPipelineIfNeed
 {
     if (!self.subPipeline) {
-        self.subPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat mode:self.hdrDisplayMode];
+        FSMetalSubtitleOutFormat outFormat = self.hdrDisplayMode == FSHDRDisplayModeLinearBT2020
+            ? FSMetalSubtitleOutFormatBT2020 : FSMetalSubtitleOutFormatDIRECT;
+        self.subPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat outFormat:outFormat];
     }
     return self.subPipeline != nil;
 }
@@ -954,13 +968,6 @@ end:
     }
 #endif
 
-    [self.renderSnapshotLock lock];
-    // 用合成后的 videoPicture（tile-grid 为 BGRA，普通帧即原缓冲）建立显示管线。
-    [self setupPipelineIfNeed:currentAttach.videoPicture blend:currentAttach.hasAlpha];
-    if (currentAttach.subTexture) {
-        [self setupSubPipelineIfNeed];
-    }
-    [self.renderSnapshotLock unlock];
     //use current DisplayLink thread
     [self draw];
 }
@@ -1619,15 +1626,18 @@ end:
     }
 #endif
 
+    [self rebuildBackgroundTextureIfNeed];
+
+    [self.renderSnapshotLock lock];
+
     id<CAMetalDrawable> drawable = self.currentDrawable;
     // 拿不到 Drawable 直接放弃这一帧，不要强行 commit
     if (!drawable) {
+        [self.renderSnapshotLock unlock];
         return;
     }
 
     FSMetalRenderFrame *currentFrame = self.drawingFrame;
-
-    [self rebuildBackgroundTextureIfNeed];
 
     //Clean Background Color
     if (!currentFrame.videoPicture) {
@@ -1643,20 +1653,18 @@ end:
             id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
             id <MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:passDescriptor];
             //无视频时，用高斯模糊背景填充，替代纯色背景。
-            if (self.backgroundTexture) {
-                [self encodeBackground:commandEncoder drawableSize:self.drawableSize];
-            }
+            [self encodeBackground:commandEncoder drawableSize:self.drawableSize];
             [commandEncoder endEncoding];
             [commandBuffer presentDrawable:drawable];
             [commandBuffer commit];
             self.needCleanBackgroundColor = NO;
         }
+        [self.renderSnapshotLock unlock];
         return;
     }
 
-    [self.renderSnapshotLock lock];
-
-    if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache]) {
+    if (![currentFrame prepareTexturesWithDevice:self.device textureCache:self.pictureTextureCache] ||
+        ![self setupPipelineIfNeed:currentFrame.videoPicture blend:currentFrame.hasAlpha]) {
         [self.renderSnapshotLock unlock];
         return;
     }
@@ -1688,7 +1696,7 @@ end:
 
     //先铺高斯模糊背景，视频画面随后绘制在其上，黑边区域即显示模糊背景。
     //只有 AspectFit 会留出黑边，其它模式视频铺满全屏，无需绘制背景。
-    if (self.backgroundTexture && _scalingMode == FSScalingModeAspectFit) {
+    if (_scalingMode == FSScalingModeAspectFit) {
         [self encodeBackground:renderEncoder drawableSize:drawableSize];
     }
 
@@ -1698,10 +1706,11 @@ end:
                   ratio:ratio
                pipeline:self.picturePipeline];
 
-    if (currentFrame.subTexture) {
+    id<MTLTexture> subtitleTexture = currentFrame.subTexture;
+    if (subtitleTexture && [self setupSubPipelineIfNeed]) {
         [self encodeSubtitle:renderEncoder
                 drawableSize:drawableSize
-                     texture:currentFrame.subTexture
+                     texture:subtitleTexture
                     pipeline:self.subPipeline];
     }
     //[renderEncoder popDebugGroup];
@@ -1739,7 +1748,7 @@ end:
     if (self.colorPixelFormat == MTLPixelFormatBGRA8Unorm) {
         return [self setupSubPipelineIfNeed] ? self.subPipeline : nil;
     }
-    return [self newOverlayPipelineWithPixelFormat:MTLPixelFormatBGRA8Unorm mode:FSHDRDisplayModeSDR];
+    return [self newOverlayPipelineWithPixelFormat:MTLPixelFormatBGRA8Unorm outFormat:FSMetalSubtitleOutFormatDIRECT];
 }
 
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub

@@ -148,14 +148,26 @@ constant matrix_float3x3 RGB709_TO_RGB2020 = matrix_float3x3(
     0.0690973, 0.9195404, 0.0113623,
     0.0163914, 0.0880133, 0.8955953);
 
+static float4 linearizePremultipliedSRGB(float4 color)
+{
+    float3 srgb = color.rgb / max(color.a, 1e-6f);
+    float3 linear = select(srgb / 12.92f, pow((srgb + 0.055f) / 1.055f, 2.4f), srgb > 0.04045f);
+    return float4(linear * color.a, color.a);
+}
+
+fragment float4 subtitleLinearSRGBFragment(RasterizerData input [[stage_in]],
+                                          texture2d<float> texture [[texture(FSFragmentTextureIndexTextureY)]])
+{
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+    return linearizePremultipliedSRGB(texture.sample(textureSampler, input.textureCoordinate));
+}
+
 fragment float4 subtitleBT2020Fragment(RasterizerData input [[stage_in]],
                                       texture2d<float> texture [[texture(FSFragmentTextureIndexTextureY)]])
 {
     constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
-    float4 premultiplied = texture.sample(textureSampler, input.textureCoordinate);
-    float3 srgb = premultiplied.rgb / max(premultiplied.a, 1e-6f);
-    float3 linear = select(srgb / 12.92f, pow((srgb + 0.055f) / 1.055f, 2.4f), srgb > 0.04045f);
-    return float4((linear * RGB709_TO_RGB2020) * premultiplied.a, premultiplied.a);
+    float4 linear = linearizePremultipliedSRGB(texture.sample(textureSampler, input.textureCoordinate));
+    return float4(linear.rgb * RGB709_TO_RGB2020, linear.a);
 }
 
 constant matrix_float3x3 RGB2020_TO_XYZ = matrix_float3x3(
