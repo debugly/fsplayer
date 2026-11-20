@@ -640,8 +640,19 @@ static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRD
 #pragma mark - Pipeline & Upload Textures
 
 - (FSMetalSubtitlePipeline *)newOverlayPipelineWithPixelFormat:(MTLPixelFormat)pixelFormat
-                                                     outFormat:(FSMetalSubtitleOutFormat)outFormat
+                                                         mode:(FSHDRDisplayMode)mode
 {
+    FSMetalSubtitleOutFormat outFormat = FSMetalSubtitleOutFormatDIRECT;
+    switch (mode) {
+        case FSHDRDisplayModeSDR:
+            break;
+        case FSHDRDisplayModeLinearSRGB:
+            outFormat = FSMetalSubtitleOutFormatLinearSRGB;
+            break;
+        case FSHDRDisplayModeLinearBT2020:
+            outFormat = FSMetalSubtitleOutFormatBT2020;
+            break;
+    }
     FSMetalSubtitlePipeline *pipeline = [[FSMetalSubtitlePipeline alloc] initWithDevice:self.device
                                                                                inFormat:FSMetalSubtitleInFormatBRGA
                                                                               outFormat:outFormat
@@ -655,27 +666,14 @@ static MTLClearColor FSMetalClearColorForDisplayMode(MTLClearColor color, FSHDRD
         return YES;
     }
 
-    FSMetalSubtitleOutFormat outFormat = FSMetalSubtitleOutFormatDIRECT;
-    switch (self.hdrDisplayMode) {
-        case FSHDRDisplayModeSDR:
-            break;
-        case FSHDRDisplayModeLinearSRGB:
-            outFormat = FSMetalSubtitleOutFormatLinearSRGB;
-            break;
-        case FSHDRDisplayModeLinearBT2020:
-            outFormat = FSMetalSubtitleOutFormatBT2020;
-            break;
-    }
-    self.backgroundPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat outFormat:outFormat];
+    self.backgroundPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat mode:self.hdrDisplayMode];
     return self.backgroundPipeline != nil;
 }
 
 - (BOOL)setupSubPipelineIfNeed
 {
     if (!self.subPipeline) {
-        FSMetalSubtitleOutFormat outFormat = self.hdrDisplayMode == FSHDRDisplayModeLinearBT2020
-            ? FSMetalSubtitleOutFormatBT2020 : FSMetalSubtitleOutFormatDIRECT;
-        self.subPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat outFormat:outFormat];
+        self.subPipeline = [self newOverlayPipelineWithPixelFormat:self.colorPixelFormat mode:self.hdrDisplayMode];
     }
     return self.subPipeline != nil;
 }
@@ -1748,7 +1746,7 @@ end:
     if (self.colorPixelFormat == MTLPixelFormatBGRA8Unorm) {
         return [self setupSubPipelineIfNeed] ? self.subPipeline : nil;
     }
-    return [self newOverlayPipelineWithPixelFormat:MTLPixelFormatBGRA8Unorm outFormat:FSMetalSubtitleOutFormatDIRECT];
+    return [self newOverlayPipelineWithPixelFormat:MTLPixelFormatBGRA8Unorm mode:FSHDRDisplayModeSDR];
 }
 
 - (CGImageRef)_snapshotWithSubtitle:(BOOL)drawSub
