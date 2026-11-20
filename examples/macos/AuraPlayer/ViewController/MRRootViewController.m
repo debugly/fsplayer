@@ -2325,7 +2325,7 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                                                        error:nil];
             }
             if (content) {
-                NSArray<NSDictionary *> *items = [MRM3UParser parseM3UContent:content];
+                NSArray<NSDictionary *> *items = [MRM3UParser parseM3UContent:content sourceURL:filePath];
                 for (NSDictionary *item in items) {
                     NSString *itemURL = item[@"url"];
                     if (!itemURL) continue;
@@ -2344,6 +2344,9 @@ typedef NS_ENUM(NSInteger, MRSidebarType) {
                         continue;
                     }
                     [videos addObject:itemURL];
+                    if (bookmark && [itemURL isEqualToString:filePath]) {
+                        self.playlistBookmarks[itemURL] = bookmark;
+                    }
                     // Store metadata
                     self.playlistMeta[itemURL] = @{
                         @"title": item[@"title"] ?: @"",

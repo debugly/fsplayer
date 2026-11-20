@@ -113,6 +113,12 @@ static NSString *MRParseTitle(NSString *extinfLine)
 
 + (NSArray<NSDictionary *> *)parseM3UContent:(NSString *)content
 {
+    return [self parseM3UContent:content sourceURL:nil];
+}
+
++ (NSArray<NSDictionary *> *)parseM3UContent:(NSString *)content
+                                 sourceURL:(NSString *)sourceURL
+{
     if (content.length == 0) return @[];
     
     NSMutableArray<NSDictionary *> *items = [NSMutableArray array];
@@ -127,6 +133,16 @@ static NSString *MRParseTitle(NSString *extinfLine)
         
         // Skip empty lines
         if (line.length == 0) continue;
+
+        // HLS media and multivariant playlists must be played through their manifest.
+        if ([line hasPrefix:@"#EXT-X-TARGETDURATION:"] ||
+            [line hasPrefix:@"#EXT-X-STREAM-INF:"] ||
+            [line hasPrefix:@"#EXT-X-I-FRAME-STREAM-INF:"] ||
+            [line hasPrefix:@"#EXT-X-MEDIA:"]) {
+            if (sourceURL.length == 0) return @[];
+            NSString *title = [[NSURL URLWithString:sourceURL] lastPathComponent];
+            return @[@{@"url": sourceURL, @"title": title.length ? title : sourceURL.lastPathComponent}];
+        }
         
         // Skip comments (but not #EXT... directives)
         if ([line hasPrefix:@"#"]) {
@@ -215,7 +231,7 @@ static NSString *MRParseTitle(NSString *extinfLine)
             return;
         }
         
-        NSArray<NSDictionary *> *items = [self parseRelativeURLsInItems:[self parseM3UContent:content]
+        NSArray<NSDictionary *> *items = [self parseRelativeURLsInItems:[self parseM3UContent:content sourceURL:urlString]
                                                              baseURL:urlString];
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(items, nil);
@@ -263,7 +279,7 @@ static NSString *MRParseTitle(NSString *extinfLine)
                     return;
                 }
                 
-                NSArray<NSDictionary *> *items = [self parseRelativeURLsInItems:[self parseM3UContent:content]
+                NSArray<NSDictionary *> *items = [self parseRelativeURLsInItems:[self parseM3UContent:content sourceURL:urlString]
                                                                        baseURL:urlString];
                 dispatch_async(dispatch_get_main_queue(), ^{
                     completion(items, nil);

@@ -18,8 +18,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// Each dictionary contains: url (NSString), title (NSString),
 ///   logo (NSString, optional), group (NSString, optional).
 /// @param content  The raw M3U file content as a UTF-8 string.
-/// @return Array of NSDictionary objects, one per playlist entry.
+/// @return Array of NSDictionary objects, one per playlist entry. HLS returns an empty array.
 + (NSArray<NSDictionary *> *)parseM3UContent:(NSString *)content;
+
+/// Parse playlist entries, or return the source as a single item for HLS.
++ (NSArray<NSDictionary *> *)parseM3UContent:(NSString *)content
+                                 sourceURL:(nullable NSString *)sourceURL;
 
 /// Asynchronously download and parse an M3U playlist from a local file path
 /// or a remote HTTP(S) URL.
