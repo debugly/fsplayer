@@ -3425,7 +3425,6 @@ static int hw_decoder_init(AVCodecContext * ctx, const AVCodecHWConfig* config) 
      avcodec_send_packet failed:Invalid data found when processing input(-1094995529).
      */
     //ctx->get_format = get_hw_format;
-    av_opt_set_int(ctx, "refcounted_frames", 1, 0);
     //创建hw_device_ctx传给解码器上下文，必须在avcodec_open2之前并且之后不能修改
     ctx->hw_device_ctx = hw_device_ctx;
     return err;
