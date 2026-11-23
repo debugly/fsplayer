@@ -87,9 +87,6 @@ typedef enum : NSUInteger {
 @property(nullable, nonatomic, weak) id <FSVideoRenderingDelegate> displayDelegate;
 
 @property(nonatomic) FSScalingMode scalingMode;
-#if TARGET_OS_IOS
-@property(nonatomic) CGFloat scaleFactor;
-#endif
 
 @property(nonatomic) float xRotateDegrees;
 @property(nonatomic) float yRotateDegrees;

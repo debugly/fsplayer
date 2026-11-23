@@ -181,9 +181,6 @@ typedef CGRect NSRect;
 @synthesize darPreference = _darPreference;
 
 @synthesize preventDisplay = _preventDisplay;
-#if TARGET_OS_IOS
-@synthesize scaleFactor = _scaleFactor;
-#endif
 @synthesize allowHDRDirectDisplay = _allowHDRDirectDisplay;
 
 @synthesize displayDelegate = _displayDelegate;
