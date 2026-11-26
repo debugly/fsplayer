@@ -250,6 +250,7 @@ struct FSVulkanRenderer {
     int hdr_display;         /* 直显 HDR（= 内容 HDR && 允许 && 屏支持）*/
     int allow_hdr_display;   /* iOS 的 allowHDRDirectDisplay，默认允许 */
     int display_hdr_support; /* 当前 swapchain 能否直接输出 HDR（8bit UNORM 时为 0）*/
+    int display_transfer;    /* 用于设定swapchain的ColorTransfer 0 线性 / 1 PQ / 2 HLG */
 
     /* ---- 快照 ---- */
     volatile int   snapshot_type;      /* -1 = 没有请求 */
@@ -331,16 +332,18 @@ static VkResult create_instance(FSVulkanRenderer *r)
         .apiVersion = VK_API_VERSION_1_1,
     };
 
+    /* 增加VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME用于查询色彩空间 */
     const char *extensions[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+            VK_KHR_SURFACE_EXTENSION_NAME,
+            VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+            VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME
     };
 
     VkInstanceCreateInfo ci = {
-        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pApplicationInfo = &app,
-        .enabledExtensionCount = 2,
-        .ppEnabledExtensionNames = extensions,
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &app,
+            .enabledExtensionCount = 3,
+            .ppEnabledExtensionNames = extensions,
     };
 
     VkResult res = vkCreateInstance(&ci, NULL, &r->instance);
@@ -563,18 +566,34 @@ static VkResult create_surface_swapchain(FSVulkanRenderer *r)
 
     uint32_t fmt_count = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(r->physical_device, r->surface, &fmt_count, NULL);
-    VkSurfaceFormatKHR formats[16];
-    if (fmt_count > 16) fmt_count = 16;
+    /* 改为动态数组，设备返回的格式远超16个 */
+    VkSurfaceFormatKHR *formats = (VkSurfaceFormatKHR *) malloc(sizeof(VkSurfaceFormatKHR)*fmt_count);
     vkGetPhysicalDeviceSurfaceFormatsKHR(r->physical_device, r->surface, &fmt_count, formats);
 
     VkSurfaceFormatKHR chosen = formats[0];
     for (uint32_t i = 0; i < fmt_count; i++) {
-        if (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM ||
-            formats[i].format == VK_FORMAT_B8G8R8A8_UNORM) {
-            chosen = formats[i];
-            break;
+        if(r->display_transfer == 0) {
+            if ((formats[i].format == VK_FORMAT_R8G8B8A8_UNORM ||
+                formats[i].format == VK_FORMAT_B8G8R8A8_UNORM) &&
+                formats[i].colorSpace == VK_COLOR_SPACE_BT709_LINEAR_EXT) {
+                chosen = formats[i];
+                break;
+            }
+        } else if(r->display_transfer == 1) {
+            if ((formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)  &&
+                formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) {
+                chosen = formats[i];
+                break;
+            }
+        } else if(r->display_transfer == 2) {
+            if ((formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)  &&
+                formats[i].colorSpace == VK_COLOR_SPACE_HDR10_HLG_EXT) {
+                chosen = formats[i];
+                break;
+            }
         }
     }
+    free(formats);
     r->swapchain_format = chosen.format;
 
     VkExtent2D extent = caps.currentExtent;
@@ -1425,6 +1444,7 @@ FSVulkanRenderer *fs_vulkan_renderer_create(void)
     r->tex10bit  = 0;
     r->hdr_content = 0;
     r->hdr_transfer = 0;
+    r->display_transfer = 0;
     r->hdr_full_range = 0;
     r->hdr_display = 0;
     r->allow_hdr_display = 1;   /* iOS 的默认值是 YES */
@@ -3260,9 +3280,26 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
                             rotate_degrees, sar_num, sar_den);
 
     /* MediaCodec 硬解：零拷贝外部显存通路 */
-    if (frame->format == AV_PIX_FMT_MEDIACODEC)
+    if (frame->format == AV_PIX_FMT_MEDIACODEC) {
+        /* 根据色彩空间重置swapchain，确保HDR显示正常 */
+        if (frame->color_trc == AVCOL_TRC_SMPTE2084) {
+            if(r->hdr_transfer != 1)
+                r->swapchain_dirty = 1;
+            r->hdr_transfer = 1;                 /* PQ */
+            r->display_transfer = 1;
+        } else if (frame->color_trc == AVCOL_TRC_ARIB_STD_B67) {
+            if(r->hdr_transfer != 2)
+                r->swapchain_dirty = 1;
+            r->hdr_transfer = 2;                 /* HLG */
+            r->display_transfer = 2;
+        } else {
+            if(r->hdr_transfer != 0)
+                r->swapchain_dirty = 1;
+            r->hdr_transfer = 0;                 /* 线性 */
+            r->display_transfer = 0;
+        }
         return display_mc_frame(r, frame);
-
+    }
     /*
      * HDR 判定对齐 iOS FSMetalPipelineMeta：YCbCr 矩阵是 BT.2020 就算 HDR，
      * 传输函数取 PQ / HLG / 线性，色域范围取帧的 color_range。
@@ -3278,6 +3315,7 @@ int fs_vulkan_renderer_display(FSVulkanRenderer *r, const AVFrame *frame,
     } else {
         r->hdr_transfer = 0;                 /* 线性 */
     }
+    r->display_transfer = 0; /* 软解下为SDR渲染 */
     r->hdr_display = (r->hdr_content && r->allow_hdr_display && r->display_hdr_support) ? 1 : 0;
 
     const uint8_t *y, *u, *v;
