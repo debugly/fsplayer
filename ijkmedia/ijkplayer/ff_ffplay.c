@@ -4256,7 +4256,41 @@ static int read_thread(void *arg)
     if (ffp->iformat_name)
         is->iformat = av_find_input_format(ffp->iformat_name);
     
+    /*
+     * Some HTTP servers serve closed byte ranges (bytes=a-b, what AVPlayer asks
+     * for) correctly but return the wrong data for open-ended ones (bytes=a-,
+     * FFmpeg's default). An MP4 with its moov at the end then fails with
+     * "moov atom not found". avformat_open_input consumes the options it uses,
+     * so keep a copy and retry once with closed ranges (FFmpeg's request_size).
+     * Normal opens are untouched; only a failed open pays for the retry.
+     */
+    AVDictionary *http_retry_opts = NULL;
+    const int is_http_input = av_stristart(is->filename, "http://", NULL) ||
+                              av_stristart(is->filename, "https://", NULL);
+    if (is_http_input && !av_dict_get(ffp->format_opts, "request_size", NULL, 0))
+        av_dict_copy(&http_retry_opts, ffp->format_opts, 0);
+
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
+    if (err == AVERROR_INVALIDDATA && http_retry_opts && !is->abort_request) {
+        av_log(NULL, AV_LOG_WARNING,
+               "open failed:%s, retrying with closed HTTP byte ranges (request_size)\n",
+               av_err2str(err));
+        av_dict_free(&ffp->format_opts);
+        ffp->format_opts = http_retry_opts;
+        http_retry_opts = NULL;
+        av_dict_set_int(&ffp->format_opts, "request_size", 1024 * 1024, 0);
+
+        ic = avformat_alloc_context();
+        if (!ic) {
+            av_log(NULL, AV_LOG_FATAL, "Could not allocate context.\n");
+            ret = AVERROR(ENOMEM);
+            goto fail;
+        }
+        ic->interrupt_callback.callback = decode_interrupt_cb;
+        ic->interrupt_callback.opaque = is;
+        err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
+    }
+    av_dict_free(&http_retry_opts);
     if (err < 0) {
         ret = -1;
         
