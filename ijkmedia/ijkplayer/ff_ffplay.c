@@ -3448,6 +3448,7 @@ static const char *ffp_android_mediacodec_decoder_name(enum AVCodecID id)
     switch (id) {
     case AV_CODEC_ID_H264:       return "h264_mediacodec";
     case AV_CODEC_ID_HEVC:       return "hevc_mediacodec";
+    case AV_CODEC_ID_AV1:        return "av1_mediacodec";
     case AV_CODEC_ID_MPEG2VIDEO: return "mpeg2_mediacodec";
     case AV_CODEC_ID_MPEG4:      return "mpeg4_mediacodec";
     default:                     return NULL;
